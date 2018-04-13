@@ -38,6 +38,38 @@ Create an impeller that will hold and convert curves.
 imp = Impeller(Curve, b=0.0285, D=0.365)
 """
 
-from .config.refprop import REFPROP
-REFPROP = REFPROP()
-REFPROP.set_refprop_path()
+
+###############################################################################
+# set refprop path in the beginning to avoid strange behavior
+###############################################################################
+
+import os as _os
+from pathlib import Path as _Path
+import CoolProp.CoolProp as _CP
+
+# use _ to avoid polluting the namespace when importing
+path = _os.environ['RPPREFIX']
+_CP.set_config_string(_CP.ALTERNATIVE_REFPROP_PATH, path)
+
+try:
+    path = _Path(_os.environ['RPPREFIX'])
+except KeyError:
+    path = _Path.cwd()
+
+if _os.name is 'posix':
+    shared_library = 'librefprop.so'
+else:
+    shared_library = 'REFPRP64.DLL'
+
+library_path = path / shared_library
+
+if not library_path.is_file():
+    raise FileNotFoundError(f'{library_path}.\nREFPROP not configured.')
+
+__version__ = 'prf: 0.0.1 | ' \
+              + f'CP : {_CP.get_global_param_string("version")} | ' \
+              + f'REFPROP : {_CP.get_global_param_string("REFPROP_version")}'
+
+###############################################################################
+# imports
+###############################################################################
