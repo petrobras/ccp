@@ -10,7 +10,6 @@ def test_state_coolprop():
 
     assert_allclose(state.p(), 100000)
     assert_allclose(state.T(), 300)
-    print(state.rhomass())
     assert_allclose(state.rhomass(), 0.6442542612980722)
 
 
