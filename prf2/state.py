@@ -1,21 +1,20 @@
-pass
 # import numpy as np
-# import CoolProp.CoolProp as CP
-#
-#
-# class State(CP.AbstractState):
-#     """State class.
-#
-#     This class is inherited from CP.AbstractState.
-#     Some extra functionality has been added.
-#     To create a State see constructor .define().
-#     """
-#     # new class to add methods to AbstractState
-#     # no call to super(). see :
-#     # http://stackoverflow.com/questions/18260095/
-#     def __init__(self, EOS, fluid):
-#         self.EOS = EOS
-#         self.fluid = fluid
+import CoolProp.CoolProp as CP
+
+
+class State(CP.AbstractState):
+    """State class.
+
+    This class is inherited from CP.AbstractState.
+    Some extra functionality has been added.
+    To create a State see constructor .define().
+    """
+    # new class to add methods to AbstractState
+    # no call to super(). see :
+    # http://stackoverflow.com/questions/18260095/
+    def __init__(self, EOS, fluid):
+        self.EOS = EOS
+        self.fluid = fluid
 #
 #
 #     @classmethod
