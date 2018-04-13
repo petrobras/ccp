@@ -22,3 +22,12 @@ def test_state_coolprop_mix():
     assert_allclose(state_mix.T(), 300)
     assert_allclose(state_mix.rhomass(), 0.9280595769591103)
 
+
+def test_state_coolprop_units():
+    state = State('REFPROP', 'Methane')
+    state.set_mole_fractions([1])
+    state.update(CP.PT_INPUTS, 100000, 300)
+
+    assert state.p().units == 'pascal'
+    assert state.T().units == 'kelvin'
+

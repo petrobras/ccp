@@ -40,7 +40,7 @@ imp = Impeller(Curve, b=0.0285, D=0.365)
 
 
 ###############################################################################
-# set refprop path in the beginning to avoid strange behavior
+# set refprop _path in the beginning to avoid strange behavior
 ###############################################################################
 
 import os as _os
@@ -48,23 +48,23 @@ from pathlib import Path as _Path
 import CoolProp.CoolProp as _CP
 
 # use _ to avoid polluting the namespace when importing
-path = _os.environ['RPPREFIX']
-_CP.set_config_string(_CP.ALTERNATIVE_REFPROP_PATH, path)
+_path = _os.environ['RPPREFIX']
+_CP.set_config_string(_CP.ALTERNATIVE_REFPROP_PATH, _path)
 
 try:
-    path = _Path(_os.environ['RPPREFIX'])
+    _path = _Path(_os.environ['RPPREFIX'])
 except KeyError:
-    path = _Path.cwd()
+    _path = _Path.cwd()
 
 if _os.name is 'posix':
-    shared_library = 'librefprop.so'
+    _shared_library = 'librefprop.so'
 else:
-    shared_library = 'REFPRP64.DLL'
+    _shared_library = 'REFPRP64.DLL'
 
-library_path = path / shared_library
+_library_path = _path / _shared_library
 
-if not library_path.is_file():
-    raise FileNotFoundError(f'{library_path}.\nREFPROP not configured.')
+if not _library_path.is_file():
+    raise FileNotFoundError(f'{_library_path}.\nREFPROP not configured.')
 
 __version__ = 'prf: 0.0.1 | ' \
               + f'CP : {_CP.get_global_param_string("version")} | ' \
@@ -73,3 +73,5 @@ __version__ = 'prf: 0.0.1 | ' \
 ###############################################################################
 # imports
 ###############################################################################
+
+from .state import State
