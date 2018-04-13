@@ -37,3 +37,7 @@ Create an impeller that will hold and convert curves.
 
 imp = Impeller(Curve, b=0.0285, D=0.365)
 """
+
+from .config.refprop import REFPROP
+REFPROP = REFPROP()
+REFPROP.set_refprop_path()

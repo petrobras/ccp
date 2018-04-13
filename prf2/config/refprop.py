@@ -1,8 +1,6 @@
 """Set refprop path and configuration.
-
 Will try to find REFPROP with os variable RPPREFIX. If not there, will look in
 the current folder.
-
 """
 import os
 from pathlib import Path
@@ -29,9 +27,10 @@ class REFPROP:
             raise FileNotFoundError(f'{library_path}.\nREFPROP not configured.')
 
         self.library_path = library_path
-        self.set_refprop_path(library_path)
+        # self.set_refprop_path(library_path)
         self.__version__ = CP.get_global_param_string('REFPROP_version')
 
-    def set_refprop_path(self, path=None):
+    def set_refprop_path(self):
         CP.set_config_string(CP.ALTERNATIVE_REFPROP_PATH,
-                             (path / self.library_path))
+                             str(self.library_path))
+
