@@ -1,5 +1,9 @@
 # import numpy as np
+import pint
 import CoolProp.CoolProp as CP
+
+ureg = pint.UnitRegistry()
+Q_ = ureg.Quantity
 
 
 class State(CP.AbstractState):
@@ -15,6 +19,10 @@ class State(CP.AbstractState):
     def __init__(self, EOS, fluid):
         self.EOS = EOS
         self.fluid = fluid
+
+    def T(self):
+
+        return Q_(super().T(), 'degK')
 #
 #
 #     @classmethod
