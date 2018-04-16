@@ -2,6 +2,10 @@ import pytest
 from prf2.config.units import check_units, Q_, units
 
 
+def test_new_units_loaded():
+    speed = Q_(1, 'RPM')
+    assert speed.magnitude == 1
+
 @pytest.fixture
 def auxiliary_function():
     @check_units

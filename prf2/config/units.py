@@ -1,6 +1,10 @@
+from pathlib import Path
 import pint
 
+
+new_units = Path('../new_units.txt')
 ureg = pint.UnitRegistry()
+ureg.load_definitions(str(new_units))
 Q_ = ureg.Quantity
 
 
