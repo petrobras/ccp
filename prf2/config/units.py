@@ -4,11 +4,12 @@ ureg = pint.UnitRegistry()
 Q_ = ureg.Quantity
 
 
+units = {'p': 'pascal', 'T': 'degK'}
+
+
 def check_units(func):
     """Wrapper to check and convert units to base_units."""
     def inner(*args, **kwargs):
-
-        units = {'p': 'pascal', 'T': 'degK'}
 
         base_unit_kwargs = {}
         for k, v in kwargs.items():
@@ -20,3 +21,4 @@ def check_units(func):
 
         return func(*args, **base_unit_kwargs)
     return inner
+
