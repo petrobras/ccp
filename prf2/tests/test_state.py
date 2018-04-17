@@ -50,9 +50,10 @@ def test_state_define_units():
 
     assert state.p().units == 'pascal'
     assert state.T().units == 'kelvin'
+    assert state.rho().units == 'kilogram/meter**3'
     assert state.p().magnitude == 100000
     assert state.T().magnitude == 300
-    assert state.rhomass() == 0.6442542612980722
+    assert state.rho().magnitude == 0.6442542612980722
 
 
 def test_state_define_units_mix():
@@ -61,17 +62,19 @@ def test_state_define_units_mix():
 
     assert state.p().units == 'pascal'
     assert state.T().units == 'kelvin'
+    assert state.rho().units == 'kilogram/meter**3'
     assert state.p().magnitude == 100000
     assert state.T().magnitude == 300
-    assert state.rhomass() == 0.9280595769591103
+    assert state.rho().magnitude == 0.9280595769591103
     assert state.fluid == {'METHANE': 0.5, 'ETHANE': 0.5}
 
     state.update(p=200000, T=310)
     assert state.p().units == 'pascal'
     assert state.T().units == 'kelvin'
+    assert state.rho().units == 'kilogram/meter**3'
     assert state.p().magnitude == 200000
     assert state.T().magnitude == 310
-    assert state.rhomass() == 1.8020813868455758
+    assert state.rho().magnitude == 1.8020813868455758
 
 
 def test_state_copy():
