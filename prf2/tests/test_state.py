@@ -1,4 +1,5 @@
 import pytest
+from copy import copy
 from prf2.state import *
 from numpy.testing import assert_allclose
 
@@ -63,6 +64,7 @@ def test_state_define_units_mix():
     assert state.p().magnitude == 100000
     assert state.T().magnitude == 300
     assert state.rhomass() == 0.9280595769591103
+    assert state.fluid == {'METHANE': 0.5, 'ETHANE': 0.5}
 
     state.update(p=200000, T=310)
     assert state.p().units == 'pascal'
@@ -72,3 +74,10 @@ def test_state_define_units_mix():
     assert state.rhomass() == 1.8020813868455758
 
 
+def test_state_copy():
+    state = State.define(p=100000, T=300, fluid='Methane')
+    state1 = copy(state)
+
+    assert state == state
+    assert state != state1
+    assert state.rhomass() == state1.rhomass()

@@ -15,15 +15,33 @@ class State(CP.AbstractState):
     # new class to add methods to AbstractState
     # no call to super(). see :
     # http://stackoverflow.com/questions/18260095/
-    def __init__(self, EOS, fluid):
+    def __init__(self, EOS, _fluid):
         self.EOS = EOS
-        self.fluid = fluid
+        self._fluid = _fluid
+
+    def _fluid_dict(self):
+        # preserve the dictionary from define method
+        fluid_dict = {}
+        for k, v in zip(self.fluid_names(), self.get_mole_fractions()):
+            fluid_dict[k] = v
+            self.fluid = fluid_dict
+        return fluid_dict
 
     def T(self):
         return Q_(super().T(), 'kelvin')
 
     def p(self):
         return Q_(super().p(), 'pascal')
+
+    def __reduce__(self):
+        fluid_ = self.fluid
+        kwargs = {k: v for k, v in self.init_args.items() if v is not None}
+        kwargs['fluid'] = fluid_
+        return self._rebuild, (self.__class__, kwargs)
+
+    @staticmethod
+    def _rebuild(cls, kwargs):
+        return cls.define(**kwargs)
 
     @classmethod
     @check_units
@@ -94,6 +112,7 @@ class State(CP.AbstractState):
         state.set_mole_fractions(molar_fractions)
         state.init_args = dict(p=p, T=T, h=h, s=s, d=d)
         state.setup_args = copy(state.init_args)
+        state.fluid = state._fluid_dict()
 
         state.update(**state.setup_args)
 
