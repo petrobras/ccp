@@ -31,3 +31,13 @@ def test_state_coolprop_units():
     assert state.p().units == 'pascal'
     assert state.T().units == 'kelvin'
 
+
+def test_state_coolprop_units_Q_():
+    state = State('REFPROP', 'Methane')
+    state.set_mole_fractions([1])
+    state.update(CP.PT_INPUTS, 100000, 300)
+
+    assert state.p().units == 'pascal'
+    assert state.T().units == 'kelvin'
+
+
