@@ -42,10 +42,16 @@ class Point:
         else:
             self.flow_v = self.flow_m / self.suc.rhomass()
 
+        self.disch = kwargs.get('disch')
+        self.head = kwargs.get('head')
+        self.eff = kwargs.get('eff')
+        self.power = kwargs.get('power')
+        self.volume_ratio = kwargs.get('volume_ratio')
+
         kwargs_keys = '-'.join(sorted(kwargs))
 
         options = {
-            'suc-disch': self._calc_from_suc_disch
+            'disch-flow_v-suc': self._calc_from_suc_disch
         }
 
         options[kwargs_keys]()

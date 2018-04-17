@@ -33,6 +33,9 @@ class State(CP.AbstractState):
     def p(self):
         return Q_(super().p(), 'pascal')
 
+    def h(self):
+        return Q_(super().hmass(), 'joule/kilogram')
+
     def __reduce__(self):
         fluid_ = self.fluid
         kwargs = {k: v for k, v in self.init_args.items() if v is not None}

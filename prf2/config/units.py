@@ -10,7 +10,7 @@ def check_units(func):
     def inner(*args, **kwargs):
         base_unit_kwargs = {}
         for k, v in kwargs.items():
-            if k in units:
+            if k in units and v is not None:
                 try:
                     base_unit_kwargs[k] = v.to(units[k])
                 except AttributeError:
