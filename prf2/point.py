@@ -94,7 +94,7 @@ class Point:
         disch_s = self._dummy_state
         disch_s.update(p=disch.p(), s=suc.smass())
 
-        return self._head_pol
+        return self._head_pol()
 
     def _head_pol(self):
         """Polytropic head."""
@@ -124,11 +124,19 @@ class Point:
 
         return np.log(pd/ps)/np.log(vs/vd)
 
-    def eff_pol_schultz(self):
+    def _eff_pol_schultz(self):
         suc = self.suc
         disch = self.disch
 
-        wp = self.head_pol_schultz(suc, disch)
+        wp = self._head_pol_schultz()
         dh = disch.hmass() - suc.hmass()
 
         return wp/dh
+
+    def _power_calc(self):
+        """Power."""
+        flow_m = self.flow_m
+        head = self.head
+        eff = self.eff
+
+        return flow_m * head / eff

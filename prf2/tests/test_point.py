@@ -39,9 +39,9 @@ def point_0(suc_0, disch_0):
     return point_0
 
 
-# def test_point(suc_0, disch_0, point_0):
-#     assert point_0.suc == suc_0
-#     assert point_0.disch == disch_0
+def test_point(suc_0, disch_0, point_0):
+    assert point_0.suc == suc_0
+    assert point_0.disch == disch_0
 
 
 
