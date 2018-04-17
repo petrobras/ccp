@@ -38,9 +38,9 @@ class Point:
         self._dummy_state = copy(self.suc)
 
         if self.flow_m is None:
-            self.flow_m = self.flow_v * self.suc.rhomass()
+            self.flow_m = self.flow_v * self.suc.rho()
         else:
-            self.flow_v = self.flow_m / self.suc.rhomass()
+            self.flow_v = self.flow_m / self.suc.rho()
 
         self.disch = kwargs.get('disch')
         self.head = kwargs.get('head')
@@ -105,9 +105,9 @@ class Point:
         n = self._n_exp()
 
         p2 = disch.p()
-        v2 = 1 / disch.rhomass()
+        v2 = 1 / disch.rho()
         p1 = suc.p()
-        v1 = 1 / suc.rhomass()
+        v1 = 1 / suc.rho()
 
         return (n/(n-1))*(p2*v2 - p1*v1)
 
@@ -118,9 +118,9 @@ class Point:
         disch = self.disch
 
         ps = suc.p()
-        vs = 1 / suc.rhomass()
+        vs = 1 / suc.rho()
         pd = disch.p()
-        vd = 1 / disch.rhomass()
+        vd = 1 / disch.rho()
 
         return np.log(pd/ps)/np.log(vs/vd)
 

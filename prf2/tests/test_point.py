@@ -42,6 +42,12 @@ def point_0(suc_0, disch_0):
 def test_point(suc_0, disch_0, point_0):
     assert point_0.suc == suc_0
     assert point_0.disch == disch_0
+    assert point_0.suc.rhomass() == suc_0.rhomass()
+    assert point_0.disch.rhomass() == disch_0.rhomass()
+
+
+def test_point_head(point_0):
+    assert point_0._head_isen() == 1
 
 
 
