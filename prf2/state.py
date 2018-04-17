@@ -81,7 +81,7 @@ class State(CP.AbstractState):
                 constituents.append(k)
                 molar_fractions.append(v)
                 # create an adequate fluid string to cp.AbstractState
-                _fluid = '&'.join(constituents)
+            _fluid = '&'.join(constituents)
         except AttributeError:
             molar_fractions.append(1)
             _fluid = fluid

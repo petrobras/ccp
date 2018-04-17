@@ -37,5 +37,25 @@ def test_state_define():
 
     assert state.p().units == 'pascal'
     assert state.T().units == 'kelvin'
+    assert state.p().magnitude == 100000
+    assert state.T().magnitude == 300
 
 
+def test_state_define_units():
+    state = State.define(p=Q_(1, 'bar'), T=Q_(300 - 273.15, 'celsius'),
+                         fluid='Methane')
+
+    assert state.p().units == 'pascal'
+    assert state.T().units == 'kelvin'
+    assert state.p().magnitude == 100000
+    assert state.T().magnitude == 300
+
+
+def test_state_define_units_mix():
+    state = State.define(p=Q_(1, 'bar'), T=Q_(300 - 273.15, 'celsius'),
+                         fluid={'Methane': 0.5, 'Ethane': 0.5})
+
+    assert state.p().units == 'pascal'
+    assert state.T().units == 'kelvin'
+    assert state.p().magnitude == 100000
+    assert state.T().magnitude == 300
