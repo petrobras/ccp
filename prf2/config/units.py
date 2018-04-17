@@ -1,6 +1,6 @@
 from .. import Q_
 
-units = {'p': 'pascal', 'T': 'kelvin'}
+units = {'p': 'pascal', 'T': 'kelvin', 'speed': 'RPM'}
 
 
 def check_units(func):
