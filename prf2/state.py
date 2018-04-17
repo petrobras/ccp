@@ -69,8 +69,6 @@ class State(CP.AbstractState):
         >>> s.rhomass()
         1.9716931060214515
         """
-        # define constituents and molar fractions to create and update state
-
         constituents = []
         molar_fractions = []
 
