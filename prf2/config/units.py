@@ -1,7 +1,7 @@
 from .. import Q_
 
 units = {'p': 'pascal', 'T': 'kelvin', 'speed': 'radian/second',
-         'flow_v': 'meter**3 / second'}
+         'flow_v': 'meter**3/second', 'flow_m': 'kilogram/second'}
 
 
 def check_units(func):
