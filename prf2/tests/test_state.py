@@ -59,3 +59,11 @@ def test_state_define_units_mix():
     assert state.T().units == 'kelvin'
     assert state.p().magnitude == 100000
     assert state.T().magnitude == 300
+
+    state.update(p=200000, T=310)
+    assert state.p().units == 'pascal'
+    assert state.T().units == 'kelvin'
+    assert state.p().magnitude == 200000
+    assert state.T().magnitude == 310
+
+
