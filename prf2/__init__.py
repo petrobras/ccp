@@ -71,7 +71,18 @@ __version__ = 'prf: 0.0.1 | ' \
               + f'REFPROP : {_CP.get_global_param_string("REFPROP_version")}'
 
 ###############################################################################
+# pint
+###############################################################################
+
+from pint import UnitRegistry as _UnitRegistry
+_new_units = _Path(__file__).parent / 'config/new_units.txt'
+ureg = _UnitRegistry()
+ureg.load_definitions(str(_new_units))
+Q_ = ureg.Quantity
+
+###############################################################################
 # imports
 ###############################################################################
 
 from .state import State
+# from .config.units import check_units, Q_

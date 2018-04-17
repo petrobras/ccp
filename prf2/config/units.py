@@ -1,11 +1,4 @@
-from pathlib import Path
-import pint
-
-
-ureg = pint.UnitRegistry()
-new_units = Path(__file__).parent / 'new_units.txt'
-ureg.load_definitions(str(new_units))
-Q_ = ureg.Quantity
+from .. import Q_
 
 units = {'p': 'pascal', 'T': 'degK'}
 
