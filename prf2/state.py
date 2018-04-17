@@ -21,10 +21,10 @@ class State(CP.AbstractState):
         self.fluid = fluid
 
     def T(self):
-        return Q_(super().T(), 'degK')
+        return Q_(super().T(), 'kelvin')
 
     def p(self):
-        return Q_(super().p(), 'Pa')
+        return Q_(super().p(), 'pascal')
 #
 #
 #     @classmethod
