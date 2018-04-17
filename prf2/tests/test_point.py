@@ -33,7 +33,15 @@ def test_flow_not_given(suc_0, disch_0):
 
 
 @pytest.fixture
-def point_0():
-    assert 0
+def point_0(suc_0, disch_0):
+    point_0 = Point(suc=suc_0, disch=disch_0, flow_v=1, speed=1)
+
+    return point_0
+
+
+def test_point(suc_0, disch_0, point_0):
+    assert point_0.suc == suc_0
+    assert point_0.disch == disch_0
+
 
 
