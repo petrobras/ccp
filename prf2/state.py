@@ -25,7 +25,6 @@ class State(CP.AbstractState):
     def p(self):
         return Q_(super().p(), 'pascal')
 
-
     @classmethod
     @check_units
     def define(cls, p=None, T=None, h=None, s=None, d=None, fluid=None,
@@ -81,12 +80,11 @@ class State(CP.AbstractState):
                 k = get_name(k)
                 constituents.append(k)
                 molar_fractions.append(v)
+                # create an adequate fluid string to cp.AbstractState
+                _fluid = '&'.join(constituents)
         except AttributeError:
-            constituents.append(fluid)
             molar_fractions.append(1)
-
-        # create an adequate fluid string to cp.AbstractState
-        _fluid = '&'.join(constituents)
+            _fluid = fluid
 
         try:
             state = cls(EOS, _fluid)
@@ -121,7 +119,7 @@ class State(CP.AbstractState):
         if len(kwargs) == 0:
             return super().update(*args)
 
-        inputs = ''.join(k for k in kwargs.keys() if '_units' not in k)
+        inputs = ''.join(k for k, v in kwargs.items() if v is not None)
 
         order_dict = {'Tp': 'pT',
                       'Qp': 'pQ',
@@ -143,4 +141,6 @@ class State(CP.AbstractState):
         except KeyError:
             raise KeyError(f'Update key {inputs} not implemented')
 
-        super().update(cp_update, kwargs[inputs[0]], kwargs[inputs[1]])
+        super().update(cp_update,
+                       kwargs[inputs[0]].magnitude,
+                       kwargs[inputs[1]].magnitude)
