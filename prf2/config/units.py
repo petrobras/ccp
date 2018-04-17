@@ -1,6 +1,6 @@
 from .. import Q_
 
-units = {'p': 'pascal', 'T': 'degK'}
+units = {'p': 'pascal', 'T': 'kelvin'}
 
 
 def check_units(func):
@@ -11,7 +11,7 @@ def check_units(func):
         for k, v in kwargs.items():
             if k in units:
                 try:
-                    base_unit_kwargs[k] = v.to_base_units()
+                    base_unit_kwargs[k] = v.to(units[k])
                 except AttributeError:
                     base_unit_kwargs[k] = Q_(v, units[k])
 
