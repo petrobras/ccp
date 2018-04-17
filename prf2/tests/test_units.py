@@ -30,7 +30,7 @@ def test_units(auxiliary_function):
 
 
 def test_unit_Q_(auxiliary_function):
-    results = auxiliary_function(p=Q_(1, 'pascal'), T=Q_(1, 'degK'))
+    results = auxiliary_function(p=Q_(1, 'pascal'), T=Q_(1, 'kelvin'))
     # check if all available units are tested
     assert len(results) == len(units)
 
@@ -44,7 +44,18 @@ def test_unit_Q_(auxiliary_function):
 
 
 def test_unit_Q_conversion(auxiliary_function):
-    assert 0
+    results = auxiliary_function(p=Q_(1, 'bar'), T=Q_(1, 'celsius'))
+    # check if all available units are tested
+    assert len(results) == len(units)
+
+    p, T = results
+
+    assert p.magnitude == 1e5
+    assert p.units == 'pascal'
+
+    assert T.magnitude == 274.15
+    assert T.units == 'kelvin'
+
 
 
 
