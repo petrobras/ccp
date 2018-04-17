@@ -44,7 +44,7 @@ def test_unit_Q_(auxiliary_function):
 
 
 def test_unit_Q_conversion(auxiliary_function):
-    assert == 0
+    assert 0
 
 
 
