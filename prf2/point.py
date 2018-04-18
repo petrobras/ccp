@@ -96,6 +96,15 @@ class Point:
 
         return self._head_pol(disch=disch_s).to('joule/kilogram')
 
+    def _eff_isen(self):
+        """Isentropic efficiency."""
+        suc = self.suc
+        disch = self.disch
+
+        ws = self._head_isen()
+        dh = disch.hmass() - suc.hmass()
+        return ws/dh
+
     def _head_pol(self, disch=None):
         """Polytropic head."""
 
