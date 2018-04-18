@@ -58,7 +58,6 @@ class Curve(UserList):
                 values.append(getattr(getattr(point, param), 'magnitude'))
 
             units = getattr(getattr(point, param), 'units')
-            print(values)
 
             setattr(self, param, Q_(values, units))
 
