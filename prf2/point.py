@@ -118,7 +118,7 @@ class Point:
         suc = self.suc
         disch = self.disch
 
-        wp = self._head_pol(suc, disch)
+        wp = self._head_pol()
 
         dh = disch.hmass() - suc.hmass()
 
