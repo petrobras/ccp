@@ -52,15 +52,16 @@ def test_point_n_exp(point_0):
 
 
 def test_point_head_pol(point_0):
+    assert point_0._head_pol().units == 'joule/kilogram'
     assert_allclose(point_0._head_pol(), 55280.691617)
 
 
 def test_point_eff_pol(point_0):
-    assert_allclose(point_0._eff_pol(), 55280.691617)
+    assert_allclose(point_0._eff_pol(), 0.711186, rtol=1e-5)
 
 
 def test_point_eff_pol_schultz(point_0):
-    assert 0
+    assert_allclose(point_0._eff_pol_schultz(), 0.71243, rtol=1e-5)
 
 
 def test_point_head_isen(point_0):
@@ -69,15 +70,15 @@ def test_point_head_isen(point_0):
 
 
 def test_eff_isen(point_0):
-    assert 0
+    assert_allclose(point_0._eff_isen(), 0.68398, rtol=1e-5)
 
 
 def test_schultz_f(point_0):
-    assert 0
+    assert_allclose(point_0._schultz_f(), 1.00175, rtol=1e-5)
 
 
-def test_head_pol_schults(point_0):
-    assert 0
+def test_head_pol_schultz(point_0):
+    assert_allclose(point_0._head_pol_schultz(), 55377.406664)
 
 
 
