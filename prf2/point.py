@@ -1,5 +1,6 @@
 import numpy as np
 from copy import copy
+from prf2 import check_units
 
 
 class Point:
@@ -26,7 +27,9 @@ class Point:
     Point : prf.Point
         A point in the compressor map.
     """
+    @check_units
     def __init__(self, *, speed, **kwargs):
+        self.speed = speed
         self.flow_v = kwargs.get('flow_v', None)
         self.flow_m = kwargs.get('flow_m', None)
         if self.flow_v is None and self.flow_m is None:
