@@ -46,9 +46,39 @@ def test_point(suc_0, disch_0, point_0):
     assert point_0.disch.rhomass() == disch_0.rhomass()
 
 
-def test_point_head(point_0):
+def test_point_n_exp(point0):
+    assert 0
+
+
+def test_point_head_pol(point0):
+    assert 0
+
+
+def test_point_eff_pol(point0):
+    assert 0
+
+
+def test_point_eff_pol_schultz(point0):
+    assert 0
+
+
+def test_point_head_isen(point_0):
     assert point_0._head_isen().units == 'joule/kilogram'
     assert point_0._head_isen().magnitude == 53165.98650702183
+
+
+def test_eff_isen(point0):
+    assert 0
+
+
+def test_schultz_f(point0):
+    assert 0
+
+
+def test_head_pol_schults(point0):
+    assert 0
+
+
 
 
 
