@@ -77,9 +77,9 @@ class Point:
 
         # define state to isentropic discharge using dummy state
         disch_s = self._dummy_state
-        disch_s.update(p=disch.p(), s=suc.smass())
+        disch_s.update(p=disch.p(), s=suc.s())
 
-        h2s_h1 = disch_s.hmass() - suc.hmass()
+        h2s_h1 = disch_s.h() - suc.h()
         h_isen = self._head_isen()
 
         return h2s_h1 / h_isen
@@ -102,7 +102,7 @@ class Point:
         disch = self.disch
 
         ws = self._head_isen()
-        dh = disch.hmass() - suc.hmass()
+        dh = disch.h() - suc.h()
         return ws/dh
 
     def _head_pol(self, disch=None):
@@ -129,7 +129,7 @@ class Point:
 
         wp = self._head_pol()
 
-        dh = disch.hmass() - suc.hmass()
+        dh = disch.h() - suc.h()
 
         return wp/dh
 
@@ -153,7 +153,7 @@ class Point:
         disch = self.disch
 
         wp = self._head_pol_schultz()
-        dh = disch.hmass() - suc.hmass()
+        dh = disch.h() - suc.h()
 
         return wp/dh
 

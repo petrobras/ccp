@@ -78,6 +78,7 @@ def test_schultz_f(point_0):
 
 
 def test_head_pol_schultz(point_0):
+    assert point_0._head_pol_schultz().units == 'joule/kilogram'
     assert_allclose(point_0._head_pol_schultz(), 55377.406664)
 
 
