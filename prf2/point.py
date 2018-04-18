@@ -111,7 +111,7 @@ class Point:
         p1 = suc.p()
         v1 = 1 / suc.rho()
 
-        return (n/(n-1))*(p2*v2 - p1*v1)
+        return (n/(n-1))*(p2*v2 - p1*v1).to('joule/kilogram')
 
     def _eff_pol(self):
         """Polytropic efficiency."""
