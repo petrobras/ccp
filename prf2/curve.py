@@ -1,3 +1,4 @@
+import matplotlib.pyplot as plt
 from collections import UserList
 from prf2 import Q_
 
@@ -11,24 +12,50 @@ class _CurveState(UserList):
 
     """
 
-    def __init__(self, points):
+    def __init__(self, points, flow_v):
         super().__init__(points)
+        self.flow_v = flow_v
 
-        # set a method for each attribute in the list
+        # set a method for each suction attribute in the list
         for attr in ['p', 'T', 'h', 's']:
-            func = self.state_list(attr)
+            func = self.state_parameter(attr)
             setattr(self, attr, func)
+            plot_func = self.plot(attr)
+            setattr(self, attr + '_plot', plot_func)
 
-    def state_list(self, attr):
-        def inner():
+    def state_parameter(self, attr):
+        def inner(*args, **kwargs):
             values = []
 
             for point in self:
                 values.append(getattr(getattr(point, attr)(), 'magnitude'))
 
-                units = getattr(getattr(point, attr)(), 'units')
+            units = getattr(getattr(point, attr)(), 'units')
 
             return Q_(values, units)
+
+        return inner
+
+    def plot(self, attr):
+        def inner(*args, **kwargs):
+            ax = kwargs.get('ax', None)
+
+            if ax is None:
+                ax = plt.gca()
+
+            values = []
+
+            for point in self:
+                values.append(getattr(getattr(point, attr)(), 'magnitude'))
+
+            units = getattr(getattr(point, attr)(), 'units')
+
+            ax.plot(self.flow_v.magnitude, values)
+            ax.set_xlabel(f'Volumetric flow ({self.flow_v.units:P~})')
+            ax.set_ylabel(f'{attr} ({units:P~})')
+
+            return ax
+
         return inner
 
 
@@ -44,13 +71,18 @@ class Curve(UserList):
     points : list
         List with the points
     """
+
     def __init__(self, points):
         if len(points) < 2:
             raise TypeError('At least 2 points should be given.')
-        super().__init__(sorted(points, key=lambda p: p.flow_v))
+        super().__init__(sorted(points, key=lambda point: point.flow_v))
 
-        self.suc = _CurveState([p.suc for p in self])
-        self.disch = _CurveState([p.disch for p in self])
+        _flow_v_values = [p.flow_v.magnitude for p in self]
+        _flow_v_units = self[0].flow_v.units
+        self.flow_v = Q_(_flow_v_values, _flow_v_units)
+
+        self.suc = _CurveState([p.suc for p in self], flow_v=self.flow_v)
+        self.disch = _CurveState([p.disch for p in self], flow_v=self.flow_v)
 
         for param in ['head', 'eff']:
             values = []
