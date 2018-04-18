@@ -1,7 +1,7 @@
 import pytest
 import numpy as np
 from numpy.testing import assert_allclose
-from prf2 import Q_
+from prf2 import ureg, Q_
 from prf2.state import State
 from prf2.point import Point
 from prf2.curve import Curve
@@ -35,3 +35,9 @@ def test_curve_disch_parameters(curve0):
     assert_allclose(curve0.disch.p(), np.array([200000., 250000.]))
     assert curve0.disch.T().units == 'kelvin'
     assert_allclose(curve0.disch.T(), np.array([310., 315.]))
+
+
+def test_curve_performance_parameters(curve0):
+    assert curve0.head.units == 'joule/kilogram'
+    assert curve0.eff.units == ureg.dimensionless
+    assert curve0.power.units == 'watts'
