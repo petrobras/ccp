@@ -113,6 +113,17 @@ class Point:
 
         return (n/(n-1))*(p2*v2 - p1*v1)
 
+    def _eff_pol(self):
+        """Polytropic efficiency."""
+        suc = self.suc
+        disch = self.disch
+
+        wp = self._head_pol(suc, disch)
+
+        dh = disch.hmass() - suc.hmass()
+
+        return wp/dh
+
     def _n_exp(self, disch=None):
         """Polytropic exponent."""
 

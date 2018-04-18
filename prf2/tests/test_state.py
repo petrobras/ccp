@@ -70,8 +70,8 @@ def test_state_define_units_mix():
     assert state.p().magnitude == 100000
     assert state.T().magnitude == 300
     assert state.rho().magnitude == 0.9280595769591103
-    assert state.h().magnitude == 755784.43407392
-    assert state.s().magnitude == 4805.332018156618
+    assert_allclose(state.h().magnitude, 755784.43407392, rtol=1e-5)
+    assert_allclose(state.s().magnitude, 4805.332018156618, rtol=1e-5)
 
     state.update(p=200000, T=310)
     assert state.p().units == 'pascal'

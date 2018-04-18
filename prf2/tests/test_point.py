@@ -1,4 +1,5 @@
 import pytest
+from numpy.testing import assert_allclose
 from prf2 import Q_
 from prf2.state import State
 from prf2.point import Point
@@ -46,36 +47,36 @@ def test_point(suc_0, disch_0, point_0):
     assert point_0.disch.rhomass() == disch_0.rhomass()
 
 
-def test_point_n_exp(point0):
-    assert 0
+def test_point_n_exp(point_0):
+    assert_allclose(point_0._n_exp(), 1.2910625831119145)
 
 
-def test_point_head_pol(point0):
-    assert 0
+def test_point_head_pol(point_0):
+    assert_allclose(point_0._head_pol(), 55280.691617)
 
 
-def test_point_eff_pol(point0):
-    assert 0
+def test_point_eff_pol(point_0):
+    assert_allclose(point_0._eff_pol(), 55280.691617)
 
 
-def test_point_eff_pol_schultz(point0):
+def test_point_eff_pol_schultz(point_0):
     assert 0
 
 
 def test_point_head_isen(point_0):
     assert point_0._head_isen().units == 'joule/kilogram'
-    assert point_0._head_isen().magnitude == 53165.98650702183
+    assert_allclose(point_0._head_isen().magnitude, 53165.986507, rtol=1e-5)
 
 
-def test_eff_isen(point0):
+def test_eff_isen(point_0):
     assert 0
 
 
-def test_schultz_f(point0):
+def test_schultz_f(point_0):
     assert 0
 
 
-def test_head_pol_schults(point0):
+def test_head_pol_schults(point_0):
     assert 0
 
 
