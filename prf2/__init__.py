@@ -84,5 +84,7 @@ Q_ = ureg.Quantity
 # imports
 ###############################################################################
 
+from .config.units import check_units, Q_
 from .state import State
-# from .config.units import check_units, Q_
+from .point import Point
+from .curve import Curve
