@@ -14,4 +14,6 @@ class Curve(UserList):
         List with the points
     """
     def __init__(self, points):
+        if len(points) < 2:
+            raise TypeError('At least 2 points should be given.')
         super().__init__(sorted(points, key=lambda point: point.flow_v))
