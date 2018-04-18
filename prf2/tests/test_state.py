@@ -60,13 +60,18 @@ def test_state_define_units_mix():
     state = State.define(p=Q_(1, 'bar'), T=Q_(300 - 273.15, 'celsius'),
                          fluid={'Methane': 0.5, 'Ethane': 0.5})
 
+    assert state.fluid == {'METHANE': 0.5, 'ETHANE': 0.5}
+
     assert state.p().units == 'pascal'
     assert state.T().units == 'kelvin'
     assert state.rho().units == 'kilogram/meter**3'
+    assert state.h().units == 'joule/kilogram'
+    assert state.s().units == 'joule/(kelvin kilogram)'
     assert state.p().magnitude == 100000
     assert state.T().magnitude == 300
     assert state.rho().magnitude == 0.9280595769591103
-    assert state.fluid == {'METHANE': 0.5, 'ETHANE': 0.5}
+    assert state.h().magnitude == 755784.43407392
+    assert state.s().magnitude == 4805.332018156618
 
     state.update(p=200000, T=310)
     assert state.p().units == 'pascal'
@@ -83,4 +88,4 @@ def test_state_copy():
 
     assert state == state
     assert state != state1
-    assert state.rhomass() == state1.rhomass()
+    assert state.rho() == state1.rho()

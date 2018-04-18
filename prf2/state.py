@@ -36,6 +36,9 @@ class State(CP.AbstractState):
     def h(self):
         return Q_(super().hmass(), 'joule/kilogram')
 
+    def s(self):
+        return Q_(super().smass(), 'joule/(kelvin kilogram)')
+
     def rho(self):
         return Q_(super().rhomass(), 'kilogram/m**3')
 
