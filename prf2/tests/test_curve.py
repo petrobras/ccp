@@ -40,4 +40,4 @@ def test_curve_disch_parameters(curve0):
 def test_curve_performance_parameters(curve0):
     assert curve0.head.units == 'joule/kilogram'
     assert curve0.eff.units == ureg.dimensionless
-    assert curve0.power.units == 'watts'
+    assert curve0.power.units == 'kilowatt'

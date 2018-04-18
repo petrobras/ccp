@@ -166,4 +166,4 @@ class Point:
         head = self.head
         eff = self.eff
 
-        return flow_m * head / eff
+        return (flow_m * head / eff).to('kilowatt')

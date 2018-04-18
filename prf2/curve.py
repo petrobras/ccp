@@ -84,7 +84,7 @@ class Curve(UserList):
         self.suc = _CurveState([p.suc for p in self], flow_v=self.flow_v)
         self.disch = _CurveState([p.disch for p in self], flow_v=self.flow_v)
 
-        for param in ['head', 'eff']:
+        for param in ['head', 'eff', 'power']:
             values = []
             for point in self:
                 values.append(getattr(getattr(point, param), 'magnitude'))
