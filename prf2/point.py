@@ -92,17 +92,19 @@ class Point:
 
         # define state to isentropic discharge using dummy state
         disch_s = self._dummy_state
-        disch_s.update(p=disch.p(), s=suc.smass())
+        disch_s.update(p=disch.p(), s=suc.s())
 
-        return self._head_pol()
+        return self._head_pol(disch=disch_s).to('joule/kilogram')
 
-    def _head_pol(self):
+    def _head_pol(self, disch=None):
         """Polytropic head."""
 
         suc = self.suc
-        disch = self.disch
 
-        n = self._n_exp()
+        if disch is None:
+            disch = self.disch
+
+        n = self._n_exp(disch=disch)
 
         p2 = disch.p()
         v2 = 1 / disch.rho()
@@ -111,11 +113,13 @@ class Point:
 
         return (n/(n-1))*(p2*v2 - p1*v1)
 
-    def _n_exp(self):
+    def _n_exp(self, disch=None):
         """Polytropic exponent."""
 
         suc = self.suc
-        disch = self.disch
+
+        if disch is None:
+            disch = self.disch
 
         ps = suc.p()
         vs = 1 / suc.rho()

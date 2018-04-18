@@ -47,7 +47,8 @@ def test_point(suc_0, disch_0, point_0):
 
 
 def test_point_head(point_0):
-    assert point_0._head_isen() == 1
+    assert point_0._head_isen().units == 'joule/kilogram'
+    assert point_0._head_isen().magnitude == 53165.98650702183
 
 
 
