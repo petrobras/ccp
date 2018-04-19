@@ -44,13 +44,11 @@ class Impeller(UserList):
     def phi(self, point):
         """Flow coefficient."""
 
-        flow_m = point.flow_m
-        suc = point.suc
+        flow_v = point.flow_v
 
-        v = 1 / suc.rho()
         u = self.tip_speed(point)
 
-        phi = (flow_m * v * 4 /
+        phi = (flow_v * 4 /
                (np.pi * self.D ** 2 * u))
 
         return phi.to('dimensionless')
@@ -64,4 +62,16 @@ class Impeller(UserList):
         psi = 2 * head / u ** 2
 
         return psi.to('dimensionless')
+
+    def mach(self, point):
+        """Mach number."""
+        suc = point.suc
+
+        u = self.tip_speed(point)
+        a = suc.speed_sound()
+
+        mach = u / a
+
+        return mach.to('dimensionless')
+
 
