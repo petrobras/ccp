@@ -16,12 +16,16 @@ _fluid_list = CP.get_global_param_string('fluids_list').split(',')
 fluid_list = {name: Fluid(name) for name in _fluid_list}
 
 # define possible names
+fluid_list['IsoButane'].possible_names.extend(
+    ['isobutane', 'i-butane', 'ibutane'])
+fluid_list['n-Butane'].possible_names.extend(
+    ['butane', 'n-butane', 'nbutane'])
 fluid_list['n-Pentane'].possible_names.extend(
-    ['pentane', 'n-pentane'])
+    ['pentane', 'n-pentane', 'npentane'])
 fluid_list['Isopentane'].possible_names.extend(
     ['isopentane', 'i-pentane', 'ipentane'])
 fluid_list['n-Hexane'].possible_names.extend(
-    ['hexane', 'n-hexane'])
+    ['hexane', 'n-hexane', 'nhexane'])
 fluid_list['Isohexane'].possible_names.extend(
     ['isohexane', 'i-hexane'])
 fluid_list['n-Heptane'].possible_names.extend(
@@ -36,6 +40,8 @@ fluid_list['HydrogenSulfide'].possible_names.extend(
     ['hydrogen sulfide'])
 fluid_list['CarbonDioxide'].possible_names.extend(
     ['carbon dioxide'])
+fluid_list['Nitrogen'].possible_names.extend(
+    ['N2', 'n2'])
 
 
 def get_name(name):
