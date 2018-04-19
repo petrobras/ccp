@@ -11,7 +11,6 @@ class _CurveState(UserList):
     (100000, 100000) pascal
 
     """
-
     def __init__(self, points, flow_v):
         super().__init__(points)
         self.flow_v = flow_v
@@ -71,7 +70,6 @@ class Curve(UserList):
     points : list
         List with the points
     """
-
     def __init__(self, points):
         if len(points) < 2:
             raise TypeError('At least 2 points should be given.')

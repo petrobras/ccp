@@ -34,7 +34,6 @@ class Impeller(UserList):
 
     def tip_speed(self, point):
         """Impeller tip speed."""
-
         speed = point.speed
 
         u = speed * self.D / 2
@@ -43,7 +42,6 @@ class Impeller(UserList):
 
     def phi(self, point):
         """Flow coefficient."""
-
         flow_v = point.flow_v
 
         u = self.tip_speed(point)
@@ -73,5 +71,9 @@ class Impeller(UserList):
         mach = u / a
 
         return mach.to('dimensionless')
+
+    def s(self, point):
+        """Work input factor."""
+        pass
 
 

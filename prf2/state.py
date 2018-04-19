@@ -12,10 +12,9 @@ class State(CP.AbstractState):
     Some extra functionality has been added.
     To create a State see constructor .define().
     """
-    # new class to add methods to AbstractState
-    # no call to super(). see :
-    # http://stackoverflow.com/questions/18260095/
     def __init__(self, EOS, _fluid):
+        # no call to super(). see :
+        # http://stackoverflow.com/questions/18260095/
         self.EOS = EOS
         self._fluid = _fluid
 

@@ -68,7 +68,6 @@ class Point:
 
     def _head_pol_schultz(self):
         """Polytropic head corrected by the Schultz factor."""
-
         f = self._schultz_f()
         head = self._head_pol()
 
@@ -76,7 +75,6 @@ class Point:
 
     def _schultz_f(self):
         """Schultz factor."""
-
         suc = self.suc
         disch = self.disch
 
@@ -91,7 +89,6 @@ class Point:
 
     def _head_isen(self):
         """Isentropic head."""
-
         suc = self.suc
         disch = self.disch
 
@@ -112,7 +109,6 @@ class Point:
 
     def _head_pol(self, disch=None):
         """Polytropic head."""
-
         suc = self.suc
 
         if disch is None:
@@ -140,7 +136,6 @@ class Point:
 
     def _n_exp(self, disch=None):
         """Polytropic exponent."""
-
         suc = self.suc
 
         if disch is None:
@@ -154,6 +149,7 @@ class Point:
         return np.log(pd/ps)/np.log(vs/vd)
 
     def _eff_pol_schultz(self):
+        """Schultz polytropic efficiency."""
         suc = self.suc
         disch = self.disch
 
@@ -172,19 +168,19 @@ class Point:
 
 
 class NonDimensionalPoint:
+    """Non Dimensional point.
+
+    Parameters:
+    -----------
+    phi : float
+        Flow coefficient.
+    psi : float
+        Head coefficient.
+    eff : float
+        Efficiency.
+
+    """
     def __init__(self, phi, psi, eff):
-        """Non Dimensional point.
-
-        Parameters:
-        -----------
-        phi : float
-            Flow coefficient.
-        psi : float
-            Head coefficient.
-        eff : float
-            Efficiency.
-
-        """
 
         self.phi = phi
         self.psi = psi
