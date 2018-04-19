@@ -88,3 +88,4 @@ from .config.units import check_units, Q_
 from .state import State
 from .point import Point
 from .curve import Curve
+from .impeller import Impeller
