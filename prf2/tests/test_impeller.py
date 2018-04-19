@@ -7,7 +7,7 @@ from prf2 import ureg, Q_, State, Point, Curve, Impeller
 def points0():
     #  see Ludtke pg. 173 for values.
     fluid = dict(n2=0.0318,
-                 co2=0.018,
+                 co2=0.0118,
                  methane=0.8737,
                  ethane=0.0545,
                  propane=0.0178,
@@ -38,15 +38,15 @@ def test_impeller_tip_speed(imp0):
 
 def test_impeller_phi(imp0):
     assert imp0.phi(point=imp0[0]).units == ureg.dimensionless
-    assert_allclose(imp0.phi(point=imp0[0]).magnitude, 0.088488496, rtol=1e-6)
+    assert_allclose(imp0.phi(point=imp0[0]).magnitude, 0.089302, rtol=1e-6)
 
 
 def test_impeller_psi(imp0):
     assert imp0.psi(point=imp0[0]).units == ureg.dimensionless
-    assert_allclose(imp0.psi(point=imp0[0]).magnitude, 0.923622, rtol=1e-6)
+    assert_allclose(imp0.psi(point=imp0[0]).magnitude, 0.932116, rtol=1e-6)
 
 
 def test_impeller_mach(imp0):
     assert imp0.mach(point=imp0[0]).units == ureg.dimensionless
-    assert_allclose(imp0.mach(point=imp0[0]).magnitude, 0.581204174, rtol=1e-6)
+    assert_allclose(imp0.mach(point=imp0[0]).magnitude, 0.578539, rtol=1e-6)
 
