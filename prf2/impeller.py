@@ -29,6 +29,16 @@ class Impeller(UserList):
     def suc(self, new_suc):
         self._suc = new_suc
 
+    def tip_speed(self, point=None):
+        """Impeller tip speed."""
+
+        speed = point.speed
+
+        u = speed * self.D / 2
+
+        return u
+
+
 
 
 
