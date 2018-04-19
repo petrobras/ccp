@@ -42,3 +42,10 @@ def test_impeller_phi(points0):
     assert imp0.phi(point=imp0[0]).units == ureg.dimensionless
     assert imp0.phi(point=imp0[0]).magnitude == 2.5464790894703255
 
+
+def test_impeller_psi(points0):
+    p0, p1 = points0
+    imp0 = Impeller([p0, p1], b=0.1, D=1)
+    assert imp0.psi(point=imp0[0]).units == ureg.dimensionless
+    assert imp0.psi(point=imp0[0]).magnitude == 348222.2409628553
+

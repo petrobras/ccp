@@ -50,8 +50,18 @@ class Impeller(UserList):
         v = 1 / suc.rho()
         u = self.tip_speed(point)
 
-        # 3.2.5 ISO-5389
         phi = (flow_m * v * 4 /
                (np.pi * self.D ** 2 * u))
 
         return phi.to('dimensionless')
+
+    def psi(self, point):
+        """Head coefficient."""
+        head = point.head
+
+        u = self.tip_speed(point)
+
+        psi = 2 * head / u ** 2
+
+        return psi.to('dimensionless')
+
