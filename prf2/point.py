@@ -167,3 +167,23 @@ class Point:
         eff = self.eff
 
         return (flow_m * head / eff).to('kilowatt')
+
+
+class NonDimensionalPoint:
+    def __init__(self, phi, psi, eff):
+        """Non Dimensional point.
+
+        Parameters:
+        -----------
+        phi : float
+            Flow coefficient.
+        psi : float
+            Head coefficient.
+        eff : float
+            Efficiency.
+
+        """
+
+        self.phi = phi
+        self.psi = psi
+        self.eff = eff
