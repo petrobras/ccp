@@ -75,7 +75,7 @@ class Curve(UserList):
     def __init__(self, points):
         if len(points) < 2:
             raise TypeError('At least 2 points should be given.')
-        super().__init__(sorted(points, key=lambda point: point.flow_v))
+        super().__init__(sorted(points, key=lambda p: p.flow_v))
 
         _flow_v_values = [p.flow_v.magnitude for p in self]
         _flow_v_units = self[0].flow_v.units
@@ -85,6 +85,23 @@ class Curve(UserList):
         self.disch = _CurveState([p.disch for p in self], flow_v=self.flow_v)
 
         for param in ['head', 'eff', 'power']:
+            values = []
+            for point in self:
+                values.append(getattr(getattr(point, param), 'magnitude'))
+
+            units = getattr(getattr(point, param), 'units')
+
+            setattr(self, param, Q_(values, units))
+
+
+class NonDimensionalCurve(UserList):
+    """Non Dimensional Curve."""
+    def __init__(self, points):
+        if len(points) < 2:
+            raise TypeError('At least 2 points should be given.')
+        super().__init__(sorted(points, key=lambda p: p.phi))
+
+        for param in ['phi', 'psi', 'eff']:
             values = []
             for point in self:
                 values.append(getattr(getattr(point, param), 'magnitude'))
