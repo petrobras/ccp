@@ -1,5 +1,7 @@
 """Module to define impeller class."""
+import numpy as np
 from collections import UserList
+from prf2 import check_units
 
 
 class Impeller(UserList):
@@ -12,6 +14,7 @@ class Impeller(UserList):
     Curves will be generated from points close in similarity.
 
     """
+    @check_units
     def __init__(self, points, b=None, D=None):
         super().__init__(points)
 
@@ -29,7 +32,7 @@ class Impeller(UserList):
     def suc(self, new_suc):
         self._suc = new_suc
 
-    def tip_speed(self, point=None):
+    def tip_speed(self, point):
         """Impeller tip speed."""
 
         speed = point.speed
@@ -38,8 +41,17 @@ class Impeller(UserList):
 
         return u
 
+    def phi(self, point):
+        """Flow coefficient."""
 
+        flow_m = point.flow_m
+        suc = point.suc
 
+        v = 1 / suc.rho()
+        u = self.tip_speed(point)
 
+        # 3.2.5 ISO-5389
+        phi = (flow_m * v * 4 /
+               (np.pi * self.D ** 2 * u))
 
-
+        return phi.to('dimensionless')

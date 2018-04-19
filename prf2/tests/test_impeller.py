@@ -1,5 +1,5 @@
 import pytest
-from prf2 import Q_, State, Point, Curve, Impeller
+from prf2 import ureg, Q_, State, Point, Curve, Impeller
 
 
 @pytest.fixture
@@ -32,5 +32,13 @@ def test_impeller(points0, points1):
 def test_impeller_tip_speed(points0):
     p0, p1 = points0
     imp0 = Impeller([p0, p1], b=0.1, D=1)
-    assert imp0.tip_speed(point=imp0[0]).units == 'radian/second'
+    assert imp0.tip_speed(point=imp0[0]).units == 'meter * radian/second'
     assert imp0.tip_speed(point=imp0[0]).magnitude == 0.5
+
+
+def test_impeller_phi(points0):
+    p0, p1 = points0
+    imp0 = Impeller([p0, p1], b=0.1, D=1)
+    assert imp0.phi(point=imp0[0]).units == ureg.dimensionless
+    assert imp0.phi(point=imp0[0]).magnitude == 2.5464790894703255
+
