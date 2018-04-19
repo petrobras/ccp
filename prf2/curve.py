@@ -81,6 +81,12 @@ class Curve(UserList):
         _flow_v_units = self[0].flow_v.units
         self.flow_v = Q_(_flow_v_values, _flow_v_units)
 
+        self.speed = self[0].speed
+        # change the following check in the future
+        for point in self:
+            if self.speed != point.speed:
+                raise ValueError('Speed for each point should be equal')
+
         self.suc = _CurveState([p.suc for p in self], flow_v=self.flow_v)
         self.disch = _CurveState([p.disch for p in self], flow_v=self.flow_v)
 
