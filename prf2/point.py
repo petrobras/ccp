@@ -51,10 +51,12 @@ class Point:
         self.power = kwargs.get('power')
         self.volume_ratio = kwargs.get('volume_ratio')
 
-        kwargs_keys = '-'.join(sorted(kwargs))
+        kwargs_keys = [k for k in kwargs.keys()
+                       if k not in ['flow_v', 'flow_m']]
+        kwargs_keys = '-'.join(sorted(kwargs_keys))
 
         options = {
-            'disch-flow_v-suc': self._calc_from_suc_disch
+            'disch-suc': self._calc_from_suc_disch
         }
 
         options[kwargs_keys]()
