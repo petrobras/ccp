@@ -44,6 +44,9 @@ class State(CP.AbstractState):
     def speed_sound(self):
         return Q_(super().speed_sound(), 'm/s')
 
+    def viscosity(self):
+        return Q_(super().viscosity(), 'pascal second')
+
     def __reduce__(self):
         fluid_ = self.fluid
         kwargs = {k: v for k, v in self.init_args.items() if v is not None}

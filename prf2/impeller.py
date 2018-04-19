@@ -47,7 +47,7 @@ class Impeller(UserList):
         u = self.tip_speed(point)
 
         phi = (flow_v * 4 /
-               (np.pi * self.D ** 2 * u))
+               (np.pi * self.D**2 * u))
 
         return phi.to('dimensionless')
 
@@ -57,9 +57,21 @@ class Impeller(UserList):
 
         u = self.tip_speed(point)
 
-        psi = 2 * head / u ** 2
+        psi = 2 * head / u**2
 
         return psi.to('dimensionless')
+
+    def s(self, point):
+        """Work input factor."""
+        suc = point.suc
+        disch = point.disch
+
+        delta_h = disch.h() - suc.h()
+        u = self.tip_speed(point)
+
+        s = delta_h / u**2
+
+        return s.to('dimensionless')
 
     def mach(self, point):
         """Mach number."""
@@ -72,8 +84,17 @@ class Impeller(UserList):
 
         return mach.to('dimensionless')
 
-    def s(self, point):
-        """Work input factor."""
-        pass
+    def reynolds(self, point):
+        """Reynolds number."""
+        suc = point.suc
+
+        u = self.tip_speed(point)
+        b = self.b
+        v = suc.viscosity() / suc.rho()
+
+        reynolds = u * b / v
+
+        return reynolds.to('dimensionless')
+
 
 
