@@ -87,3 +87,5 @@ def test_calc_from_eff_suc_volume_ratio(suc_0, point_0):
     point_1 = Point(flow_v=flow_v, suc=suc_0,
                     eff=eff, volume_ratio=volume_ratio)
     assert_allclose(point_1.eff, point_0.eff)
+    assert_allclose(point_1.disch.p(), point_0.disch.p())
+    assert_allclose(point_1.disch.T(), point_0.disch.T())

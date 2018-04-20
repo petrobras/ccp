@@ -87,7 +87,7 @@ class Point:
             disch.update(rho=disch_rho, p=p)
             new_eff = self._eff_pol_schultz(disch=disch)
 
-            return new_eff - eff
+            return (new_eff - eff).magnitude
 
         newton(update_pressure, disch.p().magnitude, tol=1e-4)
 
