@@ -1,6 +1,6 @@
 import numpy as np
 from copy import copy
-from prf2 import check_units
+from prf2 import check_units, State
 
 
 class Point:
@@ -72,7 +72,14 @@ class Point:
         self.power = self._power_calc()
 
     def _calc_from_eff_suc_volume_ratio(self):
-        pass
+        suc = self.suc
+        volume_ratio = self.volume_ratio
+
+        disch_rho = suc.rho() / volume_ratio
+
+        #  consider first an isentropic compression
+        disch_s = suc.s()
+        disch = State.define()
 
     def _head_pol_schultz(self):
         """Polytropic head corrected by the Schultz factor."""

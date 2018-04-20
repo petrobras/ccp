@@ -150,9 +150,15 @@ class State(CP.AbstractState):
         elif p is not None and rho is not None:
             super().update(CP.DmassP_INPUTS,
                            rho.magnitude, p.magnitude)
+        elif p is not None and s is not None:
+            super().update(CP.PSmass_INPUTS,
+                           p.magnitude, s.magnitude)
         else:
+            locs = locals()
+            for item in ['kwargs', 'self', '__class__']:
+                locs.pop(item)
             raise KeyError(f'Update key '
-                           f'{[k for k, v in kwargs.items() if v is not None]}'
+                           f'{[k for k, v in locs.items() if v is not None]}'
                            f' not implemented')
 
 
