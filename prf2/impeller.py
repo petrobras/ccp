@@ -47,9 +47,12 @@ class Impeller(UserList):
             mach = self.mach(point)
             reynolds = self.reynolds(point)
 
-            non_dimensional_points.append(
-                NonDimensionalPoint(phi, psi, eff, volume_ratio,
-                                    mach, reynolds))
+            non_dimensional_point = NonDimensionalPoint(
+                phi, psi, eff, volume_ratio, mach, reynolds)
+            non_dimensional_points.append(non_dimensional_point)
+
+            #  set the non dimensional point attribute for the point object
+            point.non_dimensional_point = non_dimensional_point
 
         self.non_dimensional_points = non_dimensional_points
 

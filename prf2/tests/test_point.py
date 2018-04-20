@@ -19,13 +19,6 @@ def disch_0():
     return State.define(p=Q_(5.902, 'bar'), T=380.7, fluid=fluid)
 
 
-def test_speed_not_given(suc_0, disch_0):
-    with pytest.raises(TypeError) as ex:
-        Point(suc=suc_0, disch=disch_0, flow_v=0)
-    assert "missing 1 required keyword-only argument: 'speed'" \
-           in ex.__str__()
-
-
 def test_flow_not_given(suc_0, disch_0):
     with pytest.raises(TypeError) as ex:
         Point(suc=suc_0, disch=disch_0, speed=0)

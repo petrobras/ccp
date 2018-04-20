@@ -28,8 +28,7 @@ class Point:
         A point in the compressor map.
     """
     @check_units
-    def __init__(self, *, speed, **kwargs):
-        self.speed = speed
+    def __init__(self, *args, **kwargs):
         self.flow_v = kwargs.get('flow_v', None)
         self.flow_m = kwargs.get('flow_m', None)
         if self.flow_v is None and self.flow_m is None:
@@ -50,17 +49,21 @@ class Point:
         self.eff = kwargs.get('eff')
         self.power = kwargs.get('power')
         self.volume_ratio = kwargs.get('volume_ratio')
+        self.speed = kwargs.get('speed')
 
         kwargs_keys = [k for k in kwargs.keys()
                        if k not in ['flow_v', 'flow_m']]
         kwargs_keys = '-'.join(sorted(kwargs_keys))
 
         options = {
-            'disch-suc': self._calc_from_disch_suc,
+            'disch-speed-suc': self._calc_from_disch_suc,
             'eff-suc-volume_ratio': self._calc_from_eff_suc_volume_ratio,
         }
 
         options[kwargs_keys]()
+
+        #  non_dimensional point will be set on impeller instantiation
+        self.non_dimensional_point = None
 
     def _calc_from_disch_suc(self):
         self.head = self._head_pol_schultz()
