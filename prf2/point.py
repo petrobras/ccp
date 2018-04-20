@@ -1,5 +1,6 @@
 import numpy as np
 from copy import copy
+from scipy.optimize import newton
 from prf2 import check_units, State
 
 
@@ -72,40 +73,57 @@ class Point:
         self.power = self._power_calc()
 
     def _calc_from_eff_suc_volume_ratio(self):
+        eff = self.eff
         suc = self.suc
         volume_ratio = self.volume_ratio
 
         disch_rho = suc.rho() / volume_ratio
 
         #  consider first an isentropic compression
-        disch_s = suc.s()
-        disch = State.define()
+        disch = copy(self._dummy_state)
+        disch.update(rho=disch_rho, s=suc.s())
 
-    def _head_pol_schultz(self):
+        def update_pressure(p):
+            disch.update(rho=disch_rho, p=p)
+            new_eff = self._eff_pol_schultz(disch=disch)
+
+            return new_eff - eff
+
+        newton(update_pressure, disch.p().magnitude, tol=1e-4)
+
+        self.disch = disch
+        self._calc_from_disch_suc()
+
+    def _head_pol_schultz(self, disch=None):
         """Polytropic head corrected by the Schultz factor."""
-        f = self._schultz_f()
-        head = self._head_pol()
+        if disch is None:
+            disch = self.disch
+
+        f = self._schultz_f(disch=disch)
+        head = self._head_pol(disch=disch)
 
         return f * head
 
-    def _schultz_f(self):
+    def _schultz_f(self, disch=None):
         """Schultz factor."""
         suc = self.suc
-        disch = self.disch
+        if disch is None:
+            disch = self.disch
 
         # define state to isentropic discharge using dummy state
         disch_s = self._dummy_state
         disch_s.update(p=disch.p(), s=suc.s())
 
         h2s_h1 = disch_s.h() - suc.h()
-        h_isen = self._head_isen()
+        h_isen = self._head_isen(disch=disch)
 
         return h2s_h1 / h_isen
 
-    def _head_isen(self):
+    def _head_isen(self, disch=None):
         """Isentropic head."""
         suc = self.suc
-        disch = self.disch
+        if disch is None:
+            disch = self.disch
 
         # define state to isentropic discharge using dummy state
         disch_s = self._dummy_state
@@ -163,12 +181,13 @@ class Point:
 
         return np.log(pd/ps)/np.log(vs/vd)
 
-    def _eff_pol_schultz(self):
+    def _eff_pol_schultz(self, disch=None):
         """Schultz polytropic efficiency."""
         suc = self.suc
-        disch = self.disch
+        if disch is None:
+            disch = self.disch
 
-        wp = self._head_pol_schultz()
+        wp = self._head_pol_schultz(disch=disch)
         dh = disch.h() - suc.h()
 
         return wp/dh

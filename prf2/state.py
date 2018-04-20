@@ -161,6 +161,9 @@ class State(CP.AbstractState):
         elif p is not None and s is not None:
             super().update(CP.PSmass_INPUTS,
                            p.magnitude, s.magnitude)
+        elif rho is not None and s is not None:
+            super().update(CP.DmassSmass_INPUTS,
+                           rho.magnitude, s.magnitude)
         else:
             locs = locals()
             for item in ['kwargs', 'self', '__class__']:

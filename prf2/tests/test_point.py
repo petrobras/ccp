@@ -78,3 +78,12 @@ def test_head_pol_schultz(point_0):
 def test_volume_ratio(point_0):
     assert point_0._volume_ratio().units == ureg.dimensionless
     assert_allclose(point_0._volume_ratio(), 0.40527649030, rtol=1e-6)
+
+
+def test_calc_from_eff_suc_volume_ratio(suc_0, point_0):
+    flow_v = point_0.flow_v
+    eff = point_0.eff
+    volume_ratio = point_0.volume_ratio
+    point_1 = Point(flow_v=flow_v, suc=suc_0,
+                    eff=eff, volume_ratio=volume_ratio)
+    assert_allclose(point_1.eff, point_0.eff)
