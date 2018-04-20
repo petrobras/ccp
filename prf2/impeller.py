@@ -1,7 +1,7 @@
 """Module to define impeller class."""
 import numpy as np
 from collections import UserList
-from prf2 import check_units, NonDimensionalPoint, NonDimensionalCurve
+from prf2 import check_units, Point, NonDimensionalPoint, NonDimensionalCurve
 
 
 class Impeller(UserList):
@@ -55,7 +55,9 @@ class Impeller(UserList):
 
     def _calc_new_points(self):
         """Calculate new dimensional points based on the suction condition."""
-        pass
+        #  keep volume ratio constant
+        for point in self:
+            new_point = Point()
 
     def tip_speed(self, point):
         """Impeller tip speed."""

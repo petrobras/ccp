@@ -56,16 +56,20 @@ class Point:
         kwargs_keys = '-'.join(sorted(kwargs_keys))
 
         options = {
-            'disch-suc': self._calc_from_suc_disch
+            'disch-suc': self._calc_from_disch_suc,
+            'eff-suc-volume_ratio': self._calc_from_eff_suc_volume_ratio,
         }
 
         options[kwargs_keys]()
 
-    def _calc_from_suc_disch(self):
+    def _calc_from_disch_suc(self):
         self.head = self._head_pol_schultz()
         self.eff = self._eff_pol_schultz()
         self.volume_ratio = self._volume_ratio()
         self.power = self._power_calc()
+
+    def _calc_from_eff_suc_volume_ratio(self):
+        pass
 
     def _head_pol_schultz(self):
         """Polytropic head corrected by the Schultz factor."""
