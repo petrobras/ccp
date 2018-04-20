@@ -1,6 +1,6 @@
 import pytest
 from numpy.testing import assert_allclose
-from prf2 import Q_
+from prf2 import ureg, Q_
 from prf2.state import State
 from prf2.point import Point
 
@@ -82,6 +82,6 @@ def test_head_pol_schultz(point_0):
     assert_allclose(point_0._head_pol_schultz(), 55377.406664, rtol=1e-6)
 
 
-
-
-
+def test_volume_ratio(point_0):
+    assert point_0._volume_ratio().units == ureg.dimensionless
+    assert_allclose(point_0._volume_ratio(), 0.40527649030, rtol=1e-6)

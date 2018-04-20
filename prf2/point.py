@@ -64,6 +64,7 @@ class Point:
     def _calc_from_suc_disch(self):
         self.head = self._head_pol_schultz()
         self.eff = self._eff_pol_schultz()
+        self.volume_ratio = self._volume_ratio()
         self.power = self._power_calc()
 
     def _head_pol_schultz(self):
@@ -166,6 +167,15 @@ class Point:
 
         return (flow_m * head / eff).to('kilowatt')
 
+    def _volume_ratio(self):
+        suc = self.suc
+        disch = self.disch
+
+        vs = 1 / suc.rho()
+        vd = 1 / disch.rho()
+
+        return vd / vs
+
 
 class NonDimensionalPoint:
     """Non Dimensional point.
@@ -180,8 +190,11 @@ class NonDimensionalPoint:
         Efficiency.
 
     """
-    def __init__(self, phi, psi, eff):
+    def __init__(self, phi, psi, eff, volume_ratio, mach, reynolds):
 
         self.phi = phi
         self.psi = psi
         self.eff = eff
+        self.volume_ratio = volume_ratio
+        self.mach = mach
+        self.reynolds = reynolds
