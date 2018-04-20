@@ -66,3 +66,18 @@ def test_impeller_s(imp0):
     assert imp0.sigma(point=imp0[0]).units == ureg.dimensionless
     assert_allclose(imp0.sigma(point=imp0[0]).magnitude, 0.31501267, rtol=1e-6)
 
+
+def test_impeller_non_dimensional_points(imp0):
+    assert_allclose(imp0.non_dimensional_points[0].phi, 0.089302)
+    assert_allclose(imp0.non_dimensional_points[0].psi, 0.932116, rtol=1e-6)
+    assert_allclose(imp0.non_dimensional_points[0].eff, 0.851668, rtol=1e-6)
+    assert_allclose(imp0.non_dimensional_points[0].volume_ratio, 0.867777)
+    assert_allclose(imp0.non_dimensional_points[0].mach, 0.578539, rtol=1e-6)
+    assert_allclose(imp0.non_dimensional_points[0].reynolds, 41962131.803386)
+
+    assert_allclose(imp0.non_dimensional_points[1].phi, 0.090342, rtol=1e-5)
+    assert_allclose(imp0.non_dimensional_points[1].psi, 0.882954, rtol=1e-6)
+    assert_allclose(imp0.non_dimensional_points[1].eff, 0.800352, rtol=1e-6)
+    assert_allclose(imp0.non_dimensional_points[1].volume_ratio, 0.87728)
+    assert_allclose(imp0.non_dimensional_points[1].mach, 0.578539, rtol=1e-6)
+    assert_allclose(imp0.non_dimensional_points[1].reynolds, 41962131.803386)

@@ -1,7 +1,7 @@
 """Module to define impeller class."""
 import numpy as np
 from collections import UserList
-from prf2 import check_units
+from prf2 import check_units, NonDimensionalPoint, NonDimensionalCurve
 
 
 class Impeller(UserList):
@@ -24,6 +24,10 @@ class Impeller(UserList):
 
         self._suc = None
 
+        self.non_dimensional_points = None
+
+        self._calc_non_dimensional_points()
+
     @property
     def suc(self):
         return self._suc
@@ -31,6 +35,27 @@ class Impeller(UserList):
     @suc.setter
     def suc(self, new_suc):
         self._suc = new_suc
+
+    def _calc_non_dimensional_points(self):
+        """Create list with non dimensional points."""
+        non_dimensional_points = []
+        for point in self:
+            phi = self.phi(point)
+            psi = self.psi(point)
+            eff = point.eff
+            volume_ratio = point.volume_ratio
+            mach = self.mach(point)
+            reynolds = self.reynolds(point)
+
+            non_dimensional_points.append(
+                NonDimensionalPoint(phi, psi, eff, volume_ratio,
+                                    mach, reynolds))
+
+        self.non_dimensional_points = non_dimensional_points
+
+    def _calc_new_points(self):
+        """Calculate new dimensional points based on the suction condition."""
+        pass
 
     def tip_speed(self, point):
         """Impeller tip speed."""
