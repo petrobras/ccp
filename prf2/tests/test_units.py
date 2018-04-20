@@ -10,25 +10,28 @@ def test_new_units_loaded():
 @pytest.fixture
 def auxiliary_function():
     @check_units
-    def func(p=None, T=None, speed=None, flow_v=None, flow_m=None, h=None,
-             s=None, b=None, D=None):
-        return p, T, speed, flow_v, flow_m, h, s, b, D
+    def func(p=None, T=None, rho=None, speed=None, flow_v=None, flow_m=None,
+             h=None, s=None, b=None, D=None):
+        return p, T, rho, speed, flow_v, flow_m, h, s, b, D
     return func
 
 
 def test_units(auxiliary_function):
-    results = auxiliary_function(p=1, T=1, speed=1, flow_v=1, flow_m=1, h=1,
-                                 s=1, b=1, D=1)
+    results = auxiliary_function(p=1, T=1, rho=1, speed=1, flow_v=1, flow_m=1,
+                                 h=1, s=1, b=1, D=1)
     # check if all available units are tested
     assert len(results) == len(units)
 
-    p, T, speed, flow_v, flow_m, h, s, b, D = results
+    p, T, rho, speed, flow_v, flow_m, h, s, b, D = results
 
     assert p.magnitude == 1
     assert p.units == 'pascal'
 
     assert T.magnitude == 1
     assert T.units == 'kelvin'
+
+    assert rho.magnitude == 1
+    assert rho.units == 'kilogram/meter**3'
 
     assert speed.magnitude == 1
     assert speed.units == 'radian/second'
@@ -54,6 +57,7 @@ def test_units(auxiliary_function):
 
 def test_unit_Q_(auxiliary_function):
     results = auxiliary_function(p=Q_(1, 'pascal'), T=Q_(1, 'kelvin'),
+                                 rho=Q_(1, 'kilogram/meter**3'),
                                  speed=Q_(1, 'radian/second'),
                                  flow_v=Q_(1, 'meter**3/second'),
                                  flow_m=Q_(1, 'kilogram/second'),
@@ -64,13 +68,16 @@ def test_unit_Q_(auxiliary_function):
     # check if all available units are tested
     assert len(results) == len(units)
 
-    p, T, speed, flow_v, flow_m, h, s, b, D = results
+    p, T, rho, speed, flow_v, flow_m, h, s, b, D = results
 
     assert p.magnitude == 1
     assert p.units == 'pascal'
 
     assert T.magnitude == 1
     assert T.units == 'kelvin'
+
+    assert rho.magnitude == 1
+    assert rho.units == 'kilogram/meter**3'
 
     assert speed.magnitude == 1
     assert speed.units == 'radian/second'
@@ -96,6 +103,7 @@ def test_unit_Q_(auxiliary_function):
 
 def test_unit_Q_conversion(auxiliary_function):
     results = auxiliary_function(p=Q_(1, 'bar'), T=Q_(1, 'celsius'),
+                                 rho=Q_(1, 'lb/foot**3'),
                                  speed=Q_(1, 'RPM'),
                                  flow_v=Q_(1, 'foot**3/second'),
                                  flow_m=Q_(1, 'lb/second'),
@@ -107,13 +115,16 @@ def test_unit_Q_conversion(auxiliary_function):
     # check if all available units are tested
     assert len(results) == len(units)
 
-    p, T, speed, flow_v, flow_m, h, s, b, D = results
+    p, T, rho, speed, flow_v, flow_m, h, s, b, D = results
 
     assert p.magnitude == 1e5
     assert p.units == 'pascal'
 
     assert T.magnitude == 274.15
     assert T.units == 'kelvin'
+
+    assert rho.magnitude == 16.018463373960145
+    assert rho.units == 'kilogram/meter**3'
 
     assert speed.magnitude == 0.10471975511965977
     assert speed.units == 'radian/second'
