@@ -96,5 +96,13 @@ class Impeller(UserList):
 
         return reynolds.to('dimensionless')
 
+    def sigma(self, point):
+        """Specific speed."""
+        phi = self.phi(point)
+        psi = self.psi(point)
+
+        sigma = phi**(1/2) / psi**(3/4)
+
+        return sigma
 
 
