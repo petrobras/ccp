@@ -133,7 +133,7 @@ class State(CP.AbstractState):
         return state
 
     @check_units
-    def update(self, *args, **kwargs):
+    def update(self, p=None, T=None, rho=None, h=None, s=None, **kwargs):
         """Simple state update.
 
         This method simplifies the state update. Only keyword arguments are
@@ -144,18 +144,12 @@ class State(CP.AbstractState):
         **kwargs : float
             Kwargs with values to update (e.g.: state.update2(p=100200, T=290)
         """
-        # TODO add tests to update function.
-
-        # Coolprop case
-        if len(kwargs) == 0:
-            return super().update(*args)
-
-        if kwargs['p'] is not None and kwargs['T'] is not None:
+        if p is not None and T is not None:
             super().update(CP.PT_INPUTS,
-                           kwargs['p'].magnitude, kwargs['T'].magnitude)
-        elif kwargs['p'] is not None and kwargs['rho'] is not None:
+                           p.magnitude, T.magnitude)
+        elif p is not None and rho is not None:
             super().update(CP.DmassP_INPUTS,
-                           kwargs['rho'].magnitude, kwargs['p'].magnitude)
+                           rho.magnitude, p.magnitude)
         else:
             raise KeyError(f'Update key '
                            f'{[k for k, v in kwargs.items() if v is not None]}'
