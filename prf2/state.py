@@ -59,7 +59,7 @@ class State(CP.AbstractState):
 
     @classmethod
     @check_units
-    def define(cls, p=None, T=None, h=None, s=None, d=None, fluid=None,
+    def define(cls, p=None, T=None, h=None, s=None, rho=None, fluid=None,
                EOS='REFPROP', **kwargs):
         """Constructor for state.
 
@@ -77,7 +77,7 @@ class State(CP.AbstractState):
             State's enthalpy
         s : float
             State's entropy
-        d : float
+        rho : float
 
         fluid : dict or str
             Dictionary with constituent and composition
@@ -98,7 +98,7 @@ class State(CP.AbstractState):
         1.2893965217814896
         >>> # pure fluid
         >>> s = State.define(p=101008, T=273, fluid='CO2')
-        >>> s.rhomass()
+        >>> s.rho()
         1.9716931060214515
         """
         constituents = []
@@ -124,7 +124,7 @@ class State(CP.AbstractState):
 
         normalize_mix(molar_fractions)
         state.set_mole_fractions(molar_fractions)
-        state.init_args = dict(p=p, T=T, h=h, s=s, d=d)
+        state.init_args = dict(p=p, T=T, h=h, s=s, rho=rho)
         state.setup_args = copy(state.init_args)
         state.fluid = state._fluid_dict()
 
@@ -150,28 +150,15 @@ class State(CP.AbstractState):
         if len(kwargs) == 0:
             return super().update(*args)
 
-        inputs = ''.join(k for k, v in kwargs.items() if v is not None)
+        if kwargs['p'] is not None and kwargs['T'] is not None:
+            super().update(CP.PT_INPUTS,
+                           kwargs['p'].magnitude, kwargs['T'].magnitude)
+        elif kwargs['p'] is not None and kwargs['rho'] is not None:
+            super().update(CP.DmassP_INPUTS,
+                           kwargs['rho'].magnitude, kwargs['p'].magnitude)
+        else:
+            raise KeyError(f'Update key '
+                           f'{[k for k, v in kwargs.items() if v is not None]}'
+                           f' not implemented')
 
-        order_dict = {'Tp': 'pT',
-                      'Qp': 'pQ',
-                      'sp': 'ps',
-                      'ph': 'hp',
-                      'Th': 'hT'}
 
-        if inputs in order_dict:
-            inputs = order_dict[inputs]
-
-        cp_update_dict = {'pT': CP.PT_INPUTS,
-                          'pQ': CP.PQ_INPUTS,
-                          'ps': CP.PSmass_INPUTS,
-                          'hp': CP.HmassP_INPUTS,
-                          'hT': CP.HmassT_INPUTS}
-
-        try:
-            cp_update = cp_update_dict[inputs]
-        except KeyError:
-            raise KeyError(f'Update key {inputs} not implemented')
-
-        super().update(cp_update,
-                       kwargs[inputs[0]].magnitude,
-                       kwargs[inputs[1]].magnitude)

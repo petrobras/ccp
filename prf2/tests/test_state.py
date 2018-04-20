@@ -89,3 +89,9 @@ def test_state_copy():
     assert state == state
     assert state != state1
     assert state.rho() == state1.rho()
+
+
+def test_rho_p_inputs():
+    state = State.define(rho=0.9280595769591103, p=Q_(1, 'bar'),
+                         fluid={'Methane': 0.5, 'Ethane': 0.5})
+    assert_allclose(state.T(), 300)
