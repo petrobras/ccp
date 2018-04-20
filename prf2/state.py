@@ -141,8 +141,16 @@ class State(CP.AbstractState):
 
         Parameters
         ----------
-        **kwargs : float
-            Kwargs with values to update (e.g.: state.update2(p=100200, T=290)
+        p : float
+            Pressure.
+        T : float
+            Temperature.
+        rho : float
+            Specific mass.
+        h : float
+            Enthalpy.
+        s : float
+            Entropy
         """
         if p is not None and T is not None:
             super().update(CP.PT_INPUTS,
