@@ -36,7 +36,7 @@ def test_point(suc_0, disch_0, point_0):
 
 
 def test_point_n_exp(point_0):
-    assert_allclose(point_0._n_exp(), 1.2910625831119145)
+    assert_allclose(point_0._n_exp(), 1.2910625831119145, rtol=1e-6)
 
 
 def test_point_head_pol(point_0):

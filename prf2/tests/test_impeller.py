@@ -82,3 +82,42 @@ def test_impeller_non_dimensional_points(imp0):
     assert_allclose(imp0.non_dimensional_points[1].mach, 0.578539, rtol=1e-6)
     assert_allclose(imp0.non_dimensional_points[1].reynolds, 41962131.803386)
 
+
+@pytest.fixture
+def imp1():
+    fluid = dict(methane=0.69945,
+                 ethane=0.09729,
+                 propane=0.0557,
+                 nbutane=0.0178,
+                 ibutane=0.0102,
+                 npentane=0.0039,
+                 ipentane=0.0036,
+                 nhexane=0.0018,
+                 n2=0.0149,
+                 co2=0.09259,
+                 h2s=0.00017,
+                 water=0.002)
+    suc = State.define(p=Q_(1.6995, 'MPa'), T=311.55, fluid=fluid)
+
+    p0 = Point(suc=suc, flow_v=Q_(6501.67, 'm**3/h'), speed=Q_(11145, 'RPM'),
+               head=Q_(179.275, 'kJ/kg'), eff=0.826357)
+    p1 = Point(suc=suc, flow_v=Q_(7016.72, 'm**3/h'), speed=Q_(11145, 'RPM'),
+               head=Q_(173.057, 'kJ/kg'), eff=0.834625)
+
+    imp1 = Impeller([p0, p1], b=Q_(28.5, 'mm'), D=Q_(365, 'mm'))
+
+    return imp1
+
+
+def test_impeller_new_suction(imp1):
+    new_suc = State.define(p=Q_(0.2, 'MPa'), T=301.58,
+                           fluid='nitrogen')
+    imp1.suc = new_suc
+    p0 = imp1[0]
+    new_p0 = imp1.new_points[0]
+
+    assert_allclose(new_p0.eff, p0.eff)
+    assert_allclose(new_p0.head, 208918.88)
+    assert_allclose(new_p0.power, 1101698.5104)
+    assert_allclose(new_p0.speed, 1259.9046)
+
