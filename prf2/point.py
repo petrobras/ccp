@@ -50,11 +50,11 @@ class Point:
         self.speed = kwargs.get('speed')
 
         kwargs_keys = [k for k in kwargs.keys()
-                       if k not in ['flow_v', 'flow_m']]
+                       if k not in ['flow_v', 'flow_m', 'speed']]
         kwargs_keys = '-'.join(sorted(kwargs_keys))
 
         options = {
-            'disch-speed-suc': self._calc_from_disch_suc,
+            'disch-suc': self._calc_from_disch_suc,
             'eff-suc-volume_ratio': self._calc_from_eff_suc_volume_ratio,
             'eff-head-suc': self._calc_from_eff_head_suc
         }
@@ -216,7 +216,7 @@ class Point:
         head = self.head
         eff = self.eff
 
-        return (flow_m * head / eff).to('kilowatt')
+        return (flow_m * head / eff).to('watt')
 
     def _volume_ratio(self):
         suc = self.suc
