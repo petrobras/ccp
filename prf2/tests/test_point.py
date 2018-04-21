@@ -4,6 +4,8 @@ from prf2 import ureg, Q_
 from prf2.state import State
 from prf2.point import Point
 
+skip = True  # skip slow tests
+
 
 @pytest.fixture
 def suc_0():
@@ -17,13 +19,6 @@ def disch_0():
     fluid = dict(CarbonDioxide=0.76064, R134a=0.23581,
                  Nitrogen=0.00284, Oxygen=0.00071)
     return State.define(p=Q_(5.902, 'bar'), T=380.7, fluid=fluid)
-
-
-def test_flow_not_given(suc_0, disch_0):
-    with pytest.raises(TypeError) as ex:
-        Point(suc=suc_0, disch=disch_0, speed=0)
-    assert "missing 1 required keyword-only argument: 'flow_v' or 'flow_m'." \
-           in ex.__str__()
 
 
 @pytest.fixture
@@ -89,4 +84,38 @@ def test_calc_from_eff_suc_volume_ratio(suc_0, point_0):
     assert_allclose(point_1.eff, point_0.eff)
     assert_allclose(point_1.disch.p(), point_0.disch.p())
     assert_allclose(point_1.disch.T(), point_0.disch.T())
-    # assert_allclose(point_0.speed, point_1.speed)
+
+
+@pytest.mark.skipif(skip is True, reason='Slow test')
+def test_calc_from_eff_head_suc():
+    fluid = dict(methane=0.69945,
+                 ethane=0.09729,
+                 propane=0.0557,
+                 nbutane=0.0178,
+                 ibutane=0.0102,
+                 npentane=0.0039,
+                 ipentane=0.0036,
+                 nhexane=0.0018,
+                 n2=0.0149,
+                 co2=0.09259,
+                 h2s=0.00017,
+                 water=0.002)
+    suc = State.define(p=Q_(1.6995, 'MPa'), T=311.55, fluid=fluid)
+
+    p0 = Point(suc=suc, flow_v=Q_(6501.67, 'm**3/h'),
+               head=Q_(179.275, 'kJ/kg'), eff=0.826357)
+
+    assert_allclose(p0.volume_ratio, 0.326647, rtol=1e-6)
+
+
+def test_calc_from_eff_head_suc_fast():
+    fluid = dict(methane=0.8,
+                 ethane=0.2)
+
+    suc = State.define(p=Q_(1.6995, 'MPa'), T=311.55, fluid=fluid)
+
+    p0 = Point(suc=suc, flow_v=Q_(6501.67, 'm**3/h'),
+               head=Q_(179.275, 'kJ/kg'), eff=0.826357)
+
+    assert_allclose(p0.volume_ratio, 0.413837, rtol=1e-6)
+

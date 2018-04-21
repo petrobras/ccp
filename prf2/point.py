@@ -32,9 +32,9 @@ class Point:
     def __init__(self, *args, **kwargs):
         self.flow_v = kwargs.get('flow_v', None)
         self.flow_m = kwargs.get('flow_m', None)
-        if self.flow_v is None and self.flow_m is None:
-            raise TypeError("__init__() missing 1 required keyword-only"
-                            " argument: 'flow_v' or 'flow_m'.")
+        # if self.flow_v is None and self.flow_m is None:
+        #     raise TypeError("__init__() missing 1 required keyword-only"
+        #                     " argument: 'flow_v' or 'flow_m'.")
 
         self.suc = kwargs['suc']
         # dummy state used to avoid copying states
@@ -59,6 +59,7 @@ class Point:
         options = {
             'disch-speed-suc': self._calc_from_disch_suc,
             'eff-suc-volume_ratio': self._calc_from_eff_suc_volume_ratio,
+            'eff-head-suc': self._calc_from_eff_head_suc
         }
 
         options[kwargs_keys]()
@@ -80,8 +81,7 @@ class Point:
         disch_rho = suc.rho() / volume_ratio
 
         #  consider first an isentropic compression
-        disch = copy(self._dummy_state)
-        disch.update(rho=disch_rho, s=suc.s())
+        disch = State.define(rho=disch_rho, s=suc.s(), fluid=suc.fluid)
 
         def update_pressure(p):
             disch.update(rho=disch_rho, p=p)
@@ -93,7 +93,27 @@ class Point:
 
         self.disch = disch
         self.head = self._head_pol_schultz()
-        self.speed = self._speed_from_psi()
+
+    def _calc_from_eff_head_suc(self):
+        eff = self.eff
+        head = self.head
+        suc = self.suc
+
+        h_disch = head / eff + suc.h()
+
+        #  consider first an isentropic compression
+        disch = State.define(h=h_disch, s=suc.s(), fluid=suc.fluid)
+
+        def update_pressure(p):
+            disch.update(h=h_disch, p=p)
+            new_head = self._head_pol_schultz(disch)
+
+            return (new_head - head).magnitude
+
+        newton(update_pressure, disch.p().magnitude, tol=1e-4)
+
+        self.disch = disch
+        self.volume_ratio = self._volume_ratio()
 
     def _head_pol_schultz(self, disch=None):
         """Polytropic head corrected by the Schultz factor."""
@@ -209,20 +229,6 @@ class Point:
         vd = 1 / disch.rho()
 
         return vd / vs
-
-    def _flow_from_phi(self):
-        # TODO get flow for point generated from suc-eff-vol_ratio
-        pass
-
-    def _speed_from_psi(self):
-        D = self.non_dimensional_point.D
-        psi = self.non_dimensional_point.psi
-        head = self.head
-
-        u = np.sqrt(2 * head / psi)
-        speed = 2 * u / D
-
-        return speed
 
 
 
