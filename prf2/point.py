@@ -32,17 +32,14 @@ class Point:
     def __init__(self, *args, **kwargs):
         self.flow_v = kwargs.get('flow_v', None)
         self.flow_m = kwargs.get('flow_m', None)
-        # if self.flow_v is None and self.flow_m is None:
-        #     raise TypeError("__init__() missing 1 required keyword-only"
-        #                     " argument: 'flow_v' or 'flow_m'.")
 
         self.suc = kwargs['suc']
         # dummy state used to avoid copying states
         self._dummy_state = copy(self.suc)
 
-        if self.flow_m is None:
+        if self.flow_v is not None:
             self.flow_m = self.flow_v * self.suc.rho()
-        else:
+        elif self.flow_m is not None:
             self.flow_v = self.flow_m / self.suc.rho()
 
         self.disch = kwargs.get('disch')
