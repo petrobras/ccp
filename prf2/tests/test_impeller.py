@@ -82,11 +82,3 @@ def test_impeller_non_dimensional_points(imp0):
     assert_allclose(imp0.non_dimensional_points[1].mach, 0.578539, rtol=1e-6)
     assert_allclose(imp0.non_dimensional_points[1].reynolds, 41962131.803386)
 
-
-def test_non_dimensional_attribute_for_points(imp0):
-    assert_allclose(imp0[0].non_dimensional_point.phi, 0.089302)
-    assert_allclose(imp0[0].non_dimensional_point.psi, 0.932116, rtol=1e-6)
-    assert_allclose(imp0[0].non_dimensional_point.eff, 0.851666, rtol=1e-5)
-    assert_allclose(imp0[0].non_dimensional_point.volume_ratio, 0.867777)
-    assert_allclose(imp0[0].non_dimensional_point.mach, 0.578539, rtol=1e-6)
-    assert_allclose(imp0[0].non_dimensional_point.reynolds, 41962131.803386)
