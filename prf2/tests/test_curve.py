@@ -43,5 +43,5 @@ def test_curve_performance_parameters(curve0):
     assert curve0.power.units == 'kilowatt'
     assert_allclose(curve0.head, np.array([43527.78012, 57942.686265]))
     assert_allclose(curve0.eff, np.array([0.709246, 0.881994]), rtol=1e-6)
-    assert_allclose(curve0.power, np.array([108.813998, 232.958348]))
+    assert_allclose(curve0.power, np.array([108.813998, 232.958348]), rtol=1e-6)
 
