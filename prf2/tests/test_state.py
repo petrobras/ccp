@@ -73,3 +73,12 @@ def test_h_s_inputs():
     assert_allclose(state.h().magnitude, 755784.43407392, rtol=1e-5)
     assert_allclose(state.s().magnitude, 4805.332018156618, rtol=1e-5)
     assert_allclose(state.rho().magnitude, 0.9280595769591103)
+
+
+def test_h_p_inputs():
+    state = State.define(h=755784.43407392, p=Q_(1, 'bar'),
+                         fluid={'Methane': 0.5, 'Ethane': 0.5})
+    assert_allclose(state.h().magnitude, 755784.43407392, rtol=1e-5)
+    assert_allclose(state.s().magnitude, 4805.332018156618, rtol=1e-5)
+    assert_allclose(state.rho().magnitude, 0.9280595769591103)
+

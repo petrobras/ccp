@@ -158,6 +158,9 @@ class State(CP.AbstractState):
         elif p is not None and rho is not None:
             super().update(CP.DmassP_INPUTS,
                            rho.magnitude, p.magnitude)
+        elif p is not None and h is not None:
+            super().update(CP.HmassP_INPUTS,
+                           h.magnitude, p.magnitude)
         elif p is not None and s is not None:
             super().update(CP.PSmass_INPUTS,
                            p.magnitude, s.magnitude)
