@@ -44,7 +44,6 @@ class Impeller(UserList):
             psi = self.psi(point)
             eff = point.eff
             volume_ratio = point.volume_ratio
-            u = self.u(point)
             mach = self.mach(point)
             reynolds = self.reynolds(point)
 
