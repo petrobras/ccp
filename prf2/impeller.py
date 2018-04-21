@@ -1,7 +1,7 @@
 """Module to define impeller class."""
 import numpy as np
 from collections import UserList
-from prf2 import check_units, Point, NonDimensionalPoint, NonDimensionalCurve
+from prf2 import check_units, Point, NonDimensionalCurve
 
 
 class Impeller(UserList):
@@ -49,7 +49,7 @@ class Impeller(UserList):
             reynolds = self.reynolds(point)
 
             non_dimensional_point = NonDimensionalPoint(
-                u, phi, psi, eff, volume_ratio, mach, reynolds)
+                self.b, self.D, phi, psi, eff, volume_ratio, mach, reynolds)
             non_dimensional_points.append(non_dimensional_point)
 
             #  set the non dimensional point attribute for the point object
@@ -137,3 +137,25 @@ class Impeller(UserList):
         return sigma
 
 
+class NonDimensionalPoint:
+    """Non Dimensional point.
+
+    Parameters:
+    -----------
+    phi : float
+        Flow coefficient.
+    psi : float
+        Head coefficient.
+    eff : float
+        Efficiency.
+
+    """
+    def __init__(self, b, D, phi, psi, eff, volume_ratio, mach, reynolds):
+        self.b = b
+        self.D = D
+        self.phi = phi
+        self.psi = psi
+        self.eff = eff
+        self.volume_ratio = volume_ratio
+        self.mach = mach
+        self.reynolds = reynolds

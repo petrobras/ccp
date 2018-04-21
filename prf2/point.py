@@ -92,7 +92,8 @@ class Point:
         newton(update_pressure, disch.p().magnitude, tol=1e-4)
 
         self.disch = disch
-        self._calc_from_disch_suc()
+        self.head = self._head_pol_schultz()
+        self.speed = self._speed_from_psi()
 
     def _head_pol_schultz(self, disch=None):
         """Polytropic head corrected by the Schultz factor."""
@@ -209,25 +210,19 @@ class Point:
 
         return vd / vs
 
+    def _flow_from_phi(self):
+        # TODO get flow for point generated from suc-eff-vol_ratio
+        pass
 
-class NonDimensionalPoint:
-    """Non Dimensional point.
+    def _speed_from_psi(self):
+        D = self.non_dimensional_point.D
+        psi = self.non_dimensional_point.psi
+        head = self.head
 
-    Parameters:
-    -----------
-    phi : float
-        Flow coefficient.
-    psi : float
-        Head coefficient.
-    eff : float
-        Efficiency.
+        u = np.sqrt(2 * head / psi)
+        speed = 2 * u / D
 
-    """
-    def __init__(self, phi, psi, eff, volume_ratio, mach, reynolds):
+        return speed
 
-        self.phi = phi
-        self.psi = psi
-        self.eff = eff
-        self.volume_ratio = volume_ratio
-        self.mach = mach
-        self.reynolds = reynolds
+
+
