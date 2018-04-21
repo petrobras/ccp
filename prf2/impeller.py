@@ -44,11 +44,12 @@ class Impeller(UserList):
             psi = self.psi(point)
             eff = point.eff
             volume_ratio = point.volume_ratio
+            u = self.u(point)
             mach = self.mach(point)
             reynolds = self.reynolds(point)
 
             non_dimensional_point = NonDimensionalPoint(
-                phi, psi, eff, volume_ratio, mach, reynolds)
+                u, phi, psi, eff, volume_ratio, mach, reynolds)
             non_dimensional_points.append(non_dimensional_point)
 
             #  set the non dimensional point attribute for the point object
@@ -62,7 +63,7 @@ class Impeller(UserList):
         for point in self:
             new_point = Point()
 
-    def tip_speed(self, point):
+    def u(self, point):
         """Impeller tip speed."""
         speed = point.speed
 
@@ -74,7 +75,7 @@ class Impeller(UserList):
         """Flow coefficient."""
         flow_v = point.flow_v
 
-        u = self.tip_speed(point)
+        u = self.u(point)
 
         phi = (flow_v * 4 /
                (np.pi * self.D**2 * u))
@@ -85,7 +86,7 @@ class Impeller(UserList):
         """Head coefficient."""
         head = point.head
 
-        u = self.tip_speed(point)
+        u = self.u(point)
 
         psi = 2 * head / u**2
 
@@ -97,7 +98,7 @@ class Impeller(UserList):
         disch = point.disch
 
         delta_h = disch.h() - suc.h()
-        u = self.tip_speed(point)
+        u = self.u(point)
 
         s = delta_h / u**2
 
@@ -107,7 +108,7 @@ class Impeller(UserList):
         """Mach number."""
         suc = point.suc
 
-        u = self.tip_speed(point)
+        u = self.u(point)
         a = suc.speed_sound()
 
         mach = u / a
@@ -118,7 +119,7 @@ class Impeller(UserList):
         """Reynolds number."""
         suc = point.suc
 
-        u = self.tip_speed(point)
+        u = self.u(point)
         b = self.b
         v = suc.viscosity() / suc.rho()
 

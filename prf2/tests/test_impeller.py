@@ -32,8 +32,8 @@ def imp0(points0):
 
 
 def test_impeller_tip_speed(imp0):
-    assert imp0.tip_speed(point=imp0[0]).units == 'meter * radian/second'
-    assert imp0.tip_speed(point=imp0[0]).magnitude == 232.62331210550587
+    assert imp0.u(point=imp0[0]).units == 'meter * radian/second'
+    assert imp0.u(point=imp0[0]).magnitude == 232.62331210550587
 
 
 def test_impeller_phi(imp0):
