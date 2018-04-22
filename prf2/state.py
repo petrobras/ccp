@@ -178,4 +178,20 @@ class State(CP.AbstractState):
                            f'{[k for k, v in locs.items() if v is not None]}'
                            f' not implemented')
 
+    def __repr__(self):
+        total_repr_length = 160
+
+        args = {k: v for k, v in self.init_args.items() if v is not None}
+        args_repr = [f'{k}=Q_("{str(v)}")' for k, v in args.items()]
+        args_repr = ', '.join(args_repr)
+        args_repr_len = len(args_repr)
+
+        fluid_repr_len = total_repr_length - args_repr_len
+        fluid_dict = self.fluid
+        sorted_fluid_keys = sorted(fluid_dict, key=fluid_dict.get, reverse=True)
+        fluid_repr = [f'{k}: {fluid_dict[k]:.5f}' for k in sorted_fluid_keys]
+        fluid_repr = '{' + ', '.join(fluid_repr)[:fluid_repr_len] + '...}'
+
+        return 'State.define(' + args_repr + ', ' + fluid_repr + ')'
+
 
