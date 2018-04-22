@@ -111,6 +111,7 @@ class Point:
 
         self.disch = disch
         self.volume_ratio = self._volume_ratio()
+        self.power = self._power_calc()
 
     def _head_pol_schultz(self, disch=None):
         """Polytropic head corrected by the Schultz factor."""
