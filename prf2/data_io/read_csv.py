@@ -2,6 +2,8 @@
 import csv
 import numpy as np
 from scipy.interpolate import UnivariateSpline
+from tqdm import tqdm
+from prf2 import Q_, Point
 
 
 def _interpolated_curve_from_csv(file):
@@ -52,5 +54,33 @@ def get_case_speeds(case_path, parameter):
     speed_values = [int(f.stem.split('_')[-1]) for f in param_files]
 
     return speed_values
+
+
+def create_prf_points(case_path, parameters, suc, speed):
+    """Create points for each speed."""
+    parameters_names = [k for k, v in parameters.items()
+                        if k not in ['speed', 'flow_v']]
+
+    points_values = get_points_from_csv(case_path, speed, parameters_names)
+
+    points = []
+    for i in tqdm(range(len(points_values[parameters_names[0]]))):
+        kwargs = {'suc': suc}
+        for name, unit in parameters.items():
+            if name == 'speed':
+                kwargs[name] = Q_(speed, unit)
+            elif name == 'eff':
+                parameter_magnitude = points_values[name][i]
+                if parameter_magnitude > 1:
+                    parameter_magnitude /= 100
+                kwargs[name] = Q_(parameter_magnitude, unit)
+            else:
+                parameter_magnitude = points_values[name][i]
+                kwargs[name] = Q_(parameter_magnitude, unit)
+
+        points.append(Point(**kwargs))
+
+    return points
+
 
 
