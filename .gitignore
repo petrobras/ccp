@@ -90,9 +90,8 @@ ENV/
 .ropeproject
 .idea/
 /prf/debug.py
-*.profile
+*.prof
 /prf/tests/coverage/
 /prf/notebooks/
 /prf/REFPROP/
 /prf/tests/.pytest_cache/
-.prof
