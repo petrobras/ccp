@@ -26,6 +26,7 @@ def _interpolated_curve_from_csv(file):
 
 
 def get_points_from_csv(case_path, speed, parameters, number_of_points=6):
+    """Generate number of points from parameters interpolated curves."""
     parameters_curves = {}
     flow_all_values = []
 
@@ -43,5 +44,13 @@ def get_points_from_csv(case_path, speed, parameters, number_of_points=6):
         parameters_values[param] = parameters_curves[param](flow_v)
 
     return parameters_values
+
+
+def get_case_speeds(case_path, parameter):
+    """Get speed values for the given case path."""
+    param_files = case_path.glob(f'*{parameter}*.csv')
+    speed_values = [int(f.stem.split('_')[-1]) for f in param_files]
+
+    return speed_values
 
 
