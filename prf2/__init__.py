@@ -89,3 +89,4 @@ from .state import State
 from .point import Point
 from .curve import Curve, NonDimensionalCurve
 from .impeller import Impeller
+from .data_io import read_csv
