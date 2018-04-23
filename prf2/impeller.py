@@ -75,7 +75,7 @@ class Impeller(UserList):
             for attr in self._additional_point_attributes:
                 setattr(new_point, attr, getattr(self, attr)(new_point))
 
-            new_points.append(non_dim_point.calc_dim_point())
+            new_points.append(new_point)
 
         self.new_points = new_points
 
