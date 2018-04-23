@@ -83,4 +83,23 @@ def create_prf_points(case_path, parameters, suc, speed):
     return points
 
 
+def load_case(case_path, parameters, suc):
+    """Load from case path, given parameters and suction conditions."""
+
+    param = None
+    for p in ['head', 'eff']:
+        if p in parameters:
+            param = p
+        if param is not None:
+            break
+
+    speed_values = get_case_speeds(case_path, param)
+
+    points = []
+    for speed in tqdm(speed_values,
+                      desc='Getting points for each speed', unit='speed'):
+        points += create_prf_points(case_path, parameters, suc, speed)
+
+    return points
+
 
