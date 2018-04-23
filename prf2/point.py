@@ -92,7 +92,7 @@ class Point:
 
             return (new_eff - eff).magnitude
 
-        newton(update_pressure, disch.p().magnitude, tol=1e-4)
+        newton(update_pressure, disch.p().magnitude, tol=1e-1)
 
         self.disch = disch
         self.head = self._head_pol_schultz()
@@ -113,7 +113,7 @@ class Point:
 
             return (new_head - head).magnitude
 
-        newton(update_pressure, disch.p().magnitude, tol=1e-4)
+        newton(update_pressure, disch.p().magnitude, tol=1e-1)
 
         self.disch = disch
         self.volume_ratio = self._volume_ratio()
