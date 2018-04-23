@@ -2,6 +2,7 @@
 import weakref
 import numpy as np
 from collections import UserList
+from copy import deepcopy
 from prf2 import check_units, Point, NonDimensionalCurve
 
 
@@ -17,11 +18,16 @@ class Impeller(UserList):
     """
     @check_units
     def __init__(self, points, b=None, D=None):
-        super().__init__(points)
-
         self.b = b
         self.D = D
-        self.points = points
+
+        self.points = deepcopy(points)
+
+        for p in self.points:
+            p.mach = self.mach(p)
+            p.reynolds = self.reynolds(p)
+
+        super().__init__(self.points)
 
         self._suc = None
 
