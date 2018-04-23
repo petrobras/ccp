@@ -64,6 +64,15 @@ class Point:
         #  non_dimensional point will be set on impeller instantiation
         self.non_dimensional_point = None
 
+    def __repr__(self):
+        return (
+                '\nPoint: '
+                + '\n Volume flow: {:10.5}'.format(self.flow_v)
+                + '\n Head       : {:10.5}'.format(self.head)
+                + '\n Efficiency : {:10.5}'.format(self.eff)
+                + '\n Power      : {:10.5}'.format(self.power)
+        )
+
     def _calc_from_disch_suc(self):
         self.head = self._head_pol_schultz()
         self.eff = self._eff_pol_schultz()
