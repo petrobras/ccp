@@ -23,9 +23,10 @@ class Impeller(UserList):
 
         self.points = deepcopy(points)
 
+        self._additional_point_attributes = ['mach', 'reynolds']
         for p in self.points:
-            p.mach = self.mach(p)
-            p.reynolds = self.reynolds(p)
+            for attr in self._additional_point_attributes:
+                setattr(p, attr, getattr(self, attr)(p))
 
         super().__init__(self.points)
 
@@ -70,6 +71,10 @@ class Impeller(UserList):
         #  keep volume ratio constant
         new_points = []
         for non_dim_point in self.non_dimensional_points:
+            new_point = non_dim_point.calc_dim_point()
+            for attr in self._additional_point_attributes:
+                setattr(new_point, attr, getattr(self, attr)(new_point))
+
             new_points.append(non_dim_point.calc_dim_point())
 
         self.new_points = new_points
