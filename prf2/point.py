@@ -61,9 +61,6 @@ class Point:
 
         options[kwargs_keys]()
 
-        #  non_dimensional point will be set on impeller instantiation
-        self.non_dimensional_point = None
-
     def __repr__(self):
         return (
                 '\nPoint: '
