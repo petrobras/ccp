@@ -7,8 +7,8 @@ from prf2 import Q_, State
 
 def generate_label(caller):
     """Generates a label to the cprofile output file."""
-    commit_number = str(subprocess.check_output(
-        ['git', 'describe', '--always']), 'utf-8')
+    commit_number = subprocess.check_output(['git', 'describe', '--always'])
+    commit_number = str(commit_number, 'utf-8').strip('\n')
 
     increment = 0
     label = Path(caller + '_'
@@ -22,7 +22,7 @@ def generate_label(caller):
                      + commit_number + '_'
                      + str(increment) + '.prof')
 
-    return str(label)
+    return label
 
 
 def state():
