@@ -6,7 +6,7 @@ from copy import deepcopy
 from ccp import check_units, Point, NonDimensionalCurve
 
 
-class Impeller(UserList):
+class Impeller:
     """Impeller class.
 
     Impeller instance is initialized with the list of points.
@@ -28,14 +28,15 @@ class Impeller(UserList):
             for attr in self._additional_point_attributes:
                 setattr(p, attr, getattr(self, attr)(p))
 
-        super().__init__(self.points)
-
         self._suc = None
 
         self.non_dimensional_points = None
         self.new_points = None
 
         self._calc_non_dimensional_points()
+
+    def __getitem__(self, item):
+        return self.points.__getitem__(item)
 
     @property
     def suc(self):
