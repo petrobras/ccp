@@ -1,10 +1,10 @@
 import pytest
 import numpy as np
 from numpy.testing import assert_allclose
-from prf2 import ureg, Q_
-from prf2.state import State
-from prf2.point import Point
-from prf2.curve import Curve
+from ccp import ureg, Q_
+from ccp.state import State
+from ccp.point import Point
+from ccp.curve import Curve
 
 
 def test_raise_1_point():

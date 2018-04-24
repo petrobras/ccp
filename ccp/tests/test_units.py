@@ -1,5 +1,5 @@
 import pytest
-from prf2.config.units import check_units, Q_, units
+from ccp.config.units import check_units, Q_, units
 
 
 def test_new_units_loaded():

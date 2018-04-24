@@ -1,7 +1,7 @@
 import numpy as np
 from pathlib import Path
 from numpy.testing import assert_allclose
-from prf2.data_io.read_csv import _interpolated_curve_from_csv
+from ccp.data_io.read_csv import _interpolated_curve_from_csv
 
 test_dir = Path.cwd()
 data_dir = test_dir / 'data'

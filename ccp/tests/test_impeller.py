@@ -1,6 +1,6 @@
 import pytest
 from numpy.testing import assert_allclose
-from prf2 import ureg, Q_, State, Point, Curve, Impeller
+from ccp import ureg, Q_, State, Point, Curve, Impeller
 
 
 @pytest.fixture

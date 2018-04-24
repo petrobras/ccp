@@ -2,7 +2,7 @@ import sys
 import cProfile
 import subprocess
 from pathlib import Path
-from prf2 import Q_, State, Point, Impeller, read_csv
+from ccp import Q_, State, Point, Impeller, read_csv
 
 
 def generate_label(caller):
@@ -54,7 +54,7 @@ def impeller():
 
 
 def create_prf_points():
-    case_a = Path().home() / 'prf2/prf2/tests/data/'
+    case_a = Path().home() / 'ccp/ccp/tests/data/'
     fluid = {'methane': 0.7878,
              'ethane': 0.0917,
              'propane': 0.0562,

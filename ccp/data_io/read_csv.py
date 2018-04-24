@@ -3,7 +3,7 @@ import csv
 import numpy as np
 from scipy.interpolate import UnivariateSpline
 from tqdm import tqdm
-from prf2 import Q_, Point
+from ccp import Q_, Point
 
 
 def _interpolated_curve_from_csv(file):

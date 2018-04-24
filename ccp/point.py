@@ -1,7 +1,7 @@
 import numpy as np
 from copy import copy
 from scipy.optimize import newton
-from prf2 import check_units, State
+from ccp import check_units, State
 
 
 class Point:

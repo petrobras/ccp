@@ -1,6 +1,6 @@
 import pytest
 from copy import copy
-from prf2.state import *
+from ccp.state import *
 from numpy.testing import assert_allclose
 
 

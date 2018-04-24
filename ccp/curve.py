@@ -1,6 +1,6 @@
 import matplotlib.pyplot as plt
 from collections import UserList
-from prf2 import Q_
+from ccp import Q_
 
 
 class _CurveState(UserList):
