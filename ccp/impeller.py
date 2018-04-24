@@ -1,9 +1,7 @@
 """Module to define impeller class."""
-import weakref
 import numpy as np
-from collections import UserList
 from copy import deepcopy
-from ccp import check_units, Point, NonDimensionalCurve
+from ccp import check_units, Point
 
 
 class Impeller:
