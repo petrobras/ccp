@@ -3,7 +3,7 @@ import csv
 import numpy as np
 from scipy.interpolate import UnivariateSpline
 from tqdm import tqdm
-from ccp import Q_, Point
+from ccp import Q_, State, Point
 
 
 def _interpolated_curve_from_csv(file):
@@ -38,7 +38,8 @@ def get_points_from_csv(case_path, speed, parameters, number_of_points=6):
         flow_all_values += flow_values
         parameters_curves[param] = param_curve
 
-    flow_v = np.linspace(min(flow_all_values), max(flow_all_values), number_of_points)
+    flow_v = np.linspace(min(flow_all_values), max(flow_all_values),
+                         number_of_points)
 
     parameters_values = {'flow_v': flow_v}
 
@@ -66,6 +67,7 @@ def create_prf_points(case_path, parameters, suc, speed):
     points = []
     for i in tqdm(range(len(points_values[parameters_names[0]]))):
         kwargs = {'suc': suc}
+        disch_kwargs = {}
         for name, unit in parameters.items():
             if name == 'speed':
                 kwargs[name] = Q_(speed, unit)
@@ -74,9 +76,19 @@ def create_prf_points(case_path, parameters, suc, speed):
                 if parameter_magnitude > 1:
                     parameter_magnitude /= 100
                 kwargs[name] = Q_(parameter_magnitude, unit)
+            elif name == 'disch-temperature':
+                parameter_magnitude = points_values[name][i]
+                disch_kwargs['T'] = Q_(parameter_magnitude, unit)
+            elif name == 'disch-pressure':
+                parameter_magnitude = points_values[name][i]
+                disch_kwargs['p'] = Q_(parameter_magnitude, unit)
+            elif name == 'pressure-ratio':
+                disch_kwargs['p'] = points_values[name][i] * suc.p()
             else:
                 parameter_magnitude = points_values[name][i]
                 kwargs[name] = Q_(parameter_magnitude, unit)
+            if len(disch_kwargs) == 2:
+                kwargs['disch'] = State.define(fluid=suc.fluid, **disch_kwargs)
 
         points.append(Point(**kwargs))
 
@@ -87,7 +99,7 @@ def load_case(case_path, parameters, suc):
     """Load from case path, given parameters and suction conditions."""
 
     param = None
-    for p in ['head', 'eff']:
+    for p in ['head', 'eff', 'disch-temperature']:
         if p in parameters:
             param = p
         if param is not None:
