@@ -22,6 +22,7 @@ class Impeller:
         self.D = D
 
         self.points = deepcopy(points)
+        # TODO group points with the same speed in curves
 
         self._additional_point_attributes = ['mach', 'reynolds']
         for p in self.points:
