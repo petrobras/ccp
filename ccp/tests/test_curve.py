@@ -1,5 +1,6 @@
 import pytest
 import numpy as np
+import matplotlib.pyplot as plt
 from numpy.testing import assert_allclose
 from ccp import ureg, Q_
 from ccp.state import State
@@ -46,3 +47,38 @@ def test_curve_performance_parameters(curve0):
     assert_allclose(curve0.power,
                     np.array([108814.010351, 232958.372613]), rtol=1e-6)
 
+
+@pytest.fixture
+def curve1():
+    suc = State.define(p=Q_(1, 'bar'), T=300, fluid='co2')
+    disch = State.define(p=Q_(2, 'bar'), T=370, fluid='co2')
+    disch1 = State.define(p=Q_(2.5, 'bar'), T=375, fluid='co2')
+    disch2 = State.define(p=Q_(2.6, 'bar'), T=376, fluid='co2')
+    disch3 = State.define(p=Q_(2.7, 'bar'), T=377, fluid='co2')
+    p0 = Point(suc=suc, disch=disch, flow_v=1, speed=1)
+    p1 = Point(suc=suc, disch=disch1, flow_v=2, speed=1)
+    p2 = Point(suc=suc, disch=disch2, flow_v=3, speed=1)
+    p3 = Point(suc=suc, disch=disch3, flow_v=4, speed=1)
+    return Curve([p0, p1, p2, p3])
+
+
+def test_curve_p_plot(curve1):
+    fig, ax = plt.subplots()
+    ax = curve1.suc.p_plot(ax=ax)
+    line0 = ax.get_lines()[0]
+    exp_xydata = np.array([[1.00000000e+00, 1.00000000e+05],
+                           [1.10344828e+00, 1.00000000e+05],
+                           [1.20689655e+00, 1.00000000e+05],
+                           [1.31034483e+00, 1.00000000e+05]])
+    assert_allclose(line0.get_xydata()[:4], exp_xydata)
+
+
+def test_curve_head_plot(curve1):
+    fig, ax = plt.subplots()
+    ax = curve1.head_plot(ax=ax)
+    line0 = ax.get_lines()[0]
+    exp_xydata = np.array([[1.00000000e+00, 4.35277801e+04],
+                           [1.10344828e+00, 4.59134091e+04],
+                           [1.20689655e+00, 4.80593494e+04],
+                           [1.31034483e+00, 4.99786240e+04]])
+    assert_allclose(line0.get_xydata()[:4], exp_xydata)
