@@ -95,3 +95,4 @@ ENV/
 /prf/notebooks/
 /prf/REFPROP/
 /prf/tests/.pytest_cache/
+/ccp/debug.py
