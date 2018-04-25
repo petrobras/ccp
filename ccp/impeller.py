@@ -1,7 +1,10 @@
 """Module to define impeller class."""
 import numpy as np
+import matplotlib.pyplot as plt
 from copy import deepcopy
-from ccp import check_units, Point
+from itertools import groupby
+from ccp.config.utilities import r_getattr
+from ccp import check_units, Point, Curve
 
 
 class Impeller:
@@ -27,6 +30,18 @@ class Impeller:
             for attr in self._additional_point_attributes:
                 setattr(p, attr, getattr(self, attr)(p))
 
+        curves = []
+        for speed, grouped_points in groupby(
+                sorted(self.points, key=lambda point: point.speed),
+                key=lambda point: point.speed):
+            points = [point for point in grouped_points]
+            curves.append(Curve(points))
+        self.curves = curves
+
+        for attr in ['disch.p', 'disch.T', 'head', 'eff', 'power']:
+            setattr(self, attr.replace('.', '_') + '_plot',
+                    self.plot_func(attr))
+
         self._suc = None
 
         self.non_dimensional_points = None
@@ -36,6 +51,17 @@ class Impeller:
 
     def __getitem__(self, item):
         return self.points.__getitem__(item)
+
+    def plot_func(self, attr):
+        def inner(*args, **kwargs):
+            ax = kwargs.get('ax')
+            if ax is None:
+                ax = plt.gca()
+
+            for curve in self.curves:
+                ax = r_getattr(curve, attr + '_plot')(ax=ax)
+            return ax
+        return inner
 
     @property
     def suc(self):
