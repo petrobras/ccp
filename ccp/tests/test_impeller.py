@@ -47,18 +47,18 @@ def test_impeller_psi(imp0):
 
 
 def test_impeller_s(imp0):
-    assert imp0.work_input_factor(point=imp0[0]).units == ureg.dimensionless
-    assert_allclose(imp0.work_input_factor(point=imp0[0]).magnitude, 0.547231, rtol=1e-6)
+    assert imp0._work_input_factor(point=imp0[0]).units == ureg.dimensionless
+    assert_allclose(imp0._work_input_factor(point=imp0[0]).magnitude, 0.547231, rtol=1e-6)
 
 
 def test_impeller_mach(imp0):
-    assert imp0.mach(point=imp0[0]).units == ureg.dimensionless
-    assert_allclose(imp0.mach(point=imp0[0]).magnitude, 0.578539, rtol=1e-6)
+    assert imp0._mach(point=imp0[0]).units == ureg.dimensionless
+    assert_allclose(imp0._mach(point=imp0[0]).magnitude, 0.578539, rtol=1e-6)
 
 
 def test_impeller_reynolds(imp0):
-    assert imp0.reynolds(point=imp0[0]).units == ureg.dimensionless
-    assert_allclose(imp0.reynolds(point=imp0[0]).magnitude,
+    assert imp0._reynolds(point=imp0[0]).units == ureg.dimensionless
+    assert_allclose(imp0._reynolds(point=imp0[0]).magnitude,
                     41962131.803386, rtol=1e-6)
 
 

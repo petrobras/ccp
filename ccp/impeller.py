@@ -28,7 +28,7 @@ class Impeller:
         self._additional_point_attributes = ['mach', 'reynolds']
         for p in self.points:
             for attr in self._additional_point_attributes:
-                setattr(p, attr, getattr(self, attr)(p))
+                setattr(p, attr, getattr(self, '_' + attr)(p))
 
         curves = []
         for speed, grouped_points in groupby(
@@ -83,8 +83,8 @@ class Impeller:
             psi = self._psi(point)
             eff = point.eff
             volume_ratio = point.volume_ratio
-            mach = self.mach(point)
-            reynolds = self.reynolds(point)
+            mach = self._mach(point)
+            reynolds = self._reynolds(point)
 
             non_dimensional_point = NonDimensionalPoint(
                 self, phi, psi, eff, volume_ratio, mach, reynolds)
@@ -99,7 +99,7 @@ class Impeller:
         for non_dim_point in self.non_dimensional_points:
             new_point = non_dim_point.calc_dim_point()
             for attr in self._additional_point_attributes:
-                setattr(new_point, attr, getattr(self, attr)(new_point))
+                setattr(new_point, attr, getattr(self, '_' + attr)(new_point))
 
             new_points.append(new_point)
 
@@ -134,7 +134,7 @@ class Impeller:
 
         return psi.to('dimensionless')
 
-    def work_input_factor(self, point):
+    def _work_input_factor(self, point):
         """Work input factor."""
         suc = point.suc
         disch = point.disch
@@ -146,7 +146,7 @@ class Impeller:
 
         return s.to('dimensionless')
 
-    def mach(self, point):
+    def _mach(self, point):
         """Mach number."""
         suc = point.suc
 
@@ -157,7 +157,7 @@ class Impeller:
 
         return mach.to('dimensionless')
 
-    def reynolds(self, point):
+    def _reynolds(self, point):
         """Reynolds number."""
         suc = point.suc
 
