@@ -134,7 +134,7 @@ class Impeller:
 
         return psi.to('dimensionless')
 
-    def s(self, point):
+    def work_input_factor(self, point):
         """Work input factor."""
         suc = point.suc
         disch = point.disch
