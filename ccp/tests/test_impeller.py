@@ -32,18 +32,18 @@ def imp0(points0):
 
 
 def test_impeller_tip_speed(imp0):
-    assert imp0.u(point=imp0[0]).units == 'meter * radian/second'
-    assert imp0.u(point=imp0[0]).magnitude == 232.62331210550587
+    assert imp0._u(point=imp0[0]).units == 'meter * radian/second'
+    assert imp0._u(point=imp0[0]).magnitude == 232.62331210550587
 
 
 def test_impeller_phi(imp0):
-    assert imp0.phi(point=imp0[0]).units == ureg.dimensionless
-    assert_allclose(imp0.phi(point=imp0[0]).magnitude, 0.089302, rtol=1e-6)
+    assert imp0._phi(point=imp0[0]).units == ureg.dimensionless
+    assert_allclose(imp0._phi(point=imp0[0]).magnitude, 0.089302, rtol=1e-6)
 
 
 def test_impeller_psi(imp0):
-    assert imp0.psi(point=imp0[0]).units == ureg.dimensionless
-    assert_allclose(imp0.psi(point=imp0[0]).magnitude, 0.932116, rtol=1e-6)
+    assert imp0._psi(point=imp0[0]).units == ureg.dimensionless
+    assert_allclose(imp0._psi(point=imp0[0]).magnitude, 0.932116, rtol=1e-6)
 
 
 def test_impeller_s(imp0):

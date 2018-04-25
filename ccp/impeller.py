@@ -79,8 +79,8 @@ class Impeller:
             if point.speed is None:
                 raise ValueError('Point used to instantiate impeller needs'
                                  ' to have speed attribute.')
-            phi = self.phi(point)
-            psi = self.psi(point)
+            phi = self._phi(point)
+            psi = self._psi(point)
             eff = point.eff
             volume_ratio = point.volume_ratio
             mach = self.mach(point)
@@ -105,7 +105,7 @@ class Impeller:
 
         self.new_points = new_points
 
-    def u(self, point):
+    def _u(self, point):
         """Impeller tip speed."""
         speed = point.speed
 
@@ -113,22 +113,22 @@ class Impeller:
 
         return u
 
-    def phi(self, point):
+    def _phi(self, point):
         """Flow coefficient."""
         flow_v = point.flow_v
 
-        u = self.u(point)
+        u = self._u(point)
 
         phi = (flow_v * 4 /
                (np.pi * self.D**2 * u))
 
         return phi.to('dimensionless')
 
-    def psi(self, point):
+    def _psi(self, point):
         """Head coefficient."""
         head = point.head
 
-        u = self.u(point)
+        u = self._u(point)
 
         psi = 2 * head / u**2
 
@@ -140,7 +140,7 @@ class Impeller:
         disch = point.disch
 
         delta_h = disch.h() - suc.h()
-        u = self.u(point)
+        u = self._u(point)
 
         s = delta_h / u**2
 
@@ -150,7 +150,7 @@ class Impeller:
         """Mach number."""
         suc = point.suc
 
-        u = self.u(point)
+        u = self._u(point)
         a = suc.speed_sound()
 
         mach = u / a
@@ -161,7 +161,7 @@ class Impeller:
         """Reynolds number."""
         suc = point.suc
 
-        u = self.u(point)
+        u = self._u(point)
         b = self.b
         v = suc.viscosity() / suc.rho()
 
@@ -171,8 +171,8 @@ class Impeller:
 
     def sigma(self, point):
         """Specific speed."""
-        phi = self.phi(point)
-        psi = self.psi(point)
+        phi = self._phi(point)
+        psi = self._psi(point)
 
         sigma = phi**(1/2) / psi**(3/4)
 
@@ -185,7 +185,7 @@ class NonDimensionalPoint:
     Parameters:
     -----------
     im
-    phi : float
+    _phi : float
         Flow coefficient.
     psi : float
         Head coefficient.
