@@ -26,7 +26,8 @@ def plot_func(self, attr):
 
         with warnings.catch_warnings():
             warnings.simplefilter('ignore')
-            interpolated_curve = UnivariateSpline(self.flow_v.magnitude, values)
+            interpolated_curve = UnivariateSpline(
+                self.flow_v.magnitude, values)
 
         flow_v_range = np.linspace(min(self.flow_v.magnitude),
                                    max(self.flow_v.magnitude),
@@ -45,7 +46,7 @@ def plot_func(self, attr):
     return inner
 
 
-class _CurveState(UserList):
+class _CurveState:
     """Class used to create list with states from curve.
 
     This enables the following call:
@@ -54,8 +55,8 @@ class _CurveState(UserList):
 
     """
     def __init__(self, points, flow_v):
-        super().__init__(points)
         self.flow_v = flow_v
+        self.points = points
 
         # set a method for each suction attribute in the list
         for attr in ['p', 'T', 'h', 's']:
@@ -63,6 +64,9 @@ class _CurveState(UserList):
             setattr(self, attr, func)
             plot = plot_func(self, attr)
             setattr(self, attr + '_plot', plot)
+
+    def __getitem__(self, item):
+        return self.points.__getitem__(item)
 
     def state_parameter(self, attr):
         def inner(*args, **kwargs):
@@ -78,7 +82,7 @@ class _CurveState(UserList):
         return inner
 
 
-class Curve(UserList):
+class Curve:
     """Curve.
 
     A curve is a collection of points that share the same suction
@@ -93,7 +97,7 @@ class Curve(UserList):
     def __init__(self, points):
         if len(points) < 2:
             raise TypeError('At least 2 points should be given.')
-        super().__init__(sorted(points, key=lambda p: p.flow_v))
+        self.points = sorted(points, key=lambda p: p.flow_v)
 
         _flow_v_values = [p.flow_v.magnitude for p in self]
         _flow_v_units = self[0].flow_v.units
@@ -118,6 +122,9 @@ class Curve(UserList):
 
             plot = plot_func(self, param)
             setattr(self, param + '_plot', plot)
+
+    def __getitem__(self, item):
+        return self.points.__getitem__(item)
 
 
 class NonDimensionalCurve(UserList):
