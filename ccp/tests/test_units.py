@@ -11,18 +11,18 @@ def test_new_units_loaded():
 def auxiliary_function():
     @check_units
     def func(p=None, T=None, rho=None, speed=None, flow_v=None, flow_m=None,
-             h=None, s=None, b=None, D=None, head=None):
-        return p, T, rho, speed, flow_v, flow_m, h, s, b, D, head
+             h=None, s=None, b=None, D=None, head=None, eff=None):
+        return p, T, rho, speed, flow_v, flow_m, h, s, b, D, head, eff
     return func
 
 
 def test_units(auxiliary_function):
     results = auxiliary_function(p=1, T=1, rho=1, speed=1, flow_v=1, flow_m=1,
-                                 h=1, s=1, b=1, D=1, head=1)
+                                 h=1, s=1, b=1, D=1, head=1, eff=1)
     # check if all available units are tested
     assert len(results) == len(units)
 
-    p, T, rho, speed, flow_v, flow_m, h, s, b, D, head = results
+    p, T, rho, speed, flow_v, flow_m, h, s, b, D, head, eff = results
 
     assert p.magnitude == 1
     assert p.units == 'pascal'
@@ -56,6 +56,10 @@ def test_units(auxiliary_function):
 
     assert head.magnitude == 1
     assert head.units == 'joule/kilogram'
+
+    assert eff.magnitude == 1
+    #  see https://github.com/hgrecco/pint/issues/634
+    assert eff.units == ''  # dimensionless
 
 
 def test_unit_Q_(auxiliary_function):
@@ -68,11 +72,12 @@ def test_unit_Q_(auxiliary_function):
                                  s=Q_(1, 'joule/(kelvin kilogram)'),
                                  b=Q_(1, 'meter'),
                                  D=Q_(1, 'meter'),
-                                 head=Q_(1, 'joule/kilogram'))
+                                 head=Q_(1, 'joule/kilogram'),
+                                 eff=Q_(1, 'dimensionless'))
     # check if all available units are tested
     assert len(results) == len(units)
 
-    p, T, rho, speed, flow_v, flow_m, h, s, b, D, head = results
+    p, T, rho, speed, flow_v, flow_m, h, s, b, D, head, eff = results
 
     assert p.magnitude == 1
     assert p.units == 'pascal'
@@ -107,6 +112,10 @@ def test_unit_Q_(auxiliary_function):
     assert head.magnitude == 1
     assert head.units == 'joule/kilogram'
 
+    assert eff.magnitude == 1
+    #  see https://github.com/hgrecco/pint/issues/634
+    assert eff.units == ''  # dimensionless
+
 
 def test_unit_Q_conversion(auxiliary_function):
     results = auxiliary_function(p=Q_(1, 'bar'), T=Q_(1, 'celsius'),
@@ -118,12 +127,13 @@ def test_unit_Q_conversion(auxiliary_function):
                                  s=Q_(1, 'btu/(degF lb)'),
                                  b=Q_(1, 'inches'),
                                  D=Q_(1, 'inches'),
-                                 head=Q_(1, 'btu/lb'))
+                                 head=Q_(1, 'btu/lb'),
+                                 eff=Q_(1, 'dimensionless'))
 
     # check if all available units are tested
     assert len(results) == len(units)
 
-    p, T, rho, speed, flow_v, flow_m, h, s, b, D, head = results
+    p, T, rho, speed, flow_v, flow_m, h, s, b, D, head, eff = results
 
     assert p.magnitude == 1e5
     assert p.units == 'pascal'
@@ -157,3 +167,7 @@ def test_unit_Q_conversion(auxiliary_function):
 
     assert head.magnitude == 2326.0
     assert head.units == 'joule/kilogram'
+
+    assert eff.magnitude == 1
+    #  see https://github.com/hgrecco/pint/issues/634
+    assert eff.units == ''  # dimensionless

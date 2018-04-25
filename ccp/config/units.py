@@ -10,7 +10,8 @@ units = {'p': 'pascal',
          's': 'joule/(kelvin kilogram)',
          'b': 'meter',
          'D': 'meter',
-         'head': 'joule/kilogram'}
+         'head': 'joule/kilogram',
+         'eff': 'dimensionless'}
 
 
 def check_units(func):
