@@ -42,11 +42,6 @@ class Impeller:
 
         self._suc = _suc
 
-        self.non_dimensional_points = None
-        self.new_points = None
-
-        self._calc_non_dimensional_points()
-
     def __getitem__(self, item):
         return self.points.__getitem__(item)
 
@@ -74,26 +69,6 @@ class Impeller:
     def suc(self, new_suc):
         self._suc = new_suc
         self._calc_new_points()
-
-    def _calc_non_dimensional_points(self):
-        """Create list with non dimensional points."""
-        non_dimensional_points = []
-        for point in self:
-            if point.speed is None:
-                raise ValueError('Point used to instantiate impeller needs'
-                                 ' to have speed attribute.')
-            phi = self._phi(point)
-            psi = self._psi(point)
-            eff = point.eff
-            volume_ratio = point.volume_ratio
-            mach = self._mach(point)
-            reynolds = self._reynolds(point)
-
-            non_dimensional_point = NonDimensionalPoint(
-                self, phi, psi, eff, volume_ratio, mach, reynolds)
-            non_dimensional_points.append(non_dimensional_point)
-
-        self.non_dimensional_points = non_dimensional_points
 
     def _calc_new_points(self):
         """Calculate new dimensional points based on the suction condition."""
@@ -235,70 +210,3 @@ class Impeller:
         flow_v = phi * (np.pi * D**2 * u) / 4
 
         return flow_v
-
-
-class NonDimensionalPoint:
-    """Non Dimensional point.
-
-    Parameters:
-    -----------
-    im
-    _phi : float
-        Flow coefficient.
-    psi : float
-        Head coefficient.
-    eff : float
-        Efficiency.
-
-    """
-    def __init__(self, impeller, phi, psi, eff, volume_ratio, mach, reynolds):
-        #  gc safe ref to impeller
-        self.impeller = impeller
-        self.phi = phi
-        self.psi = psi
-        self.eff = eff
-        self.volume_ratio = volume_ratio
-        self.mach = mach
-        self.reynolds = reynolds
-
-    def calc_dim_point(self):
-        """Calculate dimensional point from non-dimensional.
-
-        Point will be calculated considering the new impeller suction condition.
-        """
-        point = Point(suc=self.impeller.suc, eff=self.eff,
-                      volume_ratio=self.volume_ratio)
-
-        point.speed = self._speed_from_psi(point)
-        point.flow_v = self._flow_from_phi(point)
-        point.flow_m = point.flow_v * self.impeller.suc.rho()
-        point.power = point._power_calc()
-
-        return point
-
-    def _u_from_psi(self, point):
-        psi = self.psi
-        head = point.head
-
-        u = np.sqrt(2 * head / psi)
-
-        return u.to('m/s')
-
-    def _speed_from_psi(self, point):
-        D = self.impeller.D
-        u = self._u_from_psi(point)
-
-        speed = 2 * u / D
-
-        return speed.to('rad/s')
-
-    def _flow_from_phi(self, point):
-        # TODO get flow for point generated from suc-eff-vol_ratio
-        phi = self.phi
-        D = self.impeller.D
-        u = self._u_from_psi(point)
-
-        flow_v = phi * (np.pi * D**2 * u) / 4
-
-        return flow_v
-
