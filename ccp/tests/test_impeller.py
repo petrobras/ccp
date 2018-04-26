@@ -107,7 +107,7 @@ def test_impeller_new_suction(imp1):
                            fluid='nitrogen')
     imp1.suc = new_suc
     p0 = imp1[0]
-    new_p0 = imp1.new_points[0]
+    new_p0 = imp1.new.points[0]
 
     assert_allclose(new_p0.eff, p0.eff)
     assert_allclose(new_p0.head, 208918.88)

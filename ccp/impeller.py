@@ -93,7 +93,6 @@ class Impeller:
 
         self.new = self.__class__(all_points, b=self.b,
                                   D=self.D, _suc=self.suc)
-        self.new_points = self.new.points
 
     def _u(self, point):
         """Impeller tip speed."""
