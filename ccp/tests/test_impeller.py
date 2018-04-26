@@ -83,6 +83,15 @@ def test_impeller_non_dimensional_points(imp0):
     assert_allclose(imp0.non_dimensional_points[1].reynolds, 41962131.803386)
 
 
+def test_impeller_non_dimensional_parameters_for_points(imp0):
+    assert_allclose(imp0.points[0].phi, 0.089302)
+    assert_allclose(imp0.points[0].psi, 0.932116, rtol=1e-6)
+    assert_allclose(imp0.points[0].eff, 0.851666, rtol=1e-5)
+    assert_allclose(imp0.points[0].volume_ratio, 0.867777)
+    assert_allclose(imp0.points[0].mach, 0.578539, rtol=1e-6)
+    assert_allclose(imp0.points[0].reynolds, 41962131.803386)
+
+
 @pytest.fixture
 def imp1():
     fluid = dict(methane=0.69945,
