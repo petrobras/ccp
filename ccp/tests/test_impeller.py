@@ -128,5 +128,5 @@ def test_impeller_new_suction(imp1):
     assert_allclose(new_p0.eff, p0.eff)
     assert_allclose(new_p0.head, 208918.88)
     assert_allclose(new_p0.power, 1101698.5104)
-    assert_allclose(new_p0.speed, 1259.9046)
+    assert_allclose(new_p0.speed, 1257.17922)
 

@@ -4,7 +4,7 @@ import matplotlib.pyplot as plt
 from copy import deepcopy
 from itertools import groupby
 from ccp.config.utilities import r_getattr
-from ccp import check_units, Point, Curve
+from ccp import Q_, check_units, Point, Curve
 
 
 class Impeller:
@@ -18,7 +18,7 @@ class Impeller:
 
     """
     @check_units
-    def __init__(self, points, b=None, D=None):
+    def __init__(self, points, b=None, D=None, _suc=None):
         self.b = b
         self.D = D
 
@@ -40,7 +40,7 @@ class Impeller:
             setattr(self, attr.replace('.', '_') + '_plot',
                     self.plot_func(attr))
 
-        self._suc = None
+        self._suc = _suc
 
         self.non_dimensional_points = None
         self.new_points = None
@@ -98,27 +98,27 @@ class Impeller:
     def _calc_new_points(self):
         """Calculate new dimensional points based on the suction condition."""
         #  keep volume ratio constant
-        # new_curves = []
-        # for curve in self.curves:
-        #     new_points = []
-        #     for point in curve:
-        #         new_points.append(self._calc_from_non_dimensional(point))
-        #
-        #     speed_mean = np.mean([p.speed.magnitude for p in new_points])
-        #     speed_std = np.mean([p.speed.magnitude for p in new_points])
-        #
-        #     if speed_std < 5:
-        #         for p in new_points:
-        #             p.speed = Q_(speed_mean, p.speed.units)
+        all_points = []
+        for curve in self.curves:
+            new_points = []
+            for point in curve:
+                new_points.append(self._calc_from_non_dimensional(point))
 
-        new_points = []
-        for non_dim_point in self.non_dimensional_points:
-            new_point = non_dim_point.calc_dim_point()
-            self._add_non_dimensional_attributes(new_point)
+            speed_mean = np.mean([p.speed.magnitude for p in new_points])
+            speed_std = np.std([p.speed.magnitude for p in new_points])
 
-            new_points.append(new_point)
+            if speed_std < 5:
+                for p in new_points:
+                    p.speed = Q_(speed_mean, p.speed.units)
+            else:
+                raise NotImplementedError('Coerce to same speed'
+                                          ' not implemented')
 
-        self.new_points = new_points
+            all_points += new_points
+
+        self.new = self.__class__(all_points, b=self.b,
+                                  D=self.D, _suc=self.suc)
+        self.new_points = self.new.points
 
     def _u(self, point):
         """Impeller tip speed."""
@@ -198,15 +198,17 @@ class Impeller:
 
         Point will be calculated considering the new impeller suction condition.
         """
-        point = Point(suc=self.suc, eff=point.eff,
-                      volume_ratio=point.volume_ratio)
+        new_point = Point(suc=self.suc, eff=point.eff,
+                          volume_ratio=point.volume_ratio)
 
-        point.speed = self._speed_from_psi(point)
-        point.flow_v = self._flow_from_phi(point)
-        point.flow_m = point.flow_v * self.suc.rho()
-        point.power = point._power_calc()
+        new_point.phi = point.phi
+        new_point.psi = point.psi
+        new_point.speed = self._speed_from_psi(new_point)
+        new_point.flow_v = self._flow_from_phi(new_point)
+        new_point.flow_m = new_point.flow_v * self.suc.rho()
+        new_point.power = new_point._power_calc()
 
-        return point
+        return new_point
 
     def _u_from_psi(self, point):
         psi = point.psi
