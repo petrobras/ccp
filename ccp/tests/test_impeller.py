@@ -63,8 +63,8 @@ def test_impeller_reynolds(imp0):
 
 
 def test_impeller_s(imp0):
-    assert imp0.sigma(point=imp0[0]).units == ureg.dimensionless
-    assert_allclose(imp0.sigma(point=imp0[0]).magnitude, 0.31501267, rtol=1e-6)
+    assert imp0._sigma(point=imp0[0]).units == ureg.dimensionless
+    assert_allclose(imp0._sigma(point=imp0[0]).magnitude, 0.31501267, rtol=1e-6)
 
 
 def test_impeller_non_dimensional_parameters_for_points(imp0):
