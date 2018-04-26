@@ -52,12 +52,12 @@ class Impeller:
 
     def plot_func(self, attr):
         def inner(*args, **kwargs):
-            ax = kwargs.get('ax')
+            ax = kwargs.pop('ax', None)
             if ax is None:
                 ax = plt.gca()
 
             for curve in self.curves:
-                ax = r_getattr(curve, attr + '_plot')(ax=ax)
+                ax = r_getattr(curve, attr + '_plot')(ax=ax, **kwargs)
             return ax
         return inner
 

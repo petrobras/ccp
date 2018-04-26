@@ -48,9 +48,10 @@ class State(CP.AbstractState):
         return Q_(super().viscosity(), 'pascal second')
 
     def __reduce__(self):
-        fluid_ = self.fluid
-        kwargs = {k: v for k, v in self.init_args.items() if v is not None}
-        kwargs['fluid'] = fluid_
+        # fluid_ = self.fluid
+        # kwargs = {k: v for k, v in self.init_args.items() if v is not None}
+        kwargs = dict(p=self.p(), T=self.T(), fluid=self.fluid)
+        # kwargs['fluid'] = fluid_
         return self._rebuild, (self.__class__, kwargs)
 
     @staticmethod

@@ -8,7 +8,7 @@ from ccp import Q_
 
 def plot_func(self, attr):
     def inner(*args, **kwargs):
-        ax = kwargs.get('ax', None)
+        ax = kwargs.pop('ax', None)
 
         if ax is None:
             ax = plt.gca()
@@ -34,7 +34,7 @@ def plot_func(self, attr):
                                    30)
         values_range = interpolated_curve(flow_v_range)
 
-        ax.plot(flow_v_range, values_range)
+        ax.plot(flow_v_range, values_range, **kwargs)
         ax.set_xlabel(f'Volumetric flow ({self.flow_v.units:P~})')
         ax.set_ylabel(f'{attr} ({units:P~})')
 
@@ -112,11 +112,14 @@ class Curve:
         self.suc = _CurveState([p.suc for p in self], flow_v=self.flow_v)
         self.disch = _CurveState([p.disch for p in self], flow_v=self.flow_v)
 
-        for param in ['head', 'eff', 'power']:
+        for param in ['head', 'eff', 'power', 'phi', 'psi']:
             values = []
             for point in self:
-                values.append(getattr(getattr(point, param), 'magnitude'))
-            units = getattr(getattr(point, param), 'units')
+                try:
+                    values.append(getattr(getattr(point, param), 'magnitude'))
+                    units = getattr(getattr(point, param), 'units')
+                except AttributeError:
+                    continue
 
             setattr(self, param, Q_(values, units))
 
