@@ -43,7 +43,7 @@ def plot_func(self, attr):
         text_angle = np.arctan(curve_tan)
         text_angle = Q_(text_angle, 'rad').to('deg').magnitude
 
-        ax.text(flow_v_range[-1], values_range[-1], f'{self.speed:.0f}',
+        ax.text(flow_v_range[-1], values_range[-1], f'{self.speed:P~.0f}',
                 ha='left', va='top', rotation=text_angle)
         ax.set_xlabel(f'Volumetric flow ({self.flow_v.units:P~})')
         ax.set_ylabel(f'{attr} ({units:P~})')
