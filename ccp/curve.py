@@ -33,6 +33,9 @@ def plot_func(self, attr):
                                    30)
         values_range = interpolated_curve(flow_v_range)
 
+        if kwargs.pop('draw_points', None) is True:
+            ax.scatter(self.flow_v.magnitude, values, **kwargs)
+
         ax.plot(flow_v_range, values_range, **kwargs)
 
         delta_x_graph = ax.get_xlim()[1] - ax.get_xlim()[0]
@@ -47,9 +50,6 @@ def plot_func(self, attr):
                 ha='left', va='top', rotation=text_angle)
         ax.set_xlabel(f'Volumetric flow ({self.flow_v.units:P~})')
         ax.set_ylabel(f'{attr} ({units:P~})')
-
-        if kwargs.get('draw_points') is True:
-            ax.scatter(self.flow_v.magnitude, values)
 
         return ax
 
