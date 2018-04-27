@@ -130,23 +130,3 @@ class Curve:
         return self.points.__getitem__(item)
 
 
-class NonDimensionalCurve:
-    """Non Dimensional Curve."""
-    def __init__(self, points):
-        if len(points) < 2:
-            raise TypeError('At least 2 points should be given.')
-
-        self.points = points
-
-        for param in ['phi', 'psi', 'eff']:
-            values = []
-            for point in self:
-                values.append(getattr(getattr(point, param), 'magnitude'))
-
-            units = getattr(getattr(point, param), 'units')
-
-            setattr(self, param, Q_(values, units))
-
-    def __getitem__(self, item):
-        return self.points.__getitem__(item)
-

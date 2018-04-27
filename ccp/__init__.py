@@ -87,6 +87,6 @@ Q_ = ureg.Quantity
 from .config.units import check_units, Q_
 from .state import State
 from .point import Point
-from .curve import Curve, NonDimensionalCurve
+from .curve import Curve
 from .impeller import Impeller
 from .data_io import read_csv
