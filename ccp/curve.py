@@ -7,6 +7,11 @@ from ccp import Q_
 
 def plot_func(self, attr):
     def inner(*args, **kwargs):
+        """Plot parameter versus volumetric flow.
+
+        You can choose units with the arguments x_units='...' and
+        y_units='...'.
+        """
         ax = kwargs.pop('ax', None)
 
         if ax is None:

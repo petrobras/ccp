@@ -58,7 +58,11 @@ class Impeller:
 
             for curve in self.curves:
                 ax = r_getattr(curve, attr + '_plot')(ax=ax, **kwargs)
+
             return ax
+
+        inner.__doc__ = r_getattr(self.curves[0], attr + '_plot').__doc__
+
         return inner
 
     @property
