@@ -12,29 +12,39 @@ def plot_func(self, attr):
         if ax is None:
             ax = plt.gca()
 
+        x_units = kwargs.pop('x_units', None)
+        y_units = kwargs.pop('y_units', None)
+
         values = []
 
         for point in self:
             point_attr = getattr(point, attr)
             if callable(point_attr):
-                values.append(getattr(point_attr(), 'magnitude'))
-                units = getattr(getattr(point, attr)(), 'units')
-            else:
-                values.append(getattr(point_attr, 'magnitude'))
-                units = getattr(getattr(point, attr), 'units')
+                point_attr = point_attr()
+
+            if y_units is not None:
+                point_attr = point_attr.to(y_units)
+
+            values.append(getattr(point_attr, 'magnitude'))
+            units = getattr(point_attr, 'units')
+
+        flow_v = self.flow_v
+
+        if x_units is not None:
+            flow_v = flow_v.to(x_units)
 
         with warnings.catch_warnings():
             warnings.simplefilter('ignore')
             interpolated_curve = UnivariateSpline(
-                self.flow_v.magnitude, values)
+                    flow_v.magnitude, values)
 
-        flow_v_range = np.linspace(min(self.flow_v.magnitude),
-                                   max(self.flow_v.magnitude),
+        flow_v_range = np.linspace(min(flow_v.magnitude),
+                                   max(flow_v.magnitude),
                                    30)
         values_range = interpolated_curve(flow_v_range)
 
         if kwargs.pop('draw_points', None) is True:
-            ax.scatter(self.flow_v.magnitude, values, **kwargs)
+            ax.scatter(flow_v.magnitude, values, **kwargs)
 
         ax.plot(flow_v_range, values_range, **kwargs)
 
@@ -48,7 +58,7 @@ def plot_func(self, attr):
 
         ax.text(flow_v_range[-1], values_range[-1], f'{self.speed:P~.0f}',
                 ha='left', va='top', rotation=text_angle)
-        ax.set_xlabel(f'Volumetric flow ({self.flow_v.units:P~})')
+        ax.set_xlabel(f'Volumetric flow ({flow_v.units:P~})')
         ax.set_ylabel(f'{attr} ({units:P~})')
 
         return ax
