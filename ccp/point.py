@@ -49,6 +49,11 @@ class Point:
         self.volume_ratio = kwargs.get('volume_ratio')
         self.speed = kwargs.get('speed')
 
+        # non dimensional parameters will be added when the point is associated
+        # to an impeller (when the impeller object is instantiated)
+        self.phi = None
+        self.psi = None
+
         kwargs_keys = [k for k in kwargs.keys()
                        if k not in ['flow_v', 'flow_m', 'speed']]
         kwargs_keys = '-'.join(sorted(kwargs_keys))
