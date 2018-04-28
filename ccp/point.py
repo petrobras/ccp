@@ -58,13 +58,13 @@ class Point:
                        if k not in ['flow_v', 'flow_m', 'speed']]
         kwargs_keys = '-'.join(sorted(kwargs_keys))
 
-        options = {
+        calc_options = {
             'disch-suc': self._calc_from_disch_suc,
             'eff-suc-volume_ratio': self._calc_from_eff_suc_volume_ratio,
             'eff-head-suc': self._calc_from_eff_head_suc
         }
 
-        options[kwargs_keys]()
+        calc_options[kwargs_keys]()
 
     def __repr__(self):
         return (
