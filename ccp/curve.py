@@ -10,7 +10,7 @@ def plot_func(self, attr):
         """Plot parameter versus volumetric flow.
 
         You can choose units with the arguments x_units='...' and
-        y_units='...'.
+        y_units='...'. For the speed you can use speed_units='...'.
         """
         ax = kwargs.pop('ax', None)
 
@@ -19,6 +19,7 @@ def plot_func(self, attr):
 
         x_units = kwargs.pop('x_units', None)
         y_units = kwargs.pop('y_units', None)
+        speed_units = kwargs.pop('speed_units', None)
 
         values = []
 
@@ -61,8 +62,12 @@ def plot_func(self, attr):
         text_angle = np.arctan(curve_tan)
         text_angle = Q_(text_angle, 'rad').to('deg').magnitude
 
-        ax.text(flow_v_range[-1], values_range[-1], f'{self.speed:P~.0f}',
+        speed = self.speed
+        if speed_units is not None:
+            speed = speed.to(speed_units)
+        ax.text(flow_v_range[-1], values_range[-1], f'{speed:P~.0f}',
                 ha='left', va='top', rotation=text_angle)
+
         ax.set_xlabel(f'Volumetric flow ({flow_v.units:P~})')
         ax.set_ylabel(f'{attr} ({units:P~})')
 
