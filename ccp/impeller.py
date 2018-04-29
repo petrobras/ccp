@@ -33,7 +33,9 @@ class Impeller:
                 sorted(self.points, key=lambda point: point.speed),
                 key=lambda point: point.speed):
             points = [point for point in grouped_points]
-            curves.append(Curve(points))
+            curve = Curve(points)
+            curves.append(curve)
+            setattr(self, f'curve_{int(curve.speed.magnitude)}', curve)
         self.curves = curves
 
         for attr in ['disch.p', 'disch.T', 'head', 'eff', 'power']:
