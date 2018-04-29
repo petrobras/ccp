@@ -124,7 +124,6 @@ class Impeller:
 
     def _calc_current_point(self):
         #  TODO refactor this function
-        #  TODO evaluate the creation of interpolated curves as attributes
         speeds = np.array([curve.speed.magnitude for curve in self.new.curves])
 
         closest_curves_idxs = self._find_closest_speeds(speeds, self.speed)
