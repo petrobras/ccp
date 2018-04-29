@@ -47,6 +47,9 @@ class Impeller:
         self._speed = None
         self._flow_v = None
 
+        self.current_curve = None
+        self.current_point = None
+
     def __getitem__(self, item):
         return self.points.__getitem__(item)
 
