@@ -3,8 +3,9 @@ import numpy as np
 import matplotlib.pyplot as plt
 from copy import deepcopy
 from itertools import groupby
+from scipy.interpolate import UnivariateSpline
 from ccp.config.utilities import r_getattr
-from ccp import Q_, check_units, Point, Curve
+from ccp import Q_, check_units, State, Point, Curve
 
 
 class Impeller:
@@ -43,6 +44,8 @@ class Impeller:
                     self.plot_func(attr))
 
         self._suc = _suc
+        self._speed = None
+        self._flow_v = None
 
     def __getitem__(self, item):
         return self.points.__getitem__(item)
@@ -75,6 +78,95 @@ class Impeller:
     def suc(self, new_suc):
         self._suc = new_suc
         self._calc_new_points()
+
+    @property
+    def speed(self):
+        return self._speed
+
+    @speed.setter
+    def speed(self, new_speed):
+        self._speed = new_speed
+        self._calc_current_point()
+
+    @property
+    def flow_v(self):
+        return self._flow_v
+
+    @flow_v.setter
+    def flow_v(self, new_flow_v):
+        self._flow_v = new_flow_v
+        self._calc_current_point()
+
+    @staticmethod
+    def _find_closest_speeds(array, value):
+        diff = array - value
+        idx = np.abs(diff).argmin()
+
+        if idx == 0:
+            return [0, 1]
+        elif idx == len(array) - 1:
+            return [len(array) - 2, len(array) - 1]
+
+        if diff[idx] > 0:
+            idx = [idx - 1, idx]
+        else:
+            idx = [idx, idx + 1]
+
+        return np.array(idx)
+
+    def _calc_current_point(self):
+        #  TODO refactor this function
+        #  TODO evaluate the creation of interpolated curves as attributes
+        #  get closest speed
+        speeds = np.array([curve.speed.magnitude for curve in self.new.curves])
+
+        closest_curves_idxs = self._find_closest_speeds(speeds, self.speed)
+        curves = list(np.array(self.new.curves)[closest_curves_idxs])
+
+        # calculate factor
+        speed_range = curves[1].speed.magnitude - curves[0].speed.magnitude
+        factor = (self.speed - curves[0].speed.magnitude) / speed_range
+
+        # interpolated curves
+        disch_T_curves = [UnivariateSpline(c.flow_v.magnitude, c.disch.T().magnitude)
+                          for c in curves]
+        disch_p_curves = [UnivariateSpline(c.flow_v.magnitude, c.disch.p().magnitude)
+                          for c in curves]
+
+        def get_interpolated_value(fac, val_0, val_1):
+            return fac * val_0 + (1 - fac) * val_1
+
+        min_flow = get_interpolated_value(
+            factor, curves[0].flow_v.magnitude[0], curves[1].flow_v.magnitude[0])
+        max_flow = get_interpolated_value(
+            factor, curves[0].flow_v.magnitude[-1], curves[1].flow_v.magnitude[-1])
+
+        flow_v = np.linspace(min_flow, max_flow, 6)
+
+        disch_T_0 = disch_T_curves[0](flow_v)
+        disch_T_1 = disch_T_curves[1](flow_v)
+        disch_p_0 = disch_p_curves[0](flow_v)
+        disch_p_1 = disch_p_curves[1](flow_v)
+        disch_T = get_interpolated_value(factor, disch_T_0, disch_T_1)
+        disch_p = get_interpolated_value(factor, disch_p_0, disch_p_1)
+        points_current = []
+
+        for f, p, T in zip(flow_v, disch_p, disch_T):
+            disch = State.define(p=p, T=T, fluid=self.suc.fluid)
+            points_current.append(
+                Point(flow_v=f, speed=self.speed, suc=self.suc, disch=disch))
+
+        self.current_curve = Curve(points_current)
+        disch_T_0 = disch_T_curves[0](self.flow_v)
+        disch_T_1 = disch_T_curves[1](self.flow_v)
+        disch_p_0 = disch_p_curves[0](self.flow_v)
+        disch_p_1 = disch_p_curves[1](self.flow_v)
+        disch_T = get_interpolated_value(factor, disch_T_0, disch_T_1)
+        disch_p = get_interpolated_value(factor, disch_p_0, disch_p_1)
+        current_disch = State.define(
+            p=disch_p, T=disch_T, fluid=self.suc.fluid)
+        self.current_point = Point(flow_v=self.flow_v, speed=self.speed,
+                                   suc=self.suc, disch=current_disch)
 
     def _calc_new_points(self):
         """Calculate new dimensional points based on the suction condition."""
