@@ -3,7 +3,6 @@ import numpy as np
 import matplotlib.pyplot as plt
 from copy import deepcopy
 from itertools import groupby
-from scipy.interpolate import UnivariateSpline
 from ccp.config.utilities import r_getattr
 from ccp import Q_, check_units, State, Point, Curve
 
@@ -89,6 +88,9 @@ class Impeller:
     @speed.setter
     def speed(self, new_speed):
         self._speed = new_speed
+        if self.flow_v is None:
+            return
+
         self._calc_current_point()
 
     @property
@@ -98,6 +100,9 @@ class Impeller:
     @flow_v.setter
     def flow_v(self, new_flow_v):
         self._flow_v = new_flow_v
+        if self.speed is None:
+            return
+
         self._calc_current_point()
 
     @staticmethod
@@ -120,7 +125,6 @@ class Impeller:
     def _calc_current_point(self):
         #  TODO refactor this function
         #  TODO evaluate the creation of interpolated curves as attributes
-        #  get closest speed
         speeds = np.array([curve.speed.magnitude for curve in self.new.curves])
 
         closest_curves_idxs = self._find_closest_speeds(speeds, self.speed)
@@ -129,12 +133,6 @@ class Impeller:
         # calculate factor
         speed_range = curves[1].speed.magnitude - curves[0].speed.magnitude
         factor = (self.speed - curves[0].speed.magnitude) / speed_range
-
-        # interpolated curves
-        disch_T_curves = [UnivariateSpline(c.flow_v.magnitude, c.disch.T().magnitude)
-                          for c in curves]
-        disch_p_curves = [UnivariateSpline(c.flow_v.magnitude, c.disch.p().magnitude)
-                          for c in curves]
 
         def get_interpolated_value(fac, val_0, val_1):
             return fac * val_0 + (1 - fac) * val_1
@@ -146,10 +144,11 @@ class Impeller:
 
         flow_v = np.linspace(min_flow, max_flow, 6)
 
-        disch_T_0 = disch_T_curves[0](flow_v)
-        disch_T_1 = disch_T_curves[1](flow_v)
-        disch_p_0 = disch_p_curves[0](flow_v)
-        disch_p_1 = disch_p_curves[1](flow_v)
+        disch_T_0 = curves[0].disch.T_interpolated(flow_v)
+        disch_T_1 = curves[1].disch.T_interpolated(flow_v)
+        disch_p_0 = curves[0].disch.p_interpolated(flow_v)
+        disch_p_1 = curves[1].disch.p_interpolated(flow_v)
+
         disch_T = get_interpolated_value(factor, disch_T_0, disch_T_1)
         disch_p = get_interpolated_value(factor, disch_p_0, disch_p_1)
         points_current = []
@@ -160,14 +159,15 @@ class Impeller:
                 Point(flow_v=f, speed=self.speed, suc=self.suc, disch=disch))
 
         self.current_curve = Curve(points_current)
-        disch_T_0 = disch_T_curves[0](self.flow_v)
-        disch_T_1 = disch_T_curves[1](self.flow_v)
-        disch_p_0 = disch_p_curves[0](self.flow_v)
-        disch_p_1 = disch_p_curves[1](self.flow_v)
+
+        disch_T_0 = curves[0].disch.T_interpolated(self.flow_v)
+        disch_T_1 = curves[1].disch.T_interpolated(self.flow_v)
+        disch_p_0 = curves[0].disch.p_interpolated(self.flow_v)
+        disch_p_1 = curves[1].disch.p_interpolated(self.flow_v)
+
         disch_T = get_interpolated_value(factor, disch_T_0, disch_T_1)
         disch_p = get_interpolated_value(factor, disch_p_0, disch_p_1)
-        current_disch = State.define(
-            p=disch_p, T=disch_T, fluid=self.suc.fluid)
+        current_disch = State.define(p=disch_p, T=disch_T, fluid=self.suc.fluid)
         self.current_point = Point(flow_v=self.flow_v, speed=self.speed,
                                    suc=self.suc, disch=current_disch)
 

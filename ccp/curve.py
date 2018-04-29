@@ -105,7 +105,7 @@ class _CurveState:
             interpolated_function = interp1d(
                 self.flow_v.magnitude, values.magnitude,
                 kind=number_of_points, fill_value='extrapolate')
-            setattr(self, f'interpolated_{attr}', interpolated_function)
+            setattr(self, f'{attr}_interpolated', interpolated_function)
 
             plot = plot_func(self, attr)
             setattr(self, f'{attr}_plot', plot)
@@ -177,7 +177,7 @@ class Curve:
                 interpolated_function = interp1d(
                     self.flow_v.magnitude, values,
                     kind=number_of_points, fill_value='extrapolate')
-            setattr(self, f'interpolated_{param}', interpolated_function)
+            setattr(self, f'{param}_interpolated', interpolated_function)
 
             plot = plot_func(self, param)
             setattr(self, param + '_plot', plot)
