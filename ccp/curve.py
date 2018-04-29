@@ -1,7 +1,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 import warnings
-from scipy.interpolate import UnivariateSpline
+from scipy.interpolate import interp1d
 from ccp import Q_
 
 
@@ -41,8 +41,12 @@ def plot_func(self, attr):
 
         with warnings.catch_warnings():
             warnings.simplefilter('ignore')
-            interpolated_curve = UnivariateSpline(
-                    flow_v.magnitude, values)
+            number_of_points = len(values)
+            if number_of_points % 2 == 0:
+                number_of_points = number_of_points - 1
+            interpolated_curve = interp1d(
+                flow_v.magnitude, values,
+                kind=number_of_points, fill_value='extrapolate')
 
         flow_v_range = np.linspace(min(flow_v.magnitude),
                                    max(flow_v.magnitude),
@@ -93,8 +97,18 @@ class _CurveState:
         for attr in ['p', 'T', 'h', 's']:
             func = self.state_parameter(attr)
             setattr(self, attr, func)
+
+            values = getattr(self, attr)()
+            number_of_points = len(values)
+            if number_of_points % 2 == 0:
+                number_of_points = number_of_points - 1
+            interpolated_function = interp1d(
+                self.flow_v.magnitude, values.magnitude,
+                kind=number_of_points, fill_value='extrapolate')
+            setattr(self, f'interpolated_{attr}', interpolated_function)
+
             plot = plot_func(self, attr)
-            setattr(self, attr + '_plot', plot)
+            setattr(self, f'{attr}_plot', plot)
 
     def __getitem__(self, item):
         return self.points.__getitem__(item)
@@ -155,6 +169,15 @@ class Curve:
                     continue
 
             setattr(self, param, Q_(values, units))
+
+            number_of_points = len(values)
+            if number_of_points > 0:
+                if number_of_points % 2 == 0:
+                    number_of_points = number_of_points - 1
+                interpolated_function = interp1d(
+                    self.flow_v.magnitude, values,
+                    kind=number_of_points, fill_value='extrapolate')
+            setattr(self, f'interpolated_{param}', interpolated_function)
 
             plot = plot_func(self, param)
             setattr(self, param + '_plot', plot)
