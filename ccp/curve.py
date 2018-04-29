@@ -39,14 +39,7 @@ def plot_func(self, attr):
         if x_units is not None:
             flow_v = flow_v.to(x_units)
 
-        with warnings.catch_warnings():
-            warnings.simplefilter('ignore')
-            number_of_points = len(values)
-            if number_of_points % 2 == 0:
-                number_of_points = number_of_points - 1
-            interpolated_curve = interp1d(
-                flow_v.magnitude, values,
-                kind=number_of_points, fill_value='extrapolate')
+        interpolated_curve = getattr(self, attr + '_interpolated')
 
         flow_v_range = np.linspace(min(flow_v.magnitude),
                                    max(flow_v.magnitude),
@@ -80,6 +73,30 @@ def plot_func(self, attr):
     return inner
 
 
+def interpolated_function(obj, attr):
+    def inner(*args, **kwargs):
+        values = getattr(obj, attr)
+        if callable(values):
+            values = values()
+
+        units = values.units
+
+        number_of_points = len(values)
+        if number_of_points % 2 == 0:
+            number_of_points = number_of_points - 1
+
+        interpol_function = interp1d(
+            obj.flow_v.magnitude, values.magnitude,
+            kind=number_of_points, fill_value='extrapolate')
+
+        result = Q_(interpol_function(*args, **kwargs), units)
+        if isinstance(*args, (int, float)):
+            result = Q_(float(result.magnitude), result.units)
+
+        return result
+    return inner
+
+
 class _CurveState:
     """Class used to create list with states from curve.
 
@@ -98,14 +115,15 @@ class _CurveState:
             func = self.state_parameter(attr)
             setattr(self, attr, func)
 
-            values = getattr(self, attr)()
-            number_of_points = len(values)
-            if number_of_points % 2 == 0:
-                number_of_points = number_of_points - 1
-            interpolated_function = interp1d(
-                self.flow_v.magnitude, values.magnitude,
-                kind=number_of_points, fill_value='extrapolate')
-            setattr(self, f'{attr}_interpolated', interpolated_function)
+            # values = getattr(self, attr)()
+            # number_of_points = len(values)
+            # if number_of_points % 2 == 0:
+            #     number_of_points = number_of_points - 1
+            # interpolated_function = interp1d(
+            #     self.flow_v.magnitude, values.magnitude,
+            #     kind=number_of_points, fill_value='extrapolate')
+            interpol_func = interpolated_function(self, attr)
+            setattr(self, f'{attr}_interpolated', interpol_func)
 
             plot = plot_func(self, attr)
             setattr(self, f'{attr}_plot', plot)

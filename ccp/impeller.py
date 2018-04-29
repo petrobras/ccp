@@ -143,10 +143,10 @@ class Impeller:
 
         flow_v = np.linspace(min_flow, max_flow, 6)
 
-        disch_T_0 = curves[0].disch.T_interpolated(flow_v)
-        disch_T_1 = curves[1].disch.T_interpolated(flow_v)
-        disch_p_0 = curves[0].disch.p_interpolated(flow_v)
-        disch_p_1 = curves[1].disch.p_interpolated(flow_v)
+        disch_T_0 = curves[0].disch.T_interpolated(flow_v).magnitude
+        disch_T_1 = curves[1].disch.T_interpolated(flow_v).magnitude
+        disch_p_0 = curves[0].disch.p_interpolated(flow_v).magnitude
+        disch_p_1 = curves[1].disch.p_interpolated(flow_v).magnitude
 
         disch_T = get_interpolated_value(factor, disch_T_0, disch_T_1)
         disch_p = get_interpolated_value(factor, disch_p_0, disch_p_1)
@@ -159,10 +159,10 @@ class Impeller:
 
         self.current_curve = Curve(points_current)
 
-        disch_T_0 = curves[0].disch.T_interpolated(self.flow_v)
-        disch_T_1 = curves[1].disch.T_interpolated(self.flow_v)
-        disch_p_0 = curves[0].disch.p_interpolated(self.flow_v)
-        disch_p_1 = curves[1].disch.p_interpolated(self.flow_v)
+        disch_T_0 = curves[0].disch.T_interpolated(self.flow_v).magnitude
+        disch_T_1 = curves[1].disch.T_interpolated(self.flow_v).magnitude
+        disch_p_0 = curves[0].disch.p_interpolated(self.flow_v).magnitude
+        disch_p_1 = curves[1].disch.p_interpolated(self.flow_v).magnitude
 
         disch_T = get_interpolated_value(factor, disch_T_0, disch_T_1)
         disch_p = get_interpolated_value(factor, disch_p_0, disch_p_1)
