@@ -181,14 +181,8 @@ class Curve:
 
             setattr(self, param, Q_(values, units))
 
-            number_of_points = len(values)
-            if number_of_points > 0:
-                if number_of_points % 2 == 0:
-                    number_of_points = number_of_points - 1
-                interpolated_function = interp1d(
-                    self.flow_v.magnitude, values,
-                    kind=number_of_points, fill_value='extrapolate')
-            setattr(self, f'{param}_interpolated', interpolated_function)
+            interpol_func = interpolated_function(self, param)
+            setattr(self, f'{param}_interpolated', interpol_func)
 
             plot = plot_func(self, param)
             setattr(self, param + '_plot', plot)
