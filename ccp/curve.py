@@ -41,13 +41,13 @@ def plot_func(self, attr):
 
         interpolated_curve = getattr(self, attr + '_interpolated')
 
-        flow_v_range = np.linspace(min(flow_v.magnitude),
-                                   max(flow_v.magnitude),
+        flow_v_range = np.linspace(min(flow_v),
+                                   max(flow_v),
                                    30)
-        values_range = interpolated_curve(flow_v_range)
+        values_range = interpolated_curve(flow_v_range).magnitude
 
         if kwargs.pop('draw_points', None) is True:
-            ax.scatter(flow_v.magnitude, values, **kwargs)
+            ax.scatter(flow_v, values, **kwargs)
 
         ax.plot(flow_v_range, values_range, **kwargs)
 
@@ -115,13 +115,6 @@ class _CurveState:
             func = self.state_parameter(attr)
             setattr(self, attr, func)
 
-            # values = getattr(self, attr)()
-            # number_of_points = len(values)
-            # if number_of_points % 2 == 0:
-            #     number_of_points = number_of_points - 1
-            # interpolated_function = interp1d(
-            #     self.flow_v.magnitude, values.magnitude,
-            #     kind=number_of_points, fill_value='extrapolate')
             interpol_func = interpolated_function(self, attr)
             setattr(self, f'{attr}_interpolated', interpol_func)
 
