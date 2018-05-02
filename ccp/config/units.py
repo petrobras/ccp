@@ -1,4 +1,5 @@
 from .. import Q_
+import inspect
 
 units = {'p': 'pascal',
          'T': 'kelvin',
@@ -17,6 +18,18 @@ units = {'p': 'pascal',
 def check_units(func):
     """Wrapper to check and convert units to base_units."""
     def inner(*args, **kwargs):
+        base_unit_args = []
+        args_names = inspect.getfullargspec(func)[0]
+
+        for arg_name, arg_value in zip(args_names, args):
+            if arg_name in units:
+                try:
+                    base_unit_args.append(arg_value.to(units[arg_name]))
+                except AttributeError:
+                    base_unit_args.append(Q_(arg_value, units[arg_name]))
+            else:
+                base_unit_args.append(arg_value)
+
         base_unit_kwargs = {}
         for k, v in kwargs.items():
             if k in units and v is not None:
@@ -27,6 +40,6 @@ def check_units(func):
             else:
                 base_unit_kwargs[k] = v
 
-        return func(*args, **base_unit_kwargs)
+        return func(*base_unit_args, **base_unit_kwargs)
     return inner
 
