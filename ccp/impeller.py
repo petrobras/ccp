@@ -3,6 +3,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from copy import deepcopy
 from itertools import groupby
+from warnings import warn
 from ccp.config.utilities import r_getattr
 from ccp import Q_, check_units, State, Point, Curve
 
@@ -80,6 +81,10 @@ class Impeller:
     def suc(self, new_suc):
         self._suc = new_suc
         self._calc_new_points()
+        try:
+            self._calc_current_point()
+        except TypeError:
+            warn('Current point not set (flow and speed)')
 
     @property
     def speed(self):
@@ -98,8 +103,9 @@ class Impeller:
         return self._flow_v
 
     @flow_v.setter
-    def flow_v(self, new_flow_v):
-        self._flow_v = new_flow_v
+    @check_units
+    def flow_v(self, flow_v):
+        self._flow_v = flow_v
         if self.speed is None:
             return
 
