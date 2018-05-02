@@ -48,6 +48,9 @@ def plot_func(self, attr):
 
         if kwargs.pop('draw_points', None) is True:
             ax.scatter(flow_v, values, **kwargs)
+        if kwargs.pop('draw_current_point', True) is True:
+            pass
+            #  TODO implement plot of the current point with hline and vline.
 
         ax.plot(flow_v_range, values_range, **kwargs)
 
