@@ -60,10 +60,13 @@ class Impeller:
             setattr(point, attr, getattr(self, '_' + attr)(point))
 
     def plot_func(self, attr):
-        def inner(*args, **kwargs):
+        def inner(*args, plot_kws=None, **kwargs):
             ax = kwargs.pop('ax', None)
             if ax is None:
                 ax = plt.gca()
+
+            x_units = kwargs.get('x_units', None)
+            y_units = kwargs.get('y_units', None)
 
             flow_values = [p.flow_v for p in self.points]
             min_flow = min(flow_values)
@@ -75,14 +78,24 @@ class Impeller:
             min_value = min(values)
             max_value = max(values)
 
+            if x_units is not None:
+                min_flow = min_flow.to(x_units)
+                max_flow = max_flow.to(x_units)
+            if y_units is not None:
+                min_value = min_value.to(y_units)
+                max_value = max_value.to(y_units)
+
             ax.set_xlim(0.8 * min_flow.magnitude, 1.1 * max_flow.magnitude)
             ax.set_ylim(0.5 * min_value.magnitude, 1.1 * max_value.magnitude)
 
             for curve in self.curves:
-                ax = r_getattr(curve, attr + '_plot')(ax=ax, **kwargs)
+                ax = r_getattr(curve, attr + '_plot')(
+                    ax=ax, plot_kws=plot_kws, **kwargs)
 
-            ax = r_getattr(self.current_curve, attr + '_plot')(ax=ax, **kwargs)
-            ax = r_getattr(self.current_point, attr + '_plot')(ax=ax, **kwargs)
+            ax = r_getattr(self.current_curve, attr + '_plot')(
+                ax=ax, plot_kws=plot_kws, **kwargs)
+            ax = r_getattr(self.current_point, attr + '_plot')(
+                ax=ax, plot_kws=plot_kws, **kwargs)
 
             return ax
 

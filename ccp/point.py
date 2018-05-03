@@ -7,7 +7,7 @@ from ccp import check_units, State
 
 
 def plot_func(self, attr):
-    def inner(*args, **kwargs):
+    def inner(*args, plot_kws=None, **kwargs):
         """Plot parameter versus volumetric flow.
 
         You can choose units with the arguments x_units='...' and
@@ -18,8 +18,8 @@ def plot_func(self, attr):
         if ax is None:
             ax = plt.gca()
 
-        x_units = kwargs.pop('x_units', None)
-        y_units = kwargs.pop('y_units', None)
+        x_units = kwargs.get('x_units', None)
+        y_units = kwargs.get('y_units', None)
 
         point_attr = r_getattr(self, attr)
         if callable(point_attr):
@@ -36,7 +36,7 @@ def plot_func(self, attr):
         if x_units is not None:
             flow_v = flow_v.to(x_units)
 
-        ax.scatter(flow_v, value, **kwargs)
+        ax.scatter(flow_v, value, **plot_kws)
         #  vertical and horizontal lines
         ax.plot([flow_v.magnitude, flow_v.magnitude],
                 [0, value], ls='--', color='k', alpha=0.2)
@@ -120,6 +120,9 @@ class Point:
             for attr in ['p', 'T']:
                 plot = plot_func(self, '.'.join([state, attr]))
                 setattr(getattr(self, state), attr + '_plot', plot)
+        for attr in ['head', 'eff', 'power']:
+                plot = plot_func(self, attr)
+                setattr(self, attr + '_plot', plot)
 
     def __repr__(self):
         return (
