@@ -65,8 +65,24 @@ class Impeller:
             if ax is None:
                 ax = plt.gca()
 
+            flow_values = [p.flow_v for p in self.points]
+            min_flow = min(flow_values)
+            max_flow = max(flow_values)
+            if callable(r_getattr(self.points[0], attr)):
+                values = [r_getattr(p, attr)() for p in self.points]
+            else:
+                values = [r_getattr(p, attr) for p in self.points]
+            min_value = min(values)
+            max_value = max(values)
+
+            ax.set_xlim(0.8 * min_flow.magnitude, 1.1 * max_flow.magnitude)
+            ax.set_ylim(0.5 * min_value.magnitude, 1.1 * max_value.magnitude)
+
             for curve in self.curves:
                 ax = r_getattr(curve, attr + '_plot')(ax=ax, **kwargs)
+
+            ax = r_getattr(self.current_curve, attr + '_plot')(ax=ax, **kwargs)
+            ax = r_getattr(self.current_point, attr + '_plot')(ax=ax, **kwargs)
 
             return ax
 
