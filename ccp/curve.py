@@ -17,6 +17,9 @@ def plot_func(self, attr):
         if ax is None:
             ax = plt.gca()
 
+        if plot_kws is None:
+            plot_kws = {}
+
         x_units = kwargs.get('x_units', None)
         y_units = kwargs.get('y_units', None)
         speed_units = kwargs.get('speed_units', None)

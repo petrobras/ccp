@@ -62,8 +62,12 @@ class Impeller:
     def plot_func(self, attr):
         def inner(*args, plot_kws=None, **kwargs):
             ax = kwargs.pop('ax', None)
+
             if ax is None:
                 ax = plt.gca()
+
+            if plot_kws is None:
+                plot_kws = {}
 
             x_units = kwargs.get('x_units', None)
             y_units = kwargs.get('y_units', None)
