@@ -66,7 +66,7 @@ def plot_func(self, attr):
         if speed_units is not None:
             speed = speed.to(speed_units)
         ax.text(flow_v_range[-1], values_range[-1], f'{speed:P~.0f}',
-                ha='left', va='top', rotation=text_angle)
+                ha='left', va='top', rotation=text_angle, clip_on=True)
 
         ax.set_xlabel(f'Volumetric flow ({flow_v.units:P~})')
         ax.set_ylabel(f'{attr} ({units:P~})')
