@@ -1,7 +1,49 @@
 import numpy as np
+import matplotlib.pyplot as plt
 from copy import copy
 from scipy.optimize import newton
+from ccp.config.utilities import r_getattr
 from ccp import check_units, State
+
+
+def plot_func(self, attr):
+    def inner(*args, **kwargs):
+        """Plot parameter versus volumetric flow.
+
+        You can choose units with the arguments x_units='...' and
+        y_units='...'.
+        """
+        ax = kwargs.pop('ax', None)
+
+        if ax is None:
+            ax = plt.gca()
+
+        x_units = kwargs.pop('x_units', None)
+        y_units = kwargs.pop('y_units', None)
+
+        point_attr = r_getattr(self, attr)
+        if callable(point_attr):
+            point_attr = point_attr()
+
+        if y_units is not None:
+            point_attr = point_attr.to(y_units)
+
+        values = (getattr(point_attr, 'magnitude'))
+        units = getattr(point_attr, 'units')
+
+        flow_v = self.flow_v
+
+        if x_units is not None:
+            flow_v = flow_v.to(x_units)
+
+        ax.scatter(flow_v, values, **kwargs)
+
+        ax.set_xlabel(f'Volumetric flow ({flow_v.units:P~})')
+        ax.set_ylabel(f'{attr} ({units:P~})')
+
+        return ax
+
+    return inner
 
 
 class Point:
@@ -65,6 +107,14 @@ class Point:
         }
 
         calc_options[kwargs_keys]()
+        self._add_point_plot()
+
+    def _add_point_plot(self):
+        """Add plot to point after point is fully defined."""
+        for state in ['suc', 'disch']:
+            for attr in ['p', 'T']:
+                plot = plot_func(self, '.'.join([state, attr]))
+                setattr(getattr(self, state), attr + '_plot', plot)
 
     def __repr__(self):
         return (

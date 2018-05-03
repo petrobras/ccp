@@ -28,6 +28,7 @@ class Impeller:
 
         for p in self.points:
             self._add_non_dimensional_attributes(p)
+            p._add_point_plot()
 
         curves = []
         for speed, grouped_points in groupby(
