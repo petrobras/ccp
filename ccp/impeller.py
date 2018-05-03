@@ -83,7 +83,7 @@ class Impeller:
         self._calc_new_points()
         try:
             self._calc_current_point()
-        except TypeError:
+        except (AttributeError, TypeError):
             warn('Current point not set (flow and speed)')
 
     @property
@@ -91,8 +91,9 @@ class Impeller:
         return self._speed
 
     @speed.setter
-    def speed(self, new_speed):
-        self._speed = new_speed
+    @check_units
+    def speed(self, speed):
+        self._speed = speed
         if self.flow_v is None:
             return
 
@@ -130,14 +131,18 @@ class Impeller:
 
     def _calc_current_point(self):
         #  TODO refactor this function
-        speeds = np.array([curve.speed.magnitude for curve in self.new.curves])
+        try:
+            speeds = np.array([curve.speed.magnitude for curve in self.new.curves])
+        except AttributeError:
+            return
 
-        closest_curves_idxs = self._find_closest_speeds(speeds, self.speed)
+        closest_curves_idxs = self._find_closest_speeds(
+                speeds, self.speed.magnitude)
         curves = list(np.array(self.new.curves)[closest_curves_idxs])
 
         # calculate factor
         speed_range = curves[1].speed.magnitude - curves[0].speed.magnitude
-        factor = (self.speed - curves[0].speed.magnitude) / speed_range
+        factor = (self.speed.magnitude - curves[0].speed.magnitude) / speed_range
 
         def get_interpolated_value(fac, val_0, val_1):
             return fac * val_0 + (1 - fac) * val_1

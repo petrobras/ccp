@@ -44,6 +44,7 @@ imp = Impeller(Curve, b=0.0285, D=0.365)
 ###############################################################################
 
 import os as _os
+import warnings as _warnings
 from pathlib import Path as _Path
 import CoolProp.CoolProp as _CP
 
@@ -79,6 +80,7 @@ _new_units = _Path(__file__).parent / 'config/new_units.txt'
 ureg = _UnitRegistry()
 ureg.load_definitions(str(_new_units))
 Q_ = ureg.Quantity
+_warnings.filterwarnings('ignore', message='The unit of the quantity is stripped')
 
 ###############################################################################
 # imports
