@@ -28,7 +28,7 @@ def plot_func(self, attr):
         if y_units is not None:
             point_attr = point_attr.to(y_units)
 
-        values = (getattr(point_attr, 'magnitude'))
+        value = (getattr(point_attr, 'magnitude'))
         units = getattr(point_attr, 'units')
 
         flow_v = self.flow_v
@@ -36,7 +36,12 @@ def plot_func(self, attr):
         if x_units is not None:
             flow_v = flow_v.to(x_units)
 
-        ax.scatter(flow_v, values, **kwargs)
+        ax.scatter(flow_v, value, **kwargs)
+        #  vertical and horizontal lines
+        ax.plot([flow_v.magnitude, flow_v.magnitude],
+                [0, value], ls='--', color='k', alpha=0.2)
+        ax.plot([0, flow_v.magnitude],
+                [value, value], ls='--', color='k', alpha=0.2)
 
         ax.set_xlabel(f'Volumetric flow ({flow_v.units:P~})')
         ax.set_ylabel(f'{attr} ({units:P~})')
