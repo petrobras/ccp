@@ -19,7 +19,8 @@ class Impeller:
 
     """
     @check_units
-    def __init__(self, points, b=None, D=None, _suc=None):
+    def __init__(self, points, b=None, D=None,
+                 _suc=None, _flow_v=None, _speed=None):
         self.b = b
         self.D = D
 
@@ -45,8 +46,8 @@ class Impeller:
                     self.plot_func(attr))
 
         self._suc = _suc
-        self._speed = None
-        self._flow_v = None
+        self._speed = _speed
+        self._flow_v = _flow_v
 
         self.current_curve = None
         self.current_point = None
@@ -166,13 +167,13 @@ class Impeller:
     def _calc_current_point(self):
         #  TODO refactor this function
         try:
-            speeds = np.array([curve.speed.magnitude for curve in self.new.curves])
+            speeds = np.array([curve.speed.magnitude for curve in self.curves])
         except AttributeError:
             return
 
         closest_curves_idxs = self._find_closest_speeds(
                 speeds, self.speed.magnitude)
-        curves = list(np.array(self.new.curves)[closest_curves_idxs])
+        curves = list(np.array(self.curves)[closest_curves_idxs])
 
         # calculate factor
         speed_range = curves[1].speed.magnitude - curves[0].speed.magnitude
@@ -236,8 +237,9 @@ class Impeller:
 
             all_points += new_points
 
-        self.new = self.__class__(all_points, b=self.b,
-                                  D=self.D, _suc=self.suc)
+        self.new = self.__class__(all_points, b=self.b, D=self.D,
+                                  _suc=self.suc, _flow_v=self.flow_v,
+                                  _speed=self.speed)
 
     def _u(self, point):
         """Impeller tip speed."""
