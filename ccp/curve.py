@@ -101,6 +101,11 @@ def interpolated_function(obj, attr):
             obj.flow_v.magnitude, values.magnitude,
             kind=number_of_points, fill_value='extrapolate')
 
+        try:
+            args = [arg.magnitude for arg in args]
+        except AttributeError:
+            pass
+
         result = Q_(interpol_function(*args, **kwargs), units)
         if isinstance(*args, (int, float)):
             result = Q_(float(result.magnitude), result.units)

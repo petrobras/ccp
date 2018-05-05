@@ -48,6 +48,15 @@ def test_curve_performance_parameters(curve0):
                     np.array([108814.010351, 232958.372613]), rtol=1e-6)
 
 
+def test_curve_interpolation(curve0):
+    assert_allclose(curve0.disch.T_interpolated(1), 370.)
+    #  test for mutation of quantity magnitude
+    a = Q_(1., 'm**3/h')
+    assert_allclose(curve0.disch.T_interpolated(a), 370.)
+    assert isinstance(a.m, float)
+
+
+
 @pytest.fixture
 def curve1():
     suc = State.define(p=Q_(1, 'bar'), T=300, fluid='co2')
