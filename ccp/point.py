@@ -54,6 +54,43 @@ def plot_func(self, attr):
     return inner
 
 
+def _change_data_units(x_data, y_data, x_units=None, y_units=None):
+    if x_units is not None:
+        x_data = x_data.to(x_units)
+
+    if y_units is not None:
+        y_data = y_data.to(y_units)
+
+    return x_data, y_data
+
+
+def bokeh_plot_func(point, attr):
+    def inner(fig, *args, plot_kws=None, **kwargs):
+        x_units = kwargs.get('x_units', None)
+        y_units = kwargs.get('y_units', None)
+
+        if plot_kws is None:
+            plot_kws = {}
+
+        plot_kws.setdefault('color', 'navy')
+        plot_kws.setdefault('size', 8)
+        plot_kws.setdefault('alpha', 0.5)
+        plot_kws.setdefault('name', 'point')
+
+        x_data = point.flow_v
+        y_data = r_getattr(point, attr)
+        if callable(y_data):
+            y_data = y_data()
+
+        x_data, y_data = _change_data_units(x_data, y_data, x_units, y_units)
+        fig.circle([x_data.magnitude], [y_data.magnitude], **plot_kws)
+        fig.xaxis.axis_label = f'Flow ({x_data.units})'
+        fig.yaxis.axis_label = f'{attr} ({y_data.units})'
+
+        return fig
+    return inner
+
+
 class Point:
     """Point.
     A point in the compressor map that can be defined in different ways.
@@ -123,9 +160,13 @@ class Point:
             for attr in ['p', 'T']:
                 plot = plot_func(self, '.'.join([state, attr]))
                 setattr(getattr(self, state), attr + '_plot', plot)
+                bokeh_plot = bokeh_plot_func(self, '.'.join([state, attr]))
+                setattr(getattr(self, state), attr + '_bokeh_plot', bokeh_plot)
         for attr in ['head', 'eff', 'power']:
                 plot = plot_func(self, attr)
                 setattr(self, attr + '_plot', plot)
+                bokeh_plot = bokeh_plot_func(self, attr)
+                setattr(self, attr + '_bokeh_plot', bokeh_plot)
 
     def __repr__(self):
         return (
