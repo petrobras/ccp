@@ -84,8 +84,8 @@ def bokeh_plot_func(point, attr):
 
         x_data, y_data = _change_data_units(x_data, y_data, x_units, y_units)
         fig.circle([x_data.magnitude], [y_data.magnitude], **plot_kws)
-        fig.xaxis.axis_label = f'Flow ({x_data.units})'
-        fig.yaxis.axis_label = f'{attr} ({y_data.units})'
+        fig.xaxis.axis_label = f'Flow ({x_data.units:~P})'
+        fig.yaxis.axis_label = f'{attr} ({y_data.units:~P})'
 
         return fig
     return inner
