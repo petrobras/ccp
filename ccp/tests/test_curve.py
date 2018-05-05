@@ -56,7 +56,6 @@ def test_curve_interpolation(curve0):
     assert isinstance(a.m, float)
 
 
-
 @pytest.fixture
 def curve1():
     suc = State.define(p=Q_(1, 'bar'), T=300, fluid='co2')
