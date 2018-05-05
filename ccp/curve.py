@@ -92,7 +92,8 @@ def interpolated_function(obj, attr):
 
         units = values.units
 
-        number_of_points = len(values)
+        #  interp1d requires odd numbers for the kind argument
+        number_of_points = len(values) - 1
         if number_of_points % 2 == 0:
             number_of_points = number_of_points - 1
 
