@@ -44,8 +44,10 @@ class Impeller:
         for attr in ['disch.p', 'disch.T', 'head', 'eff', 'power']:
             setattr(self, attr.replace('.', '_') + '_plot',
                     self.plot_func(attr))
+            setattr(self, attr.replace('.', '_') + '_bokeh_source',
+                    self._bokeh_source_func(attr))
             setattr(self, attr.replace('.', '_') + '_bokeh_plot',
-                    self.bokeh_plot_func(attr))
+                    self._bokeh_plot_func(attr))
 
         self._suc = _suc
         self._speed = _speed
@@ -110,12 +112,27 @@ class Impeller:
 
         return inner
 
-    def bokeh_plot_func(self, attr):
-        def inner(fig, *args, plot_kws=None, **kwargs):
-            for curve in self.curves:
-                fig = r_getattr(curve, attr + '_bokeh_plot')(
-                    fig=fig, plot_kws=plot_kws, **kwargs)
+    def _bokeh_source_func(self, attr):
+        def inner(*args, fig=None, plot_kws=None, **kwargs):
+            sources = []
 
+            for curve in self.curves:
+                source = r_getattr(curve, attr + '_bokeh_source')(*args, **kwargs)
+                sources.append(source)
+
+            return sources
+        return inner
+
+    def _bokeh_plot_func(self, attr):
+        def inner(*args, fig=None, sources=None, plot_kws=None, **kwargs):
+            if sources is None:
+                for curve in self.curves:
+                        fig = r_getattr(curve, attr + '_bokeh_plot')(
+                                        fig=fig, plot_kws=plot_kws, **kwargs)
+            else:
+                for source, curve in zip(sources, self.curves):
+                    fig = r_getattr(curve, attr + '_bokeh_plot')(
+                        fig=fig, source=source, plot_kws=plot_kws, **kwargs)
             return fig
         return inner
 

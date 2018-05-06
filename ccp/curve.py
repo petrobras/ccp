@@ -86,7 +86,7 @@ def plot_func(self, attr):
     return inner
 
 
-def bokeh_source_func(curve, attr):
+def _bokeh_source_func(curve, attr):
     def inner(*args, **kwargs):
         """Return source data for bokeh plots."""
         x_units = kwargs.get('x_units', None)
@@ -133,7 +133,7 @@ def bokeh_source_func(curve, attr):
     return inner
 
 
-def bokeh_plot_func(curve, attr):
+def _bokeh_plot_func(curve, attr):
     def inner(*args, fig=None, source=None, plot_kws=None, **kwargs):
         if plot_kws is None:
             plot_kws = {}
@@ -215,10 +215,10 @@ class _CurveState:
             plot = plot_func(self, attr)
             setattr(self, f'{attr}_plot', plot)
 
-            bokeh_source = bokeh_source_func(self, attr)
+            bokeh_source = _bokeh_source_func(self, attr)
             setattr(self, f'{attr}_bokeh_source', bokeh_source)
 
-            bokeh_plot = bokeh_plot_func(self, attr)
+            bokeh_plot = _bokeh_plot_func(self, attr)
             setattr(self, f'{attr}_bokeh_plot', bokeh_plot)
 
     def __getitem__(self, item):
@@ -287,10 +287,10 @@ class Curve:
             plot = plot_func(self, param)
             setattr(self, param + '_plot', plot)
 
-            bokeh_source = bokeh_source_func(self, param)
+            bokeh_source = _bokeh_source_func(self, param)
             setattr(self, param + '_bokeh_source', bokeh_source)
 
-            bokeh_plot = bokeh_plot_func(self, param)
+            bokeh_plot = _bokeh_plot_func(self, param)
             setattr(self, param + '_bokeh_plot', bokeh_plot)
 
     def __getitem__(self, item):
