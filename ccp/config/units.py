@@ -43,3 +43,15 @@ def check_units(func):
         return func(*base_unit_args, **base_unit_kwargs)
     return inner
 
+
+def change_data_units(x_data, y_data, x_units=None, y_units=None):
+    """Change data units for plotting."""
+    if x_units is not None:
+        x_data = x_data.to(x_units)
+
+    if y_units is not None:
+        y_data = y_data.to(y_units)
+
+    return x_data, y_data
+
+
