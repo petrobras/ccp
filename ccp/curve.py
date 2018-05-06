@@ -2,6 +2,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import warnings
 from scipy.interpolate import interp1d
+from bokeh.models import ColumnDataSource, CDSView, IndexFilter
 from ccp import Q_
 from ccp.config.units import change_data_units
 
@@ -85,17 +86,12 @@ def plot_func(self, attr):
     return inner
 
 
-def bokeh_plot_func(curve, attr):
-    def inner(fig, *args, plot_kws=None, **kwargs):
+def bokeh_source_func(curve, attr):
+    def inner(*args, **kwargs):
+        """Return source data for bokeh plots."""
         x_units = kwargs.get('x_units', None)
         y_units = kwargs.get('y_units', None)
         speed_units = kwargs.get('speed_units', None)
-
-        if plot_kws is None:
-            plot_kws = {}
-
-        plot_kws.setdefault('color', 'navy')
-        plot_kws.setdefault('alpha', 0.5)
 
         min_flow = curve.flow_v[0]
         max_flow = curve.flow_v[-1]
@@ -105,7 +101,9 @@ def bokeh_plot_func(curve, attr):
 
         x_data, y_data = change_data_units(x_data, y_data, x_units, y_units)
 
-        fig.line(x_data.magnitude, y_data.magnitude)
+        speed = curve.speed
+        if speed_units is not None:
+            speed = speed.to(speed_units)
 
         delta_x_graph = abs(x_data[-1].magnitude - x_data[0].magnitude)
         delta_y_graph = abs(y_data[-1].magnitude - y_data[0].magnitude)
@@ -114,16 +112,49 @@ def bokeh_plot_func(curve, attr):
                      / ((x_data[-1].magnitude - x_data[-2].magnitude) / delta_x_graph))
 
         text_angle = np.arctan(curve_tan)
-        speed = curve.speed
-        if speed_units is not None:
-            speed = speed.to(speed_units)
 
-        fig.text([x_data[-1].magnitude], [y_data[-1].magnitude],
-                 text=dict(value=f'{speed:P~.0f}'),
-                 angle=text_angle, text_font_size='6pt')
+        length = len(x_data)
 
-        fig.xaxis.axis_label = f'Flow ({x_data.units:~P})'
-        fig.yaxis.axis_label = f'{attr} ({y_data.units:~P})'
+        source = ColumnDataSource(
+            dict(x=x_data.magnitude,
+                 y=y_data.magnitude,
+                 speed=[speed.magnitude] * length,
+                 text_x_pos=[x_data.magnitude[-1]] * length,
+                 text_y_pos=[y_data.magnitude[-1]] * length,
+                 text=[f'{speed:.0f~P}'] * length,
+                 angle=[text_angle] * length,
+                 font_size=['6pt'] * length,
+                 x_units=[f'{x_data.units:~P}'] * length,
+                 y_units=[f'{y_data.units:~P}'] * length,
+                 speed_units=[f'{speed.units:~P}'] * length)
+                                  )
+
+        return source
+    return inner
+
+
+def bokeh_plot_func(curve, attr):
+    def inner(*args, fig=None, plot_kws=None, **kwargs):
+        if plot_kws is None:
+            plot_kws = {}
+
+        plot_kws.setdefault('color', 'navy')
+        plot_kws.setdefault('line_width', 1)
+        plot_kws.setdefault('alpha', 0.5)
+
+        source = getattr(curve, attr + '_bokeh_source')(*args, **kwargs)
+
+        fig.line('x', 'y', source=source, **plot_kws)
+
+        speed = CDSView(source=source, filters=[IndexFilter([0])])
+
+        fig.text(x='text_x_pos', y='text_y_pos', source=source, view=speed,
+                 angle=source.data['angle'][0], text_font_size='6pt')
+
+        x_units_str = source.data["x_units"][0]
+        y_units_str = source.data["y_units"][0]
+        fig.xaxis.axis_label = f'Flow ({x_units_str})'
+        fig.yaxis.axis_label = f'{attr} ({y_units_str})'
 
         return fig
     return inner
@@ -182,6 +213,9 @@ class _CurveState:
 
             plot = plot_func(self, attr)
             setattr(self, f'{attr}_plot', plot)
+
+            bokeh_source = bokeh_source_func(self, attr)
+            setattr(self, f'{attr}_bokeh_source', bokeh_source)
 
             bokeh_plot = bokeh_plot_func(self, attr)
             setattr(self, f'{attr}_bokeh_plot', bokeh_plot)
@@ -251,6 +285,9 @@ class Curve:
 
             plot = plot_func(self, param)
             setattr(self, param + '_plot', plot)
+
+            bokeh_source = bokeh_source_func(self, param)
+            setattr(self, param + '_bokeh_source', bokeh_source)
 
             bokeh_plot = bokeh_plot_func(self, param)
             setattr(self, param + '_bokeh_plot', bokeh_plot)
