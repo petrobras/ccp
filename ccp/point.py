@@ -79,7 +79,7 @@ def bokeh_source_func(point, attr):
 
 
 def bokeh_plot_func(point, attr):
-    def inner(*args, fig=None, plot_kws=None, **kwargs):
+    def inner(*args, fig=None, source=None, plot_kws=None, **kwargs):
         if plot_kws is None:
             plot_kws = {}
 
@@ -88,7 +88,8 @@ def bokeh_plot_func(point, attr):
         plot_kws.setdefault('alpha', 0.5)
         plot_kws.setdefault('name', 'point')
 
-        source = r_getattr(point, attr + '_bokeh_source')(*args, **kwargs)
+        if source is None:
+            source = r_getattr(point, attr + '_bokeh_source')(*args, **kwargs)
 
         fig.circle('x', 'y', source=source, **plot_kws)
         x_units_str = source.data["x_units"][0]
