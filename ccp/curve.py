@@ -236,6 +236,9 @@ class Curve:
             plot = plot_func(self, param)
             setattr(self, param + '_plot', plot)
 
+            bokeh_plot = bokeh_plot_func(self, param)
+            setattr(self, param + '_bokeh_plot', bokeh_plot)
+
     def __getitem__(self, item):
         return self.points.__getitem__(item)
 
