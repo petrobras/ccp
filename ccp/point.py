@@ -4,6 +4,7 @@ from copy import copy
 from scipy.optimize import newton
 from bokeh.models import HoverTool
 from ccp.config.utilities import r_getattr
+from ccp.config.units import change_data_units
 from ccp import check_units, State
 
 
@@ -55,16 +56,6 @@ def plot_func(self, attr):
     return inner
 
 
-def _change_data_units(x_data, y_data, x_units=None, y_units=None):
-    if x_units is not None:
-        x_data = x_data.to(x_units)
-
-    if y_units is not None:
-        y_data = y_data.to(y_units)
-
-    return x_data, y_data
-
-
 def bokeh_plot_func(point, attr):
     def inner(fig, *args, plot_kws=None, **kwargs):
         x_units = kwargs.get('x_units', None)
@@ -83,7 +74,7 @@ def bokeh_plot_func(point, attr):
         if callable(y_data):
             y_data = y_data()
 
-        x_data, y_data = _change_data_units(x_data, y_data, x_units, y_units)
+        x_data, y_data = change_data_units(x_data, y_data, x_units, y_units)
         fig.circle([x_data.magnitude], [y_data.magnitude], **plot_kws)
         fig.xaxis.axis_label = f'Flow ({x_data.units:~P})'
         fig.yaxis.axis_label = f'{attr} ({y_data.units:~P})'
