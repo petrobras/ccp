@@ -2,6 +2,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from copy import copy
 from scipy.optimize import newton
+from bokeh.models import HoverTool
 from ccp.config.utilities import r_getattr
 from ccp import check_units, State
 
@@ -86,6 +87,12 @@ def bokeh_plot_func(point, attr):
         fig.circle([x_data.magnitude], [y_data.magnitude], **plot_kws)
         fig.xaxis.axis_label = f'Flow ({x_data.units:~P})'
         fig.yaxis.axis_label = f'{attr} ({y_data.units:~P})'
+
+        fig.add_tools(HoverTool(names=['point'],
+                                tooltips=[
+                                    ('Flow', f'@x ({x_data.units:~P})'),
+                                    ('Efficiency', f'@y ({y_data.units:~P})')
+                                ]))
 
         return fig
     return inner
