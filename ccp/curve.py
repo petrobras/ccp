@@ -134,7 +134,7 @@ def bokeh_source_func(curve, attr):
 
 
 def bokeh_plot_func(curve, attr):
-    def inner(*args, fig=None, plot_kws=None, **kwargs):
+    def inner(*args, fig=None, source=None, plot_kws=None, **kwargs):
         if plot_kws is None:
             plot_kws = {}
 
@@ -142,7 +142,8 @@ def bokeh_plot_func(curve, attr):
         plot_kws.setdefault('line_width', 1)
         plot_kws.setdefault('alpha', 0.5)
 
-        source = getattr(curve, attr + '_bokeh_source')(*args, **kwargs)
+        if source is None:
+            source = getattr(curve, attr + '_bokeh_source')(*args, **kwargs)
 
         fig.line('x', 'y', source=source, **plot_kws)
 
