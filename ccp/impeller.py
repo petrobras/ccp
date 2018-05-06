@@ -208,7 +208,7 @@ class Impeller:
         factor = (self.speed.magnitude - curves[0].speed.magnitude) / speed_range
 
         def get_interpolated_value(fac, val_0, val_1):
-            return fac * val_0 + (1 - fac) * val_1
+            return (1 - fac) * val_0 + fac * val_1
 
         min_flow = get_interpolated_value(
             factor, curves[0].flow_v.magnitude[0], curves[1].flow_v.magnitude[0])
