@@ -106,6 +106,22 @@ def bokeh_plot_func(curve, attr):
         x_data, y_data = change_data_units(x_data, y_data, x_units, y_units)
 
         fig.line(x_data.magnitude, y_data.magnitude)
+
+        delta_x_graph = abs(x_data[-1].magnitude - x_data[0].magnitude)
+        delta_y_graph = abs(y_data[-1].magnitude - y_data[0].magnitude)
+
+        curve_tan = (((y_data.magnitude[-1] - y_data.magnitude[-2]) / delta_y_graph)
+                     / ((x_data[-1].magnitude - x_data[-2].magnitude) / delta_x_graph))
+
+        text_angle = np.arctan(curve_tan)
+        speed = curve.speed
+        if speed_units is not None:
+            speed = speed.to(speed_units)
+
+        fig.text([x_data[-1].magnitude], [y_data[-1].magnitude],
+                 text=dict(value=f'{speed:P~.0f}'),
+                 angle=text_angle)
+
         fig.xaxis.axis_label = f'Flow ({x_data.units:~P})'
         fig.yaxis.axis_label = f'{attr} ({y_data.units:~P})'
 
