@@ -2,6 +2,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from copy import copy
 from scipy.optimize import newton
+from bokeh.models import ColumnDataSource
 from bokeh.models import HoverTool
 from ccp.config.utilities import r_getattr
 from ccp.config.units import change_data_units
@@ -56,11 +57,29 @@ def plot_func(self, attr):
     return inner
 
 
-def bokeh_plot_func(point, attr):
-    def inner(fig, *args, plot_kws=None, **kwargs):
+def bokeh_source_func(point, attr):
+    def inner(*args, **kwargs):
+        """Return source data for bokeh plots."""
         x_units = kwargs.get('x_units', None)
         y_units = kwargs.get('y_units', None)
+        x_data = point.flow_v
+        y_data = r_getattr(point, attr)
+        if callable(y_data):
+            y_data = y_data()
 
+        x_data, y_data = change_data_units(x_data, y_data, x_units, y_units)
+
+        source = ColumnDataSource(data=dict(x=[x_data.magnitude],
+                                            y=[y_data.magnitude],
+                                            x_units=[f'{x_data.units:~P}'],
+                                            y_units=[f'{y_data.units:~P}']))
+
+        return source
+    return inner
+
+
+def bokeh_plot_func(point, attr):
+    def inner(*args, fig=None, plot_kws=None, **kwargs):
         if plot_kws is None:
             plot_kws = {}
 
@@ -69,21 +88,20 @@ def bokeh_plot_func(point, attr):
         plot_kws.setdefault('alpha', 0.5)
         plot_kws.setdefault('name', 'point')
 
-        x_data = point.flow_v
-        y_data = r_getattr(point, attr)
-        if callable(y_data):
-            y_data = y_data()
+        source = r_getattr(point, attr + '_bokeh_source')(*args, **kwargs)
 
-        x_data, y_data = change_data_units(x_data, y_data, x_units, y_units)
-        fig.circle([x_data.magnitude], [y_data.magnitude], **plot_kws)
-        fig.xaxis.axis_label = f'Flow ({x_data.units:~P})'
-        fig.yaxis.axis_label = f'{attr} ({y_data.units:~P})'
+        fig.circle('x', 'y', source=source, **plot_kws)
+        x_units_str = source.data["x_units"][0]
+        y_units_str = source.data["y_units"][0]
+        fig.xaxis.axis_label = f'Flow ({x_units_str})'
+        fig.yaxis.axis_label = f'{attr} ({y_units_str})'
 
-        fig.add_tools(HoverTool(names=['point'],
-                                tooltips=[
-                                    ('Flow', f'@x ({x_data.units:~P})'),
-                                    ('Efficiency', f'@y ({y_data.units:~P})')
-                                ]))
+        fig.add_tools(HoverTool(
+            names=['point'],
+            tooltips=[
+                ('Flow', f'@x ({x_units_str})'),
+                ('Efficiency', f'@y ({y_units_str})')
+            ]))
 
         return fig
     return inner
@@ -158,11 +176,15 @@ class Point:
             for attr in ['p', 'T']:
                 plot = plot_func(self, '.'.join([state, attr]))
                 setattr(getattr(self, state), attr + '_plot', plot)
+                bokeh_source = bokeh_source_func(self, '.'.join([state, attr]))
+                setattr(getattr(self, state), attr + '_bokeh_source', bokeh_source)
                 bokeh_plot = bokeh_plot_func(self, '.'.join([state, attr]))
                 setattr(getattr(self, state), attr + '_bokeh_plot', bokeh_plot)
         for attr in ['head', 'eff', 'power']:
                 plot = plot_func(self, attr)
                 setattr(self, attr + '_plot', plot)
+                bokeh_source = bokeh_source_func(self, attr)
+                setattr(self, attr + '_bokeh_plot', bokeh_source)
                 bokeh_plot = bokeh_plot_func(self, attr)
                 setattr(self, attr + '_bokeh_plot', bokeh_plot)
 
