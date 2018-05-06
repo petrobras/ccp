@@ -124,15 +124,15 @@ class Impeller:
         return inner
 
     def _bokeh_plot_func(self, attr):
-        def inner(*args, fig=None, sources=None, plot_kws=None, **kwargs):
-            if sources is None:
+        def inner(*args, fig=None, source=None, plot_kws=None, **kwargs):
+            if source is None:
                 for curve in self.curves:
                         fig = r_getattr(curve, attr + '_bokeh_plot')(
                                         fig=fig, plot_kws=plot_kws, **kwargs)
             else:
-                for source, curve in zip(sources, self.curves):
+                for s, curve in zip(source, self.curves):
                     fig = r_getattr(curve, attr + '_bokeh_plot')(
-                        fig=fig, source=source, plot_kws=plot_kws, **kwargs)
+                        fig=fig, source=s, plot_kws=plot_kws, **kwargs)
             return fig
         return inner
 

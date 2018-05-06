@@ -57,7 +57,7 @@ def plot_func(self, attr):
     return inner
 
 
-def bokeh_source_func(point, attr):
+def _bokeh_source_func(point, attr):
     def inner(*args, **kwargs):
         """Return source data for bokeh plots."""
         x_units = kwargs.get('x_units', None)
@@ -177,15 +177,15 @@ class Point:
             for attr in ['p', 'T']:
                 plot = plot_func(self, '.'.join([state, attr]))
                 setattr(getattr(self, state), attr + '_plot', plot)
-                bokeh_source = bokeh_source_func(self, '.'.join([state, attr]))
+                bokeh_source = _bokeh_source_func(self, '.'.join([state, attr]))
                 setattr(getattr(self, state), attr + '_bokeh_source', bokeh_source)
                 bokeh_plot = _bokeh_plot_func(self, '.'.join([state, attr]))
                 setattr(getattr(self, state), attr + '_bokeh_plot', bokeh_plot)
         for attr in ['head', 'eff', 'power']:
                 plot = plot_func(self, attr)
                 setattr(self, attr + '_plot', plot)
-                bokeh_source = bokeh_source_func(self, attr)
-                setattr(self, attr + '_bokeh_plot', bokeh_source)
+                bokeh_source = _bokeh_source_func(self, attr)
+                setattr(self, attr + '_bokeh_source', bokeh_source)
                 bokeh_plot = _bokeh_plot_func(self, attr)
                 setattr(self, attr + '_bokeh_plot', bokeh_plot)
 
