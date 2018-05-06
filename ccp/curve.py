@@ -3,6 +3,7 @@ import matplotlib.pyplot as plt
 import warnings
 from scipy.interpolate import interp1d
 from ccp import Q_
+from ccp.config.units import change_data_units
 
 
 def plot_func(self, attr):
@@ -84,6 +85,34 @@ def plot_func(self, attr):
     return inner
 
 
+def bokeh_plot_func(curve, attr):
+    def inner(fig, *args, plot_kws=None, **kwargs):
+        x_units = kwargs.get('x_units', None)
+        y_units = kwargs.get('y_units', None)
+        speed_units = kwargs.get('speed_units', None)
+
+        if plot_kws is None:
+            plot_kws = {}
+
+        plot_kws.setdefault('color', 'navy')
+        plot_kws.setdefault('alpha', 0.5)
+
+        min_flow = curve.flow_v[0]
+        max_flow = curve.flow_v[-1]
+
+        x_data = np.linspace(min_flow, max_flow, 30) * min_flow.units
+        y_data = getattr(curve, attr + '_interpolated')(x_data)
+
+        x_data, y_data = change_data_units(x_data, y_data, x_units, y_units)
+
+        fig.line(x_data.magnitude, y_data.magnitude)
+        fig.xaxis.axis_label = f'Flow ({x_data.units:~P})'
+        fig.yaxis.axis_label = f'{attr} ({y_data.units:~P})'
+
+        return fig
+    return inner
+
+
 def interpolated_function(obj, attr):
     def inner(*args, **kwargs):
         values = getattr(obj, attr)
@@ -137,6 +166,9 @@ class _CurveState:
 
             plot = plot_func(self, attr)
             setattr(self, f'{attr}_plot', plot)
+
+            bokeh_plot = bokeh_plot_func(self, attr)
+            setattr(self, f'{attr}_bokeh_plot', bokeh_plot)
 
     def __getitem__(self, item):
         return self.points.__getitem__(item)
