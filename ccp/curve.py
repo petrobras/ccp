@@ -120,7 +120,7 @@ def bokeh_plot_func(curve, attr):
 
         fig.text([x_data[-1].magnitude], [y_data[-1].magnitude],
                  text=dict(value=f'{speed:P~.0f}'),
-                 angle=text_angle)
+                 angle=text_angle, text_font_size='6pt')
 
         fig.xaxis.axis_label = f'Flow ({x_data.units:~P})'
         fig.yaxis.axis_label = f'{attr} ({y_data.units:~P})'
