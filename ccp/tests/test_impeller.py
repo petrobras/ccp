@@ -114,3 +114,13 @@ def test_impeller_new_suction(imp1):
     assert_allclose(new_p0.power, 1101698.5104)
     assert_allclose(new_p0.speed, 1257.17922)
 
+
+def test_impeller_new_speed(imp1):
+    assert imp1.speed is None
+    new_suc = State.define(p=Q_(0.2, 'MPa'), T=301.58,
+                           fluid='nitrogen')
+    with pytest.raises(NotImplementedError) as ex:
+        imp1.suc = new_suc
+        imp1.flow_v = 2.
+        imp1.speed = 1000.
+    assert 'Not implemented for less' in str(ex)

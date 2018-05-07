@@ -160,6 +160,10 @@ class Impeller:
         if self.flow_v is None:
             return
 
+        if len(self.curves) < 2:
+            raise NotImplementedError(
+                'Not implemented for less them two curves.')
+
         self._calc_current_point()
 
     @property
