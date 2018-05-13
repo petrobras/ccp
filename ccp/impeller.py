@@ -14,7 +14,7 @@ class _Impeller_State:
 
         for attr in ['p', 'T']:
             func = self.state_parameter(attr)
-        setattr(self, attr, func)
+            setattr(self, attr, func)
 
     def state_parameter(self, attr):
         def inner(*args, **kwargs):
