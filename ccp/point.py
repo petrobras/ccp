@@ -189,7 +189,7 @@ class Point:
                 bokeh_plot = _bokeh_plot_func(self, attr)
                 setattr(self, attr + '_bokeh_plot', bokeh_plot)
 
-    def __repr__(self):
+    def __str__(self):
         return (
                 '\nPoint: '
                 + '\n Volume flow: {:10.5}'.format(self.flow_v)
@@ -197,6 +197,14 @@ class Point:
                 + '\n Efficiency : {:10.5}'.format(self.eff)
                 + '\n Power      : {:10.5}'.format(self.power)
         )
+
+    def __repr__(self):
+
+        return (f'{self.__class__.__name__}(suc={self.suc},'
+                f' speed=Q_("{self.speed:.0f~P}"),'
+                f' flow_v=Q_("{self.flow_v:.2f~P}"),'
+                f' head=Q_("{self.head:.0f~P}"),'
+                f' eff=Q_("{self.eff:.3f~P}"))')
 
     def _calc_from_disch_suc(self):
         self.head = self._head_pol_schultz()
