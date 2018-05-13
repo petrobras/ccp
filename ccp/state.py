@@ -181,13 +181,13 @@ class State(CP.AbstractState):
 
     def __repr__(self):
         args = {k: v for k, v in self.init_args.items() if v is not None}
-        args_repr = [f'{k}=Q_("{str(v)}")' for k, v in args.items()]
+        args_repr = [f'{k}=Q_("{v:.0f~P}")' for k, v in args.items()]
         args_repr = ', '.join(args_repr)
 
         fluid_dict = self.fluid
         sorted_fluid_keys = sorted(fluid_dict, key=fluid_dict.get, reverse=True)
-        fluid_repr = [f'{k}: {fluid_dict[k]:.5f}' for k in sorted_fluid_keys]
-        fluid_repr = '{' + ', '.join(fluid_repr) + '}'
+        fluid_repr = [f'"{k}": {fluid_dict[k]:.5f}' for k in sorted_fluid_keys]
+        fluid_repr = 'fluid={' + ', '.join(fluid_repr) + '}'
 
         return 'State.define(' + args_repr + ', ' + fluid_repr + ')'
 
