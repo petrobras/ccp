@@ -8,6 +8,31 @@ from ccp.config.utilities import r_getattr
 from ccp import Q_, check_units, State, Point, Curve
 
 
+class _Impeller_State:
+    def __init__(self, curves_state):
+        self.curves_state = curves_state
+
+        for attr in ['p', 'T']:
+            func = self.state_parameter(attr)
+        setattr(self, attr, func)
+
+    def state_parameter(self, attr):
+        def inner(*args, **kwargs):
+            values = []
+
+            for curve_state in self:
+                values.append(getattr(getattr(curve_state, attr)(), 'magnitude'))
+
+            units = getattr(getattr(curve_state, attr)(), 'units')
+
+            return Q_(values, units)
+
+        return inner
+
+    def __getitem__(self, item):
+        return self.curves_state.__getitem__(item)
+
+
 class Impeller:
     """Impeller class.
 
@@ -55,6 +80,8 @@ class Impeller:
 
         self.current_curve = None
         self.current_point = None
+
+        self.disch = _Impeller_State([c.disch for c in self.curves])
 
     def __getitem__(self, item):
         return self.points.__getitem__(item)
