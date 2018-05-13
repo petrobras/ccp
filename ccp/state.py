@@ -187,7 +187,7 @@ class State(CP.AbstractState):
         fluid_dict = self.fluid
         sorted_fluid_keys = sorted(fluid_dict, key=fluid_dict.get, reverse=True)
         fluid_repr = [f'{k}: {fluid_dict[k]:.5f}' for k in sorted_fluid_keys]
-        fluid_repr = '{' + ', '.join(fluid_repr)
+        fluid_repr = '{' + ', '.join(fluid_repr) + '}'
 
         return 'State.define(' + args_repr + ', ' + fluid_repr + ')'
 
