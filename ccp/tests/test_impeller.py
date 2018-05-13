@@ -1,4 +1,5 @@
 import pytest
+import numpy as np
 from numpy.testing import assert_allclose
 from ccp import ureg, Q_, State, Point, Curve, Impeller
 
@@ -124,3 +125,39 @@ def test_impeller_new_speed(imp1):
         imp1.flow_v = 2.
         imp1.speed = 1000.
     assert 'Not implemented for less' in str(ex)
+
+
+@pytest.fixture()
+def imp2():
+    points = [
+        Point(suc=State.define(p=Q_("100663 Pa"), T=Q_("305 K"), fluid={"AIR": 1.00000}),
+              speed=Q_("1263 rad/s"), flow_v=Q_("1.15 m³/s"),
+              head=Q_("147634 J/kg"), eff=Q_("0.819")),
+        Point(suc=State.define(p=Q_("100663 Pa"), T=Q_("305 K"), fluid={"AIR": 1.00000}),
+              speed=Q_("1263 rad/s"), flow_v=Q_("1.26 m³/s"),
+              head=Q_("144664 J/kg"), eff=Q_("0.829")),
+        Point(suc=State.define(p=Q_("100663 Pa"), T=Q_("305 K"), fluid={"AIR": 1.00000}),
+              speed=Q_("1263 rad/s"), flow_v=Q_("1.36 m³/s"),
+              head=Q_("139945 J/kg"), eff=Q_("0.831")),
+        Point(suc=State.define(p=Q_("100663 Pa"), T=Q_("305 K"), fluid={"AIR": 1.00000}),
+             speed=Q_("1337 rad/s"), flow_v=Q_("1.22 m³/s"),
+             head=Q_("166686 J/kg"), eff=Q_("0.814")),
+        Point(suc=State.define(p=Q_("100663 Pa"), T=Q_("305 K"), fluid={"AIR": 1.00000}),
+              speed=Q_("1337 rad/s"), flow_v=Q_("1.35 m³/s"),
+              head=Q_("163620 J/kg"), eff=Q_("0.825")),
+        Point(suc=State.define(p=Q_("100663 Pa"), T=Q_("305 K"), fluid={"AIR": 1.00000}),
+              speed=Q_("1337 rad/s"), flow_v=Q_("1.48 m³/s"),
+              head=Q_("158536 J/kg"), eff=Q_("0.830"))
+    ]
+
+    imp2 = Impeller(points, b=0.010745, D=0.32560)
+
+    return imp2
+
+
+def test_impeller_disch_state(imp2):
+    T_magnitude = np.array([[482.849252, 477.242831, 471.294339],
+                            [506.66698, 500.417244, 493.308811]])
+    assert_allclose(imp2.disch.T().magnitude, T_magnitude)
+
+
