@@ -4,7 +4,7 @@ import matplotlib.pyplot as plt
 from copy import deepcopy
 from itertools import groupby
 from warnings import warn
-from ccp.config.utilities import r_getattr
+from ccp.config.utilities import r_getattr, r_setattr
 from ccp import Q_, check_units, State, Point, Curve
 
 
@@ -65,14 +65,13 @@ class Impeller:
             curves.append(curve)
             setattr(self, f'curve_{int(curve.speed.magnitude)}', curve)
         self.curves = curves
+        self.disch = _Impeller_State([c.disch for c in self.curves])
 
         for attr in ['disch.p', 'disch.T', 'head', 'eff', 'power']:
-            setattr(self, attr.replace('.', '_') + '_plot',
-                    self.plot_func(attr))
-            setattr(self, attr.replace('.', '_') + '_bokeh_source',
-                    self._bokeh_source_func(attr))
-            setattr(self, attr.replace('.', '_') + '_bokeh_plot',
-                    self._bokeh_plot_func(attr))
+            r_setattr(self, attr + '_plot', self.plot_func(attr))
+            r_setattr(self, attr + '_bokeh_source',
+                      self._bokeh_source_func(attr))
+            r_setattr(self, attr + '_bokeh_plot', self._bokeh_plot_func(attr))
 
         self._suc = _suc
         self._speed = _speed
@@ -80,8 +79,6 @@ class Impeller:
 
         self.current_curve = None
         self.current_point = None
-
-        self.disch = _Impeller_State([c.disch for c in self.curves])
 
     def __getitem__(self, item):
         return self.points.__getitem__(item)
