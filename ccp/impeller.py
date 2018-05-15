@@ -4,6 +4,8 @@ import matplotlib.pyplot as plt
 from copy import deepcopy
 from itertools import groupby
 from warnings import warn
+from pathlib import Path
+from openpyxl import Workbook
 from ccp.config.utilities import r_getattr, r_setattr
 from ccp import Q_, check_units, State, Point, Curve
 
@@ -373,7 +375,7 @@ class Impeller:
     def _calc_from_non_dimensional(self, point):
         """Calculate dimensional point from non-dimensional.
 
-        Point will be calculated considering the new impeller suction condition.
+        Point will be calculated considering new impeller suction condition.
         """
         new_point = Point(suc=self.suc, eff=point.eff,
                           volume_ratio=point.volume_ratio)
@@ -412,3 +414,28 @@ class Impeller:
         flow_v = phi * (np.pi * D**2 * u) / 4
 
         return flow_v
+
+    def export_to_excel(self, file_name=None):
+        """Export curves to excel file."""
+        wb = Workbook()
+        for curve in self.curves:
+            sheet_name = f'{curve.speed.to("RPM"):.0f~P}'
+            ws = wb.create_sheet(sheet_name)
+            for i, p in enumerate(curve):
+                i += 1  # openpyxl index
+                if i == 1:
+                    ws.cell(row=i, column=1, value='Flow (m**3/s)')
+                    ws.cell(row=i, column=2, value='Head (kJ/kg)')
+                    ws.cell(row=i, column=3, value='Efficiency (%)')
+                else:
+                    ws.cell(row=i, column=1, value=p.flow_v.magnitude)
+                    ws.cell(row=i, column=2,
+                            value=p.head.to('kJ/kg').magnitude)
+                    ws.cell(row=i, column=3, value=p.eff.magnitude * 100)
+
+        if file_name is None:
+            file_name = f'{self.suc.p().to("bar"):.0f~P}.xlsx'
+            file_name = file_name.replace(' ', '-')
+            path_name = Path.cwd() / file_name
+
+        wb.save(str(path_name))
