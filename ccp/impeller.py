@@ -70,6 +70,15 @@ class Impeller:
         self.disch = _Impeller_State([c.disch for c in self.curves])
 
         for attr in ['disch.p', 'disch.T', 'head', 'eff', 'power']:
+            values = []
+            # for disch.p etc values are defined in _Impeller_State
+            if '.' not in attr:
+                for c in self.curves:
+                    param = r_getattr(c, attr)
+                    values.append(param.magnitude)
+                units = param.units
+                r_setattr(self, attr, Q_(values, units))
+
             r_setattr(self, attr + '_plot', self.plot_func(attr))
             r_setattr(self, attr + '_bokeh_source',
                       self._bokeh_source_func(attr))
