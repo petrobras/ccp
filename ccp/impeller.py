@@ -10,7 +10,7 @@ from ccp.config.utilities import r_getattr, r_setattr
 from ccp import Q_, check_units, State, Point, Curve
 
 
-class _Impeller_State:
+class ImpellerState:
     def __init__(self, curves_state):
         self.curves_state = curves_state
 
@@ -67,7 +67,7 @@ class Impeller:
             curves.append(curve)
             setattr(self, f'curve_{int(curve.speed.magnitude)}', curve)
         self.curves = curves
-        self.disch = _Impeller_State([c.disch for c in self.curves])
+        self.disch = ImpellerState([c.disch for c in self.curves])
 
         for attr in ['disch.p', 'disch.T', 'head', 'eff', 'power']:
             values = []
