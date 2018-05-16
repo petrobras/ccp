@@ -10,8 +10,8 @@ import matplotlib.pyplot as plt
 from bokeh.io import output_notebook, show, curdoc
 from bokeh.layouts import column, widgetbox, layout
 from bokeh.plotting import figure
-from bokeh.models import HoverTool, Div
-from bokeh.models.widgets import Slider
+from bokeh.models import HoverTool, Div, CustomJS
+from bokeh.models.widgets import Slider, Button
 
 from ccp import Q_
 from ccp.data_io import read_csv
@@ -144,6 +144,10 @@ flow_v.on_change('value', update_fig)
 Ts.on_change('value', update_fig)
 ps.on_change('value', update_fig)
 sp.on_change('value', update_fig)
+
+
+button = Button(label='Download', button='success')
+button.callback = CustomJS(args=dict(source=bokeh_sources))
 
 inputs = widgetbox(ps, Ts, flow_v, sp)
 # curves_html = Path.cwd() / 'curvas.html'
