@@ -426,7 +426,7 @@ class Impeller:
 
         return flow_v
 
-    def export_to_excel(self, file_name=None):
+    def export_to_excel(self, path_name=None):
         """Export curves to excel file."""
         wb = Workbook()
         for curve in self.curves:
@@ -444,7 +444,7 @@ class Impeller:
                             value=p.head.to('kJ/kg').magnitude)
                     ws.cell(row=i, column=3, value=p.eff.magnitude * 100)
 
-        if file_name is None:
+        if path_name is None:
             file_name = f'{self.suc.p().to("bar"):.0f~P}.xlsx'
             file_name = file_name.replace(' ', '-')
             path_name = Path.cwd() / file_name
