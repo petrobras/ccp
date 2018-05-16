@@ -191,6 +191,7 @@ class Impeller:
     @speed.setter
     @check_units
     def speed(self, speed):
+        #  TODO check if speed is within reasonable range
         self._speed = speed
         if self.flow_v is None:
             return
@@ -203,6 +204,7 @@ class Impeller:
 
     @property
     def flow_v(self):
+        #  TODO check if flow_v is within reasonable range
         return self._flow_v
 
     @flow_v.setter
