@@ -10,7 +10,7 @@ import matplotlib.pyplot as plt
 from bokeh.io import output_notebook, show, curdoc
 from bokeh.layouts import column, widgetbox, layout
 from bokeh.plotting import figure
-from bokeh.models import HoverTool, Div, CustomJS
+from bokeh.models import ColumnDataSource, HoverTool, Div, CustomJS
 from bokeh.models.widgets import Slider, Button
 
 from ccp import Q_
@@ -78,6 +78,8 @@ for s in sources:
         fig=bokeh_figures[s], source=bokeh_sources[s], speed_units=speed_units
     )
 
+download_source = imp.export_to_bokeh_source(sources, speed_units=speed_units)
+
 
 def update_fig(attr, old, new):
     if (Ts.value != imp.new.suc.T().magnitude
@@ -116,6 +118,10 @@ def update_fig(attr, old, new):
                     speed_units=speed_units)):
             d0.data = d1.data
 
+    #  update download source (check if this can be moved to on_click)
+    download_source.data = imp.export_to_bokeh_source(
+        sources, speed_units=speed_units).data
+
 
 flow_v_start = imp.new.current_curve.flow_v[0].magnitude
 flow_v_end = imp.new.current_curve.flow_v[-1].magnitude
@@ -145,11 +151,11 @@ Ts.on_change('value', update_fig)
 ps.on_change('value', update_fig)
 sp.on_change('value', update_fig)
 
+button = Button(label='Download', button_type='success')
+button.callback = CustomJS(args=dict(source=download_source),
+                           code=open(str(Path.cwd() / 'download.js')).read())
 
-button = Button(label='Download', button='success')
-button.callback = CustomJS(args=dict(source=bokeh_sources))
-
-inputs = widgetbox(ps, Ts, flow_v, sp)
+inputs = widgetbox(ps, Ts, flow_v, sp, button)
 # curves_html = Path.cwd() / 'curvas.html'
 # desc = Div(text=open(curves_html).read(), width=1000)
 

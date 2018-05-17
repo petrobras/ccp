@@ -1,13 +1,18 @@
 var data = source.data;
-var filetext = 'name,income,years_experience\n';
-for (var i = 0; i < data['name'].length; i++) {
-    var currRow = [data['name'][i].toString(),
-                   data['salary'][i].toString(),
-                   data['years_experience'][i].toString().concat('\n')];
+var filetext = 'flow(m**3/s),head(J/kg),efficiency(%),speed(RPM)\n';
+
+for (var i = 0; i < data['flow_v'].length; i++) {
+    var currRow = [data['flow_v'][i].toString(),
+                   data['head'][i].toString(),
+                   (100*data['eff'][i]).toString(),
+                   data['speed'][i].toString().concat('\n'),];
 
     var joined = currRow.join();
     filetext = filetext.concat(joined);
 }
+
+var filename = 'curves.csv';
+var blob = new Blob([filetext], { type: 'text/csv;charset=utf-8;' });
 
 if (navigator.msSaveBlob) {
     navigator.msSaveBlob(blob, filename);

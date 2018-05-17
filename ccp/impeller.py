@@ -6,6 +6,7 @@ from itertools import groupby
 from warnings import warn
 from pathlib import Path
 from openpyxl import Workbook
+from bokeh.models import ColumnDataSource
 from ccp.config.utilities import r_getattr, r_setattr
 from ccp import Q_, check_units, State, Point, Curve
 
@@ -450,3 +451,27 @@ class Impeller:
             path_name = Path.cwd() / file_name
 
         wb.save(str(path_name))
+
+    def export_to_bokeh_source(self, sources, **kwargs):
+        """Export curves to bokeh source for download."""
+        speed_units = kwargs.get('speed_units')
+
+        sources_dict = {k: [] for k in sources}
+        sources_dict['flow_v'] = []
+        sources_dict['speed'] = []
+
+        for curve in self.curves:
+            for p in curve:
+                sources_dict['flow_v'].append(p.flow_v.magnitude)
+                if speed_units is None:
+                    sources_dict['speed'].append(p.speed.magnitude)
+                else:
+                    sources_dict['speed'].append(
+                        p.speed.to(speed_units).magnitude)
+                for s in sources:
+                    sources_dict[s].append(r_getattr(p, s).magnitude)
+
+        return ColumnDataSource(sources_dict)
+
+
+
