@@ -25,8 +25,8 @@ from ccp.impeller import Impeller
 
 home_path = Path.home()
 case_string = home_path / ('Dropbox/trabalho/sequi-assessoramento'
-                   '/pre-sal/dresser-rand/analise-curvas-dr/injection'
-                   '/case-string/')
+                           '/pre-sal/dresser-rand/analise-curvas-dr/injection'
+                           '/case-string/')
 
 parameters = {'speed': 'RPM', 'flow_v': 'ft**3/min',
               'disch-temperature': 'degF', 'pressure-ratio': ''}
