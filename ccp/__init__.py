@@ -87,6 +87,7 @@ _warnings.filterwarnings('ignore', message='The unit of the quantity is stripped
 ###############################################################################
 
 from .config.units import check_units
+from .config.fluids import fluid_list
 from .state import State
 from .point import Point
 from .curve import Curve
