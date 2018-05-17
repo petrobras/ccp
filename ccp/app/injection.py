@@ -157,10 +157,11 @@ button.callback = CustomJS(args=dict(source=download_source),
                            code=open(str(Path.cwd() / 'download.js')).read())
 
 inputs = widgetbox(ps, Ts, flow_v, sp, button)
-# curves_html = Path.cwd() / 'curvas.html'
-# desc = Div(text=open(curves_html).read(), width=1000)
+curves_html = Path.cwd() / 'injection.html'
+desc = Div(text=open(curves_html).read(), width=1000)
 
-curdoc().add_root(layout([bokeh_figures[sources[0]], inputs],
+curdoc().add_root(layout([desc],
+                         [bokeh_figures[sources[0]], inputs],
                          [bokeh_figures[sources[1]]],
                          [bokeh_figures[sources[2]]]))
 
