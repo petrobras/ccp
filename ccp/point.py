@@ -101,7 +101,7 @@ def _bokeh_plot_func(point, attr):
             names=['point'],
             tooltips=[
                 ('Flow', f'@x ({x_units_str})'),
-                ('Efficiency', f'@y ({y_units_str})')
+                (f'{attr}', f'@y ({y_units_str})')
             ]))
 
         return fig
