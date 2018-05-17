@@ -23,7 +23,8 @@ from ccp.impeller import Impeller
 # load imp
 ###############################################################################
 
-case_string = Path('/home/raphael/Dropbox/trabalho/sequi-assessoramento'
+home_path = Path.home()
+case_string = home_path / ('Dropbox/trabalho/sequi-assessoramento'
                    '/pre-sal/dresser-rand/analise-curvas-dr/injection'
                    '/case-string/')
 
