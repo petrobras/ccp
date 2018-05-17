@@ -4,9 +4,17 @@ from ccp.state import *
 from numpy.testing import assert_allclose
 
 
+def test_state_possible_name():
+    with pytest.raises(ValueError) as exc:
+        State.define(p=100000, T=300, fluid='fake_name')
+    assert 'Fluid fake_name not available.' in str(exc)
+
+    #  pure fluid
+    State.define(p=100000, T=300, fluid='n2')
+
+
 def test_state_define():
     state = State.define(p=100000, T=300, fluid='Methane')
-
     assert state.p().units == 'pascal'
     assert state.T().units == 'kelvin'
     assert state.p().magnitude == 100000

@@ -115,7 +115,7 @@ class State(CP.AbstractState):
             _fluid = '&'.join(constituents)
         except AttributeError:
             molar_fractions.append(1)
-            _fluid = fluid
+            _fluid = get_name(fluid)
 
         try:
             state = cls(EOS, _fluid)
