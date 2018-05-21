@@ -2,6 +2,15 @@
 
 Biblioteca para cálculo de performance de compressores centrífugos em python.
 
+# 
+
+Para avaliação dos resultados também pode ser utilizada aplicação web que pode
+ser disponibilizada através de recurso de núvem.
+
+![Alt Text](docs/ccp.fig.gif)
+
+# Guia básico
+
 Definição de estados termodinâmicos:
 
 ```python
@@ -35,7 +44,3 @@ curve = Curve(points)
 #  Create an impeller that will hold and convert curves.
 imp = Impeller(Curve, b=0.0285, D=0.365)
 ```
-Para avaliação dos resultados também pode ser utilizada aplicação web que pode
-ser disponibilizada através de recurso de núvem.
-
-![Alt Text](docs/ccp.fig.gif)
