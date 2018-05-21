@@ -5,19 +5,14 @@ Biblioteca para cálculo de performance de compressores centrífugos em python.
 Definição de estados termodinâmicos:
 
 ```python
-fluid = {'CarbonDioxide': 0.79585,
-         'R134a': 0.16751,
-         'Nitrogen': 0.02903,
-         'Oxygen': 0.00761}
+fluid = {'CarbonDioxide': 0.8, 'R134a': 0.2}
 
-Use pint quantity to define a value:
+#  Use pint quantity to define a value.
+#  If a pint quantity is not provided, SI units are assumed.
 ps = Q_(3, 'bar')
 Ts = 300
 
-#  If a pint quantity is not provided, SI units are assumed.
-
 #  Define suction and discharge states:
-
 suc0 = State.define(fluid=fluid, p=ps, T=Ts)
 disch0 = State.define(fluid=fluid, p=Q_(7.255, 'bar'), T=391.1)
 ```
@@ -35,12 +30,12 @@ Criar curva e impelidor:
 
 ```python
 #  Create a curve with the points:
-
 curve = Curve(points)
 
 #  Create an impeller that will hold and convert curves.
-
 imp = Impeller(Curve, b=0.0285, D=0.365)
 ```
+Para avaliação dos resultados também pode ser utilizada aplicação web que pode
+ser disponibilizada através de recurso de núvem.
 
 ![Alt Text](docs/ccp.fig.gif)

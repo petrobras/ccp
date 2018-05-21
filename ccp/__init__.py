@@ -1,5 +1,5 @@
 """
-prf
+ccp
 ===
 
 Package to evaluate the performance of a centrifugal compressor.
