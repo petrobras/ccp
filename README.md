@@ -1,7 +1,5 @@
 Centrifugal Compressor Performance
 
-
-
-![Logo](docs/ccp.PNG =50x50)
+<img src="docs/ccp.PNG" alt="drawing" style="width: 200px;"/>
 
 ![Alt Text](docs/ccp.fig.gif)
