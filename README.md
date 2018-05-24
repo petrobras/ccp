@@ -30,7 +30,6 @@ Criar um ponto de operação:
 
 ```python
 #  Create performance point(s):
-
 point0 = Point(suc=suc0, disch=disch0, speed=Q_(7941, 'RPM'),
                flow_m=Q_(34203.6, 'kg/hr'))
 ```
