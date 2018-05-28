@@ -42,7 +42,8 @@ fluid_list['CarbonDioxide'].possible_names.extend(
     ['carbon dioxide'])
 fluid_list['Nitrogen'].possible_names.extend(
     ['N2', 'n2'])
-
+fluid_list['Oxygen'].possible_names.extend(
+    ['O2', 'o2'])
 
 def get_name(name):
     """Seach for compatible fluid name."""
