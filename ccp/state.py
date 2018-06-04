@@ -2,7 +2,12 @@ from copy import copy
 from . import Q_
 from .config.units import check_units
 from .config.fluids import get_name, normalize_mix
+import warnings
+import numpy as np
+import CoolProp
 import CoolProp.CoolProp as CP
+from CoolProp.Plots import PropertyPlot
+from CoolProp.Plots.Common import interpolate_values_1d
 
 
 class State(CP.AbstractState):
@@ -192,3 +197,76 @@ class State(CP.AbstractState):
         return 'State.define(' + args_repr + ', ' + fluid_repr + ')'
 
 
+class ModifiedPropertyPlot(PropertyPlot):
+    """Modify CoolProp's property plot."""
+    def draw_isolines(self):
+        dimx = self._system[self._x_index]
+        dimy = self._system[self._y_index]
+
+        sat_props = self.props[CoolProp.iQ].copy()
+        if 'lw' in sat_props: sat_props['lw'] *= 2.0
+        else: sat_props['lw'] = 1.0
+        if 'alpha' in sat_props: min([sat_props['alpha']*1.0,1.0])
+        else: sat_props['alpha'] = 1.0
+
+        for i in self.isolines:
+            props = self.props[i]
+            dew = None; bub = None
+            xcrit = None; ycrit = None
+            if i == CoolProp.iQ:
+                for line in self.isolines[i]:
+                    if line.value == 0.0: bub = line
+                    elif line.value == 1.0: dew = line
+                if dew is not None and bub is not None:
+                    xmin, xmax, ymin, ymax = self.get_axis_limits()
+                    xmin = dimx.to_SI(xmin)
+                    xmax = dimx.to_SI(xmax)
+                    ymin = dimy.to_SI(ymin)
+                    ymax = dimy.to_SI(ymax)
+                    dx = xmax-xmin
+                    dy = ymax-ymin
+                    dew_filter = np.logical_and(np.isfinite(dew.x),np.isfinite(dew.y))
+                    stp = min([dew_filter.size,10])
+                    dew_filter[0:-stp] = False
+                    bub_filter = np.logical_and(np.isfinite(bub.x),np.isfinite(bub.y))
+
+                    if self._x_index == CoolProp.iP or self._x_index == CoolProp.iDmass:
+                        filter_x = lambda x: np.log10(x)
+                    else:
+                        filter_x = lambda x: x
+                    if self._y_index == CoolProp.iP or self._y_index == CoolProp.iDmass:
+                        filter_y = lambda y: np.log10(y)
+                    else:
+                        filter_y = lambda y: y
+
+                    if ((filter_x(dew.x[dew_filter][-1])-filter_x(bub.x[bub_filter][-1])) < 0.050*filter_x(dx) or
+                        (filter_y(dew.y[dew_filter][-1])-filter_y(bub.y[bub_filter][-1])) < 0.010*filter_y(dy)):
+                        x = np.linspace(bub.x[bub_filter][-1], dew.x[dew_filter][-1], 11)
+                        try:
+                            y = interpolate_values_1d(
+                              np.append(bub.x[bub_filter],dew.x[dew_filter][::-1]),
+                              np.append(bub.y[bub_filter],dew.y[dew_filter][::-1]),
+                              x_points=x,
+                              kind='cubic')
+                            self.axis.plot(dimx.from_SI(x),dimy.from_SI(y),**sat_props)
+                            warnings.warn("Detected an incomplete phase envelope, fixing it numerically.")
+                            xcrit = x[5]
+                            ycrit = y[5]
+                        except ValueError:
+                            continue
+
+            for line in self.isolines[i]:
+                if line.i_index == CoolProp.iQ:
+                    if line.value == 0.0 or line.value == 1.0:
+                        self.axis.plot(dimx.from_SI(line.x),
+                                       dimy.from_SI(line.y), **sat_props)
+                    else:
+                        if xcrit is not None and ycrit is not None:
+                            self.axis.plot(
+                                dimx.from_SI(np.append(line.x, xcrit)),
+                                dimy.from_SI(np.append(line.y, ycrit)),
+                                **props)
+
+                else:
+                    self.axis.plot(
+                        dimx.from_SI(line.x), dimy.from_SI(line.y), **props)
