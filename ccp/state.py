@@ -119,6 +119,9 @@ class State(CP.AbstractState):
         >>> s.rho()
         1.9716931060214515
         """
+        if fluid is None:
+            raise TypeError('A fluid is required. Provide as fluid=dict(...)')
+
         constituents = []
         molar_fractions = []
 

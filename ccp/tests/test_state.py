@@ -14,6 +14,10 @@ def test_state_possible_name():
 
 
 def test_state_define():
+    with pytest.raises(TypeError) as exc:
+        State.define(p=100000, T=300)
+    assert 'A fluid is required' in str(exc)
+
     state = State.define(p=100000, T=300, fluid='Methane')
     assert state.p().units == 'pascal'
     assert state.T().units == 'kelvin'
@@ -81,10 +85,12 @@ def test_rho_p_inputs():
                          fluid={'Methane': 0.5, 'Ethane': 0.5})
     assert_allclose(state.T(), 300)
 
+
 def test_rho_T_inputs():
     state = State.define(rho=0.9280595769591103, T=300,
                          fluid={'Methane': 0.5, 'Ethane': 0.5})
     assert_allclose(state.p(), 100000)
+
 
 def test_h_s_inputs():
     state = State.define(h=755784.43407392, s=4805.332018156618,
