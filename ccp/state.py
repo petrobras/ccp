@@ -87,14 +87,15 @@ class State(CP.AbstractState):
         Parameters
         ----------
         p : float
-            State's pressure
+            Pressure
         T : float
-            State's temperature
+            Temperature
         h : float
-            State's enthalpy
+            Enthalpy
         s : float
-            State's entropy
+            Entropy
         rho : float
+            Specific mass
 
         fluid : dict or str
             Dictionary with constituent and composition
@@ -184,6 +185,9 @@ class State(CP.AbstractState):
         elif rho is not None and s is not None:
             super().update(CP.DmassSmass_INPUTS,
                            rho.magnitude, s.magnitude)
+        elif rho is not None and T is not None:
+            super().update(CP.DmassT_INPUTS,
+                           rho.magnitude, T.magnitude)
         elif h is not None and s is not None:
             super().update(CP.HmassSmass_INPUTS,
                            h.magnitude, s.magnitude)

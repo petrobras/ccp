@@ -81,6 +81,10 @@ def test_rho_p_inputs():
                          fluid={'Methane': 0.5, 'Ethane': 0.5})
     assert_allclose(state.T(), 300)
 
+def test_rho_T_inputs():
+    state = State.define(rho=0.9280595769591103, T=300,
+                         fluid={'Methane': 0.5, 'Ethane': 0.5})
+    assert_allclose(state.p(), 100000)
 
 def test_h_s_inputs():
     state = State.define(h=755784.43407392, s=4805.332018156618,
