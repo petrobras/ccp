@@ -31,6 +31,12 @@ class State(CP.AbstractState):
             self.fluid = fluid_dict
         return fluid_dict
 
+    def gas_constant(self):
+        return Q_(super().gas_constant(), 'joule / (mol kelvin)')
+
+    def molar_mass(self):
+        return Q_(super().molar_mass(), 'kg/mol')
+
     def T(self):
         return Q_(super().T(), 'kelvin')
 
@@ -45,6 +51,11 @@ class State(CP.AbstractState):
 
     def rho(self):
         return Q_(super().rhomass(), 'kilogram/m**3')
+
+    def z(self):
+        z = (self.p() * self.molar_mass() 
+            / (self.rho() * self.gas_constant() * self.T()))
+        return z.to('dimensionless')
 
     def speed_sound(self):
         return Q_(super().speed_sound(), 'm/s')
@@ -261,7 +272,7 @@ class ModifiedPropertyPlot(PropertyPlot):
                     ymax = dimy.to_SI(ymax)
                     dx = xmax-xmin
                     dy = ymax-ymin
-                    dew_filter = np.logical_and(np.isfinite(dew.x),np.isfinite(dew.y))
+                    dew_filter = np.logical_and(np.isfinite(dew.x), np.isfinite(dew.y))
                     stp = min([dew_filter.size,10])
                     dew_filter[0:-stp] = False
                     bub_filter = np.logical_and(np.isfinite(bub.x),np.isfinite(bub.y))

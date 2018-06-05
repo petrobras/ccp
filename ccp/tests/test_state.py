@@ -41,16 +41,20 @@ def test_state_define_units_mix():
     assert state.fluid == {'METHANE': 0.5, 'ETHANE': 0.5}
 
     assert state.gas_constant().units == 'joule/(kelvin mole)'
+    assert state.molar_mass().units == 'kilogram/mole'
     assert state.p().units == 'pascal'
     assert state.T().units == 'kelvin'
     assert state.rho().units == 'kilogram/meter**3'
+    assert state.z().units == ''
     assert state.h().units == 'joule/kilogram'
     assert state.s().units == 'joule/(kelvin kilogram)'
 
     assert state.gas_constant().magnitude == 8.314491
+    assert state.molar_mass().magnitude == 0.02305592
     assert state.p().magnitude == 100000
     assert state.T().magnitude == 300
     assert state.rho().magnitude == 0.9280595769591103
+    assert_allclose(state.z().magnitude, 0.99597784424262)
     assert_allclose(state.h().magnitude, 755784.43407392, rtol=1e-5)
     assert_allclose(state.s().magnitude, 4805.332018156618, rtol=1e-5)
 
