@@ -184,6 +184,42 @@ class State(CP.AbstractState):
                            f'{[k for k, v in locs.items() if v is not None]}'
                            f' not implemented')
 
+    def plot_ph(self, **kwargs):
+        """Plot pressure vs enthalpy."""
+        # copy state to avoid changing it
+        _self = copy(self)
+
+        # default values for plot
+        kwargs.setdefault('unit_system', 'SI')
+        kwargs.setdefault('tp_limits', 'ACHP')
+
+        with warnings.catch_warnings():
+            warnings.simplefilter('ignore')
+            plot = ModifiedPropertyPlot(_self, 'PH', **kwargs)
+
+            plot.props[CoolProp.iQ]['lw'] = 0.8
+            plot.props[CoolProp.iQ]['color'] = 'k'
+            plot.props[CoolProp.iQ]['alpha'] = 0.8
+
+            # isothermal
+            plot.props[CoolProp.iT]['lw'] = 0.2
+            plot.props[CoolProp.iT]['color'] = 'C0'
+            plot.props[CoolProp.iT]['alpha'] = 0.2
+
+            plot.props[CoolProp.iSmass]['lw'] = 0.2
+            plot.props[CoolProp.iSmass]['color'] = 'C1'
+            plot.props[CoolProp.iSmass]['alpha'] = 0.2
+
+            plot.props[CoolProp.iDmass]['lw'] = 0.2
+            plot.props[CoolProp.iDmass]['color'] = 'C2'
+            plot.props[CoolProp.iDmass]['alpha'] = 0.2
+
+            plot.calc_isolines()
+
+        self.plot_point(plot.axis)
+
+        return plot
+
     def __repr__(self):
         args = {k: v for k, v in self.init_args.items() if v is not None}
         args_repr = [f'{k}=Q_("{v:.0f~P}")' for k, v in args.items()]
