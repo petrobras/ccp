@@ -265,6 +265,18 @@ class Point:
 
         return f * head
 
+    def _head_pol_mallen_saville(self, disch=None):
+        """Polytropic head as per Mallen-Saville"""
+        if disch is None:
+            disch = self.disch
+
+        suc = self.suc
+
+        head = (disch.h() - suc.h()) - (disch.s() - suc.s()) * (
+                disch.T() - suc.T()) / np.log(disch.T() / suc.T())
+
+        return head
+
     def _schultz_f(self, disch=None):
         """Schultz factor."""
         suc = self.suc
