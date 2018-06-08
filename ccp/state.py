@@ -44,9 +44,11 @@ class State(CP.AbstractState):
         return Q_(super().p(), 'pascal')
 
     def h(self):
+        """Specific Enthalpy (per unit of mass)."""
         return Q_(super().hmass(), 'joule/kilogram')
 
     def s(self):
+        """Specific entropy (per unit of mass)."""
         return Q_(super().smass(), 'joule/(kelvin kilogram)')
 
     def rho(self):
