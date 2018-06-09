@@ -6,7 +6,7 @@ from bokeh.models import ColumnDataSource
 from bokeh.models import HoverTool
 from ccp.config.utilities import r_getattr
 from ccp.config.units import change_data_units
-from ccp import check_units, State
+from ccp import check_units, State, Q_
 
 
 def plot_func(self, attr):
@@ -276,6 +276,62 @@ class Point:
                 disch.T() - suc.T()) / np.log(disch.T() / suc.T())
 
         return head
+
+    def _head_reference(self, disch=None):
+        """Reference head as described by Huntington (1985).
+
+        It consists of two loops.
+        One converges the T1 temperature at each step by evaluating the
+        diffence between H = vm * delta_p and H = eff * delta_h.
+        The other evaluates the efficiency by checking the difference between
+        the last T1 to the discharge temperature Td.
+
+        Results are stored at self._ref_eff, self._ref_H and self._ref_n.
+        self._ref_n is a list with n_exp at each step for the final converged
+        efficiency.
+
+        """
+        if disch is None:
+            disch = self.disch
+
+        suc = self.suc
+
+        def calc_step_discharge_temp(T1, T0, p0, p1, e):
+            s0 = State.define(p=p0, T=T0, fluid=suc.fluid)
+            s1 = State.define(p=p1, T=T1, fluid=suc.fluid)
+            h0 = s0.h()
+            h1 = s1.h()
+
+            vm = ((1 / s0.rho()) + (1 / s1.rho())) / 2
+            delta_p = Q_(p1 - p0, 'Pa')
+            H0 = vm * delta_p
+            H1 = e * (h1 - h0)
+
+            return (H1 - H0).magnitude
+
+        def calc_eff(e, suc, disch):
+            p_intervals = np.linspace(suc.p(), disch.p(), 1000)
+
+            T0 = suc.T().magnitude
+
+            self._ref_H = 0
+            self._ref_n = []
+
+            for p0, p1 in zip(p_intervals[:-1], p_intervals[1:]):
+                T1 = newton(calc_step_discharge_temp, (T0 + 1e-3),
+                            args=(T0, p0, p1, e))
+
+                s0 = State.define(p=p0, T=T0, fluid=suc.fluid)
+                s1 = State.define(p=p1, T=T1, fluid=suc.fluid)
+                step_point = Point(flow_m=1, speed=1, suc=s0, disch=s1)
+
+                self._ref_H += step_point._head_pol()
+                self._ref_n.append(step_point._n_exp())
+                T0 = T1
+
+            return disch.T().magnitude - T1
+
+        self._ref_eff = newton(calc_eff, 0.8, args=(suc, disch))
 
     def _schultz_f(self, disch=None):
         """Schultz factor."""
