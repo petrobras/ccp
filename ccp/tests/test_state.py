@@ -49,6 +49,7 @@ def test_state_define_units_mix():
     assert state.p().units == 'pascal'
     assert state.T().units == 'kelvin'
     assert state.rho().units == 'kilogram/meter**3'
+    assert state.v().units == 'meter**3/kilogram'
     assert state.z().units == ''
     assert state.h().units == 'joule/kilogram'
     assert state.s().units == 'joule/(kelvin kilogram)'
@@ -58,6 +59,7 @@ def test_state_define_units_mix():
     assert state.p().magnitude == 100000
     assert state.T().magnitude == 300
     assert state.rho().magnitude == 0.9280595769591103
+    assert state.v().magnitude == (1 / 0.9280595769591103)
     assert_allclose(state.z().magnitude, 0.99597784424262)
     assert_allclose(state.h().magnitude, 755784.43407392, rtol=1e-5)
     assert_allclose(state.s().magnitude, 4805.332018156618, rtol=1e-5)

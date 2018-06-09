@@ -52,7 +52,12 @@ class State(CP.AbstractState):
         return Q_(super().smass(), 'joule/(kelvin kilogram)')
 
     def rho(self):
+        """Specific mass (kilogram/m**3)."""
         return Q_(super().rhomass(), 'kilogram/m**3')
+
+    def v(self):
+        """Specific volume (m**3/kilogram)."""
+        return 1 / self.rho()
 
     def z(self):
         z = (self.p() * self.molar_mass() 
