@@ -46,7 +46,7 @@ def test_point_head_pol(point_0):
 
 def test_point_head_pol_mallen_saville(point_0):
     assert point_0._head_pol_mallen_saville().units == 'joule/kilogram'
-    assert_allclose(point_0._head_pol_mallen_saville(), 55280.691617)
+    assert_allclose(point_0._head_pol_mallen_saville(), 55497.486223)
 
 
 def test_point_eff_pol(point_0):
