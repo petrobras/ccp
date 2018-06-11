@@ -469,7 +469,10 @@ class Impeller:
                     sources_dict['speed'].append(
                         p.speed.to(speed_units).magnitude)
                 for s in sources:
-                    sources_dict[s].append(r_getattr(p, s).magnitude)
+                    if callable(r_getattr(p, s)):
+                        sources_dict[s].append(r_getattr(p, s)().magnitude)
+                    else:
+                        sources_dict[s].append(r_getattr(p, s).magnitude)
 
         return ColumnDataSource(sources_dict)
 

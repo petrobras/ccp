@@ -39,6 +39,9 @@ imp = Impeller(points, b=Q_(10.745, 'mm'), D=Q_(325.6, 'mm'))
 suc_n2 = State.define(p=Q_(2, 'bar'), T=Q_(40, 'degC'), fluid='n2')
 imp.suc = suc_n2
 
+imp.speed = imp.points[0].speed
+imp.flow_v = imp.points[0].flow_v
+
 imp.new.speed = imp.new.curves[0].speed
 imp.new.flow_v = imp.new.curves[0].points[0].flow_v
 
@@ -46,7 +49,7 @@ imp.new.flow_v = imp.new.curves[0].points[0].flow_v
 # app
 ###############################################################################
 
-sources = ['head', 'eff', 'power']
+sources = ['disch.p', 'eff', 'power']
 
 speed_units = 'RPM'
 
@@ -66,8 +69,19 @@ for s in sources:
 
     #  first plot
     bokeh_figures[s] = r_getattr(
+        imp.current_curve, s + '_bokeh_plot')(
+        fig=bokeh_figures[s], speed_units=speed_units,
+        plot_kws=dict(color='red')
+    )
+    bokeh_figures[s] = r_getattr(
+        imp, s + '_bokeh_plot')(
+        fig=bokeh_figures[s], speed_units=speed_units,
+        plot_kws=dict(color='red')
+    )
+
+    bokeh_figures[s] = r_getattr(
         imp.new.current_point, s + '_bokeh_plot')(
-        fig=bokeh_figures[s], source=bokeh_current_point_sources[s]
+        fig=bokeh_figures[s], source=bokeh_current_point_sources[s],
     )
     bokeh_figures[s] = r_getattr(
         imp.new.current_curve, s + '_bokeh_plot')(
