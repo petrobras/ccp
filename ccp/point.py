@@ -64,6 +64,9 @@ def _bokeh_source_func(point, attr):
         y_units = kwargs.get('y_units', None)
         x_data = point.flow_v
         y_data = r_getattr(point, attr)
+
+        flow_m = point.flow_v * point.suc.rho()
+
         if callable(y_data):
             y_data = y_data()
 
@@ -71,8 +74,11 @@ def _bokeh_source_func(point, attr):
 
         source = ColumnDataSource(data=dict(x=[x_data.magnitude],
                                             y=[y_data.magnitude],
+                                            flow_m=[flow_m.magnitude],
                                             x_units=[f'{x_data.units:~P}'],
-                                            y_units=[f'{y_data.units:~P}']))
+                                            y_units=[f'{y_data.units:~P}'],
+                                            flow_m_units=[f'{flow_m.units:~P}']
+                                            ))
 
         return source
     return inner
@@ -94,13 +100,16 @@ def _bokeh_plot_func(point, attr):
         fig.circle('x', 'y', source=source, **plot_kws)
         x_units_str = source.data["x_units"][0]
         y_units_str = source.data["y_units"][0]
+        flow_m_units_str = source.data["flow_m_units"][0]
         fig.xaxis.axis_label = f'Flow ({x_units_str})'
         fig.yaxis.axis_label = f'{attr} ({y_units_str})'
+
 
         fig.add_tools(HoverTool(
             names=['point'],
             tooltips=[
                 ('Flow', f'@x ({x_units_str})'),
+                ('Mass Flow', f'@flow_m ({flow_m_units_str})'),
                 (f'{attr}', f'@y ({y_units_str})')
             ]))
 
