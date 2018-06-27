@@ -137,10 +137,13 @@ class Impeller:
                 ax = r_getattr(curve, attr + '_plot')(
                     ax=ax, plot_kws=plot_kws, **kwargs)
 
-            ax = r_getattr(self.current_curve, attr + '_plot')(
-                ax=ax, plot_kws=plot_kws, **kwargs)
-            ax = r_getattr(self.current_point, attr + '_plot')(
-                ax=ax, plot_kws=plot_kws, **kwargs)
+            try:
+                ax = r_getattr(self.current_curve, attr + '_plot')(
+                    ax=ax, plot_kws=plot_kws, **kwargs)
+                ax = r_getattr(self.current_point, attr + '_plot')(
+                    ax=ax, plot_kws=plot_kws, **kwargs)
+            except AttributeError:
+                warn('Point not set for this impeller')
 
             return ax
 
