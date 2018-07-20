@@ -161,7 +161,8 @@ class State(CP.AbstractState):
         return state
 
     @check_units
-    def update(self, p=None, T=None, rho=None, h=None, s=None, **kwargs):
+    def update(self, cp_input=None, arg1=None, arg2=None, p=None, T=None,
+               rho=None, h=None, s=None, **kwargs):
         """Simple state update.
 
         This method simplifies the state update. Only keyword arguments are
@@ -180,6 +181,10 @@ class State(CP.AbstractState):
         s : float
             Entropy
         """
+        if cp_input is not None:
+            super().update(cp_input, arg1, arg2)
+            return
+
         if p is not None and T is not None:
             super().update(CP.PT_INPUTS,
                            p.magnitude, T.magnitude)
@@ -208,6 +213,28 @@ class State(CP.AbstractState):
             raise KeyError(f'Update key '
                            f'{[k for k, v in locs.items() if v is not None]}'
                            f' not implemented')
+
+    def plot_point(self, ax, parameters=None, **kwargs):
+        """Plot point.
+        Plot point in the given axis. Function will check for axis units and
+        plot the point accordingly.
+        Parameters
+        ----------
+        ax : matplotlib.axes, optional
+            Matplotlib axes, if None creates a new.
+        Returns
+        -------
+        ax : matplotlib.axes
+            Matplotlib axes with plot.
+        """
+        # default plot parameters
+        kwargs.setdefault('marker', '2')
+        kwargs.setdefault('color', 'k')
+        kwargs.setdefault('label', self.__repr__())
+
+        y_value = getattr(self, parameters[0].lower())()
+        x_value = getattr(self, parameters[1].lower())()
+        ax.scatter(x_value, y_value, **kwargs)
 
     def plot_ph(self, **kwargs):
         """Plot pressure vs enthalpy."""
@@ -241,7 +268,7 @@ class State(CP.AbstractState):
 
             plot.calc_isolines()
 
-        self.plot_point(plot.axis)
+        self.plot_point(plot.axis, parameters='PH')
 
         return plot
 
