@@ -70,6 +70,9 @@ class State(CP.AbstractState):
     def viscosity(self):
         return Q_(super().viscosity(), 'pascal second')
 
+    def kinematic_viscosity(self):
+        return (self.viscosity() / self.rho()).to('m**2/s')
+
     def __reduce__(self):
         # fluid_ = self.fluid
         # kwargs = {k: v for k, v in self.init_args.items() if v is not None}
