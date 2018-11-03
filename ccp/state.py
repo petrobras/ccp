@@ -303,29 +303,32 @@ class State(CP.AbstractState):
 class ModifiedPropertyPlot(PropertyPlot):
     """Modify CoolProp's property plot."""
     def draw_isolines(self):
-        dimx = self._system[self._x_index]
-        dimy = self._system[self._y_index]
+        dim_x = self._system[self._x_index]
+        dim_y = self._system[self._y_index]
 
         sat_props = self.props[CoolProp.iQ].copy()
-        if 'lw' in sat_props: sat_props['lw'] *= 2.0
-        else: sat_props['lw'] = 1.0
-        if 'alpha' in sat_props: min([sat_props['alpha']*1.0,1.0])
-        else: sat_props['alpha'] = 1.0
+        if 'lw' in sat_props:
+            sat_props['lw'] *= 2.0
+        else:
+            sat_props['lw'] = 1.0
+        if 'alpha' in sat_props:
+            min([sat_props['alpha'] * 1.0, 1.0])
+        else:
+            sat_props['alpha'] = 1.0
 
         for i in self.isolines:
             props = self.props[i]
-            dew = None; bub = None
-            xcrit = None; ycrit = None
+            dew, bub, x_crit, y_crit = (None,) * 4
             if i == CoolProp.iQ:
                 for line in self.isolines[i]:
                     if line.value == 0.0: bub = line
                     elif line.value == 1.0: dew = line
                 if dew is not None and bub is not None:
                     xmin, xmax, ymin, ymax = self.get_axis_limits()
-                    xmin = dimx.to_SI(xmin)
-                    xmax = dimx.to_SI(xmax)
-                    ymin = dimy.to_SI(ymin)
-                    ymax = dimy.to_SI(ymax)
+                    xmin = dim_x.to_SI(xmin)
+                    xmax = dim_x.to_SI(xmax)
+                    ymin = dim_y.to_SI(ymin)
+                    ymax = dim_y.to_SI(ymax)
                     dx = xmax-xmin
                     dy = ymax-ymin
                     dew_filter = np.logical_and(np.isfinite(dew.x), np.isfinite(dew.y))
@@ -351,25 +354,25 @@ class ModifiedPropertyPlot(PropertyPlot):
                               np.append(bub.y[bub_filter],dew.y[dew_filter][::-1]),
                               x_points=x,
                               kind='cubic')
-                            self.axis.plot(dimx.from_SI(x),dimy.from_SI(y),**sat_props)
+                            self.axis.plot(dim_x.from_SI(x),dim_y.from_SI(y),**sat_props)
                             warnings.warn("Detected an incomplete phase envelope, fixing it numerically.")
-                            xcrit = x[5]
-                            ycrit = y[5]
+                            x_crit = x[5]
+                            y_crit = y[5]
                         except ValueError:
                             continue
 
             for line in self.isolines[i]:
                 if line.i_index == CoolProp.iQ:
                     if line.value == 0.0 or line.value == 1.0:
-                        self.axis.plot(dimx.from_SI(line.x),
-                                       dimy.from_SI(line.y), **sat_props)
+                        self.axis.plot(dim_x.from_SI(line.x),
+                                       dim_y.from_SI(line.y), **sat_props)
                     else:
-                        if xcrit is not None and ycrit is not None:
+                        if x_crit is not None and y_crit is not None:
                             self.axis.plot(
-                                dimx.from_SI(np.append(line.x, xcrit)),
-                                dimy.from_SI(np.append(line.y, ycrit)),
+                                dim_x.from_SI(np.append(line.x, x_crit)),
+                                dim_y.from_SI(np.append(line.y, y_crit)),
                                 **props)
 
                 else:
                     self.axis.plot(
-                        dimx.from_SI(line.x), dimy.from_SI(line.y), **props)
+                        dim_x.from_SI(line.x), dim_y.from_SI(line.y), **props)
