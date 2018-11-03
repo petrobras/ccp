@@ -58,8 +58,8 @@ def test_state_define_units_mix():
     assert state.molar_mass().magnitude == 0.02305592
     assert state.p().magnitude == 100000
     assert state.T().magnitude == 300
-    assert state.rho().magnitude == 0.9280595769591103
-    assert state.v().magnitude == (1 / 0.9280595769591103)
+    assert_allclose(state.rho().magnitude, 0.9280595769591103)
+    assert_allclose(state.v().magnitude, (1 / 0.9280595769591103))
     assert_allclose(state.z().magnitude, 0.99597784424262)
     assert_allclose(state.h().magnitude, 755784.43407392, rtol=1e-5)
     assert_allclose(state.s().magnitude, 4805.332018156618, rtol=1e-5)
@@ -71,7 +71,7 @@ def test_state_define_units_mix():
     assert state.rho().units == 'kilogram/meter**3'
     assert state.p().magnitude == 200000
     assert state.T().magnitude == 310
-    assert state.rho().magnitude == 1.8020813868455758
+    assert_allclose(state.rho().magnitude, 1.8020813868455758)
     assert state.__repr__() == 'State.define(p=Q_("200000 Pa"), T=Q_("310 K"), fluid={"METHANE": 0.50000, "ETHANE": 0.50000})'
 
 
