@@ -1,5 +1,5 @@
 """
-prf
+ccp
 ===
 
 Package to evaluate the performance of a centrifugal compressor.
@@ -67,7 +67,7 @@ _library_path = _path / _shared_library
 if not _library_path.is_file():
     raise FileNotFoundError(f'{_library_path}.\nREFPROP not configured.')
 
-__version__ = 'prf: 0.0.1 | ' \
+__version__ = 'ccp: 0.0.1 | ' \
               + f'CP : {_CP.get_global_param_string("version")} | ' \
               + f'REFPROP : {_CP.get_global_param_string("REFPROP_version")}'
 
