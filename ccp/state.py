@@ -236,7 +236,11 @@ class State(CP.AbstractState):
         kwargs.setdefault('label', self.__repr__())
 
         y_value = getattr(self, parameters[0].lower())()
-        x_value = getattr(self, parameters[1].lower())()
+        try:
+            x_value = getattr(self, parameters[1].lower())()
+        except AttributeError:
+            x_value = getattr(self, parameters[1])()
+
         ax.scatter(x_value, y_value, **kwargs)
 
     def plot_ph(self, **kwargs):
@@ -284,6 +288,49 @@ class State(CP.AbstractState):
             plot.calc_isolines()
 
             self.plot_point(plot.axis, parameters='PH')
+
+        return plot
+
+    def plot_pt(self, **kwargs):
+        """Plot pressure vs temperature.
+
+        Returns
+        -------
+        plot : ccp.ModifiedPropertyPlot
+            Object from class inherited from CP.PropertyPlot.
+
+        Examples
+        --------
+        co2 = ccp.State.define(p=100000, T=300, fluid='co2')
+        plot = co2.plot_pt()
+        plot.show()
+        """
+        # copy state to avoid changing it
+        _self = copy(self)
+
+        # default values for plot
+        kwargs.setdefault('unit_system', 'SI')
+        kwargs.setdefault('tp_limits', 'ACHP')
+
+        with warnings.catch_warnings():
+            warnings.simplefilter('ignore')
+            plot = ModifiedPropertyPlot(_self, 'PT', **kwargs)
+
+            plot.props[CoolProp.iQ]['lw'] = 0.8
+            plot.props[CoolProp.iQ]['color'] = 'k'
+            plot.props[CoolProp.iQ]['alpha'] = 0.8
+
+            plot.props[CoolProp.iSmass]['lw'] = 0.8
+            plot.props[CoolProp.iSmass]['color'] = 'C1'
+            plot.props[CoolProp.iSmass]['alpha'] = 0.8
+
+            plot.props[CoolProp.iDmass]['lw'] = 0.8
+            plot.props[CoolProp.iDmass]['color'] = 'C2'
+            plot.props[CoolProp.iDmass]['alpha'] = 0.8
+
+            plot.calc_isolines()
+
+            self.plot_point(plot.axis, parameters='PT')
 
         return plot
 
