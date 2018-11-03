@@ -118,8 +118,8 @@ class State(CP.AbstractState):
         -------
         state : State object
 
-        Examples:
-        ---------
+        Examples
+        --------
         >>> fluid = {'Oxygen': 0.2096, 'Nitrogen': 0.7812, 'Argon': 0.0092}
         >>> s = State.define(fluid=fluid, p=101008, T=273, EOS='HEOS')
         >>> s.rhomass()
@@ -240,7 +240,19 @@ class State(CP.AbstractState):
         ax.scatter(x_value, y_value, **kwargs)
 
     def plot_ph(self, **kwargs):
-        """Plot pressure vs enthalpy."""
+        """Plot pressure vs enthalpy.
+
+        Returns
+        -------
+        plot : ccp.ModifiedPropertyPlot
+            Object from class inherited from CP.PropertyPlot.
+
+        Examples
+        --------
+        co2 = ccp.State.define(p=100000, T=300, fluid='co2')
+        plot = co2.plot_ph()
+        plot.show()
+        """
         # copy state to avoid changing it
         _self = copy(self)
 
@@ -271,7 +283,7 @@ class State(CP.AbstractState):
 
             plot.calc_isolines()
 
-        self.plot_point(plot.axis, parameters='PH')
+            self.plot_point(plot.axis, parameters='PH')
 
         return plot
 
