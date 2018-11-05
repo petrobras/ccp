@@ -47,8 +47,8 @@ master_doc = 'index'
 
 # General information about the project.
 project = 'ccp'
-copyright = '2018, Raphael Timbó'
-author = 'Raphael Timbó'
+copyright = '2018, Raphael Timbo'
+author = 'Raphael Timbo'
 
 # The version info for the project you're documenting, acts as replacement for
 # |version| and |release|, also used in various other places throughout the
