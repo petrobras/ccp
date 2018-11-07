@@ -6,12 +6,17 @@
 ccp - Centrifugal Compressor Performance
 ========================================
 
-ccp is a python library for calculation of centrifugal compressor performance. It is based on the book of [Ludtke]_ and uses `CoolProp <http://www.coolprop.org/>`_ / `REFPROP <https://www.nist.gov/srd/refprop>`_ for the gas properties calculations.
+ccp is a python library for calculation of centrifugal compressor performance.
+It is based on the book of [Ludtke]_ and uses 
+`CoolProp <http://www.coolprop.org/>`_ / 
+`REFPROP <https://www.nist.gov/srd/refprop>`_ 
+for the gas properties calculations.
 
 .. toctree::
-   :maxdepth: 2
-   :caption: Contents:
+   :maxdepth: 1
+   :caption: Getting Started:
 
+   getting_started/overview
 
 
 Indices and tables
