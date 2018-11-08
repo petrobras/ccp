@@ -73,6 +73,14 @@ class State(CP.AbstractState):
     def kinematic_viscosity(self):
         return (self.viscosity() / self.rho()).to('m**2/s')
 
+    def dTdp_s(self):
+        """(dT / dp)s
+
+        First partial derivative of temperature related to pressure with
+        constant entropy."""
+        return Q_(super().first_partial_deriv(CP.iT, CP.iP, CP.iSmass),
+                  'kelvin / pascal')
+
     def __reduce__(self):
         # fluid_ = self.fluid
         # kwargs = {k: v for k, v in self.init_args.items() if v is not None}
