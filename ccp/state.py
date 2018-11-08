@@ -209,6 +209,9 @@ class State(CP.AbstractState):
         elif h is not None and s is not None:
             super().update(CP.HmassSmass_INPUTS,
                            h.magnitude, s.magnitude)
+        elif T is not None and s is not None:
+            super().update(CP.SmassT_INPUTS,
+                           s.magnitude, T.magnitude)
         else:
             locs = locals()
             for item in ['kwargs', 'self', '__class__']:
