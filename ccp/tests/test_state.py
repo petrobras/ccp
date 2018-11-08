@@ -111,3 +111,10 @@ def test_h_p_inputs():
     assert_allclose(state.s().magnitude, 4805.332018156618, rtol=1e-5)
     assert_allclose(state.rho().magnitude, 0.9280595769591103)
 
+
+def test_T_s_inputs():
+    state = State.define(T=300, s=4805.332018156618,
+                         fluid={'Methane': 0.5, 'Ethane': 0.5})
+    assert_allclose(state.h().magnitude, 755784.43407392, rtol=1e-5)
+    assert_allclose(state.s().magnitude, 4805.332018156618, rtol=1e-5)
+    assert_allclose(state.rho().magnitude, 0.9280595769591103)
