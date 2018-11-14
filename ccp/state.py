@@ -73,6 +73,15 @@ class State(CP.AbstractState):
     def kinematic_viscosity(self):
         return (self.viscosity() / self.rho()).to('m**2/s')
 
+    def dpdv_s(self):
+        """
+        Partial derivative of pressure to spec. volume with const. entropy.
+        """
+        return Q_(
+            1 / (self.first_partial_deriv(CP.iP, CP.iDmass, CP.iSmass)),
+            'kilogram/(meter**3 pascal)'
+        )
+
     def __reduce__(self):
         # fluid_ = self.fluid
         # kwargs = {k: v for k, v in self.init_args.items() if v is not None}
