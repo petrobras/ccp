@@ -54,6 +54,7 @@ def test_state_define_units_mix():
     assert state.h().units == 'joule/kilogram'
     assert state.s().units == 'joule/(kelvin kilogram)'
     assert state.dpdv_s().units == 'kilogram/(meter**3 pascal)'
+    assert state.kv().units == ''
 
     assert state.gas_constant().magnitude == 8.314491
     assert state.molar_mass().magnitude == 0.02305592
@@ -65,6 +66,7 @@ def test_state_define_units_mix():
     assert_allclose(state.h().magnitude, 755784.43407392, rtol=1e-5)
     assert_allclose(state.s().magnitude, 4805.332018156618, rtol=1e-5)
     assert_allclose(state.dpdv_s().magnitude, 7.543173e-06, rtol=1e-5)
+    assert_allclose(state.kv().magnitude, -0.81279, rtol=1e-5)
     assert state.__repr__() == 'State.define(p=Q_("100000 Pa"), T=Q_("300 K"), fluid={"METHANE": 0.50000, "ETHANE": 0.50000})'
 
     state.update(p=200000, T=310)

@@ -82,6 +82,10 @@ class State(CP.AbstractState):
             'kilogram/(meter**3 pascal)'
         )
 
+    def kv(self):
+        """Isentropic volume exponent (2.60)."""
+        return -(self.p() / self.rho()) * self.dpdv_s()
+
     def __reduce__(self):
         # fluid_ = self.fluid
         # kwargs = {k: v for k, v in self.init_args.items() if v is not None}
