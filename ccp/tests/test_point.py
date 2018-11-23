@@ -4,7 +4,7 @@ from ccp import ureg, Q_
 from ccp.state import State
 from ccp.point import Point
 
-skip = True  # skip slow tests
+skip = False # skip slow tests
 
 
 @pytest.fixture
@@ -110,7 +110,7 @@ def test_calc_from_eff_head_suc():
     p0 = Point(suc=suc, flow_v=Q_(6501.67, 'm**3/h'),
                head=Q_(179.275, 'kJ/kg'), eff=0.826357)
 
-    assert_allclose(p0.volume_ratio, 0.326647, rtol=1e-6)
+    assert_allclose(p0.volume_ratio, 0.326647, rtol=1e-4)
 
 
 def test_calc_from_eff_head_suc_fast():

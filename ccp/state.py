@@ -86,6 +86,14 @@ class State(CP.AbstractState):
         """Isentropic volume exponent (2.60)."""
         return -(self.p() / self.rho()) * self.dpdv_s()
 
+    def dTdp_s(self):
+        """(dT / dp)s
+
+        First partial derivative of temperature related to pressure with
+        constant entropy."""
+        return Q_(super().first_partial_deriv(CP.iT, CP.iP, CP.iSmass),
+                  'kelvin / pascal')
+
     def __reduce__(self):
         # fluid_ = self.fluid
         # kwargs = {k: v for k, v in self.init_args.items() if v is not None}
@@ -131,8 +139,8 @@ class State(CP.AbstractState):
         -------
         state : State object
 
-        Examples:
-        ---------
+        Examples
+        --------
         >>> fluid = {'Oxygen': 0.2096, 'Nitrogen': 0.7812, 'Argon': 0.0092}
         >>> s = State.define(fluid=fluid, p=101008, T=273, EOS='HEOS')
         >>> s.rhomass()
@@ -222,6 +230,9 @@ class State(CP.AbstractState):
         elif h is not None and s is not None:
             super().update(CP.HmassSmass_INPUTS,
                            h.magnitude, s.magnitude)
+        elif T is not None and s is not None:
+            super().update(CP.SmassT_INPUTS,
+                           s.magnitude, T.magnitude)
         else:
             locs = locals()
             for item in ['kwargs', 'self', '__class__']:
@@ -249,11 +260,27 @@ class State(CP.AbstractState):
         kwargs.setdefault('label', self.__repr__())
 
         y_value = getattr(self, parameters[0].lower())()
-        x_value = getattr(self, parameters[1].lower())()
+        try:
+            x_value = getattr(self, parameters[1].lower())()
+        except AttributeError:
+            x_value = getattr(self, parameters[1])()
+
         ax.scatter(x_value, y_value, **kwargs)
 
     def plot_ph(self, **kwargs):
-        """Plot pressure vs enthalpy."""
+        """Plot pressure vs enthalpy.
+
+        Returns
+        -------
+        plot : ccp.ModifiedPropertyPlot
+            Object from class inherited from CP.PropertyPlot.
+
+        Examples
+        --------
+        co2 = ccp.State.define(p=100000, T=300, fluid='co2')
+        plot = co2.plot_ph()
+        plot.show()
+        """
         # copy state to avoid changing it
         _self = copy(self)
 
@@ -284,7 +311,50 @@ class State(CP.AbstractState):
 
             plot.calc_isolines()
 
-        self.plot_point(plot.axis, parameters='PH')
+            self.plot_point(plot.axis, parameters='PH')
+
+        return plot
+
+    def plot_pt(self, **kwargs):
+        """Plot pressure vs temperature.
+
+        Returns
+        -------
+        plot : ccp.ModifiedPropertyPlot
+            Object from class inherited from CP.PropertyPlot.
+
+        Examples
+        --------
+        co2 = ccp.State.define(p=100000, T=300, fluid='co2')
+        plot = co2.plot_pt()
+        plot.show()
+        """
+        # copy state to avoid changing it
+        _self = copy(self)
+
+        # default values for plot
+        kwargs.setdefault('unit_system', 'SI')
+        kwargs.setdefault('tp_limits', 'ACHP')
+
+        with warnings.catch_warnings():
+            warnings.simplefilter('ignore')
+            plot = ModifiedPropertyPlot(_self, 'PT', **kwargs)
+
+            plot.props[CoolProp.iQ]['lw'] = 0.8
+            plot.props[CoolProp.iQ]['color'] = 'k'
+            plot.props[CoolProp.iQ]['alpha'] = 0.8
+
+            plot.props[CoolProp.iSmass]['lw'] = 0.8
+            plot.props[CoolProp.iSmass]['color'] = 'C1'
+            plot.props[CoolProp.iSmass]['alpha'] = 0.8
+
+            plot.props[CoolProp.iDmass]['lw'] = 0.8
+            plot.props[CoolProp.iDmass]['color'] = 'C2'
+            plot.props[CoolProp.iDmass]['alpha'] = 0.8
+
+            plot.calc_isolines()
+
+            self.plot_point(plot.axis, parameters='PT')
 
         return plot
 
@@ -304,29 +374,32 @@ class State(CP.AbstractState):
 class ModifiedPropertyPlot(PropertyPlot):
     """Modify CoolProp's property plot."""
     def draw_isolines(self):
-        dimx = self._system[self._x_index]
-        dimy = self._system[self._y_index]
+        dim_x = self._system[self._x_index]
+        dim_y = self._system[self._y_index]
 
         sat_props = self.props[CoolProp.iQ].copy()
-        if 'lw' in sat_props: sat_props['lw'] *= 2.0
-        else: sat_props['lw'] = 1.0
-        if 'alpha' in sat_props: min([sat_props['alpha']*1.0,1.0])
-        else: sat_props['alpha'] = 1.0
+        if 'lw' in sat_props:
+            sat_props['lw'] *= 2.0
+        else:
+            sat_props['lw'] = 1.0
+        if 'alpha' in sat_props:
+            min([sat_props['alpha'] * 1.0, 1.0])
+        else:
+            sat_props['alpha'] = 1.0
 
         for i in self.isolines:
             props = self.props[i]
-            dew = None; bub = None
-            xcrit = None; ycrit = None
+            dew, bub, x_crit, y_crit = (None,) * 4
             if i == CoolProp.iQ:
                 for line in self.isolines[i]:
                     if line.value == 0.0: bub = line
                     elif line.value == 1.0: dew = line
                 if dew is not None and bub is not None:
                     xmin, xmax, ymin, ymax = self.get_axis_limits()
-                    xmin = dimx.to_SI(xmin)
-                    xmax = dimx.to_SI(xmax)
-                    ymin = dimy.to_SI(ymin)
-                    ymax = dimy.to_SI(ymax)
+                    xmin = dim_x.to_SI(xmin)
+                    xmax = dim_x.to_SI(xmax)
+                    ymin = dim_y.to_SI(ymin)
+                    ymax = dim_y.to_SI(ymax)
                     dx = xmax-xmin
                     dy = ymax-ymin
                     dew_filter = np.logical_and(np.isfinite(dew.x), np.isfinite(dew.y))
@@ -352,25 +425,25 @@ class ModifiedPropertyPlot(PropertyPlot):
                               np.append(bub.y[bub_filter],dew.y[dew_filter][::-1]),
                               x_points=x,
                               kind='cubic')
-                            self.axis.plot(dimx.from_SI(x),dimy.from_SI(y),**sat_props)
+                            self.axis.plot(dim_x.from_SI(x),dim_y.from_SI(y),**sat_props)
                             warnings.warn("Detected an incomplete phase envelope, fixing it numerically.")
-                            xcrit = x[5]
-                            ycrit = y[5]
+                            x_crit = x[5]
+                            y_crit = y[5]
                         except ValueError:
                             continue
 
             for line in self.isolines[i]:
                 if line.i_index == CoolProp.iQ:
                     if line.value == 0.0 or line.value == 1.0:
-                        self.axis.plot(dimx.from_SI(line.x),
-                                       dimy.from_SI(line.y), **sat_props)
+                        self.axis.plot(dim_x.from_SI(line.x),
+                                       dim_y.from_SI(line.y), **sat_props)
                     else:
-                        if xcrit is not None and ycrit is not None:
+                        if x_crit is not None and y_crit is not None:
                             self.axis.plot(
-                                dimx.from_SI(np.append(line.x, xcrit)),
-                                dimy.from_SI(np.append(line.y, ycrit)),
+                                dim_x.from_SI(np.append(line.x, x_crit)),
+                                dim_y.from_SI(np.append(line.y, y_crit)),
                                 **props)
 
                 else:
                     self.axis.plot(
-                        dimx.from_SI(line.x), dimy.from_SI(line.y), **props)
+                        dim_x.from_SI(line.x), dim_y.from_SI(line.y), **props)

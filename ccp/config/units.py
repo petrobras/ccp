@@ -1,4 +1,5 @@
 from .. import Q_
+from functools import wraps
 import inspect
 
 units = {'p': 'pascal',
@@ -17,6 +18,7 @@ units = {'p': 'pascal',
 
 def check_units(func):
     """Wrapper to check and convert units to base_units."""
+    @wraps(func)
     def inner(*args, **kwargs):
         base_unit_args = []
         args_names = inspect.getfullargspec(func)[0]

@@ -127,18 +127,18 @@ class Point:
         Speed in 1/s.
     flow_v or flow_m : float
         Volumetric or mass flow.
-    suc, disch : prf.State, prf.State
+    suc, disch : ccp.State, ccp.State
         Suction and discharge states for the point.
-    suc, head, eff : prf.State, float, float
+    suc, head, eff : ccp.State, float, float
         Suction state, polytropic head and polytropic efficiency.
-    suc, head, power : prf.State, float, float
+    suc, head, power : ccp.State, float, float
         Suction state, polytropic head and gas power.
-    suc, eff, vol_ratio : prf.State, float, float
+    suc, eff, vol_ratio : ccp.State, float, float
         Suction state, polytropic efficiency and volume ratio.
 
     Returns
     -------
-    Point : prf.Point
+    Point : ccp.Point
         A point in the compressor map.
     """
     @check_units
