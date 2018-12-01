@@ -94,6 +94,10 @@ class State(CP.AbstractState):
         return Q_(super().first_partial_deriv(CP.iT, CP.iP, CP.iSmass),
                   'kelvin / pascal')
 
+    def kT(self):
+        """Isentropic temperature exponent (2.61)."""
+        return 1 / (1 - (self.p() / self.T()) * self.dTdp_s())
+
     def __reduce__(self):
         # fluid_ = self.fluid
         # kwargs = {k: v for k, v in self.init_args.items() if v is not None}
