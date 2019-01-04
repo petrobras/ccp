@@ -18,4 +18,5 @@ def fo0():
 def test_flow_orifice(fo0):
     assert_allclose(fo0.d.magnitude, 0.10960820617559523)
     fo0.D = 0.5
+    fo0.update()
     assert_allclose(fo0.d.magnitude, 0.11028294814259916)
