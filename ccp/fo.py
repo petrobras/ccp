@@ -78,7 +78,7 @@ class FlowOrifice:
         )
 
         if D < Q_(71.12, 'mm'):
-            C += 0.011(0.75 - beta) * (2.8 - D / 0.0254)
+            C += 0.011 * (0.75 - beta) * (2.8 - D / 0.0254)
 
         # calc e
         e = (
