@@ -10,7 +10,7 @@ class FlowOrifice:
         self.state = state
         self.delta_p = delta_p
         self.qm = qm
-        self.D = D
+        self.D = D.to('m')
         self.tappings = tappings
 
         d = newton(
@@ -18,7 +18,7 @@ class FlowOrifice:
             args=(self.state, self.delta_p, self.qm, self.D, self.tappings)
         )
         self.d = Q_(float(d), 'm')
-        _, self.C, self.e, self.reynolds = calc(
+        _, self.beta, self.C, self.e, self.reynolds, self.A = calc(
             self.d.magnitude, self.state, self.delta_p, self.qm, self.D,
             self.tappings)
 
@@ -54,7 +54,7 @@ def calc(x, state=None, delta_p=None, qm=None, D=None, tappings='flange'):
     rho = state.rho()
     A = np.pi * D ** 2 / 4
     u = qm / (rho * A)
-    reyn = rho * u * D / state.viscosity()
+    reyn = (rho * u * D / state.viscosity()).to('dimensionless')
 
     if tappings == 'corner':
         L1 = L2 = 0
@@ -95,7 +95,7 @@ def calc(x, state=None, delta_p=None, qm=None, D=None, tappings='flange'):
             * np.sqrt(2 * delta_p * rho)
     )
 
-    return qm - qm_calc, e, C, reyn
+    return qm - qm_calc, beta, e, C, reyn, A
 
 
 def calc_d(x, state=None, delta_p=None, qm=None, D=None, tappings='flange'):
