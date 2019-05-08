@@ -1,9 +1,10 @@
 import numpy as np
 import matplotlib.pyplot as plt
+import toml
 import warnings
 from scipy.interpolate import interp1d
 from bokeh.models import ColumnDataSource, CDSView, IndexFilter
-from ccp import Q_
+from ccp import Q_, Point
 from ccp.config.units import change_data_units
 
 
@@ -296,4 +297,19 @@ class Curve:
     def __getitem__(self, item):
         return self.points.__getitem__(item)
 
+    def _dict_to_save(self):
+        return {f'point{i}': point._dict_to_save() for i, point in enumerate(self)}
 
+    def save(self, file_name):
+        """Save curve to a toml file."""
+        with open(file_name, mode='w') as f:
+            toml.dump(self._dict_to_save(), f)
+
+    @classmethod
+    def load(cls, file_name):
+        with open(file_name) as f:
+            parameters = toml.load(f)
+
+        return cls(
+            [Point(**Point._dict_from_load(kwargs)) for kwargs in parameters.values()]
+        )
