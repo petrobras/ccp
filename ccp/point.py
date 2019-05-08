@@ -305,14 +305,14 @@ class Point:
 
         suc = self.suc
 
-        def calc_step_discharge_temp(T1, T0, p0, p1, e):
-            s0 = State.define(p=p0, T=T0, fluid=suc.fluid)
+        def calc_step_discharge_temp(T1, T0, self, p1, e):
+            s0 = State.define(p=self, T=T0, fluid=suc.fluid)
             s1 = State.define(p=p1, T=T1, fluid=suc.fluid)
             h0 = s0.h()
             h1 = s1.h()
 
             vm = ((1 / s0.rho()) + (1 / s1.rho())) / 2
-            delta_p = Q_(p1 - p0, 'Pa')
+            delta_p = Q_(p1 - self, 'Pa')
             H0 = vm * delta_p
             H1 = e * (h1 - h0)
 
@@ -326,11 +326,11 @@ class Point:
             self._ref_H = 0
             self._ref_n = []
 
-            for p0, p1 in zip(p_intervals[:-1], p_intervals[1:]):
+            for self, p1 in zip(p_intervals[:-1], p_intervals[1:]):
                 T1 = newton(calc_step_discharge_temp, (T0 + 1e-3),
-                            args=(T0, p0, p1, e))
+                            args=(T0, self, p1, e))
 
-                s0 = State.define(p=p0, T=T0, fluid=suc.fluid)
+                s0 = State.define(p=self, T=T0, fluid=suc.fluid)
                 s1 = State.define(p=p1, T=T1, fluid=suc.fluid)
                 step_point = Point(flow_m=1, speed=1, suc=s0, disch=s1)
 
@@ -446,6 +446,18 @@ class Point:
         vd = 1 / disch.rho()
 
         return vd / vs
+
+    def _dict_to_save(self):
+        """Returns a dict that will be saved to a toml file."""
+        return dict(
+            p=str(self.suc.p()),
+            T=str(self.suc.T()),
+            fluid=self.suc.fluid,
+            speed=str(self.speed),
+            flow_v=str(self.flow_v),
+            head=str(self.head),
+            eff=str(self.eff)
+        )
 
 
 
