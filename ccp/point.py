@@ -460,6 +460,19 @@ class Point:
             eff=str(self.eff)
         )
 
+    @staticmethod
+    def _dict_from_load(dict_parameters):
+        """Change dict to format that can be used by load constructor."""
+        suc = State.define(
+            p=Q_(dict_parameters.pop('p')),
+            T=Q_(dict_parameters.pop('T')),
+            fluid=dict_parameters.pop('fluid'),
+        )
+
+        return dict(
+            suc=suc, **{k: Q_(v) for k, v in dict_parameters.items()}
+        )
+
     def save(self, file_name):
         """Save point to toml file."""
         with open(file_name, mode='w') as f:
@@ -471,10 +484,4 @@ class Point:
         with open(file_name) as f:
             parameters = toml.load(f)
 
-        suc = State.define(
-            p=Q_(parameters.pop('p')),
-            T=Q_(parameters.pop('T')),
-            fluid=parameters.pop('fluid'),
-        )
-
-        return cls(suc=suc, **{k: Q_(v) for k, v in parameters.items()})
+        return cls(**cls._dict_from_load(parameters))
