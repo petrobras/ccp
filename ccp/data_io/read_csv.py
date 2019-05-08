@@ -11,7 +11,9 @@ Inside engauge digitizer:
  - Select the next curve and points...
  - Settings -> Export Setup -> Select:
  - Raws X's and Y's ; All curves on each line
-
+Files should be saved with the following convention:
+    - <curve-name>-head.csv
+    - <curve-name>-eff.csv
 """
 import csv
 import numpy as np
@@ -20,7 +22,7 @@ from tqdm import tqdm
 from ccp import Q_, State, Point
 
 
-def load_curves(file_path):
+def read_data_from_engauge_csv(file_path):
     """Generate curves dict from file_path."""
     curves = {}
 
