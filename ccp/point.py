@@ -146,6 +146,8 @@ class Point:
     def __init__(self, *args, **kwargs):
         self.flow_v = kwargs.get('flow_v', None)
         self.flow_m = kwargs.get('flow_m', None)
+        if not (self.flow_m or self.flow_v):
+            raise ValueError('flow_v or flow_m must be provided.')
 
         self.suc = kwargs['suc']
         # dummy state used to avoid copying states
