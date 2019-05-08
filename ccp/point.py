@@ -201,11 +201,11 @@ class Point:
 
     def __str__(self):
         return (
-                '\nPoint: '
-                + '\n Volume flow: {:10.5}'.format(self.flow_v)
-                + '\n Head       : {:10.5}'.format(self.head)
-                + '\n Efficiency : {:10.5}'.format(self.eff)
-                + '\n Power      : {:10.5}'.format(self.power)
+            f'\nPoint: '
+            f'\nVolume flow: {self.flow_v:.2f~P}'
+            f'\nHead: {self.head:.2f~P}'
+            f'\nEfficiency: {self.eff:.2f~P}'
+            f'\nPower: {self.power:.2f~P}'
         )
 
     def __repr__(self):
