@@ -1,6 +1,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 import toml
+import csv
 import warnings
 from scipy.interpolate import interp1d
 from bokeh.models import ColumnDataSource, CDSView, IndexFilter
@@ -300,10 +301,39 @@ class Curve:
     def _dict_to_save(self):
         return {f'point{i}': point._dict_to_save() for i, point in enumerate(self)}
 
-    def save(self, file_name):
-        """Save curve to a toml file."""
-        with open(file_name, mode='w') as f:
-            toml.dump(self._dict_to_save(), f)
+    def save(self, file_name, file_type='toml'):
+        """Save curve to a file.
+
+        Parameters
+        ----------
+        file_name: str
+            Name of the file.
+        file_type: str
+            File type can be: toml.
+        """
+        if file_type is 'toml':
+            with open(file_name, mode='w') as f:
+                toml.dump(self._dict_to_save(), f)
+
+    def save_hysys_csv(self, curve_path):
+        """Save curve to a csv with hysys format.
+
+        curve_path: pathlib.Path
+            Path where the curve file will be saved.
+        """
+        curve_path.parent.mkdir(parents=True, exist_ok=True)
+        with open(str(curve_path), mode='w') as csv_file:
+            field_names = ['Volume Flow (m3/h)', 'Head (m)', 'Efficiency (%)']
+            writer = csv.DictWriter(csv_file, fieldnames=field_names)
+            writer.writeheader()
+            for point in self:
+                writer.writerow(
+                    {
+                        'Volume Flow (m3/h)': point.flow_v,
+                        'Head (m)': 1000 * point.head / 9.81,
+                        'Efficiency (%)': 100 * point.eff
+                    }
+                )
 
     @classmethod
     def load(cls, file_name):
