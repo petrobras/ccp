@@ -1,5 +1,6 @@
 import numpy as np
 import matplotlib.pyplot as plt
+import toml
 from copy import copy
 from scipy.optimize import newton
 from bokeh.models import ColumnDataSource
@@ -459,5 +460,21 @@ class Point:
             eff=str(self.eff)
         )
 
+    def save(self, file_name):
+        """Save point to toml file."""
+        with open(file_name, mode='w') as f:
+            toml.dump(self._dict_to_save(), f)
 
+    @classmethod
+    def load(cls, file_name):
+        """Load point from toml file."""
+        with open(file_name) as f:
+            parameters = toml.load(f)
 
+        suc = State.define(
+            p=Q_(parameters.pop('p')),
+            T=Q_(parameters.pop('T')),
+            fluid=parameters.pop('fluid'),
+        )
+
+        return cls(suc=suc, **{k: Q_(v) for k, v in parameters.items()})
