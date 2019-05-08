@@ -1,6 +1,7 @@
 """Module to define impeller class."""
 import numpy as np
 import matplotlib.pyplot as plt
+import csv
 from scipy.interpolate import interp1d
 from copy import deepcopy
 from itertools import groupby
@@ -533,4 +534,15 @@ class Impeller:
             ]
 
         return cls(points, b=b, D=D)
+
+    def save_hysys_csv(self, curve_dir):
+        """Save curve to a csv with hysys format.
+
+        curve_path: pathlib.Path
+            Path for directory where the files will be saved.
+        """
+        curve_dir.mkdir(parents=True, exist_ok=True)
+        for curve in self.curves:
+            curve.save_hysys_csv(curve_dir / f'speed-{curve.speed.magnitude}.csv')
+
 
