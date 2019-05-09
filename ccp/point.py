@@ -146,8 +146,9 @@ class Point:
     def __init__(self, *args, **kwargs):
         self.flow_v = kwargs.get('flow_v', None)
         self.flow_m = kwargs.get('flow_m', None)
-        if not (self.flow_m or self.flow_v):
-            raise ValueError('flow_v or flow_m must be provided.')
+        self.volume_ratio = kwargs.get('volume_ratio')
+        if not (self.flow_m or self.flow_v or self.volume_ratio):
+            raise ValueError('flow_v, flow_m or volume_ratio must be provided.')
 
         self.suc = kwargs['suc']
         # dummy state used to avoid copying states
@@ -162,7 +163,6 @@ class Point:
         self.head = kwargs.get('head')
         self.eff = kwargs.get('eff')
         self.power = kwargs.get('power')
-        self.volume_ratio = kwargs.get('volume_ratio')
         self.speed = kwargs.get('speed')
 
         # non dimensional parameters will be added when the point is associated
