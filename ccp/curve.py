@@ -330,7 +330,7 @@ class Curve:
                 writer.writerow(
                     {
                         'Volume Flow (m3/h)': point.flow_v.m,
-                        'Head (m)': 1000 * point.head.m / 9.81,
+                        'Head (m)': point.head.m / 9.81,
                         'Efficiency (%)': 100 * point.eff.m
                     }
                 )
