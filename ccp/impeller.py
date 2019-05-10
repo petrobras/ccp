@@ -200,7 +200,8 @@ class Impeller:
     @speed.setter
     @check_units
     def speed(self, speed):
-        #  TODO check if speed is within reasonable range
+        if speed.magnitude > 5000:
+            warn(f'Speed seems to high: {self.speed} - {self.speed.to("RPM")}')
         self._speed = speed
         if self.flow_v is None:
             return
@@ -219,6 +220,11 @@ class Impeller:
     @flow_v.setter
     @check_units
     def flow_v(self, flow_v):
+        min_flow = min([p.flow_v.m for p in self.points])
+        max_flow = max([p.flow_v.m for p in self.points])
+        if not min_flow < flow_v.m < max_flow:
+            warn(f'Flow outside the flow range '
+                 f'min: {min_flow} max: {max_flow}')
         self._flow_v = flow_v
         if self.speed is None:
             return
@@ -306,7 +312,7 @@ class Impeller:
             speed_mean = np.mean([p.speed.magnitude for p in new_points])
             speed_std = np.std([p.speed.magnitude for p in new_points])
 
-            if speed_std < 5:
+            if speed_std < 10:
                 for p in new_points:
                     p.speed = Q_(speed_mean, p.speed.units)
             else:
