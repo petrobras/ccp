@@ -329,7 +329,7 @@ class Curve:
             for point in self:
                 writer.writerow(
                     {
-                        'Volume Flow (m3/h)': point.flow_v.m,
+                        'Volume Flow (m3/h)': point.flow_v.to('m**3/h').m,
                         'Head (m)': point.head.m / 9.81,
                         'Efficiency (%)': 100 * point.eff.m
                     }

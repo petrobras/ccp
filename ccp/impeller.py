@@ -555,7 +555,11 @@ class Impeller:
             Path for directory where the files will be saved.
         """
         curve_dir.mkdir(parents=True, exist_ok=True)
+        surge = {'Volume Flow (m3/h'}
         for curve in self.curves:
-            curve.save_hysys_csv(curve_dir / f'speed-{curve.speed.magnitude:.0f}.csv')
+            curve.save_hysys_csv(
+                curve_dir / f'speed-{curve.speed.to("RPM").m:.0f}-RPM.csv'
+            )
+
 
 
