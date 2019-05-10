@@ -312,7 +312,7 @@ class Impeller:
             speed_mean = np.mean([p.speed.magnitude for p in new_points])
             speed_std = np.std([p.speed.magnitude for p in new_points])
 
-            if speed_std < 10:
+            if speed_std < 50:
                 for p in new_points:
                     p.speed = Q_(speed_mean, p.speed.units)
             else:
