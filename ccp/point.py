@@ -1,6 +1,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 import toml
+from warnings import warn
 from copy import copy
 from scipy.optimize import newton
 from bokeh.models import ColumnDataSource
@@ -164,6 +165,13 @@ class Point:
         self.eff = kwargs.get('eff')
         self.power = kwargs.get('power')
         self.speed = kwargs.get('speed')
+
+        # check if some values are within a reasonable range
+        try:
+            if self.speed.m > 5000:
+                warn(f'Speed seems to high: {self.speed} - {self.speed.to("RPM")}')
+        except AttributeError:
+            pass
 
         # non dimensional parameters will be added when the point is associated
         # to an impeller (when the impeller object is instantiated)
