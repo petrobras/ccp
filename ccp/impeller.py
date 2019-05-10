@@ -556,6 +556,6 @@ class Impeller:
         """
         curve_dir.mkdir(parents=True, exist_ok=True)
         for curve in self.curves:
-            curve.save_hysys_csv(curve_dir / f'speed-{curve.speed.magnitude}.csv')
+            curve.save_hysys_csv(curve_dir / f'speed-{curve.speed.magnitude:.0f}.csv')
 
 
