@@ -555,22 +555,22 @@ class Impeller:
             Path for directory where the files will be saved.
         """
         curve_dir.mkdir(parents=True, exist_ok=True)
-        surge = {'Volume Flow (m3/h)': [], 'Speed (RPM)': []}
+        surge = {'Speed (RPM)': [], 'Volume Flow (m3/h)': []}
         for curve in self.curves:
             curve.save_hysys_csv(
                 curve_dir / f'speed-{curve.speed.to("RPM").m:.0f}-RPM.csv'
             )
+            surge['Speed (RPM)'].append(curve.speed.to('RPM').m)
             surge['Volume Flow (m3/h)'].append(min(p.flow_v.to('m**3/h').m for p in curve))
-            surge['speed'].append(curve.speed.to('RPM').m)
 
         with open(str(curve_dir / 'surge.csv'), mode='w') as csv_file:
             writer = csv.DictWriter(csv_file, fieldnames=list(surge.keys()))
             writer.writeheader()
-            for flow, speed in zip(surge['Volume Flow (m3/h)'], surge['Speed (RPM)']):
+            for speed, flow in zip(surge['Speed (RPM)'], surge['Volume Flow (m3/h)']):
                 writer.writerow(
                     {
-                        'Volume Flow (m3/h)': flow,
-                        'Speed (RPM)': speed
+                        'Speed (RPM)': speed,
+                        'Volume Flow (m3/h)': flow
                     }
                 )
 
