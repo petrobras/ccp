@@ -171,14 +171,14 @@ def interpolated_function(obj, attr):
 
         units = values.units
 
-        #  interp1d requires odd numbers for the kind argument
-        number_of_points = len(values) - 1
-        if number_of_points % 2 == 0:
-            number_of_points = number_of_points - 1
+        if len(values) < 3:
+            interpolation_degree = 1
+        else:
+            interpolation_degree = 3
 
         interpol_function = interp1d(
             obj.flow_v.magnitude, values.magnitude,
-            kind=number_of_points, fill_value='extrapolate')
+            kind=interpolation_degree, fill_value='extrapolate')
 
         try:
             args = [arg.magnitude for arg in args]
