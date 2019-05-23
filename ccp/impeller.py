@@ -556,21 +556,27 @@ class Impeller:
         """
         curve_dir.mkdir(parents=True, exist_ok=True)
         surge = {'Speed (RPM)': [], 'Volume Flow (m3/h)': []}
+        stonewall = {'Speed (RPM)': [], 'Volume Flow (m3/h)': []}
+
         for curve in self.curves:
             curve.save_hysys_csv(
                 curve_dir / f'speed-{curve.speed.to("RPM").m:.0f}-RPM.csv'
             )
             surge['Speed (RPM)'].append(curve.speed.to('RPM').m)
+            stonewall['Speed (RPM)'].append(curve.speed.to('RPM').m)
             surge['Volume Flow (m3/h)'].append(min(p.flow_v.to('m**3/h').m for p in curve))
+            stonewall['Volume Flow (m3/h)'].append(max(p.flow_v.to('m**3/h').m for p in curve))
 
-        with open(str(curve_dir / 'surge.csv'), mode='w') as csv_file:
-            writer = csv.DictWriter(csv_file, fieldnames=list(surge.keys()))
-            writer.writeheader()
-            for speed, flow in zip(surge['Speed (RPM)'], surge['Volume Flow (m3/h)']):
-                writer.writerow(
-                    {
-                        'Speed (RPM)': speed,
-                        'Volume Flow (m3/h)': flow
-                    }
-                )
+        for name, limit in zip(['surge', 'stonewall'],
+                               [surge, stonewall]):
+            with open(str(curve_dir / (name + '.csv')), mode='w') as csv_file:
+                writer = csv.DictWriter(csv_file, fieldnames=list(limit.keys()))
+                writer.writeheader()
+                for speed, flow in zip(limit['Speed (RPM)'], limit['Volume Flow (m3/h)']):
+                    writer.writerow(
+                        {
+                            'Speed (RPM)': speed,
+                            'Volume Flow (m3/h)': flow
+                        }
+                    )
 
