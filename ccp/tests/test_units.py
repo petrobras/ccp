@@ -1,5 +1,6 @@
 import pytest
 from ccp.config.units import check_units, Q_, units
+from numpy.testing import assert_allclose
 
 
 def test_new_units_loaded():
@@ -141,7 +142,7 @@ def test_unit_Q_conversion(auxiliary_function):
     assert T.magnitude == 274.15
     assert T.units == 'kelvin'
 
-    assert rho.magnitude == 16.018463373960145
+    assert_allclose(rho.magnitude, 16.01846337396014)
     assert rho.units == 'kilogram/meter**3'
 
     assert speed.magnitude == 0.10471975511965977

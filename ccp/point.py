@@ -1,5 +1,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
+import toml
+from warnings import warn
 from copy import copy
 from scipy.optimize import newton
 from bokeh.models import ColumnDataSource
@@ -127,24 +129,27 @@ class Point:
         Speed in 1/s.
     flow_v or flow_m : float
         Volumetric or mass flow.
-    suc, disch : prf.State, prf.State
+    suc, disch : ccp.State, ccp.State
         Suction and discharge states for the point.
-    suc, head, eff : prf.State, float, float
+    suc, head, eff : ccp.State, float, float
         Suction state, polytropic head and polytropic efficiency.
-    suc, head, power : prf.State, float, float
+    suc, head, power : ccp.State, float, float
         Suction state, polytropic head and gas power.
-    suc, eff, vol_ratio : prf.State, float, float
+    suc, eff, vol_ratio : ccp.State, float, float
         Suction state, polytropic efficiency and volume ratio.
 
     Returns
     -------
-    Point : prf.Point
+    Point : ccp.Point
         A point in the compressor map.
     """
     @check_units
     def __init__(self, *args, **kwargs):
         self.flow_v = kwargs.get('flow_v', None)
         self.flow_m = kwargs.get('flow_m', None)
+        self.volume_ratio = kwargs.get('volume_ratio')
+        if not (self.flow_m or self.flow_v or self.volume_ratio):
+            raise ValueError('flow_v, flow_m or volume_ratio must be provided.')
 
         self.suc = kwargs['suc']
         # dummy state used to avoid copying states
@@ -159,8 +164,14 @@ class Point:
         self.head = kwargs.get('head')
         self.eff = kwargs.get('eff')
         self.power = kwargs.get('power')
-        self.volume_ratio = kwargs.get('volume_ratio')
         self.speed = kwargs.get('speed')
+
+        # check if some values are within a reasonable range
+        try:
+            if self.speed.m > 5000:
+                warn(f'Speed seems to high: {self.speed} - {self.speed.to("RPM")}')
+        except AttributeError:
+            pass
 
         # non dimensional parameters will be added when the point is associated
         # to an impeller (when the impeller object is instantiated)
@@ -200,11 +211,11 @@ class Point:
 
     def __str__(self):
         return (
-                '\nPoint: '
-                + '\n Volume flow: {:10.5}'.format(self.flow_v)
-                + '\n Head       : {:10.5}'.format(self.head)
-                + '\n Efficiency : {:10.5}'.format(self.eff)
-                + '\n Power      : {:10.5}'.format(self.power)
+            f'\nPoint: '
+            f'\nVolume flow: {self.flow_v:.2f~P}'
+            f'\nHead: {self.head:.2f~P}'
+            f'\nEfficiency: {self.eff:.2f~P}'
+            f'\nPower: {self.power:.2f~P}'
         )
 
     def __repr__(self):
@@ -305,14 +316,14 @@ class Point:
 
         suc = self.suc
 
-        def calc_step_discharge_temp(T1, T0, p0, p1, e):
-            s0 = State.define(p=p0, T=T0, fluid=suc.fluid)
+        def calc_step_discharge_temp(T1, T0, self, p1, e):
+            s0 = State.define(p=self, T=T0, fluid=suc.fluid)
             s1 = State.define(p=p1, T=T1, fluid=suc.fluid)
             h0 = s0.h()
             h1 = s1.h()
 
             vm = ((1 / s0.rho()) + (1 / s1.rho())) / 2
-            delta_p = Q_(p1 - p0, 'Pa')
+            delta_p = Q_(p1 - self, 'Pa')
             H0 = vm * delta_p
             H1 = e * (h1 - h0)
 
@@ -326,11 +337,11 @@ class Point:
             self._ref_H = 0
             self._ref_n = []
 
-            for p0, p1 in zip(p_intervals[:-1], p_intervals[1:]):
+            for self, p1 in zip(p_intervals[:-1], p_intervals[1:]):
                 T1 = newton(calc_step_discharge_temp, (T0 + 1e-3),
-                            args=(T0, p0, p1, e))
+                            args=(T0, self, p1, e))
 
-                s0 = State.define(p=p0, T=T0, fluid=suc.fluid)
+                s0 = State.define(p=self, T=T0, fluid=suc.fluid)
                 s1 = State.define(p=p1, T=T1, fluid=suc.fluid)
                 step_point = Point(flow_m=1, speed=1, suc=s0, disch=s1)
 
@@ -447,5 +458,40 @@ class Point:
 
         return vd / vs
 
+    def _dict_to_save(self):
+        """Returns a dict that will be saved to a toml file."""
+        return dict(
+            p=str(self.suc.p()),
+            T=str(self.suc.T()),
+            fluid=self.suc.fluid,
+            speed=str(self.speed),
+            flow_v=str(self.flow_v),
+            head=str(self.head),
+            eff=str(self.eff)
+        )
 
+    @staticmethod
+    def _dict_from_load(dict_parameters):
+        """Change dict to format that can be used by load constructor."""
+        suc = State.define(
+            p=Q_(dict_parameters.pop('p')),
+            T=Q_(dict_parameters.pop('T')),
+            fluid=dict_parameters.pop('fluid'),
+        )
 
+        return dict(
+            suc=suc, **{k: Q_(v) for k, v in dict_parameters.items()}
+        )
+
+    def save(self, file_name):
+        """Save point to toml file."""
+        with open(file_name, mode='w') as f:
+            toml.dump(self._dict_to_save(), f)
+
+    @classmethod
+    def load(cls, file_name):
+        """Load point from toml file."""
+        with open(file_name) as f:
+            parameters = toml.load(f)
+
+        return cls(**cls._dict_from_load(parameters))

@@ -1,9 +1,11 @@
 import numpy as np
 import matplotlib.pyplot as plt
+import toml
+import csv
 import warnings
 from scipy.interpolate import interp1d
 from bokeh.models import ColumnDataSource, CDSView, IndexFilter
-from ccp import Q_
+from ccp import Q_, Point
 from ccp.config.units import change_data_units
 
 
@@ -169,14 +171,14 @@ def interpolated_function(obj, attr):
 
         units = values.units
 
-        #  interp1d requires odd numbers for the kind argument
-        number_of_points = len(values) - 1
-        if number_of_points % 2 == 0:
-            number_of_points = number_of_points - 1
+        if len(values) < 3:
+            interpolation_degree = 1
+        else:
+            interpolation_degree = 3
 
         interpol_function = interp1d(
             obj.flow_v.magnitude, values.magnitude,
-            kind=number_of_points, fill_value='extrapolate')
+            kind=interpolation_degree, fill_value='extrapolate')
 
         try:
             args = [arg.magnitude for arg in args]
@@ -296,4 +298,48 @@ class Curve:
     def __getitem__(self, item):
         return self.points.__getitem__(item)
 
+    def _dict_to_save(self):
+        return {f'point{i}': point._dict_to_save() for i, point in enumerate(self)}
 
+    def save(self, file_name, file_type='toml'):
+        """Save curve to a file.
+
+        Parameters
+        ----------
+        file_name: str
+            Name of the file.
+        file_type: str
+            File type can be: toml.
+        """
+        if file_type is 'toml':
+            with open(file_name, mode='w') as f:
+                toml.dump(self._dict_to_save(), f)
+
+    def save_hysys_csv(self, curve_path):
+        """Save curve to a csv with hysys format.
+
+        curve_path: pathlib.Path
+            Path where the curve file will be saved.
+        """
+        curve_path.parent.mkdir(parents=True, exist_ok=True)
+        with open(str(curve_path), mode='w') as csv_file:
+            field_names = ['Volume Flow (m3/h)', 'Head (m)', 'Efficiency (%)']
+            writer = csv.DictWriter(csv_file, fieldnames=field_names)
+            writer.writeheader()
+            for point in self:
+                writer.writerow(
+                    {
+                        'Volume Flow (m3/h)': point.flow_v.to('m**3/h').m,
+                        'Head (m)': point.head.m / 9.81,
+                        'Efficiency (%)': 100 * point.eff.m
+                    }
+                )
+
+    @classmethod
+    def load(cls, file_name):
+        with open(file_name) as f:
+            parameters = toml.load(f)
+
+        return cls(
+            [Point(**Point._dict_from_load(kwargs)) for kwargs in parameters.values()]
+        )
