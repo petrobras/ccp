@@ -89,10 +89,7 @@ ENV/
 # Rope project settings
 .ropeproject
 .idea/
-/prf/debug.py
 *.prof
-/prf/tests/coverage/
-/prf/notebooks/
-/prf/REFPROP/
-/prf/tests/.pytest_cache/
 /ccp/debug.py
+/ccp/.pytest_cache/
+/ccp/tests/.pytest_cache/
