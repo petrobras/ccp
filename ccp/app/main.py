@@ -23,8 +23,10 @@ from ccp.impeller import Impeller
 # load imp
 ###############################################################################
 
-home_path = Path.cwd()
-case_string = home_path / 'analise-curvas-dr/injection/case-string/'
+home_path = Path.home()
+case_string = home_path / ('Dropbox/trabalho/sequi-assessoramento'
+                   '/pre-sal/dresser-rand/analise-curvas-dr/main'
+                   '/case-string/')
 
 parameters = {'speed': 'RPM', 'flow_v': 'ft**3/min',
               'disch-temperature': 'degF', 'pressure-ratio': ''}
@@ -37,9 +39,6 @@ imp = Impeller(points, b=Q_(10.745, 'mm'), D=Q_(325.6, 'mm'))
 suc_n2 = State.define(p=Q_(2, 'bar'), T=Q_(40, 'degC'), fluid='n2')
 imp.suc = suc_n2
 
-imp.speed = imp.points[0].speed
-imp.flow_v = imp.points[0].flow_v
-
 imp.new.speed = imp.new.curves[0].speed
 imp.new.flow_v = imp.new.curves[0].points[0].flow_v
 
@@ -47,7 +46,7 @@ imp.new.flow_v = imp.new.curves[0].points[0].flow_v
 # app
 ###############################################################################
 
-sources = ['disch.p', 'eff', 'power']
+sources = ['head', 'eff', 'power']
 
 speed_units = 'RPM'
 
@@ -67,19 +66,8 @@ for s in sources:
 
     #  first plot
     bokeh_figures[s] = r_getattr(
-        imp.current_curve, s + '_bokeh_plot')(
-        fig=bokeh_figures[s], speed_units=speed_units,
-        plot_kws=dict(color='red')
-    )
-    bokeh_figures[s] = r_getattr(
-        imp, s + '_bokeh_plot')(
-        fig=bokeh_figures[s], speed_units=speed_units,
-        plot_kws=dict(color='red')
-    )
-
-    bokeh_figures[s] = r_getattr(
         imp.new.current_point, s + '_bokeh_plot')(
-        fig=bokeh_figures[s], source=bokeh_current_point_sources[s],
+        fig=bokeh_figures[s], source=bokeh_current_point_sources[s]
     )
     bokeh_figures[s] = r_getattr(
         imp.new.current_curve, s + '_bokeh_plot')(
@@ -169,10 +157,11 @@ button.callback = CustomJS(args=dict(source=download_source),
                            code=open(str(Path.cwd() / 'download.js')).read())
 
 inputs = widgetbox(ps, Ts, flow_v, sp, button)
-# curves_html = Path.cwd() / 'curvas.html'
-# desc = Div(text=open(curves_html).read(), width=1000)
+curves_html = Path.cwd() / 'main.html'
+desc = Div(text=open(curves_html).read(), width=1000)
 
-curdoc().add_root(layout([bokeh_figures[sources[0]], inputs],
+curdoc().add_root(layout([desc],
+                         [bokeh_figures[sources[0]], inputs],
                          [bokeh_figures[sources[1]]],
                          [bokeh_figures[sources[2]]]))
 
