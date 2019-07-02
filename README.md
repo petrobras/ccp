@@ -7,39 +7,50 @@ Biblioteca para cálculo de performance de compressores centrífugos em python.
 Para avaliação dos resultados pode ser utilizada aplicação web que pode
 ser disponibilizada através de recurso de núvem.
 
-![Alt Text](docs/ccp.fig.gif)
-
 # Guia básico
 
 Definição de estados termodinâmicos:
 
 ```python
-fluid = {'CarbonDioxide': 0.8, 'R134a': 0.2}
+import ccp
+# ccp uses pint to handle units. Q_ is a pint quantity.
+# If a pint quantity is not provided, SI units are assumed.
+from ccp import Q_
 
-#  Use pint quantity to define a value.
-#  If a pint quantity is not provided, SI units are assumed.
-ps = Q_(3, 'bar')
-Ts = 300
+# Define the fluid as a dictionary:
+fluid = dict(methane=0.69945,
+             ethane=0.09729,
+             propane=0.0557,
+             nbutane=0.0178,
+             ibutane=0.0102,
+             npentane=0.0039,
+             ipentane=0.0036,
+             nhexane=0.0018,
+             n2=0.0149,
+             co2=0.09259,
+             h2s=0.00017,
+             water=0.002)
+             
+# Define suction state:
+suc = ccp.State.define(p=Q_(1.6995, 'MPa'), T=311.55, fluid=fluid)
 
-#  Define suction and discharge states:
-suc0 = State.define(fluid=fluid, p=ps, T=Ts)
-disch0 = State.define(fluid=fluid, p=Q_(7.255, 'bar'), T=391.1)
-```
+# Create performance point(s):
+p0 = ccp.Point(suc=suc, flow_v=Q_(6501.67, 'm**3/h'), speed=Q_(11145, 'RPM'),
+           head=Q_(179.275, 'kJ/kg'), eff=0.826357)
+p1 = ccp.Point(suc=suc, flow_v=Q_(7016.72, 'm**3/h'), speed=Q_(11145, 'RPM'),
+           head=Q_(173.057, 'kJ/kg'), eff=0.834625)
 
-Criar um ponto de operação:
+# Create an impeller that will hold and convert curves.
+imp = ccp.Impeller([p0, p1], b=Q_(28.5, 'mm'), D=Q_(365, 'mm'))
 
-```python
-#  Create performance point(s):
-point0 = Point(suc=suc0, disch=disch0, speed=Q_(7941, 'RPM'),
-               flow_m=Q_(34203.6, 'kg/hr'))
-```
+# Define new suction state
+new_suc = ccp.State.define(p=Q_(0.2, 'MPa'), T=301.58,
+                           fluid='nitrogen')
 
-Criar curva e impelidor:
+# setting a new suction
+imp.suc = new_suc
 
-```python
-#  Create a curve with the points:
-curve = Curve(points)
-
-#  Create an impeller that will hold and convert curves.
-imp = Impeller(Curve, b=0.0285, D=0.365)
+# after the new suctions is created, a new impeller is available with the 
+# converted curves
+imp.new.curves
 ```
