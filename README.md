@@ -48,7 +48,7 @@ new_suc = ccp.State.define(p=Q_(0.2, 'MPa'), T=301.58,
                            fluid='nitrogen')
 
 # setting a new suction
-imp.suc = new_suc
+imp.new_suc = new_suc
 
 # after the new suctions is created, a new impeller is available with the 
 # converted curves

@@ -181,11 +181,11 @@ class Impeller:
         return inner
 
     @property
-    def suc(self):
+    def new_suc(self):
         return self._suc
 
-    @suc.setter
-    def suc(self, new_suc):
+    @new_suc.setter
+    def new_suc(self, new_suc):
         self._suc = new_suc
         self._calc_new_points()
         try:
@@ -322,7 +322,7 @@ class Impeller:
             all_points += new_points
 
         self.new = self.__class__(all_points, b=self.b, D=self.D,
-                                  _suc=self.suc, _flow_v=self.flow_v,
+                                  _suc=self.new_suc, _flow_v=self.flow_v,
                                   _speed=self.speed)
 
     def _u(self, point):
@@ -403,14 +403,14 @@ class Impeller:
 
         Point will be calculated considering new impeller suction condition.
         """
-        new_point = Point(suc=self.suc, eff=point.eff,
+        new_point = Point(suc=self.new_suc, eff=point.eff,
                           volume_ratio=point.volume_ratio)
 
         new_point.phi = point.phi
         new_point.psi = point.psi
         new_point.speed = self._speed_from_psi(new_point)
         new_point.flow_v = self._flow_from_phi(new_point)
-        new_point.flow_m = new_point.flow_v * self.suc.rho()
+        new_point.flow_m = new_point.flow_v * self.new_suc.rho()
         new_point.power = new_point._power_calc()
 
         return new_point
