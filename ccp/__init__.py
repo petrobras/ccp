@@ -49,13 +49,13 @@ from pathlib import Path as _Path
 import CoolProp.CoolProp as _CP
 
 # use _ to avoid polluting the namespace when importing
-_path = _os.environ['RPPREFIX']
-_CP.set_config_string(_CP.ALTERNATIVE_REFPROP_PATH, _path)
 
 try:
     _path = _Path(_os.environ['RPPREFIX'])
 except KeyError:
     _path = _Path.cwd()
+
+_CP.set_config_string(_CP.ALTERNATIVE_REFPROP_PATH, str(_path))
 
 if _os.name is 'posix':
     _shared_library = 'librefprop.so'
