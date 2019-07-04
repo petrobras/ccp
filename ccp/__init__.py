@@ -49,19 +49,22 @@ from pathlib import Path as _Path
 import CoolProp.CoolProp as _CP
 
 # use _ to avoid polluting the namespace when importing
-_path = _os.environ['RPPREFIX']
-_CP.set_config_string(_CP.ALTERNATIVE_REFPROP_PATH, _path)
+#_path = _os.environ['RPPREFIX']
+
 
 try:
     _path = _Path(_os.environ['RPPREFIX'])
 except KeyError:
     _path = _Path.cwd()
 
+_CP.set_config_string(_CP.ALTERNATIVE_REFPROP_PATH, str(_path))
+	
 if _os.name is 'posix':
     _shared_library = 'librefprop.so'
 else:
     _shared_library = 'REFPRP64.DLL'
 
+#_library_path = _path / "ccp/REFPROP" / _shared_library
 _library_path = _path / _shared_library
 
 if not _library_path.is_file():
@@ -71,6 +74,7 @@ __version__ = 'ccp: 0.0.1 | ' \
               + f'CP : {_CP.get_global_param_string("version")} | ' \
               + f'REFPROP : {_CP.get_global_param_string("REFPROP_version")}'
 
+			  
 ###############################################################################
 # pint
 ###############################################################################
