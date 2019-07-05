@@ -414,6 +414,21 @@ class Impeller:
         new_point.power = new_point._power_calc()
 
         return new_point
+    
+    def _calc_from_speed(self, point, new_speed):
+        """Calculate new_point considering dimensionless parameters from 'self' at 'point'
+
+        under .new_suc suction conditions and speed equals new_speed
+        """
+        
+        N_ratio=new_speed/point.speed    
+                 
+        new_point = Point(suc=self.new_suc, eff=point._eff_pol_schultz(),
+                          speed=new_speed,flow_v=point.flow_v*N_ratio,
+                         head=point._head_pol_schultz()*N_ratio**2)
+
+
+        return new_point 
 
     def _u_from_psi(self, point):
         psi = point.psi
