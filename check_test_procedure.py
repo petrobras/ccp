@@ -16,8 +16,16 @@ Ts_FD = Q_(FD_sheet.range('T24').value,'degC')
 Pd_FD = Q_(FD_sheet.range('T31').value,'bar')
 Td_FD = Q_(FD_sheet.range('T32').value,'degC')
 
-flow_m_FD = Q_(FD_sheet.range('T21').value,'kg/h')
-flow_v_FD = Q_(FD_sheet.range('T29').value,'m**3/h')
+
+if FD_sheet.range('T21').value==None: 
+    V_test=True
+    flow_v_FD = Q_(FD_sheet.range('T29').value,'m³/h')
+else:
+    V_test=False
+    flow_m_FD = Q_(FD_sheet.range('T21').value,'kg/h')
+    
+#flow_m_FD = Q_(FD_sheet.range('T21').value,'kg/h')
+#flow_v_FD = Q_(FD_sheet.range('T29').value,'m**3/h')
 
 speed_FD = Q_(FD_sheet.range('T38').value,'rpm')
 
@@ -35,6 +43,14 @@ fluid_FD={GasesFD[i] : mol_fracFD[i] for i in range(len(GasesFD))}
 
 
 sucFD=State.define(fluid=fluid_FD , p=Ps_FD , T=Ts_FD)
+
+if V_test:
+    flow_m_FD=flow_v_FD*sucFD.rho()
+    FD_sheet['T21'].value=flow_m_FD.to('kg/h').magnitude
+else:
+    flow_v_FD=flow_m_FD/sucFD.rho()
+    FD_sheet['T29'].value=flow_v_FD.to('m³/h').magnitude
+
 dischFD=State.define(fluid=fluid_FD , p=Pd_FD , T=Td_FD)
 
 P_FD=ccp.Point(speed=speed_FD,flow_m=flow_m_FD,suc=sucFD,disch=dischFD)
