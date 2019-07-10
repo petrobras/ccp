@@ -11,7 +11,7 @@ from ccp.curve import Curve
 def test_raise_1_point():
     with pytest.raises(TypeError) as ex:
         Curve([1])
-    assert 'At least 2 points' in str(ex)
+    assert 'At least 2 points' in str(ex.value)
 
 
 @pytest.fixture

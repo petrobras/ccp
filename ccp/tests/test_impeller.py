@@ -126,7 +126,7 @@ def test_impeller_new_speed(imp1):
         imp1.suc = new_suc
         imp1.flow_v = 2.
         imp1.speed = 1000.
-    assert 'Not implemented for less' in str(ex)
+    assert 'Not implemented for less' in str(ex.value)
 
 
 @pytest.fixture()

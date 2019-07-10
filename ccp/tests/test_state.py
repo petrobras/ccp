@@ -7,7 +7,7 @@ from numpy.testing import assert_allclose
 def test_state_possible_name():
     with pytest.raises(ValueError) as exc:
         State.define(p=100000, T=300, fluid='fake_name')
-    assert 'Fluid fake_name not available.' in str(exc)
+    assert 'Fluid fake_name not available.' in str(exc.value)
 
     #  pure fluid
     State.define(p=100000, T=300, fluid='n2')
@@ -16,7 +16,7 @@ def test_state_possible_name():
 def test_state_define():
     with pytest.raises(TypeError) as exc:
         State.define(p=100000, T=300)
-    assert 'A fluid is required' in str(exc)
+    assert 'A fluid is required' in str(exc.value)
 
     state = State.define(p=100000, T=300, fluid='Methane')
     assert state.p().units == 'pascal'
