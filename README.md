@@ -54,3 +54,14 @@ imp.new_suc = new_suc
 # converted curves
 imp.new.curves
 ```
+
+# Instalação
+
+Para a instalação é necessário o pip 19.1.1. 
+Para atualizar o pip utilizar o comando:
+
+`pip install --upgrade pip` 
+
+Para instalar o ccp:
+
+`pip install git+ssh://git@gitlab.cenpes.petrobras.com.br/equipamentos-dinamicos/ccp.git`
