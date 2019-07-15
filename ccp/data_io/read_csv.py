@@ -16,10 +16,6 @@ Files should be saved with the following convention:
     - <curve-name>-eff.csv
 """
 import csv
-import numpy as np
-from scipy.interpolate import UnivariateSpline
-from tqdm import tqdm
-from ccp import Q_, State, Point
 
 
 def read_data_from_engauge_csv(file_path):
