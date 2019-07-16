@@ -84,7 +84,7 @@ Curva=Curva[0:Nc+1,:]
 
 QFD=np.array(Curva[0:Nc,0].value)
 
-if (Nc>0 and min([abs(QFD-flow_v_FD.to('m³/h').magnitude)])==0):
+if (Nc>0 and min(abs(QFD-flow_v_FD.to('m³/h').magnitude))==0):
     Gar=[None,None,None,None]
     Curva[Nc,:].value=Gar
 
@@ -99,10 +99,11 @@ QFD=np.array(Curva[0:Nc,0].value)
 
 Id=list(np.argsort(QFD))
 
-Caux=[Curva.value]
+if len(Id)>1:
+    Caux=Curva.value
 
-for i in range(Nc):
-    Curva[i,:].value=Caux[Id[i]][:]
+    for i in range(Nc):
+        Curva[i,:].value=Caux[Id[i]][:]
 
 ### Reading and writing in the Test Procedure Sheet
 
