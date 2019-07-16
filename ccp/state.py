@@ -53,6 +53,14 @@ class State(CP.AbstractState):
     def s(self):
         """Specific entropy (per unit of mass)."""
         return Q_(super().smass(), 'joule/(kelvin kilogram)')
+    
+    def p_crit(self):
+        """ Critical Pressure in Pa """
+        return Q_(super().p_critical(),'Pa')
+    
+    def T_crit(self):
+        """ Critical Temperature in K """
+        return Q_(super().T_critical(),'K')
 
     def rho(self):
         """Specific mass (kilogram/m**3)."""
@@ -84,6 +92,20 @@ class State(CP.AbstractState):
             1 / (self.first_partial_deriv(CP.iP, CP.iDmass, CP.iSmass)),
             'kilogram/(meter**3 pascal)'
         )
+    
+    def _X(self):
+        """ Coeficiente de compressibilidade X de Schultz """
+        T=self.T().to('K').magnitude
+        V=self.v().to('m³/kg').magnitude
+        
+        return Q_(-T*V*self.first_partial_deriv(CP.iDmass,CP.iT,CP.iP)-1,'dimensionless')
+    
+    def _Y(self):
+        """ Coeficiente de compressibilidade X de Schultz """
+        P=self.p().to('Pa').magnitude
+        V=self.v().to('m³/kg').magnitude
+        
+        return Q_(-(-P*V*self.first_partial_deriv(CP.iDmass,CP.iP,CP.iT)),'dimensionless')
 
     def kv(self):
         """Isentropic volume exponent (2.60)."""
