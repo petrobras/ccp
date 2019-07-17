@@ -94,8 +94,8 @@ else:
 
 brake_pow2_FD = Q_(FD_sheet.range('Z36').value,'kW')
 
-D2 = Q_(FD_sheet.range('AB132').value,'mm')
-b2 = Q_(FD_sheet.range('AQ132').value,'mm')
+D2 = Q_(FD_sheet.range('AB133').value,'mm')
+b2 = Q_(FD_sheet.range('AQ133').value,'mm')
 
 if SS_config=='IN':
     GasesFD = FD_sheet.range('B69:B85').value
@@ -378,11 +378,11 @@ if TP_sheet['C23'].value=='Yes':
     RCTP=0.988/Re2TP**0.243
     RCFD=0.988/Re2FD**0.243
 
-    RBTP=np.log(0.000125+13.67/Re2TP)/np.log(rug+13.67/ReTP)
-    RBFD=np.log(0.000125+13.67/Re2FD)/np.log(rug+13.67/ReFD)
+    RBTP=np.log(0.000125+13.67/Re2TP)/np.log(rug+13.67/Re2TP)
+    RBFD=np.log(0.000125+13.67/Re2FD)/np.log(rug+13.67/Re2FD)
 
-    RATP=0.066+0.934*(4.8e6*b.to('ft').magnitude/ReTP)**RCTP
-    RAFD=0.066+0.934*(4.8e6*b.to('ft').magnitude/ReFD)**RCFD
+    RATP=0.066+0.934*(4.8e6*b2.to('ft').magnitude/Re2TP)**RCTP
+    RAFD=0.066+0.934*(4.8e6*b2.to('ft').magnitude/Re2FD)**RCFD
 
     corr=RAFD/RATP*RBFD/RBTP
     

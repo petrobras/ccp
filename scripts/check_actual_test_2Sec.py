@@ -92,8 +92,8 @@ else:
 
 brake_pow2_FD = Q_(FD_sheet.range('Z36').value,'kW')
 
-D2 = Q_(FD_sheet.range('AB132').value,'mm')
-b2 = Q_(FD_sheet.range('AQ132').value,'mm')
+D2 = Q_(FD_sheet.range('AB133').value,'mm')
+b2 = Q_(FD_sheet.range('AQ133').value,'mm')
 
 if SS_config=='IN':
     GasesFD = FD_sheet.range('B69:B85').value
@@ -233,6 +233,7 @@ if len(Id2)>1:
         Curva2[i,:].value=Caux2[Id2[i]][:]
     
     
+
 ### Reading and writing in the Actual Test Data Sheet
 
 Dados_AT=AT_sheet['G7:S16']
@@ -353,6 +354,8 @@ for i in range(N):
 Imp_AT = ccp.Impeller([P_AT[i] for i in range(len(P_AT))],b=b,D=D)
 Imp2_AT = ccp.Impeller([P2_AT[i] for i in range(len(P2_AT))],b=b2,D=D2)    
 
+
+speed_AT
 
 if AT_sheet['U3'].value=='Vazão Seção 1':
     QQ=np.array(Dados_AT[:,1].value)
