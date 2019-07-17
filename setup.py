@@ -31,7 +31,8 @@ setup(name='ccp',
       description='Cálculo de performance para compressores centrífugos.',
       author='Raphael Timbó',
       author_email='raphaelts@petrobras.com.br',
-      packages=['ccp'],
+      packages=['ccp', 'ccp.config', 'ccp.data_io'],
+      package_data={'ccp.config': ['new_units.txt']},
       install_requires=['numpy', 'scipy', 'CoolProp', 'matplotlib',
                         'bokeh', 'pint', 'toml', 'openpyxl', 'tqdm']
       )
