@@ -76,7 +76,10 @@ class State(CP.AbstractState):
         return z.to('dimensionless')
 
     def speed_sound(self):
-        return Q_(super().speed_sound(), 'm/s')
+        if super().speed_sound()>0:
+            return Q_(super().speed_sound(), 'm/s')
+        else:
+            return np.sqrt(self._isentropic_exponent()*self.gas_constant()/self.molar_mass()*self.T()).to('m/s')
 
     def viscosity(self):
         return Q_(super().viscosity(), 'pascal second')
@@ -106,6 +109,14 @@ class State(CP.AbstractState):
         V=self.v().to('m³/kg').magnitude
         
         return Q_(-(-P*V*self.first_partial_deriv(CP.iDmass,CP.iP,CP.iT)),'dimensionless')
+    
+    def _isentropic_exponent(self):
+        """ Expoente isentrópico"""
+        
+        P=self.p().to('Pa').magnitude
+        Dmass=self.rho().to('kg/m³').magnitude
+        
+        return Q_(Dmass/P*self.first_partial_deriv(CP.iP,CP.iDmass,CP.iSmass),'dimensionless')
 
     def kv(self):
         """Isentropic volume exponent (2.60)."""
