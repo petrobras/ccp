@@ -76,10 +76,8 @@ class State(CP.AbstractState):
         return z.to('dimensionless')
 
     def speed_sound(self):
-        if super().speed_sound()>0:
-            return Q_(super().speed_sound(), 'm/s')
-        else:
-            return np.sqrt(self._isentropic_exponent()*self.gas_constant()/self.molar_mass()*self.T()).to('m/s')
+        return Q_(np.sqrt(self.first_partial_deriv(CP.iP,CP.iDmass,CP.iSmass)),'m/s')
+            
 
     def viscosity(self):
         return Q_(super().viscosity(), 'pascal second')
