@@ -17,6 +17,7 @@ AT_sheet['F36'].value='Carregando bibliotecas...'
 TP_sheet['J23'].value='Carregando bibliotecas...'
 
 import xlwings as xw
+from scipy.optimize import newton
 import os
 from time import sleep
 try:
@@ -27,14 +28,18 @@ import ccp
 from ccp import State, Q_
 import numpy as np
 
+global P_FD_eff
+
 
 AT_sheet['H35'].value=None
 TP_sheet['K19'].value=None
 FD_sheet['A1'].value=None
+FD_sheet['AN5'].value='Yes'
 
 
 AT_sheet['F36'].value='READY!'
 TP_sheet['J23'].value='READY!'
+
 
 Open_file=True
 
@@ -58,70 +63,96 @@ while Open_file:
         AT_sheet['H35'].value=None
         AT_sheet['F36'].value="Calculando..."
         
-        
-        ### Reading and writing in the FD sheet
+        if FD_sheet['AN5'].value=='Yes':
+            ### Reading and writing in the FD sheet
 
-        Ps_FD = Q_(FD_sheet.range('T23').value,'bar')
-        Ts_FD = Q_(FD_sheet.range('T24').value,'degC')
+            Ps_FD = Q_(FD_sheet.range('T23').value,'bar')
+            Ts_FD = Q_(FD_sheet.range('T24').value,'degC')
 
-        Pd_FD = Q_(FD_sheet.range('T31').value,'bar')
-        Td_FD = Q_(FD_sheet.range('T32').value,'degC')
+            Pd_FD = Q_(FD_sheet.range('T31').value,'bar')
+            Td_FD = Q_(FD_sheet.range('T32').value,'degC')
 
-
-        if FD_sheet.range('T21').value==None: 
-            V_test=True
-            flow_v_FD = Q_(FD_sheet.range('T29').value,'m³/h')
-        else:
-            V_test=False
-            flow_m_FD = Q_(FD_sheet.range('T21').value,'kg/h')
-
-        #flow_m_FD = Q_(FD_sheet.range('T21').value,'kg/h')
-        #flow_v_FD = Q_(FD_sheet.range('T29').value,'m**3/h')
-
-        speed_FD = Q_(FD_sheet.range('T38').value,'rpm')
-
-        brake_pow_FD = Q_(FD_sheet.range('T36').value,'kW')
-        Pol_head_FD = Q_(FD_sheet.range('T40').value,'J/kg')
-        Pol_eff_FD = Q_(FD_sheet.range('T41').value,'dimensionless')
-
-        D = Q_(FD_sheet.range('AB132').value,'mm')
-        b = Q_(FD_sheet.range('AQ132').value,'mm')
-
-        GasesFD = FD_sheet.range('B69:B85').value
-        mol_fracFD = FD_sheet.range('K69:K85').value
-
-        fluid_FD={GasesFD[i] : mol_fracFD[i] for i in range(len(GasesFD))}
+            eff_FD = Q_(FD_sheet.range('T41').value,'dimensionless')
+            Pow_FD = Q_(FD_sheet.range('T35').value,'kW')
+            H_FD = Q_(FD_sheet.range('T40').value,'J/kg')
 
 
-        sucFD=State.define(fluid=fluid_FD , p=Ps_FD , T=Ts_FD)
+            if FD_sheet.range('T21').value==None: 
+                V_test=True
+                flow_v_FD = Q_(FD_sheet.range('T29').value,'m³/h')
+            else:
+                V_test=False
+                flow_m_FD = Q_(FD_sheet.range('T21').value,'kg/h')
 
-        if V_test:
-            flow_m_FD=flow_v_FD*sucFD.rho()
-            FD_sheet['AS34'].value=flow_m_FD.to('kg/h').magnitude
-            FD_sheet['AQ34'].value='Mass Flow'
-            FD_sheet['AT34'].value='kg/h'
-        else:
-            flow_v_FD=flow_m_FD/sucFD.rho()
-            FD_sheet['AS34'].value=flow_v_FD.to('m³/h').magnitude
-            FD_sheet['AQ34'].value='Inlet Volume Flow'
-            FD_sheet['AT34'].value='m³/h'
+            #flow_m_FD = Q_(FD_sheet.range('T21').value,'kg/h')
+            #flow_v_FD = Q_(FD_sheet.range('T29').value,'m**3/h')
 
-        dischFD=State.define(fluid=fluid_FD , p=Pd_FD , T=Td_FD)
+            speed_FD = Q_(FD_sheet.range('T38').value,'rpm')
 
-        P_FD=ccp.Point(speed=speed_FD,flow_m=flow_m_FD,suc=sucFD,disch=dischFD)
-        P_FD_=ccp.Point(speed=speed_FD,flow_m=flow_m_FD*0.001,suc=sucFD,disch=dischFD)
+            brake_pow_FD = Q_(FD_sheet.range('T36').value,'kW')
+            Pol_head_FD = Q_(FD_sheet.range('T40').value,'J/kg')
+            Pol_eff_FD = Q_(FD_sheet.range('T41').value,'dimensionless')
 
-        Imp_FD = ccp.Impeller([P_FD,P_FD_],b=b,D=D)
+            D = Q_(FD_sheet.range('AB132').value,'mm')
+            b = Q_(FD_sheet.range('AQ132').value,'mm')
 
-        FD_sheet['AS25'].value=Imp_FD._mach(P_FD).magnitude
-        FD_sheet['AS26'].value=Imp_FD._reynolds(P_FD).magnitude
-        FD_sheet['AS27'].value=1/P_FD._volume_ratio().magnitude
-        FD_sheet['AS28'].value=Imp_FD._phi(P_FD).magnitude
-        FD_sheet['AS29'].value=Imp_FD._psi(P_FD).magnitude
-        FD_sheet['AS30'].value=Imp_FD._work_input_factor(P_FD).magnitude
-        FD_sheet['AS32'].value=P_FD._eff_pol_schultz().magnitude
-        FD_sheet['AS33'].value=P_FD._power_calc().to('kW').magnitude
-        FD_sheet['K90'].value=sucFD.molar_mass().to('g/mol').magnitude
+            GasesFD = FD_sheet.range('B69:B85').value
+            mol_fracFD = FD_sheet.range('K69:K85').value
+
+            fluid_FD={GasesFD[i] : mol_fracFD[i] for i in range(len(GasesFD))}
+
+
+            sucFD=State.define(fluid=fluid_FD , p=Ps_FD , T=Ts_FD)
+
+            if V_test:
+                flow_m_FD=flow_v_FD*sucFD.rho()
+                FD_sheet['AS34'].value=flow_m_FD.to('kg/h').magnitude
+                FD_sheet['AQ34'].value='Mass Flow'
+                FD_sheet['AT34'].value='kg/h'
+            else:
+                flow_v_FD=flow_m_FD/sucFD.rho()
+                FD_sheet['AS34'].value=flow_v_FD.to('m³/h').magnitude
+                FD_sheet['AQ34'].value='Inlet Volume Flow'
+                FD_sheet['AT34'].value='m³/h'
+
+            dischFD=State.define(fluid=fluid_FD , p=Pd_FD , T=Td_FD)
+
+            P_FD=ccp.Point(speed=speed_FD,flow_m=flow_m_FD,suc=sucFD,disch=dischFD)
+            P_FD_=ccp.Point(speed=speed_FD,flow_m=flow_m_FD*0.001,suc=sucFD,disch=dischFD)
+
+
+            def update_head(H):
+                global P_FD_eff
+                P_FD_eff=ccp.Point(speed=speed_FD,flow_m=flow_m_FD,suc=sucFD,
+                               eff=eff_FD,head=Q_(H,'J/kg'))
+
+                P=P_FD_eff.disch.p().to('Pa').magnitude
+
+                return (P-Pd_FD.to('Pa').magnitude)
+
+            newton(update_head,P_FD._head_pol().to('J/kg').magnitude,tol=1)
+
+
+            Imp_FD = ccp.Impeller([P_FD,P_FD_],b=b,D=D)
+
+
+            max_H = max([P_FD._head_pol_schultz().to('kJ/kg').magnitude,
+                         P_FD_eff._head_pol_schultz().to('kJ/kg').magnitude,H_FD.to('kJ/kg').magnitude])
+            min_Pow=min([P_FD._power_calc().to('kW').magnitude,P_FD_eff._power_calc().to('kW').magnitude,Pow_FD.to('kW').magnitude])
+
+            FD_sheet['AS25'].value=Imp_FD._mach(P_FD).magnitude
+            FD_sheet['AS26'].value=Imp_FD._reynolds(P_FD).magnitude
+            FD_sheet['AS27'].value=1/P_FD._volume_ratio().magnitude
+            FD_sheet['AS28'].value=P_FD_eff._head_pol_schultz().to('J/kg').magnitude
+            FD_sheet['AS29'].value=P_FD_eff.disch.T().to('degC').magnitude
+            FD_sheet['AS30'].value=P_FD_eff._power_calc().to('kW').magnitude
+            FD_sheet['AS31'].value=P_FD._head_pol_schultz().to('J/kg').magnitude
+            FD_sheet['AS32'].value=P_FD._eff_pol_schultz().magnitude
+            FD_sheet['AS33'].value=P_FD._power_calc().to('kW').magnitude
+
+
+            FD_sheet['K90'].value=sucFD.molar_mass().to('g/mol').magnitude
+
 
 
         Curva=FD_sheet['AP39:AS46']
@@ -215,15 +246,17 @@ while Open_file:
 
         Imp_AT = ccp.Impeller([P_AT[i] for i in range(len(P_AT))],b=b,D=D)
         # Imp_AT.new_suc = P_FD.suc
-
+        
+        
         QQ=np.array(Dados_AT[:,1].value)
         Id=list(np.argsort(QQ))
         Daux=Dados_AT.value
         Paux=[P for P in P_AT]
-
-        for i in range(N):
-            Dados_AT[i,:].value=Daux[Id[i]][:]
-            P_AT[i]=Paux[Id[i]]
+        
+        if N>1:
+            for i in range(N):
+                Dados_AT[i,:].value=Daux[Id[i]][:]
+                P_AT[i]=Paux[Id[i]]
 
 
         P_ATconv=[]
@@ -275,16 +308,16 @@ while Open_file:
             Results_AT[i,5].value=Imp_AT._reynolds(P_AT[i]).magnitude/Imp_FD._reynolds(P_FD).magnitude
             Results_AT[i,6].value=Imp_AT._phi(P_AT[i]).magnitude
             Results_AT[i,7].value=Imp_AT._phi(P_AT[i]).magnitude/Imp_FD._phi(P_FD).magnitude
-            Results_AT[i,8].value=Imp_AT._psi(P_AT[i]).magnitude
-            Results_AT[i,9].value=Imp_AT._psi(P_AT[i]).magnitude/Imp_FD._psi(P_FD).magnitude
+            Results_AT[i,8].value=P_ATconv[i].disch.p().to('bar').magnitude
+            Results_AT[i,9].value=P_ATconv[i].disch.p().to('bar').magnitude/Pd_FD.to('bar').magnitude
             Results_AT[i,10].value=P_AT[i]._head_pol_schultz().to('kJ/kg').magnitude
-            Results_AT[i,11].value=P_AT[i]._head_pol_schultz().to('kJ/kg').magnitude/P_FD._head_pol_schultz().to('kJ/kg').magnitude
-            Results_AT[i,12].value=P_ATconv[i]._head_pol_schultz().to('kJ/kg').magnitude
-            Results_AT[i,13].value=P_ATconv[i]._head_pol_schultz().to('kJ/kg').magnitude/P_FD._head_pol_schultz().to('kJ/kg').magnitude
+            Results_AT[i,11].value=P_AT[i]._head_pol_schultz().to('kJ/kg').magnitude/max_H
+            Results_AT[i,12].value=P_ATconv[i]._head_pol_schultz().to('kJ/kg').magnitude    
+            Results_AT[i,13].value=P_ATconv[i]._head_pol_schultz().to('kJ/kg').magnitude/max_H
             Results_AT[i,14].value=P_ATconv[i].flow_v.to('m³/h').magnitude
             Results_AT[i,15].value=P_ATconv[i].flow_v.to('m³/h').magnitude/P_FD.flow_v.to('m³/h').magnitude
             Results_AT[i,16].value=P_AT[i]._power_calc().to('kW').magnitude
-            Results_AT[i,17].value=P_AT[i]._power_calc().to('kW').magnitude/P_FD._power_calc().to('kW').magnitude
+            Results_AT[i,17].value=P_AT[i]._power_calc().to('kW').magnitude/min_Pow
 
             if AT_sheet['C25'].value=='Yes':
 
@@ -292,19 +325,23 @@ while Open_file:
                 HL_AT=Q_(((P_AT[i].suc.T()+P_AT[i].disch.T()).to('degC').magnitude*0.8/2-25)*1.166*AT_sheet['D26'].value,'W')
 
                 Results_AT[i,18].value=(P_ATconv[i]._power_calc()-HL_AT+HL_FD).to('kW').magnitude
-                Results_AT[i,19].value=(P_ATconv[i]._power_calc()-HL_AT+HL_FD).to('kW').magnitude/(P_FD._power_calc()).to('kW').magnitude
+                Results_AT[i,19].value=(P_ATconv[i]._power_calc()-HL_AT+HL_FD).to('kW').magnitude/min_Pow
 
             else:
                 Results_AT[i,18].value=P_ATconv[i]._power_calc().to('kW').magnitude
-                Results_AT[i,19].value=P_ATconv[i]._power_calc().to('kW').magnitude/P_FD._power_calc().to('kW').magnitude
+                Results_AT[i,19].value=P_ATconv[i]._power_calc().to('kW').magnitude/min_Pow
 
 
             Results_AT[i,20].value=P_AT[i]._eff_pol_schultz().magnitude
 
         Phi=np.abs(1-np.array(Results_AT[0:N,7].value))
+        
+        if N==1:
+            Phi = [Phi]
 
         IdG=[]
-
+        
+        
         for i in range(N):
             if Phi[i]<0.04:
                 IdG.append(i)
@@ -339,69 +376,95 @@ while Open_file:
         
         FD_sheet=wb.sheets['DataSheet']
         
-        ### Reading and writing in the FD sheet
+        if FD_sheet['AN5'].value=='Yes':
+        
+            ### Reading and writing in the FD sheet
 
-        Ps_FD = Q_(FD_sheet.range('T23').value,'bar')
-        Ts_FD = Q_(FD_sheet.range('T24').value,'degC')
+            Ps_FD = Q_(FD_sheet.range('T23').value,'bar')
+            Ts_FD = Q_(FD_sheet.range('T24').value,'degC')
 
-        Pd_FD = Q_(FD_sheet.range('T31').value,'bar')
-        Td_FD = Q_(FD_sheet.range('T32').value,'degC')
+            Pd_FD = Q_(FD_sheet.range('T31').value,'bar')
+            Td_FD = Q_(FD_sheet.range('T32').value,'degC')
 
-
-        if FD_sheet.range('T21').value==None: 
-            V_test=True
-            flow_v_FD = Q_(FD_sheet.range('T29').value,'m³/h')
-        else:
-            V_test=False
-            flow_m_FD = Q_(FD_sheet.range('T21').value,'kg/h')
-
-        #flow_m_FD = Q_(FD_sheet.range('T21').value,'kg/h')
-        #flow_v_FD = Q_(FD_sheet.range('T29').value,'m**3/h')
-
-        speed_FD = Q_(FD_sheet.range('T38').value,'rpm')
-
-        brake_pow_FD = Q_(FD_sheet.range('T36').value,'kW')
-        Pol_head_FD = Q_(FD_sheet.range('T40').value,'J/kg')
-        Pol_eff_FD = Q_(FD_sheet.range('T41').value,'dimensionless')
-
-        D = Q_(FD_sheet.range('AB132').value,'mm')
-        b = Q_(FD_sheet.range('AQ132').value,'mm')
-
-        GasesFD = FD_sheet.range('B69:B85').value
-        mol_fracFD = FD_sheet.range('K69:K85').value
-
-        fluid_FD={GasesFD[i] : mol_fracFD[i] for i in range(len(GasesFD))}
+            eff_FD = Q_(FD_sheet.range('T41').value,'dimensionless')
+            Pow_FD = Q_(FD_sheet.range('T35').value,'kW')
+            H_FD = Q_(FD_sheet.range('T40').value,'J/kg')
 
 
-        sucFD=State.define(fluid=fluid_FD , p=Ps_FD , T=Ts_FD)
+            if FD_sheet.range('T21').value==None: 
+                V_test=True
+                flow_v_FD = Q_(FD_sheet.range('T29').value,'m³/h')
+            else:
+                V_test=False
+                flow_m_FD = Q_(FD_sheet.range('T21').value,'kg/h')
 
-        if V_test:
-            flow_m_FD=flow_v_FD*sucFD.rho()
-            FD_sheet['AS34'].value=flow_m_FD.to('kg/h').magnitude
-            FD_sheet['AQ34'].value='Mass Flow'
-            FD_sheet['AT34'].value='kg/h'
-        else:
-            flow_v_FD=flow_m_FD/sucFD.rho()
-            FD_sheet['AS34'].value=flow_v_FD.to('m³/h').magnitude
-            FD_sheet['AQ34'].value='Inlet Volume Flow'
-            FD_sheet['AT34'].value='m³/h'
+            #flow_m_FD = Q_(FD_sheet.range('T21').value,'kg/h')
+            #flow_v_FD = Q_(FD_sheet.range('T29').value,'m**3/h')
 
-        dischFD=State.define(fluid=fluid_FD , p=Pd_FD , T=Td_FD)
+            speed_FD = Q_(FD_sheet.range('T38').value,'rpm')
 
-        P_FD=ccp.Point(speed=speed_FD,flow_m=flow_m_FD,suc=sucFD,disch=dischFD)
-        P_FD_=ccp.Point(speed=speed_FD,flow_m=flow_m_FD*0.001,suc=sucFD,disch=dischFD)
+            brake_pow_FD = Q_(FD_sheet.range('T36').value,'kW')
+            Pol_head_FD = Q_(FD_sheet.range('T40').value,'J/kg')
+            Pol_eff_FD = Q_(FD_sheet.range('T41').value,'dimensionless')
 
-        Imp_FD = ccp.Impeller([P_FD,P_FD_],b=b,D=D)
+            D = Q_(FD_sheet.range('AB132').value,'mm')
+            b = Q_(FD_sheet.range('AQ132').value,'mm')
 
-        FD_sheet['AS25'].value=Imp_FD._mach(P_FD).magnitude
-        FD_sheet['AS26'].value=Imp_FD._reynolds(P_FD).magnitude
-        FD_sheet['AS27'].value=1/P_FD._volume_ratio().magnitude
-        FD_sheet['AS28'].value=Imp_FD._phi(P_FD).magnitude
-        FD_sheet['AS29'].value=Imp_FD._psi(P_FD).magnitude
-        FD_sheet['AS30'].value=Imp_FD._work_input_factor(P_FD).magnitude
-        FD_sheet['AS32'].value=P_FD._eff_pol_schultz().magnitude
-        FD_sheet['AS33'].value=P_FD._power_calc().to('kW').magnitude
-        FD_sheet['K90'].value=sucFD.molar_mass().to('g/mol').magnitude
+            GasesFD = FD_sheet.range('B69:B85').value
+            mol_fracFD = FD_sheet.range('K69:K85').value
+
+            fluid_FD={GasesFD[i] : mol_fracFD[i] for i in range(len(GasesFD))}
+
+
+            sucFD=State.define(fluid=fluid_FD , p=Ps_FD , T=Ts_FD)
+
+            if V_test:
+                flow_m_FD=flow_v_FD*sucFD.rho()
+                FD_sheet['AS34'].value=flow_m_FD.to('kg/h').magnitude
+                FD_sheet['AQ34'].value='Mass Flow'
+                FD_sheet['AT34'].value='kg/h'
+            else:
+                flow_v_FD=flow_m_FD/sucFD.rho()
+                FD_sheet['AS34'].value=flow_v_FD.to('m³/h').magnitude
+                FD_sheet['AQ34'].value='Inlet Volume Flow'
+                FD_sheet['AT34'].value='m³/h'
+
+            dischFD=State.define(fluid=fluid_FD , p=Pd_FD , T=Td_FD)
+
+            P_FD=ccp.Point(speed=speed_FD,flow_m=flow_m_FD,suc=sucFD,disch=dischFD)
+            P_FD_=ccp.Point(speed=speed_FD,flow_m=flow_m_FD*0.001,suc=sucFD,disch=dischFD)
+
+
+            def update_head(H):
+                global P_FD_eff
+                P_FD_eff=ccp.Point(speed=speed_FD,flow_m=flow_m_FD,suc=sucFD,
+                               eff=eff_FD,head=Q_(H,'J/kg'))
+
+                P=P_FD_eff.disch.p().to('Pa').magnitude
+
+                return (P-Pd_FD.to('Pa').magnitude)
+
+            newton(update_head,P_FD._head_pol().to('J/kg').magnitude,tol=1)
+
+            Imp_FD = ccp.Impeller([P_FD,P_FD_],b=b,D=D)
+
+
+            max_H = max([P_FD._head_pol_schultz().to('kJ/kg').magnitude,
+                         P_FD_eff._head_pol_schultz().to('kJ/kg').magnitude,H_FD.to('kJ/kg').magnitude])
+            min_Pow=min([P_FD._power_calc().to('kW').magnitude,P_FD_eff._power_calc().to('kW').magnitude,Pow_FD.to('kW').magnitude])
+
+            FD_sheet['AS25'].value=Imp_FD._mach(P_FD).magnitude
+            FD_sheet['AS26'].value=Imp_FD._reynolds(P_FD).magnitude
+            FD_sheet['AS27'].value=1/P_FD._volume_ratio().magnitude
+            FD_sheet['AS28'].value=P_FD_eff._head_pol_schultz().to('J/kg').magnitude
+            FD_sheet['AS29'].value=P_FD_eff.disch.T().to('degC').magnitude
+            FD_sheet['AS30'].value=P_FD_eff._power_calc().to('kW').magnitude
+            FD_sheet['AS31'].value=P_FD._head_pol_schultz().to('J/kg').magnitude
+            FD_sheet['AS32'].value=P_FD._eff_pol_schultz().magnitude
+            FD_sheet['AS33'].value=P_FD._power_calc().to('kW').magnitude
+
+
+            FD_sheet['K90'].value=sucFD.molar_mass().to('g/mol').magnitude
 
         ### Reading and writing in the Test Procedure Sheet
 
@@ -493,11 +556,11 @@ while Open_file:
         TP_sheet['G18'].value=Imp_TP._psi(P_TP).magnitude
         TP_sheet['H19'].value=Imp_TP._psi(P_TP).magnitude/Imp_FD._psi(P_FD).magnitude
         TP_sheet['G20'].value=P_TP._head_pol_schultz().to('kJ/kg').magnitude
-        TP_sheet['H21'].value=P_TP._head_pol_schultz().to('kJ/kg').magnitude/P_FD._head_pol_schultz().to('kJ/kg').magnitude
+        TP_sheet['H21'].value=P_TP._head_pol_schultz().to('kJ/kg').magnitude/max_H
         TP_sheet['G22'].value=P_TPconv._head_pol_schultz().to('kJ/kg').magnitude
-        TP_sheet['H23'].value=P_TPconv._head_pol_schultz().to('kJ/kg').magnitude/P_FD._head_pol_schultz().to('kJ/kg').magnitude
+        TP_sheet['H23'].value=P_TPconv._head_pol_schultz().to('kJ/kg').magnitude/max_H
         TP_sheet['G24'].value=P_TP._power_calc().to('kW').magnitude
-        TP_sheet['H25'].value=P_TP._power_calc().to('kW').magnitude/P_FD._power_calc().to('kW').magnitude
+        TP_sheet['H25'].value=P_TP._power_calc().to('kW').magnitude/min_Pow
 
         if TP_sheet['C25'].value=='Yes':
 
@@ -505,11 +568,11 @@ while Open_file:
             HL_TP=Q_(((sucTP.T()+dischTP.T()).to('degC').magnitude*0.8/2-25)*1.166*TP_sheet['D26'].value,'W')
 
             TP_sheet['G26'].value=(P_TPconv._power_calc()-HL_TP+HL_FD).to('kW').magnitude
-            TP_sheet['H27'].value=(P_TPconv._power_calc()-HL_TP+HL_FD).to('kW').magnitude/(P_FD._power_calc()).to('kW').magnitude
+            TP_sheet['H27'].value=(P_TPconv._power_calc()-HL_TP+HL_FD).to('kW').magnitude/min_Pow
 
         else:
             TP_sheet['G26'].value=P_TPconv._power_calc().to('kW').magnitude
-            TP_sheet['H27'].value=P_TPconv._power_calc().to('kW').magnitude/P_FD._power_calc().to('kW').magnitude
+            TP_sheet['H27'].value=P_TPconv._power_calc().to('kW').magnitude/min_Pow
 
 
         TP_sheet['G28'].value=P_TP._eff_pol_schultz().magnitude
