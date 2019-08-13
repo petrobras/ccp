@@ -76,6 +76,7 @@ class State(CP.AbstractState):
         return z.to('dimensionless')
 
     def speed_sound(self):
+        """ Speed of sound - Eq. 8.1 from P. Nederstigt - Real Gas Thermodynamics"""
         return Q_(np.sqrt(self.first_partial_deriv(CP.iP,CP.iDmass,CP.iSmass)),'m/s')
             
 
@@ -89,9 +90,8 @@ class State(CP.AbstractState):
         """
         Partial derivative of pressure to spec. volume with const. entropy.
         """
-        return Q_(
-            1 / (self.first_partial_deriv(CP.iP, CP.iDmass, CP.iSmass)),
-            'kilogram/(meter**3 pascal)'
+        return Q_( - self.rho().magnitude**2 * (self.first_partial_deriv(CP.iP, CP.iDmass, CP.iSmass)),
+                'pascal * kg / m**3'
         )
     
     def _X(self):
@@ -107,18 +107,11 @@ class State(CP.AbstractState):
         V=self.v().to('m³/kg').magnitude
         
         return Q_(-(-P*V*self.first_partial_deriv(CP.iDmass,CP.iP,CP.iT)),'dimensionless')
-    
-    def _isentropic_exponent(self):
-        """ Expoente isentrópico"""
-        
-        P=self.p().to('Pa').magnitude
-        Dmass=self.rho().to('kg/m³').magnitude
-        
-        return Q_(Dmass/P*self.first_partial_deriv(CP.iP,CP.iDmass,CP.iSmass),'dimensionless')
+
 
     def kv(self):
         """Isentropic volume exponent (2.60)."""
-        return -(self.p() / self.rho()) * self.dpdv_s()
+        return -(self.v() / self.p()) * self.dpdv_s()
 
     def dTdp_s(self):
         """(dT / dp)s
