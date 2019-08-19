@@ -53,7 +53,11 @@ import CoolProp.CoolProp as _CP
 try:
     _path = _Path(_os.environ['RPPREFIX'])
 except KeyError:
-    _path = _Path.cwd()
+    if _os.path.exists('C:\\Users\\Public\\REFPROP'):
+        _os.environ['RPprefix']='C:\\Users\\Public\\REFPROP'
+        _path = _Path(_os.environ['RPPREFIX'])
+    else:
+        _path = _Path.cwd()
 
 _CP.set_config_string(_CP.ALTERNATIVE_REFPROP_PATH, str(_path))
 
