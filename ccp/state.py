@@ -1,13 +1,15 @@
-from copy import copy
-from . import Q_
-from .config.units import check_units
-from .config.fluids import get_name, normalize_mix
 import warnings
-import numpy as np
+from copy import copy
+
 import CoolProp
 import CoolProp.CoolProp as CP
+import numpy as np
 from CoolProp.Plots import PropertyPlot
 from CoolProp.Plots.Common import interpolate_values_1d
+
+from . import Q_
+from .config.fluids import get_name, normalize_mix
+from .config.units import check_units
 
 
 class State(CP.AbstractState):

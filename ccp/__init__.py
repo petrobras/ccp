@@ -46,6 +46,7 @@ imp = Impeller(Curve, b=0.0285, D=0.365)
 import os as _os
 import warnings as _warnings
 from pathlib import Path as _Path
+
 import CoolProp.CoolProp as _CP
 
 # use _ to avoid polluting the namespace when importing

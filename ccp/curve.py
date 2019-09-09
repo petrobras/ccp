@@ -1,10 +1,11 @@
-import numpy as np
-import matplotlib.pyplot as plt
-import toml
 import csv
-import warnings
-from scipy.interpolate import interp1d
+
+import matplotlib.pyplot as plt
+import numpy as np
+import toml
 from bokeh.models import ColumnDataSource, CDSView, IndexFilter
+from scipy.interpolate import interp1d
+
 from ccp import Q_, Point
 from ccp.config.units import change_data_units
 

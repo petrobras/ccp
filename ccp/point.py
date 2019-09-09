@@ -1,14 +1,16 @@
-import numpy as np
-import matplotlib.pyplot as plt
-import toml
-from warnings import warn
 from copy import copy
-from scipy.optimize import newton
+from warnings import warn
+
+import matplotlib.pyplot as plt
+import numpy as np
+import toml
 from bokeh.models import ColumnDataSource
 from bokeh.models import HoverTool
-from ccp.config.utilities import r_getattr
-from ccp.config.units import change_data_units
+from scipy.optimize import newton
+
 from ccp import check_units, State, Q_
+from ccp.config.units import change_data_units
+from ccp.config.utilities import r_getattr
 
 
 def plot_func(self, attr):

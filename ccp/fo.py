@@ -1,6 +1,7 @@
 """Flow orifice."""
 import numpy as np
 from scipy.optimize import newton
+
 from . import Q_
 
 

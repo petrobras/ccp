@@ -1,7 +1,8 @@
-import sys
 import cProfile
 import subprocess
+import sys
 from pathlib import Path
+
 from ccp import Q_, State, Point, Impeller, read_csv
 
 

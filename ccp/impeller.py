@@ -1,17 +1,19 @@
 """Module to define impeller class."""
-import numpy as np
-import matplotlib.pyplot as plt
 import csv
-from scipy.interpolate import interp1d
 from copy import deepcopy
 from itertools import groupby
-from warnings import warn
 from pathlib import Path
-from openpyxl import Workbook
+from warnings import warn
+
+import matplotlib.pyplot as plt
+import numpy as np
 from bokeh.models import ColumnDataSource
+from openpyxl import Workbook
+from scipy.interpolate import interp1d
+
+from ccp import Q_, check_units, State, Point, Curve
 from ccp.config.utilities import r_getattr, r_setattr
 from ccp.data_io.read_csv import read_data_from_engauge_csv
-from ccp import Q_, check_units, State, Point, Curve
 
 
 class ImpellerState:

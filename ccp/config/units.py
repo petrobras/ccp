@@ -1,6 +1,7 @@
-from .. import Q_
-from functools import wraps
 import inspect
+from functools import wraps
+
+from .. import Q_
 
 units = {'p': 'pascal',
          'T': 'kelvin',
