@@ -1,12 +1,3 @@
-------------------------------------------------
-> :bangbang: **ATENÇÃO** :bangbang:
-
-> **ESTE PROJETO FOI MIGRADO PARA O ENDEREÇO ABAIXO:**
-
-> [https://codigo.petrobras.com.br/equipamentos-dinamicos/ccp](https://codigo.petrobras.com.br/equipamentos-dinamicos/ccp)
-
-------------------------------------------------
-
 # <img src="docs/ccp.PNG" alt="drawing" width="40"/> Centrifugal Compressor Performance
 
 Biblioteca para cálculo de performance de compressores centrífugos em python.
