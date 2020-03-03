@@ -6,10 +6,12 @@ import CoolProp.CoolProp as CP
 import numpy as np
 from CoolProp.Plots import PropertyPlot
 from CoolProp.Plots.Common import interpolate_values_1d
+from bokeh.plotting import figure
+from bokeh.models import HoverTool
 
 from . import Q_
 from .config.fluids import get_name, normalize_mix
-from .config.units import check_units
+from .config.units import check_units, change_data_units
 
 
 class State(CP.AbstractState):
@@ -390,6 +392,43 @@ class State(CP.AbstractState):
             self.plot_point(plot.axis, parameters='PT')
 
         return plot
+
+    def plot_envelope(self, fig=None, **kwargs):
+        """Plot phase envelope
+
+        Plots the phase envelope and dew point limit.
+        """
+        if fig is None:
+            fig = figure(title='Phase Envelope', y_axis_type='log')
+
+        x_units = kwargs.get('x_units', None)
+        y_units = kwargs.get('y_units', None)
+
+        TOOLTIPS = [
+            ('T ', f'@x {x_units}'),
+            ('p ', f'@y {y_units}'),
+        ]
+        self.build_phase_envelope("dummy")
+        phase_envelope = self.get_phase_envelope_data()
+        p = Q_(np.array(phase_envelope.p), 'Pa')
+        T = Q_(np.array(phase_envelope.T), 'degK')
+
+        T, p = change_data_units(T, p, x_units, y_units)
+
+        p_lower_bound = Q_(0.1, 'atm')
+        T = T[p > p_lower_bound]
+        p = p[p > p_lower_bound]
+
+        fig.line(np.add(T.m[:np.argmax(T.m)],
+                        np.multiply(12, np.ones(np.argmax(T.m)))),
+                 p.m[:np.argmax(T.m)], line_width=4, line_dash='dashed',
+                 alpha=0.8, legend='Dewpoint', color='firebrick')
+
+        fig.line(T.m, p.m, line_width=4, alpha=0.8,
+                 legend='Phase Envelope')
+
+        fig.add_tools(HoverTool(tooltips=TOOLTIPS, mode='mouse'))
+
 
     def __repr__(self):
         args = {k: v for k, v in self.init_args.items() if v is not None}
