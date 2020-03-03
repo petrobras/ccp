@@ -7,7 +7,7 @@ import numpy as np
 from CoolProp.Plots import PropertyPlot
 from CoolProp.Plots.Common import interpolate_values_1d
 from bokeh.plotting import figure
-from bokeh.models import HoverTool
+from bokeh.models import HoverTool, ColumnDataSource
 
 from . import Q_
 from .config.fluids import get_name, normalize_mix
@@ -276,31 +276,38 @@ class State(CP.AbstractState):
                            f'{[k for k, v in locs.items() if v is not None]}'
                            f' not implemented')
 
-    def plot_point(self, ax, parameters=None, **kwargs):
+    def plot_point(self, fig=None, **kwargs):
         """Plot point.
-        Plot point in the given axis. Function will check for axis units and
+
+        Plot point in the given figure. Function will check for axis units and
         plot the point accordingly.
+
         Parameters
         ----------
-        ax : matplotlib.axes, optional
-            Matplotlib axes, if None creates a new.
+        fig : bokeh.models.figure, optional
+            Bokeh figure, if None creates a new.
+
         Returns
         -------
-        ax : matplotlib.axes
-            Matplotlib axes with plot.
+        fig : bokeh.models.figure
+            Bokeh figure with plot.
         """
-        # default plot parameters
-        kwargs.setdefault('marker', '2')
-        kwargs.setdefault('color', 'k')
-        kwargs.setdefault('label', self.__repr__())
+        if fig is None:
+            fig = figure()
 
-        y_value = getattr(self, parameters[0].lower())()
-        try:
-            x_value = getattr(self, parameters[1].lower())()
-        except AttributeError:
-            x_value = getattr(self, parameters[1])()
+        x_units = kwargs.get('x_units', None)
+        y_units = kwargs.get('y_units', None)
 
-        ax.scatter(x_value, y_value, **kwargs)
+        p = self.p()
+        T = self.T()
+
+        T, p = change_data_units(T, p, x_units, y_units)
+
+        source_point = ColumnDataSource(dict(x=[T.m], y=[p.m]))
+
+        fig.circle(x='x', y='y', source=source_point)
+
+        return fig
 
     def plot_ph(self, **kwargs):
         """Plot pressure vs enthalpy.
@@ -401,8 +408,10 @@ class State(CP.AbstractState):
         if fig is None:
             fig = figure(title='Phase Envelope', y_axis_type='log')
 
-        x_units = kwargs.get('x_units', None)
-        y_units = kwargs.get('y_units', None)
+        x_units = kwargs.get('x_units', 'degK')
+        y_units = kwargs.get('y_units', 'Pa')
+        fig.xaxis.axis_label = f'{x_units}'
+        fig.yaxis.axis_label = f'{y_units}'
 
         TOOLTIPS = [
             ('T ', f'@x {x_units}'),
@@ -410,8 +419,8 @@ class State(CP.AbstractState):
         ]
         self.build_phase_envelope("dummy")
         phase_envelope = self.get_phase_envelope_data()
-        p = Q_(np.array(phase_envelope.p), 'Pa')
         T = Q_(np.array(phase_envelope.T), 'degK')
+        p = Q_(np.array(phase_envelope.p), 'Pa')
 
         T, p = change_data_units(T, p, x_units, y_units)
 
@@ -419,9 +428,11 @@ class State(CP.AbstractState):
         T = T[p > p_lower_bound]
         p = p[p > p_lower_bound]
 
-        fig.line(np.add(T.m[:np.argmax(T.m)],
-                        np.multiply(12, np.ones(np.argmax(T.m)))),
-                 p.m[:np.argmax(T.m)], line_width=4, line_dash='dashed',
+        source_dew = ColumnDataSource(
+            dict(x=np.add(T.m[:np.argmax(T.m)], np.multiply(12, np.ones(np.argmax(T.m)))),
+                 y=p.m[:np.argmax(T.m)]))
+        fig.line(x='x', y='y', source=source_dew,
+                 line_width=4, line_dash='dashed',
                  alpha=0.8, legend='Dewpoint', color='firebrick')
 
         fig.line(T.m, p.m, line_width=4, alpha=0.8,
