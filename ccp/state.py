@@ -429,6 +429,7 @@ class State(CP.AbstractState):
 
         fig.add_tools(HoverTool(tooltips=TOOLTIPS, mode='mouse'))
 
+        return fig
 
     def __repr__(self):
         args = {k: v for k, v in self.init_args.items() if v is not None}
