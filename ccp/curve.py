@@ -72,7 +72,7 @@ def plot_func(self, attr):
 
         curve_tan = ((values_range[-1] - values_range[-2]) / delta_y_graph) / \
                     ((flow_v_range[-1] - flow_v_range[-2]) / delta_x_graph)
-        text_angle = np.arctan(curve_tan)
+        text_angle = np.arctan(curve_tan.m)
         text_angle = Q_(text_angle, 'rad').to('deg').magnitude
 
         speed = self.speed
