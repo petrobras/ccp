@@ -53,7 +53,7 @@ def test_state_define_units_mix():
     assert state.z().units == ''
     assert state.h().units == 'joule/kilogram'
     assert state.s().units == 'joule/(kelvin kilogram)'
-    assert state.dpdv_s().units == 'kilogram/(meter**3 pascal)'
+    assert state.dpdv_s().units == 'kilogram*pascal/meter**3'
     assert state.kv().units == ''
     assert state.dTdp_s().units == 'kelvin/pascal'
     assert state.kT().units == ''
