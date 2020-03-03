@@ -124,11 +124,11 @@ def test_unit_Q_conversion(auxiliary_function):
                                  speed=Q_(1, 'RPM'),
                                  flow_v=Q_(1, 'foot**3/second'),
                                  flow_m=Q_(1, 'lb/second'),
-                                 h=Q_(1, 'btu/lb'),
-                                 s=Q_(1, 'btu/(degF lb)'),
+                                 h=Q_(1, 'BTU/lb'),
+                                 s=Q_(1, 'BTU/(degF lb)'),
                                  b=Q_(1, 'inches'),
                                  D=Q_(1, 'inches'),
-                                 head=Q_(1, 'btu/lb'),
+                                 head=Q_(1, 'BTU/lb'),
                                  eff=Q_(1, 'dimensionless'))
 
     # check if all available units are tested
@@ -151,13 +151,13 @@ def test_unit_Q_conversion(auxiliary_function):
     assert flow_v.magnitude == 0.028316846591999994
     assert flow_v.units == 'meter**3/second'
 
-    assert flow_m.magnitude == 0.45359237
+    assert_allclose(flow_m.magnitude, 0.45359237)
     assert flow_m.units == 'kilogram/second'
 
-    assert h.magnitude == 2326.0
+    assert_allclose(h.magnitude, 2326.000325)
     assert h.units == 'joule/kilogram'
 
-    assert s.magnitude == 4186.8
+    assert_allclose(s.magnitude, 4186.800585)
     assert s.units == 'joule/(kelvin kilogram)'
 
     assert b.magnitude == 0.0254
@@ -166,7 +166,7 @@ def test_unit_Q_conversion(auxiliary_function):
     assert D.magnitude == 0.0254
     assert D.units == 'meter'
 
-    assert head.magnitude == 2326.0
+    assert_allclose(head.magnitude, 2326.0003)
     assert head.units == 'joule/kilogram'
 
     assert eff.magnitude == 1

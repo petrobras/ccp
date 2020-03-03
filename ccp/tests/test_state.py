@@ -67,8 +67,8 @@ def test_state_define_units_mix():
     assert_allclose(state.z().magnitude, 0.99597784424262)
     assert_allclose(state.h().magnitude, 755784.43407392, rtol=1e-5)
     assert_allclose(state.s().magnitude, 4805.332018156618, rtol=1e-5)
-    assert_allclose(state.dpdv_s().magnitude, 7.543173e-06, rtol=1e-5)
-    assert_allclose(state.kv().magnitude, -0.81279, rtol=1e-5)
+    assert_allclose(state.dpdv_s().magnitude, -114182.00416892, rtol=1e-5)
+    assert_allclose(state.kv().magnitude, 1.230331, rtol=1e-5)
     assert_allclose(state.dTdp_s().magnitude, .5664135e-3, rtol=1e-5)
     assert_allclose(state.kT().magnitude, 1.232748, rtol=1e-5)
     assert state.__repr__() == 'State.define(p=Q_("100000 Pa"), T=Q_("300 K"), fluid={"METHANE": 0.50000, "ETHANE": 0.50000})'
@@ -95,13 +95,13 @@ def test_state_copy():
 def test_rho_p_inputs():
     state = State.define(rho=0.9280595769591103, p=Q_(1, 'bar'),
                          fluid={'Methane': 0.5, 'Ethane': 0.5})
-    assert_allclose(state.T(), 300)
+    assert_allclose(state.T().m, 300)
 
 
 def test_rho_T_inputs():
     state = State.define(rho=0.9280595769591103, T=300,
                          fluid={'Methane': 0.5, 'Ethane': 0.5})
-    assert_allclose(state.p(), 100000)
+    assert_allclose(state.p().m, 100000)
 
 
 def test_h_s_inputs():
