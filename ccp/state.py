@@ -295,8 +295,8 @@ class State(CP.AbstractState):
         if fig is None:
             fig = figure()
 
-        x_units = kwargs.get('x_units', None)
-        y_units = kwargs.get('y_units', None)
+        x_units = kwargs.pop('x_units', None)
+        y_units = kwargs.pop('y_units', None)
 
         p = self.p()
         T = self.T()
@@ -305,7 +305,7 @@ class State(CP.AbstractState):
 
         source_point = ColumnDataSource(dict(x=[T.m], y=[p.m]))
 
-        fig.circle(x='x', y='y', source=source_point)
+        fig.circle(x='x', y='y', source=source_point, **kwargs)
 
         return fig
 
@@ -408,8 +408,8 @@ class State(CP.AbstractState):
         if fig is None:
             fig = figure(title='Phase Envelope', y_axis_type='log')
 
-        x_units = kwargs.get('x_units', 'degK')
-        y_units = kwargs.get('y_units', 'Pa')
+        x_units = kwargs.pop('x_units', 'degK')
+        y_units = kwargs.pop('y_units', 'Pa')
         fig.xaxis.axis_label = f'{x_units}'
         fig.yaxis.axis_label = f'{y_units}'
 
