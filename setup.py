@@ -27,13 +27,23 @@ def version(path):
 VERSION = version("ccp/__init__.py")
 
 
-setup(name='ccp',
-      version=VERSION,
-      description='Cálculo de performance para compressores centrífugos.',
-      author='Raphael Timbó',
-      author_email='raphaelts@petrobras.com.br',
-      packages=['ccp', 'ccp.config', 'ccp.data_io'],
-      package_data={'ccp.config': ['new_units.txt']},
-      install_requires=['numpy', 'scipy', 'CoolProp', 'matplotlib',
-                        'bokeh', 'pint', 'toml', 'openpyxl', 'tqdm']
-      )
+setup(
+    name="ccp",
+    version=VERSION,
+    description="Cálculo de performance para compressores centrífugos.",
+    author="Raphael Timbó",
+    author_email="raphaelts@petrobras.com.br",
+    packages=["ccp", "ccp.config", "ccp.data_io"],
+    package_data={"ccp.config": ["new_units.txt"]},
+    install_requires=[
+        "numpy",
+        "scipy",
+        "CoolProp",
+        "matplotlib",
+        "bokeh",
+        "pint",
+        "toml",
+        "openpyxl",
+        "tqdm",
+    ],
+)

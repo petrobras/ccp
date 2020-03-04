@@ -3,22 +3,25 @@ from functools import wraps
 
 from .. import Q_
 
-units = {'p': 'pascal',
-         'T': 'kelvin',
-         'rho': 'kilogram/m**3',
-         'speed': 'radian/second',
-         'flow_v': 'meter**3/second',
-         'flow_m': 'kilogram/second',
-         'h': 'joule/kilogram',
-         's': 'joule/(kelvin kilogram)',
-         'b': 'meter',
-         'D': 'meter',
-         'head': 'joule/kilogram',
-         'eff': 'dimensionless'}
+units = {
+    "p": "pascal",
+    "T": "kelvin",
+    "rho": "kilogram/m**3",
+    "speed": "radian/second",
+    "flow_v": "meter**3/second",
+    "flow_m": "kilogram/second",
+    "h": "joule/kilogram",
+    "s": "joule/(kelvin kilogram)",
+    "b": "meter",
+    "D": "meter",
+    "head": "joule/kilogram",
+    "eff": "dimensionless",
+}
 
 
 def check_units(func):
     """Wrapper to check and convert units to base_units."""
+
     @wraps(func)
     def inner(*args, **kwargs):
         base_unit_args = []
@@ -44,6 +47,7 @@ def check_units(func):
                 base_unit_kwargs[k] = v
 
         return func(*base_unit_args, **base_unit_kwargs)
+
     return inner
 
 
@@ -56,5 +60,3 @@ def change_data_units(x_data, y_data, x_units=None, y_units=None):
         y_data = y_data.to(y_units)
 
     return x_data, y_data
-
-

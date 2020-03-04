@@ -20,7 +20,7 @@ def plot_func(self, attr):
         You can choose units with the arguments x_units='...' and
         y_units='...'.
         """
-        ax = kwargs.pop('ax', None)
+        ax = kwargs.pop("ax", None)
 
         if ax is None:
             ax = plt.gca()
@@ -28,8 +28,8 @@ def plot_func(self, attr):
         if plot_kws is None:
             plot_kws = {}
 
-        x_units = kwargs.get('x_units', None)
-        y_units = kwargs.get('y_units', None)
+        x_units = kwargs.get("x_units", None)
+        y_units = kwargs.get("y_units", None)
 
         point_attr = r_getattr(self, attr)
         if callable(point_attr):
@@ -38,8 +38,8 @@ def plot_func(self, attr):
         if y_units is not None:
             point_attr = point_attr.to(y_units)
 
-        value = (getattr(point_attr, 'magnitude'))
-        units = getattr(point_attr, 'units')
+        value = getattr(point_attr, "magnitude")
+        units = getattr(point_attr, "units")
 
         flow_v = self.flow_v
 
@@ -48,13 +48,17 @@ def plot_func(self, attr):
 
         ax.scatter(flow_v, value, **plot_kws)
         #  vertical and horizontal lines
-        ax.plot([flow_v.magnitude, flow_v.magnitude],
-                [0, value], ls='--', color='k', alpha=0.2)
-        ax.plot([0, flow_v.magnitude],
-                [value, value], ls='--', color='k', alpha=0.2)
+        ax.plot(
+            [flow_v.magnitude, flow_v.magnitude],
+            [0, value],
+            ls="--",
+            color="k",
+            alpha=0.2,
+        )
+        ax.plot([0, flow_v.magnitude], [value, value], ls="--", color="k", alpha=0.2)
 
-        ax.set_xlabel(f'Volumetric flow ({flow_v.units:P~})')
-        ax.set_ylabel(f'{attr} ({units:P~})')
+        ax.set_xlabel(f"Volumetric flow ({flow_v.units:P~})")
+        ax.set_ylabel(f"{attr} ({units:P~})")
 
         return ax
 
@@ -64,8 +68,8 @@ def plot_func(self, attr):
 def _bokeh_source_func(point, attr):
     def inner(*args, **kwargs):
         """Return source data for bokeh plots."""
-        x_units = kwargs.get('x_units', None)
-        y_units = kwargs.get('y_units', None)
+        x_units = kwargs.get("x_units", None)
+        y_units = kwargs.get("y_units", None)
         x_data = point.flow_v
         y_data = r_getattr(point, attr)
 
@@ -76,15 +80,19 @@ def _bokeh_source_func(point, attr):
 
         x_data, y_data = change_data_units(x_data, y_data, x_units, y_units)
 
-        source = ColumnDataSource(data=dict(x=[x_data.magnitude],
-                                            y=[y_data.magnitude],
-                                            flow_m=[flow_m.magnitude],
-                                            x_units=[f'{x_data.units:~P}'],
-                                            y_units=[f'{y_data.units:~P}'],
-                                            flow_m_units=[f'{flow_m.units:~P}']
-                                            ))
+        source = ColumnDataSource(
+            data=dict(
+                x=[x_data.magnitude],
+                y=[y_data.magnitude],
+                flow_m=[flow_m.magnitude],
+                x_units=[f"{x_data.units:~P}"],
+                y_units=[f"{y_data.units:~P}"],
+                flow_m_units=[f"{flow_m.units:~P}"],
+            )
+        )
 
         return source
+
     return inner
 
 
@@ -93,31 +101,34 @@ def _bokeh_plot_func(point, attr):
         if plot_kws is None:
             plot_kws = {}
 
-        plot_kws.setdefault('color', 'navy')
-        plot_kws.setdefault('size', 8)
-        plot_kws.setdefault('alpha', 0.5)
-        plot_kws.setdefault('name', 'point')
+        plot_kws.setdefault("color", "navy")
+        plot_kws.setdefault("size", 8)
+        plot_kws.setdefault("alpha", 0.5)
+        plot_kws.setdefault("name", "point")
 
         if source is None:
-            source = r_getattr(point, attr + '_bokeh_source')(*args, **kwargs)
+            source = r_getattr(point, attr + "_bokeh_source")(*args, **kwargs)
 
-        fig.circle('x', 'y', source=source, **plot_kws)
+        fig.circle("x", "y", source=source, **plot_kws)
         x_units_str = source.data["x_units"][0]
         y_units_str = source.data["y_units"][0]
         flow_m_units_str = source.data["flow_m_units"][0]
-        fig.xaxis.axis_label = f'Flow ({x_units_str})'
-        fig.yaxis.axis_label = f'{attr} ({y_units_str})'
+        fig.xaxis.axis_label = f"Flow ({x_units_str})"
+        fig.yaxis.axis_label = f"{attr} ({y_units_str})"
 
-
-        fig.add_tools(HoverTool(
-            names=['point'],
-            tooltips=[
-                ('Flow', f'@x ({x_units_str})'),
-                ('Mass Flow', f'@flow_m ({flow_m_units_str})'),
-                (f'{attr}', f'@y ({y_units_str})')
-            ]))
+        fig.add_tools(
+            HoverTool(
+                names=["point"],
+                tooltips=[
+                    ("Flow", f"@x ({x_units_str})"),
+                    ("Mass Flow", f"@flow_m ({flow_m_units_str})"),
+                    (f"{attr}", f"@y ({y_units_str})"),
+                ],
+            )
+        )
 
         return fig
+
     return inner
 
 
@@ -145,15 +156,16 @@ class Point:
     Point : ccp.Point
         A point in the compressor map.
     """
+
     @check_units
     def __init__(self, *args, **kwargs):
-        self.flow_v = kwargs.get('flow_v', None)
-        self.flow_m = kwargs.get('flow_m', None)
-        self.volume_ratio = kwargs.get('volume_ratio')
+        self.flow_v = kwargs.get("flow_v", None)
+        self.flow_m = kwargs.get("flow_m", None)
+        self.volume_ratio = kwargs.get("volume_ratio")
         if not (self.flow_m or self.flow_v or self.volume_ratio):
-            raise ValueError('flow_v, flow_m or volume_ratio must be provided.')
+            raise ValueError("flow_v, flow_m or volume_ratio must be provided.")
 
-        self.suc = kwargs['suc']
+        self.suc = kwargs["suc"]
         # dummy state used to avoid copying states
         self._dummy_state = copy(self.suc)
 
@@ -162,11 +174,11 @@ class Point:
         elif self.flow_m is not None:
             self.flow_v = self.flow_m / self.suc.rho()
 
-        self.disch = kwargs.get('disch')
-        self.head = kwargs.get('head')
-        self.eff = kwargs.get('eff')
-        self.power = kwargs.get('power')
-        self.speed = kwargs.get('speed')
+        self.disch = kwargs.get("disch")
+        self.head = kwargs.get("head")
+        self.eff = kwargs.get("eff")
+        self.power = kwargs.get("power")
+        self.speed = kwargs.get("speed")
 
         # check if some values are within a reasonable range
         try:
@@ -180,14 +192,15 @@ class Point:
         self.phi = None
         self.psi = None
 
-        kwargs_keys = [k for k in kwargs.keys()
-                       if k not in ['flow_v', 'flow_m', 'speed']]
-        kwargs_keys = '-'.join(sorted(kwargs_keys))
+        kwargs_keys = [
+            k for k in kwargs.keys() if k not in ["flow_v", "flow_m", "speed"]
+        ]
+        kwargs_keys = "-".join(sorted(kwargs_keys))
 
         calc_options = {
-            'disch-suc': self._calc_from_disch_suc,
-            'eff-suc-volume_ratio': self._calc_from_eff_suc_volume_ratio,
-            'eff-head-suc': self._calc_from_eff_head_suc
+            "disch-suc": self._calc_from_disch_suc,
+            "eff-suc-volume_ratio": self._calc_from_eff_suc_volume_ratio,
+            "eff-head-suc": self._calc_from_eff_head_suc,
         }
 
         calc_options[kwargs_keys]()
@@ -195,38 +208,40 @@ class Point:
 
     def _add_point_plot(self):
         """Add plot to point after point is fully defined."""
-        for state in ['suc', 'disch']:
-            for attr in ['p', 'T']:
-                plot = plot_func(self, '.'.join([state, attr]))
-                setattr(getattr(self, state), attr + '_plot', plot)
-                bokeh_source = _bokeh_source_func(self, '.'.join([state, attr]))
-                setattr(getattr(self, state), attr + '_bokeh_source', bokeh_source)
-                bokeh_plot = _bokeh_plot_func(self, '.'.join([state, attr]))
-                setattr(getattr(self, state), attr + '_bokeh_plot', bokeh_plot)
-        for attr in ['head', 'eff', 'power']:
-                plot = plot_func(self, attr)
-                setattr(self, attr + '_plot', plot)
-                bokeh_source = _bokeh_source_func(self, attr)
-                setattr(self, attr + '_bokeh_source', bokeh_source)
-                bokeh_plot = _bokeh_plot_func(self, attr)
-                setattr(self, attr + '_bokeh_plot', bokeh_plot)
+        for state in ["suc", "disch"]:
+            for attr in ["p", "T"]:
+                plot = plot_func(self, ".".join([state, attr]))
+                setattr(getattr(self, state), attr + "_plot", plot)
+                bokeh_source = _bokeh_source_func(self, ".".join([state, attr]))
+                setattr(getattr(self, state), attr + "_bokeh_source", bokeh_source)
+                bokeh_plot = _bokeh_plot_func(self, ".".join([state, attr]))
+                setattr(getattr(self, state), attr + "_bokeh_plot", bokeh_plot)
+        for attr in ["head", "eff", "power"]:
+            plot = plot_func(self, attr)
+            setattr(self, attr + "_plot", plot)
+            bokeh_source = _bokeh_source_func(self, attr)
+            setattr(self, attr + "_bokeh_source", bokeh_source)
+            bokeh_plot = _bokeh_plot_func(self, attr)
+            setattr(self, attr + "_bokeh_plot", bokeh_plot)
 
     def __str__(self):
         return (
-            f'\nPoint: '
-            f'\nVolume flow: {self.flow_v:.2f~P}'
-            f'\nHead: {self.head:.2f~P}'
-            f'\nEfficiency: {self.eff:.2f~P}'
-            f'\nPower: {self.power:.2f~P}'
+            f"\nPoint: "
+            f"\nVolume flow: {self.flow_v:.2f~P}"
+            f"\nHead: {self.head:.2f~P}"
+            f"\nEfficiency: {self.eff:.2f~P}"
+            f"\nPower: {self.power:.2f~P}"
         )
 
     def __repr__(self):
 
-        return (f'{self.__class__.__name__}(suc={self.suc},'
-                f' speed=Q_("{self.speed:.0f~P}"),'
-                f' flow_v=Q_("{self.flow_v:.2f~P}"),'
-                f' head=Q_("{self.head:.0f~P}"),'
-                f' eff=Q_("{self.eff:.3f~P}"))')
+        return (
+            f"{self.__class__.__name__}(suc={self.suc},"
+            f' speed=Q_("{self.speed:.0f~P}"),'
+            f' flow_v=Q_("{self.flow_v:.2f~P}"),'
+            f' head=Q_("{self.head:.0f~P}"),'
+            f' eff=Q_("{self.eff:.3f~P}"))'
+        )
 
     def _calc_from_disch_suc(self):
         self.head = self._head_pol_schultz()
@@ -295,7 +310,8 @@ class Point:
         suc = self.suc
 
         head = (disch.h() - suc.h()) - (disch.s() - suc.s()) * (
-                disch.T() - suc.T()) / np.log(disch.T() / suc.T())
+            disch.T() - suc.T()
+        ) / np.log(disch.T() / suc.T())
 
         return head
 
@@ -325,7 +341,7 @@ class Point:
             h1 = s1.h()
 
             vm = ((1 / s0.rho()) + (1 / s1.rho())) / 2
-            delta_p = Q_(p1 - self, 'Pa')
+            delta_p = Q_(p1 - self, "Pa")
             H0 = vm * delta_p
             H1 = e * (h1 - h0)
 
@@ -340,8 +356,9 @@ class Point:
             self._ref_n = []
 
             for self, p1 in zip(p_intervals[:-1], p_intervals[1:]):
-                T1 = newton(calc_step_discharge_temp, (T0 + 1e-3),
-                            args=(T0, self, p1, e))
+                T1 = newton(
+                    calc_step_discharge_temp, (T0 + 1e-3), args=(T0, self, p1, e)
+                )
 
                 s0 = State.define(p=self, T=T0, fluid=suc.fluid)
                 s1 = State.define(p=p1, T=T1, fluid=suc.fluid)
@@ -380,7 +397,7 @@ class Point:
         disch_s = self._dummy_state
         disch_s.update(p=disch.p(), s=suc.s())
 
-        return self._head_pol(disch=disch_s).to('joule/kilogram')
+        return self._head_pol(disch=disch_s).to("joule/kilogram")
 
     def _eff_isen(self):
         """Isentropic efficiency."""
@@ -389,7 +406,7 @@ class Point:
 
         ws = self._head_isen()
         dh = disch.h() - suc.h()
-        return ws/dh
+        return ws / dh
 
     def _head_pol(self, disch=None):
         """Polytropic head."""
@@ -405,7 +422,7 @@ class Point:
         p1 = suc.p()
         v1 = 1 / suc.rho()
 
-        return (n/(n-1))*(p2*v2 - p1*v1).to('joule/kilogram')
+        return (n / (n - 1)) * (p2 * v2 - p1 * v1).to("joule/kilogram")
 
     def _eff_pol(self):
         """Polytropic efficiency."""
@@ -416,7 +433,7 @@ class Point:
 
         dh = disch.h() - suc.h()
 
-        return wp/dh
+        return wp / dh
 
     def _n_exp(self, disch=None):
         """Polytropic exponent."""
@@ -430,7 +447,7 @@ class Point:
         pd = disch.p()
         vd = 1 / disch.rho()
 
-        return np.log(pd/ps)/np.log(vs/vd)
+        return np.log(pd / ps) / np.log(vs / vd)
 
     def _eff_pol_schultz(self, disch=None):
         """Schultz polytropic efficiency."""
@@ -441,7 +458,7 @@ class Point:
         wp = self._head_pol_schultz(disch=disch)
         dh = disch.h() - suc.h()
 
-        return wp/dh
+        return wp / dh
 
     def _power_calc(self):
         """Power."""
@@ -449,7 +466,7 @@ class Point:
         head = self.head
         eff = self.eff
 
-        return (flow_m * head / eff).to('watt')
+        return (flow_m * head / eff).to("watt")
 
     def _volume_ratio(self):
         suc = self.suc
@@ -469,25 +486,23 @@ class Point:
             speed=str(self.speed),
             flow_v=str(self.flow_v),
             head=str(self.head),
-            eff=str(self.eff)
+            eff=str(self.eff),
         )
 
     @staticmethod
     def _dict_from_load(dict_parameters):
         """Change dict to format that can be used by load constructor."""
         suc = State.define(
-            p=Q_(dict_parameters.pop('p')),
-            T=Q_(dict_parameters.pop('T')),
-            fluid=dict_parameters.pop('fluid'),
+            p=Q_(dict_parameters.pop("p")),
+            T=Q_(dict_parameters.pop("T")),
+            fluid=dict_parameters.pop("fluid"),
         )
 
-        return dict(
-            suc=suc, **{k: Q_(v) for k, v in dict_parameters.items()}
-        )
+        return dict(suc=suc, **{k: Q_(v) for k, v in dict_parameters.items()})
 
     def save(self, file_name):
         """Save point to toml file."""
-        with open(file_name, mode='w') as f:
+        with open(file_name, mode="w") as f:
             toml.dump(self._dict_to_save(), f)
 
     @classmethod

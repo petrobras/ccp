@@ -52,40 +52,43 @@ import CoolProp.CoolProp as _CP
 # use _ to avoid polluting the namespace when importing
 
 try:
-    _path = _Path(_os.environ['RPPREFIX'])
+    _path = _Path(_os.environ["RPPREFIX"])
 except KeyError:
-    if _os.path.exists('C:\\Users\\Public\\REFPROP'):
-        _os.environ['RPprefix']='C:\\Users\\Public\\REFPROP'
-        _path = _Path(_os.environ['RPPREFIX'])
+    if _os.path.exists("C:\\Users\\Public\\REFPROP"):
+        _os.environ["RPprefix"] = "C:\\Users\\Public\\REFPROP"
+        _path = _Path(_os.environ["RPPREFIX"])
     else:
         _path = _Path.cwd()
 
 _CP.set_config_string(_CP.ALTERNATIVE_REFPROP_PATH, str(_path))
 
-if _os.name is 'posix':
-    _shared_library = 'librefprop.so'
+if _os.name is "posix":
+    _shared_library = "librefprop.so"
 else:
-    _shared_library = 'REFPRP64.DLL'
+    _shared_library = "REFPRP64.DLL"
 
 _library_path = _path / _shared_library
 
 if not _library_path.is_file():
-    raise FileNotFoundError(f'{_library_path}.\nREFPROP not configured.')
+    raise FileNotFoundError(f"{_library_path}.\nREFPROP not configured.")
 
-__version__ = 'ccp: 0.0.1 | ' \
-              + f'CP : {_CP.get_global_param_string("version")} | ' \
-              + f'REFPROP : {_CP.get_global_param_string("REFPROP_version")}'
+__version__ = (
+    "ccp: 0.0.1 | "
+    + f'CP : {_CP.get_global_param_string("version")} | '
+    + f'REFPROP : {_CP.get_global_param_string("REFPROP_version")}'
+)
 
 ###############################################################################
 # pint
 ###############################################################################
 
 from pint import UnitRegistry as _UnitRegistry
-_new_units = _Path(__file__).parent / 'config/new_units.txt'
+
+_new_units = _Path(__file__).parent / "config/new_units.txt"
 ureg = _UnitRegistry()
 ureg.load_definitions(str(_new_units))
 Q_ = ureg.Quantity
-_warnings.filterwarnings('ignore', message='The unit of the quantity is stripped')
+_warnings.filterwarnings("ignore", message="The unit of the quantity is stripped")
 
 ###############################################################################
 # imports
