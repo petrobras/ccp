@@ -566,6 +566,9 @@ class Impeller:
                 kind=3,
                 fill_value="extrapolate",
             )
+            # check eff scale
+            if max(eff_curves[curve]["y"]) > 1:
+                eff_curves[curve]["y"] = [i / 100 for i in eff_curves[curve]["y"]]
             eff_interpolated = interp1d(
                 eff_curves[curve]["x"],
                 eff_curves[curve]["y"],
