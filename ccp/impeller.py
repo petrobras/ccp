@@ -428,19 +428,31 @@ class Impeller:
         return new_point
 
     def _calc_from_speed(self, point, new_speed):
-        """Calculate new_point considering dimensionless parameters from 'self' at 'point'
+        """Calculate new point give a point and new speed.
 
-        under .new_suc suction conditions and speed equals new_speed
+        The new point is calculated considering dimensionless parameters from 'self' at 'point'
+        under .new_suc suction conditions and speed equals new_speed.
+
+        Parameters
+        ----------
+        point : ccp.Point
+            Point in a compressor map.
+        new_speed : float, pint.Quantity
+            New speed for the point. If float is used the unit is rad/s.
+
+        Returns
+        -------
+        new_point : ccp.Point
+            Point recalculated with the new speed.
         """
-
-        N_ratio = new_speed / point.speed
+        speed_ratio = new_speed / point.speed
 
         new_point = Point(
             suc=self.new_suc,
             eff=point._eff_pol_schultz(),
             speed=new_speed,
-            flow_v=point.flow_v * N_ratio,
-            head=point._head_pol_schultz() * N_ratio ** 2,
+            flow_v=point.flow_v * speed_ratio,
+            head=point._head_pol_schultz() * speed_ratio ** 2,
         )
 
         return new_point
