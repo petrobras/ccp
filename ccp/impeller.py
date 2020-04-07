@@ -320,13 +320,11 @@ class Impeller:
                 new_points.append(self._calc_from_non_dimensional(point))
 
             speed_mean = np.mean([p.speed.magnitude for p in new_points])
-            speed_std = np.std([p.speed.magnitude for p in new_points])
 
-            if speed_std < 50:
-                for p in new_points:
-                    p.speed = Q_(speed_mean, p.speed.units)
-            else:
-                raise NotImplementedError("Coerce to same speed" " not implemented")
+            new_points = [
+                self._calc_from_speed(p, Q_(speed_mean, p.speed.units))
+                for p in new_points
+            ]
 
             all_points += new_points
 

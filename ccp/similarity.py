@@ -50,10 +50,10 @@ def check_similarity(point_sp, point_t):
     reynolds_limits = (lower, upper)
 
     similarity_results = f"""
-    {flow_coefficient.m:.2f} Limits -> {flow_coefficient_limits}
-    {volume_ratio.m:.2f} Limits -> {volume_ratio_limits}
-    {mach.m:.2f} Limits -> {mach_limits}
-    {reynolds.m:.2f} Limits -> {reynolds_limits}
+    {flow_coefficient.m:.3f} Limits -> {flow_coefficient_limits}
+    {volume_ratio.m:.3f} Limits -> {volume_ratio_limits}
+    {mach.m:.3f} Limits -> {mach_limits}
+    {reynolds.m:.3f} Limits -> {reynolds_limits}
     """
 
     return similarity_results
