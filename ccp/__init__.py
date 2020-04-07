@@ -102,3 +102,4 @@ from .curve import Curve
 from .impeller import Impeller
 from .fo import FlowOrifice
 from .data_io import read_csv
+from .similarity import check_similarity
