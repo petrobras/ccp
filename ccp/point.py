@@ -191,6 +191,8 @@ class Point:
         # to an impeller (when the impeller object is instantiated)
         self.phi = None
         self.psi = None
+        self.mach = None
+        self.reynolds = None
 
         kwargs_keys = [
             k for k in kwargs.keys() if k not in ["flow_v", "flow_m", "speed"]
