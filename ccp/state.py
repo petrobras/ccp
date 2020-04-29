@@ -216,8 +216,10 @@ class State(CP.AbstractState):
                 # create an adequate fluid string to cp.AbstractState
             _fluid = "&".join(constituents)
         except AttributeError:
-            molar_fractions.append(1)
-            _fluid = get_name(fluid)
+            # workaround https://github.com/CoolProp/CoolProp/issues/1544
+            # so we can build phase envelopes for pure substances
+            molar_fractions = [1-1e-15, 1e-15]
+            _fluid = f"{get_name(fluid)}&{get_name(fluid)}"
 
         try:
             state = cls(EOS, _fluid)
