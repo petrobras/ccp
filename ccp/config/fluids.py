@@ -80,7 +80,12 @@ def normalize_mix(molar_fractions):
     for i, comp in enumerate(molar_fractions):
         molar_fractions[i] = comp / total
 
-    while sum(molar_fractions) != 1.:
-        diff = sum(molar_fractions) - 1.
-        molar_fractions[i] = molar_fractions[i] - diff
-        i += 1
+    try:
+        # try to sum to exactly 1.
+        molar_fractions_back = molar_fractions.copy()
+        while sum(molar_fractions) != 1.:
+            diff = sum(molar_fractions) - 1.
+            molar_fractions[i] = molar_fractions[i] - diff
+            i += 1
+    except IndexError:
+        molar_fractions = molar_fractions_back
