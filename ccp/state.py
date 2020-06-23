@@ -51,6 +51,9 @@ class State(CP.AbstractState):
     def cp(self):
         return Q_(super().cpmass(), "joule/(kilogram kelvin)")
 
+    def cv(self):
+        return Q_(super().cvmass(), "joule/(kilogram kelvin)")
+
     def h(self):
         """Specific Enthalpy (per unit of mass)."""
         return Q_(super().hmass(), "joule/kilogram")
