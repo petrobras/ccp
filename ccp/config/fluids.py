@@ -33,6 +33,7 @@ fluid_list["HydrogenSulfide"].possible_names.extend(
 fluid_list["CarbonDioxide"].possible_names.extend(["carbon dioxide", "CARBON DIOXIDE"])
 fluid_list["Nitrogen"].possible_names.extend(["N2", "n2"])
 fluid_list["Oxygen"].possible_names.extend(["O2", "o2"])
+fluid_list["Hydrogen"].possible_names.extend(["H2", "h2"])
 
 
 def get_name(name):
@@ -45,7 +46,7 @@ def get_name(name):
     fluid_name = CP.get_REFPROPname(name)
 
     if fluid_name == "":
-        raise ValueError(f"Fluid {name} not available. See prf.fluid_list. ")
+        raise ValueError(f"Fluid {name} not available. See ccp.fluid_list. ")
 
     return fluid_name
 

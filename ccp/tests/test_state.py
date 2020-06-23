@@ -139,3 +139,7 @@ def test_T_s_inputs():
     assert_allclose(state.h().magnitude, 755784.43407392, rtol=1e-5)
     assert_allclose(state.s().magnitude, 4805.332018156618, rtol=1e-5)
     assert_allclose(state.rho().magnitude, 0.9280595769591103)
+
+
+def test_pure():
+    State.define(p=1e6, T=300, fluid="h2")
