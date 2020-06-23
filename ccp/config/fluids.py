@@ -17,7 +17,7 @@ _fluid_list = CP.get_global_param_string("fluids_list").split(",")
 fluid_list = {name: Fluid(name) for name in _fluid_list}
 
 # define possible names
-fluid_list["IsoButane"].possible_names.extend(["isobutane", "i-butane", "ibutane"])
+fluid_list["IsoButane"].possible_names.extend(["isobutane", "i-butane", "ibutane", "isobutan"])
 fluid_list["n-Butane"].possible_names.extend(["butane", "n-butane", "nbutane"])
 fluid_list["n-Pentane"].possible_names.extend(["pentane", "n-pentane", "npentane"])
 fluid_list["Isopentane"].possible_names.extend(["isopentane", "i-pentane", "ipentane"])
