@@ -30,6 +30,9 @@ fluid_list["n-Dodecane"].possible_names.extend(["dodecane", "n-dodecane"])
 fluid_list["HydrogenSulfide"].possible_names.extend(
     ["hydrogen sulfide", "HYDROGEN SULFIDE", "h2s"]
 )
+fluid_list["CarbonMonoxide"].possible_names.extend(
+    ["carbon monoxide", "CARBON MONOXIDE", "co"]
+)
 fluid_list["CarbonDioxide"].possible_names.extend(["carbon dioxide", "CARBON DIOXIDE"])
 fluid_list["Nitrogen"].possible_names.extend(["N2", "n2"])
 fluid_list["Oxygen"].possible_names.extend(["O2", "o2"])

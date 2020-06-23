@@ -218,14 +218,14 @@ class State(CP.AbstractState):
         except AttributeError:
             # workaround https://github.com/CoolProp/CoolProp/issues/1544
             # so we can build phase envelopes for pure substances
-            molar_fractions = [1-1e-15, 1e-15]
+            molar_fractions = [1 - 1e-15, 1e-15]
             # First try to use the same fluid, if it does not work, use a mixture with a different fluid.
             _fluid = f"{get_name(fluid)}&{get_name(fluid)}"
 
         try:
             state = cls(EOS, _fluid)
         except ValueError:
-            mix_options = [get_name(f) for f in ('n2', 'o2')]
+            mix_options = [get_name(f) for f in ("n2", "o2")]
             if get_name(fluid) != mix_options[0]:
                 _fluid = f"{get_name(fluid)}&{mix_options[0]}"
             else:
