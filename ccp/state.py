@@ -6,6 +6,7 @@ import CoolProp.CoolProp as CP
 import numpy as np
 from CoolProp.Plots import PropertyPlot
 from CoolProp.Plots.Common import interpolate_values_1d
+from plotly import graph_objects as go
 from bokeh.plotting import figure
 from bokeh.models import HoverTool, ColumnDataSource
 
@@ -431,56 +432,79 @@ class State(CP.AbstractState):
 
         return plot
 
-    def plot_envelope(self, fig=None, **kwargs):
+    def plot_envelope(self, T_units='degK', p_units='Pa', dew_point_margin=20, fig=None, **kwargs):
         """Plot phase envelope
 
         Plots the phase envelope and dew point limit.
+        Parameters
+        ----------
+        T_units : str
+            Temperature units.
+            Default is 'degK'.
+        p_units : str
+            Pressure units.
+            Default is 'Pa'.
+        dew_point_margin : float
+            Dew point margin.
+            Default is 20 degK (from API). Unit is the same as T_units.
+
+        Returns
+        -------
+        fig : plotly.graph_objects.Figure
+            The figure object with the rotor representation.
+
         """
         if fig is None:
-            fig = figure(title="Phase Envelope", y_axis_type="log")
+            fig = go.Figure()
 
-        x_units = kwargs.pop("x_units", "degK")
-        y_units = kwargs.pop("y_units", "Pa")
-        fig.xaxis.axis_label = f"{x_units}"
-        fig.yaxis.axis_label = f"{y_units}"
-
-        TOOLTIPS = [
-            ("T ", f"@x {x_units}"),
-            ("p ", f"@y {y_units}"),
-        ]
         self.build_phase_envelope("dummy")
         phase_envelope = self.get_phase_envelope_data()
-        T = Q_(np.array(phase_envelope.T), "degK")
-        p = Q_(np.array(phase_envelope.p), "Pa")
+        T = Q_(np.array(phase_envelope.T), "degK").to(T_units).m
+        p = Q_(np.array(phase_envelope.p), "Pa").to(p_units).m
 
-        T, p = change_data_units(T, p, x_units, y_units)
-
-        p_lower_bound = Q_(0.1, "atm")
+        p_lower_bound = Q_(0.1, "atm").to(p_units).m
         T = T[p > p_lower_bound]
         p = p[p > p_lower_bound]
 
-        source_dew = ColumnDataSource(
-            dict(
-                x=np.add(
-                    T.m[: np.argmax(T.m)], np.multiply(12, np.ones(np.argmax(T.m)))
-                ),
-                y=p.m[: np.argmax(T.m)],
+        T_dew = np.add(
+            T[: np.argmax(T)], np.multiply(dew_point_margin, np.ones(np.argmax(T)))
+        ),
+        p_dew = p[: np.argmax(T)],
+
+        hovertemplate = f"Temperature ({T_units}): %{{x}}<br>" \
+                        f"Pressure ({p_units}): %{{y}}"
+
+        fig.add_trace(
+            go.Scatter(
+                x=T,
+                y=p,
+                mode='lines',
+                hovertemplate=hovertemplate,
+                name="Phase Envelope",
             )
         )
-        fig.line(
-            x="x",
-            y="y",
-            source=source_dew,
-            line_width=4,
-            line_dash="dashed",
-            alpha=0.8,
-            legend="Dewpoint",
-            color="firebrick",
+
+        fig.add_trace(
+            go.Scatter(
+                x=T_dew[0],
+                y=p_dew[0],
+                mode='lines',
+                line=dict(dash="dash"),
+                hovertemplate=hovertemplate,
+                name=f"Dew Point Margin ({dew_point_margin} {T_units})",
+            )
         )
 
-        fig.line(T.m, p.m, line_width=4, alpha=0.8, legend="Phase Envelope")
-
-        fig.add_tools(HoverTool(tooltips=TOOLTIPS, mode="mouse"))
+        fig.update_layout(
+            xaxis=dict(
+                title_text=f"Temperature ({T_units})"
+            ),
+            yaxis=dict(
+                type='log',
+                exponentformat='e',
+                title_text=f"Pressure ({p_units})"
+            )
+        )
 
         return fig
 

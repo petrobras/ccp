@@ -93,6 +93,14 @@ Q_ = ureg.Quantity
 _warnings.filterwarnings("ignore", message="The unit of the quantity is stripped")
 
 ###############################################################################
+# plotly theme
+###############################################################################
+
+from plotly import io as _pio
+import ccp.plotly_theme
+_pio.templates.default = "ccp"
+
+###############################################################################
 # imports
 ###############################################################################
 
