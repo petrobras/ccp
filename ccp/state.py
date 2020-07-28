@@ -308,7 +308,7 @@ class State(CP.AbstractState):
                 f" not implemented"
             )
 
-    def plot_point(self, fig=None, **kwargs):
+    def plot_point(self, T_units="degK", p_units="Pa", fig=None, **kwargs):
         """Plot point.
 
         Plot point in the given figure. Function will check for axis units and
@@ -316,28 +316,35 @@ class State(CP.AbstractState):
 
         Parameters
         ----------
-        fig : bokeh.models.figure, optional
-            Bokeh figure, if None creates a new.
+        T_units : str
+            Temperature units.
+            Default is 'degK'.
+        p_units : str
+            Pressure units.
+            Default is 'Pa'.
+        fig : plotly.graph_objects.Figure, optional
+            The figure object with the rotor representation.
 
         Returns
         -------
-        fig : bokeh.models.figure
-            Bokeh figure with plot.
+        fig : plotly.graph_objects.Figure
+            The figure object with the rotor representation.
         """
         if fig is None:
-            fig = figure()
+            fig = go.Figure()
 
-        x_units = kwargs.pop("x_units", None)
-        y_units = kwargs.pop("y_units", None)
+        p = self.p().to(p_units)
+        T = self.T().to(T_units)
 
-        p = self.p()
-        T = self.T()
-
-        T, p = change_data_units(T, p, x_units, y_units)
-
-        source_point = ColumnDataSource(dict(x=[T.m], y=[p.m]))
-
-        fig.circle(x="x", y="y", source=source_point, **kwargs)
+        fig.add_trace(
+            go.Scatter(
+                x=[T.m],
+                y=[p.m],
+                hovertemplate=f"Temperature ({T_units}): %{{x}}<br>"
+                f"Pressure ({p_units}): %{{y}}",
+                name="State",
+            )
+        )
 
         return fig
 
@@ -432,7 +439,9 @@ class State(CP.AbstractState):
 
         return plot
 
-    def plot_envelope(self, T_units='degK', p_units='Pa', dew_point_margin=20, fig=None, **kwargs):
+    def plot_envelope(
+        self, T_units="degK", p_units="Pa", dew_point_margin=20, fig=None, **kwargs
+    ):
         """Plot phase envelope
 
         Plots the phase envelope and dew point limit.
@@ -447,6 +456,8 @@ class State(CP.AbstractState):
         dew_point_margin : float
             Dew point margin.
             Default is 20 degK (from API). Unit is the same as T_units.
+        fig : plotly.graph_objects.Figure, optional
+            The figure object with the rotor representation.
 
         Returns
         -------
@@ -466,19 +477,22 @@ class State(CP.AbstractState):
         T = T[p > p_lower_bound]
         p = p[p > p_lower_bound]
 
-        T_dew = np.add(
-            T[: np.argmax(T)], np.multiply(dew_point_margin, np.ones(np.argmax(T)))
-        ),
-        p_dew = p[: np.argmax(T)],
+        T_dew = (
+            np.add(
+                T[: np.argmax(T)], np.multiply(dew_point_margin, np.ones(np.argmax(T)))
+            ),
+        )
+        p_dew = (p[: np.argmax(T)],)
 
-        hovertemplate = f"Temperature ({T_units}): %{{x}}<br>" \
-                        f"Pressure ({p_units}): %{{y}}"
+        hovertemplate = (
+            f"Temperature ({T_units}): %{{x}}<br>" f"Pressure ({p_units}): %{{y}}"
+        )
 
         fig.add_trace(
             go.Scatter(
                 x=T,
                 y=p,
-                mode='lines',
+                mode="lines",
                 hovertemplate=hovertemplate,
                 name="Phase Envelope",
             )
@@ -488,7 +502,7 @@ class State(CP.AbstractState):
             go.Scatter(
                 x=T_dew[0],
                 y=p_dew[0],
-                mode='lines',
+                mode="lines",
                 line=dict(dash="dash"),
                 hovertemplate=hovertemplate,
                 name=f"Dew Point Margin ({dew_point_margin} {T_units})",
@@ -496,14 +510,10 @@ class State(CP.AbstractState):
         )
 
         fig.update_layout(
-            xaxis=dict(
-                title_text=f"Temperature ({T_units})"
-            ),
+            xaxis=dict(title_text=f"Temperature ({T_units})"),
             yaxis=dict(
-                type='log',
-                exponentformat='e',
-                title_text=f"Pressure ({p_units})"
-            )
+                type="log", exponentformat="e", title_text=f"Pressure ({p_units})"
+            ),
         )
 
         return fig
