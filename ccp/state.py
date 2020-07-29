@@ -324,6 +324,8 @@ class State(CP.AbstractState):
             Default is 'Pa'.
         fig : plotly.graph_objects.Figure, optional
             The figure object with the rotor representation.
+        kwargs : dict
+            Dictionary that will be passed to go.Scatter method.
 
         Returns
         -------
@@ -336,13 +338,20 @@ class State(CP.AbstractState):
         p = self.p().to(p_units)
         T = self.T().to(T_units)
 
+        default_values = dict(
+            name='State'
+        )
+
+        for k, v in default_values.items():
+            kwargs.setdefault(k, v)
+
         fig.add_trace(
             go.Scatter(
                 x=[T.m],
                 y=[p.m],
                 hovertemplate=f"Temperature ({T_units}): %{{x}}<br>"
                 f"Pressure ({p_units}): %{{y}}",
-                name="State",
+                **kwargs,
             )
         )
 
