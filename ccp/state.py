@@ -250,9 +250,6 @@ class State(CP.AbstractState):
     @check_units
     def update(
         self,
-        cp_input=None,
-        arg1=None,
-        arg2=None,
         p=None,
         T=None,
         rho=None,
@@ -267,21 +264,17 @@ class State(CP.AbstractState):
 
         Parameters
         ----------
-        p : float
-            Pressure.
-        T : float
-            Temperature.
-        rho : float
-            Specific mass.
-        h : float
-            Enthalpy.
-        s : float
-            Entropy
+        p : float, pint.Quantity
+            Pressure (Pa).
+        T : float, pint.Quantity
+            Temperature (degk).
+        rho : float, pint.Quantity
+            Specific mass (kg/m**3).
+        h : float, pint.Quantity
+            Enthalpy (J/kg).
+        s : float, pint.Quantity
+            Entropy (J/(kg*degK)).
         """
-        if cp_input is not None:
-            super().update(cp_input, arg1, arg2)
-            return
-
         if p is not None and T is not None:
             super().update(CP.PT_INPUTS, p.magnitude, T.magnitude)
         elif p is not None and rho is not None:
