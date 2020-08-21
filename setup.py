@@ -42,6 +42,7 @@ setup(
         "matplotlib",
         "bokeh",
         "pint",
+        "plotly",
         "toml",
         "openpyxl",
         "tqdm",
