@@ -568,24 +568,24 @@ class Impeller:
             - <curve-name>-head.csv
             - <curve-name>-eff.csv
 
-        suc: ccp.State
+        suc : ccp.State
             Suction state.
-        curve_path: pathlib.Path
+        curve_path : pathlib.Path
             Path to the curves.
-        curve_name: str
+        curve_name : str
             Name for head and efficiency curve.
             Curves should have names <curve_name>-head.csv and <curve-name>-eff.csv.
-        speeds: list
-            List with speed value for each curve.
+        speeds : list
+            List with speed value for each curve in rad/s.
         b : float, pint.Quantity
             Impeller width (m).
         D : float, pint.Quantity
             Impeller diameter (m).
-        number_of_points: int
+        number_of_points : int
             Number of points that will be interpolated.
-        flow_units: str
+        flow_units : str
             Flow units used when extracting data with engauge.
-        head_units: str
+        head_units : str
             Head units used when extracting data with engauge.
         """
         # create dir
@@ -597,6 +597,12 @@ class Impeller:
 
         head_curves = read_data_from_engauge_csv(head_path)
         eff_curves = read_data_from_engauge_csv(eff_path)
+
+        # define if we have volume or mass flow
+        flow_type = 'volumetric'
+        if list(Q_(1, flow_units).dimensionality.keys())[0] == '[mass]':
+            flow_type = 'mass'
+
 
         points = []
 
@@ -624,16 +630,28 @@ class Impeller:
             points_head = head_interpolated(points_x)
             points_eff = eff_interpolated(points_x)
 
-            points += [
-                Point(
-                    suc=suc,
-                    speed=speed,
-                    flow_v=Q_(flow, flow_units).to("m**3/s"),
-                    head=Q_(head, head_units).to("J/kg"),
-                    eff=eff,
-                )
-                for flow, head, eff in zip(points_x, points_head, points_eff)
-            ]
+            if flow_type == 'volumetric':
+                points += [
+                    Point(
+                        suc=suc,
+                        speed=speed,
+                        flow_v=Q_(flow, flow_units).to("m**3/s"),
+                        head=Q_(head, head_units).to("J/kg"),
+                        eff=eff,
+                    )
+                    for flow, head, eff in zip(points_x, points_head, points_eff)
+                ]
+            else:
+                points += [
+                    Point(
+                        suc=suc,
+                        speed=speed,
+                        flow_m=Q_(flow, flow_units).to("kg/s"),
+                        head=Q_(head, head_units).to("J/kg"),
+                        eff=eff,
+                    )
+                    for flow, head, eff in zip(points_x, points_head, points_eff)
+                ]
 
         return cls(points, b=b, D=D)
 
