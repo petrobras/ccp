@@ -42,18 +42,26 @@ class ImpellerState:
 
 
 class Impeller:
-    """Impeller class.
-
-    Impeller instance is initialized with the list of points.
-    The created instance will hold the dimensional points used in instantiation
-    non dimensional points generated from the given dimensional points and
-    another list of dimensional points based on current suction condition.
-    Curves will be generated from points close in similarity.
-
-    """
-
     @check_units
     def __init__(self, points, b=None, D=None, _suc=None, _flow_v=None, _speed=None):
+        """Impeller class.
+
+        Impeller instance is initialized with the list of points.
+        The created instance will hold the dimensional points used in instantiation
+        non dimensional points generated from the given dimensional points and
+        another list of dimensional points based on current suction condition.
+        Curves will be generated from points close in similarity.
+
+        Parameters
+        ----------
+        points : list
+            List with ccp.Point objects.
+        b : float, pint.Quantity
+            Impeller width (m).
+        D : float, pint.Quantity
+            Impeller diameter (m).
+        """
+
         self.b = b
         self.D = D
         if not (self.b and self.D):
@@ -569,6 +577,10 @@ class Impeller:
             Curves should have names <curve_name>-head.csv and <curve-name>-eff.csv.
         speeds: list
             List with speed value for each curve.
+        b : float, pint.Quantity
+            Impeller width (m).
+        D : float, pint.Quantity
+            Impeller diameter (m).
         number_of_points: int
             Number of points that will be interpolated.
         flow_units: str
