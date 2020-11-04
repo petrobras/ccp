@@ -5,6 +5,7 @@ import numpy as np
 import toml
 from bokeh.models import ColumnDataSource, CDSView, IndexFilter
 from scipy.interpolate import interp1d
+import plotly.graph_objects as go
 
 from ccp import Q_, Point
 from ccp.config.units import change_data_units
@@ -14,19 +15,19 @@ def plot_func(self, attr):
     def inner(*args, plot_kws=None, **kwargs):
         """Plot parameter versus volumetric flow.
 
-        You can choose units with the arguments x_units='...' and
-        y_units='...'. For the speed you can use speed_units='...'.
+        You can choose units with the arguments flow_v_units='...' and
+        {attr}_units='...'. For the speed you can use speed_units='...'.
         """
-        ax = kwargs.pop("ax", None)
+        fig = kwargs.pop("fig", None)
 
-        if ax is None:
-            ax = plt.gca()
+        if fig is None:
+            fig = go.Figure()
 
         if plot_kws is None:
             plot_kws = {}
 
-        x_units = kwargs.get("x_units", None)
-        y_units = kwargs.get("y_units", None)
+        x_units = kwargs.get("flow_v_units", None)
+        y_units = kwargs.get(f"{attr}_units", None)
         speed_units = kwargs.get("speed_units", None)
 
         values = []
@@ -58,43 +59,14 @@ def plot_func(self, attr):
         values_range = values_range.magnitude
 
         if kwargs.pop("draw_points", None) is True:
-            ax.scatter(flow_v, values, **plot_kws)
+            fig.add_trace(go.Scatter(x=[flow_v], y=[values], **plot_kws))
         if kwargs.pop("draw_current_point", True) is True:
             pass
             #  TODO implement plot of the current point with hline and vline.
 
-        ax.plot(flow_v_range, values_range, **plot_kws)
+        fig.add_trace(go.Scatter(x=flow_v_range, y=values_range, **plot_kws))
 
-        delta_x_graph = ax.get_xlim()[1] - ax.get_xlim()[0]
-        delta_y_graph = ax.get_ylim()[1] - ax.get_ylim()[0]
-
-        curve_tan = ((values_range[-1] - values_range[-2]) / delta_y_graph) / (
-            (flow_v_range[-1] - flow_v_range[-2]) / delta_x_graph
-        )
-        try:
-            text_angle = np.arctan(curve_tan.m)
-        except AttributeError:
-            text_angle = np.arctan(curve_tan)
-
-        text_angle = Q_(text_angle, "rad").to("deg").magnitude
-
-        speed = self.speed
-        if speed_units is not None:
-            speed = speed.to(speed_units)
-        ax.text(
-            flow_v_range[-1],
-            values_range[-1],
-            f"{speed:P~.0f}",
-            ha="left",
-            va="top",
-            rotation=text_angle,
-            clip_on=True,
-        )
-
-        ax.set_xlabel(f"Volumetric flow ({flow_v.units:P~})")
-        ax.set_ylabel(f"{attr} ({units:P~})")
-
-        return ax
+        return fig
 
     return inner
 
