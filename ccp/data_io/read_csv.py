@@ -25,11 +25,12 @@ def read_data_from_engauge_csv(file_path):
     with open(str(file_path)) as csv_file:
         csv_reader = csv.reader(csv_file)
         for row in csv_reader:
-            if row[0] == "x":
-                current_curve = row[1]
-                curves[current_curve] = {"x": [], "y": []}
-            else:
-                curves[current_curve]["x"].append(float(row[0].replace(",", ".")))
-                curves[current_curve]["y"].append(float(row[1].replace(",", ".")))
+            if row:
+                if row[0] == "x":
+                    current_curve = row[1]
+                    curves[current_curve] = {"x": [], "y": []}
+                else:
+                    curves[current_curve]["x"].append(float(row[0].replace(",", ".")))
+                    curves[current_curve]["y"].append(float(row[1].replace(",", ".")))
 
     return curves
