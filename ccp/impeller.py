@@ -563,7 +563,7 @@ class Impeller:
             - Select the points
             - Select the next curve and points...
             - Settings -> Export Setup -> Select:
-            - Raws X's and Y's ; All curves on each line
+            - Raws X's and Y's ; One curve on each line
         Files should be saved with the following convention:
             - <curve-name>-head.csv
             - <curve-name>-eff.csv
