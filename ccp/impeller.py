@@ -588,10 +588,6 @@ class Impeller:
         head_units : str
             Head units used when extracting data with engauge.
         """
-        # create dir
-        curves_dir = curve_path / curve_name
-        curves_dir.mkdir(exist_ok=True)
-
         head_path = curve_path / (curve_name + "-head.csv")
         eff_path = curve_path / (curve_name + "-eff.csv")
 
