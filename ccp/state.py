@@ -242,6 +242,8 @@ class State(CP.AbstractState):
         state.init_args = dict(p=p, T=T, h=h, s=s, rho=rho)
         state.setup_args = copy(state.init_args)
         state.fluid = state._fluid_dict()
+        if isinstance(fluid, str) and len(state.fluid) == 1:
+            state.fluid[get_name(fluid)] = 1.
 
         state.update(**state.setup_args)
 
