@@ -98,6 +98,7 @@ _warnings.filterwarnings("ignore", message="The unit of the quantity is stripped
 
 from plotly import io as _pio
 import ccp.plotly_theme
+
 _pio.templates.default = "ccp"
 
 ###############################################################################

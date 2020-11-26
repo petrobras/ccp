@@ -249,13 +249,7 @@ class State(CP.AbstractState):
 
     @check_units
     def update(
-        self,
-        p=None,
-        T=None,
-        rho=None,
-        h=None,
-        s=None,
-        **kwargs,
+        self, p=None, T=None, rho=None, h=None, s=None, **kwargs,
     ):
         """Simple state update.
 
@@ -331,9 +325,7 @@ class State(CP.AbstractState):
         p = self.p().to(p_units)
         T = self.T().to(T_units)
 
-        default_values = dict(
-            name='State'
-        )
+        default_values = dict(name="State")
 
         for k, v in default_values.items():
             kwargs.setdefault(k, v)
