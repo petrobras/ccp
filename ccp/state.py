@@ -29,6 +29,18 @@ class State(CP.AbstractState):
         self.EOS = EOS
         self._fluid = _fluid
 
+    def __repr__(self):
+        args = {k: v for k, v in self.init_args.items() if v is not None}
+        args_repr = [f'{k}=Q_("{getattr(self, k)():.0f~P}")' for k, v in args.items()]
+        args_repr = ", ".join(args_repr)
+
+        fluid_dict = self.fluid
+        sorted_fluid_keys = sorted(fluid_dict, key=fluid_dict.get, reverse=True)
+        fluid_repr = [f'"{k}": {fluid_dict[k]:.5f}' for k in sorted_fluid_keys]
+        fluid_repr = "fluid={" + ", ".join(fluid_repr) + "}"
+
+        return "State.define(" + args_repr + ", " + fluid_repr + ")"
+
     def _fluid_dict(self):
         # preserve the dictionary from define method
         fluid_dict = {}
@@ -243,7 +255,7 @@ class State(CP.AbstractState):
         state.setup_args = copy(state.init_args)
         state.fluid = state._fluid_dict()
         if isinstance(fluid, str) and len(state.fluid) == 1:
-            state.fluid[get_name(fluid)] = 1.
+            state.fluid[get_name(fluid)] = 1.0
 
         state.update(**state.setup_args)
 
