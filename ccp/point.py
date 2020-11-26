@@ -235,6 +235,19 @@ class Point:
             f"\nPower: {self.power:.2f~P}"
         )
 
+    def __eq__(self, other):
+        if isinstance(other, self.__class__):
+            if (
+                self.suc == other.suc
+                and np.allclose(self.speed, other.speed)
+                and np.allclose(self.flow_v, other.flow_v)
+                and np.allclose(self.head, other.head)
+                and np.allclose(self.eff, other.eff)
+            ):
+                return True
+
+        return False
+
     def __repr__(self):
 
         return (

@@ -3,6 +3,8 @@ from numpy.testing import assert_allclose
 from ccp import ureg, Q_
 from ccp.state import State
 from ccp.point import Point
+from pathlib import Path
+from tempfile import tempdir
 
 skip = False  # skip slow tests
 
@@ -123,3 +125,15 @@ def test_calc_from_eff_head_suc_fast():
     )
 
     assert_allclose(p0.volume_ratio, 0.413837, rtol=1e-6)
+
+
+def test_equality(point_0):
+    point_1 = Point(suc=point_0.suc, speed=point_0.speed, flow_v=point_0.flow_v, head=point_0.head, eff=point_0.eff)
+    assert point_0 == point_1
+
+
+def test_save_load(point_0):
+    file = Path(tempdir) / "suc_0.toml"
+    point_0.save(file)
+    point_0_loaded = Point.load(file)
+    assert point_0 == point_0_loaded
