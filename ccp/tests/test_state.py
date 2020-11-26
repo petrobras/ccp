@@ -96,7 +96,6 @@ def test_state_copy():
     state1 = copy(state)
 
     assert state == state
-    assert state != state1
     assert state.rho() == state1.rho()
 
 
@@ -142,4 +141,25 @@ def test_T_s_inputs():
 
 
 def test_pure():
-    State.define(p=1e6, T=300, fluid="h2")
+    pure_h2 = State.define(p=1e6, T=300, fluid="h2")
+    assert pure_h2.fluid == {"HYDROGEN": 0.999999999999999, "NITROGEN": 1e-15}
+    pure_methane = State.define(p=1e6, T=300, fluid="methane")
+    assert pure_methane.fluid == {"METHANE": 1.0}
+
+
+def test_equality():
+    state = State.define(p=100000, T=300, fluid="Methane")
+    state1 = State.define(p=state.p(), T=state.T(), fluid=state.fluid)
+    state2 = State.define(h=state.h(), s=state.s(), fluid=state.fluid)
+
+    assert state == state1
+    assert state == state2
+    assert state1 == state2
+
+    state_mix = State.define(p=100000, T=300, fluid={"Methane": 0.5, "Ethane": 0.5})
+    state1_mix = State.define(p=state_mix.p(), T=state_mix.T(), fluid=state_mix.fluid)
+    state2_mix = State.define(h=state_mix.h(), s=state_mix.s(), fluid=state_mix.fluid)
+
+    assert state_mix == state1_mix
+    assert state_mix == state2_mix
+    assert state1_mix == state2_mix

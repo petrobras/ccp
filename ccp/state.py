@@ -41,6 +41,16 @@ class State(CP.AbstractState):
 
         return "State.define(" + args_repr + ", " + fluid_repr + ")"
 
+    def __eq__(self, other):
+        if isinstance(other, self.__class__):
+            if (
+                self.fluid == other.fluid
+                and np.allclose(self.p(), other.p())
+                and np.allclose(self.T(), other.T())
+            ):
+                return True
+        return False
+
     def _fluid_dict(self):
         # preserve the dictionary from define method
         fluid_dict = {}
