@@ -1,5 +1,6 @@
 """Module to define impeller class."""
 import csv
+import toml
 from copy import deepcopy
 from itertools import groupby
 from pathlib import Path
@@ -595,10 +596,9 @@ class Impeller:
         eff_curves = read_data_from_engauge_csv(eff_path)
 
         # define if we have volume or mass flow
-        flow_type = 'volumetric'
-        if list(Q_(1, flow_units).dimensionality.keys())[0] == '[mass]':
-            flow_type = 'mass'
-
+        flow_type = "volumetric"
+        if list(Q_(1, flow_units).dimensionality.keys())[0] == "[mass]":
+            flow_type = "mass"
 
         points = []
 
@@ -626,7 +626,7 @@ class Impeller:
             points_head = head_interpolated(points_x)
             points_eff = eff_interpolated(points_x)
 
-            if flow_type == 'volumetric':
+            if flow_type == "volumetric":
                 points += [
                     Point(
                         suc=suc,
@@ -648,6 +648,44 @@ class Impeller:
                     )
                     for flow, head, eff in zip(points_x, points_head, points_eff)
                 ]
+
+        return cls(points, b=b, D=D)
+
+    def save(self, file):
+        """Save impeller to a toml file.
+
+        Parameters
+        ==========
+        file : str or pathlib.Path
+            Filename to which the data is saved.
+        """
+
+        with open(file, mode="w") as f:
+            # add impeller geometry to file
+            dict_to_save = {"b": self.b.m, "D": self.D.m}
+            toml.dump(dict_to_save, f)
+            # add points to file
+            dict_to_save = {f"Point{i}": point._dict_to_save() for i, point in enumerate(self.points)}
+            toml.dump(dict_to_save, f)
+
+    @classmethod
+    def load(cls, file):
+        """Load impeller from toml file.
+
+        Parameters
+        ==========
+        file : str or pathlib.Path
+            Filename to which the data is saved.
+
+        Returns
+        =======
+        impeller : ccp.Impeller
+            Impeller object.
+        """
+        parameters = toml.load(file)
+        b = parameters.pop("b")
+        D = parameters.pop("D")
+        points = [Point(**Point._dict_from_load(kwargs)) for kwargs in parameters.values()]
 
         return cls(points, b=b, D=D)
 
