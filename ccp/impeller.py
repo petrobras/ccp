@@ -127,26 +127,6 @@ class Impeller:
             if plot_kws is None:
                 plot_kws = {}
 
-            x_units = kwargs.get("x_units", None)
-            y_units = kwargs.get("y_units", None)
-
-            flow_values = [p.flow_v for p in self.points]
-            min_flow = min(flow_values)
-            max_flow = max(flow_values)
-            if callable(r_getattr(self.points[0], attr)):
-                values = [r_getattr(p, attr)() for p in self.points]
-            else:
-                values = [r_getattr(p, attr) for p in self.points]
-            min_value = min(values)
-            max_value = max(values)
-
-            if x_units is not None:
-                min_flow = min_flow.to(x_units)
-                max_flow = max_flow.to(x_units)
-            if y_units is not None:
-                min_value = min_value.to(y_units)
-                max_value = max_value.to(y_units)
-
             for curve in self.curves:
                 fig = r_getattr(curve, attr + "_plot")(
                     fig=fig, plot_kws=plot_kws, **kwargs
@@ -161,14 +141,6 @@ class Impeller:
                 )
             except AttributeError:
                 warn("Point not set for this impeller")
-
-            x_range = [0.8 * min_flow.magnitude, 1.1 * max_flow.magnitude]
-            y_range = [0.5 * min_value.magnitude, 1.1 * max_value.magnitude]
-
-            fig.update_layout(
-                xaxis=dict(range=x_range),
-                yaxis=dict(range=y_range)
-            )
 
             return fig
 
