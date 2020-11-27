@@ -7,7 +7,7 @@ from bokeh.models import ColumnDataSource, CDSView, IndexFilter
 from scipy.interpolate import interp1d
 import plotly.graph_objects as go
 
-from ccp import Q_, Point
+from ccp import Q_, ureg, Point
 from ccp.config.units import change_data_units
 
 
@@ -27,43 +27,27 @@ def plot_func(self, attr):
             plot_kws = {}
 
         x_units = kwargs.get("flow_v_units", self.flow_v.units)
+        x_units = ureg.Unit(x_units)
         y_units = kwargs.get(f"{attr}_units", getattr(self, attr).units)
-        speed_units = kwargs.get("speed_units", None)
-        name = kwargs.get("name", str(self.speed.to("RPM")))
-
-        values = []
-
-        for point in self:
-            point_attr = getattr(point, attr)
-            if callable(point_attr):
-                point_attr = point_attr()
-
-            if y_units is not None:
-                point_attr = point_attr.to(y_units)
-
-            values.append(getattr(point_attr, "magnitude"))
-            units = getattr(point_attr, "units")
+        y_units = ureg.Unit(y_units)
+        speed_units = kwargs.get("speed_units", self.speed.units)
+        speed_units = ureg.Unit(speed_units)
+        name = kwargs.get("name", str(round(self.speed.to(speed_units))))
 
         flow_v = self.flow_v
-
-        if x_units is not None:
-            flow_v = flow_v.to(x_units)
 
         interpolated_curve = getattr(self, attr + "_interpolated")
 
         flow_v_range = np.linspace(min(flow_v), max(flow_v), 30)
 
         values_range = interpolated_curve(flow_v_range)
-        if y_units is not None:
-            values_range = values_range.to(y_units)
 
         values_range = values_range.magnitude
 
-        if kwargs.pop("draw_points", None) is True:
-            fig.add_trace(go.Scatter(x=[flow_v], y=[values], **plot_kws))
-        if kwargs.pop("draw_current_point", True) is True:
-            pass
-            #  TODO implement plot of the current point with hline and vline.
+        if x_units is not None:
+            flow_v_range = Q_(flow_v_range, self.flow_v.units).to(x_units).m
+        if y_units is not None:
+            values_range = Q_(values_range, getattr(self, attr).units).to(y_units).m
 
         fig.add_trace(go.Scatter(x=flow_v_range, y=values_range, name=name), **plot_kws)
 
