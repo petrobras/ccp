@@ -8,6 +8,7 @@ from warnings import warn
 
 import matplotlib.pyplot as plt
 import numpy as np
+import plotly.graph_objects as go
 from bokeh.models import ColumnDataSource
 from openpyxl import Workbook
 from scipy.interpolate import interp1d
@@ -118,10 +119,10 @@ class Impeller:
 
     def plot_func(self, attr):
         def inner(*args, plot_kws=None, **kwargs):
-            ax = kwargs.pop("ax", None)
+            fig = kwargs.pop("fig", None)
 
-            if ax is None:
-                ax = plt.gca()
+            if fig is None:
+                fig = go.Figure()
 
             if plot_kws is None:
                 plot_kws = {}
@@ -146,25 +147,30 @@ class Impeller:
                 min_value = min_value.to(y_units)
                 max_value = max_value.to(y_units)
 
-            ax.set_xlim(0.8 * min_flow.magnitude, 1.1 * max_flow.magnitude)
-            ax.set_ylim(0.5 * min_value.magnitude, 1.1 * max_value.magnitude)
-
             for curve in self.curves:
-                ax = r_getattr(curve, attr + "_plot")(
-                    ax=ax, plot_kws=plot_kws, **kwargs
+                fig = r_getattr(curve, attr + "_plot")(
+                    fig=fig, plot_kws=plot_kws, **kwargs
                 )
 
             try:
-                ax = r_getattr(self.current_curve, attr + "_plot")(
-                    ax=ax, plot_kws=plot_kws, **kwargs
+                fig = r_getattr(self.current_curve, attr + "_plot")(
+                    fig=fig, name=f"Current Curve {str(self.current_curve.speed.to('RPM'))}", plot_kws=plot_kws, **kwargs
                 )
-                ax = r_getattr(self.current_point, attr + "_plot")(
-                    ax=ax, plot_kws=plot_kws, **kwargs
+                fig = r_getattr(self.current_point, attr + "_plot")(
+                    fig=fig, name="Current Point", plot_kws=plot_kws, **kwargs
                 )
             except AttributeError:
                 warn("Point not set for this impeller")
 
-            return ax
+            x_range = [0.8 * min_flow.magnitude, 1.1 * max_flow.magnitude]
+            y_range = [0.5 * min_value.magnitude, 1.1 * max_value.magnitude]
+
+            fig.update_layout(
+                xaxis=dict(range=x_range),
+                yaxis=dict(range=y_range)
+            )
+
+            return fig
 
         inner.__doc__ = r_getattr(self.curves[0], attr + "_plot").__doc__
 

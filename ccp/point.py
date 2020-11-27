@@ -4,6 +4,7 @@ from warnings import warn
 import matplotlib.pyplot as plt
 import numpy as np
 import toml
+import plotly.graph_objects as go
 from bokeh.models import ColumnDataSource
 from bokeh.models import HoverTool
 from scipy.optimize import newton
@@ -20,16 +21,17 @@ def plot_func(self, attr):
         You can choose units with the arguments x_units='...' and
         y_units='...'.
         """
-        ax = kwargs.pop("ax", None)
+        fig = kwargs.pop("fig", None)
 
-        if ax is None:
-            ax = plt.gca()
+        if fig is None:
+            fig = go.Figure()
 
         if plot_kws is None:
             plot_kws = {}
 
-        x_units = kwargs.get("x_units", None)
-        y_units = kwargs.get("y_units", None)
+        x_units = kwargs.get("flow_v_units", None)
+        y_units = kwargs.get(f"{attr}_units", None)
+        name = kwargs.get("name", None)
 
         point_attr = r_getattr(self, attr)
         if callable(point_attr):
@@ -46,21 +48,11 @@ def plot_func(self, attr):
         if x_units is not None:
             flow_v = flow_v.to(x_units)
 
-        ax.scatter(flow_v, value, **plot_kws)
-        #  vertical and horizontal lines
-        ax.plot(
-            [flow_v.magnitude, flow_v.magnitude],
-            [0, value],
-            ls="--",
-            color="k",
-            alpha=0.2,
+        fig.add_trace(
+            go.Scatter(x=[flow_v], y=[value], name=name, **plot_kws)
         )
-        ax.plot([0, flow_v.magnitude], [value, value], ls="--", color="k", alpha=0.2)
 
-        ax.set_xlabel(f"Volumetric flow ({flow_v.units:P~})")
-        ax.set_ylabel(f"{attr} ({units:P~})")
-
-        return ax
+        return fig
 
     return inner
 

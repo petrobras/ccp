@@ -26,9 +26,10 @@ def plot_func(self, attr):
         if plot_kws is None:
             plot_kws = {}
 
-        x_units = kwargs.get("flow_v_units", None)
-        y_units = kwargs.get(f"{attr}_units", None)
+        x_units = kwargs.get("flow_v_units", self.flow_v.units)
+        y_units = kwargs.get(f"{attr}_units", getattr(self, attr).units)
         speed_units = kwargs.get("speed_units", None)
+        name = kwargs.get("name", str(self.speed.to("RPM")))
 
         values = []
 
@@ -64,7 +65,12 @@ def plot_func(self, attr):
             pass
             #  TODO implement plot of the current point with hline and vline.
 
-        fig.add_trace(go.Scatter(x=flow_v_range, y=values_range, **plot_kws))
+        fig.add_trace(go.Scatter(x=flow_v_range, y=values_range, name=name), **plot_kws)
+
+        fig.update_layout(
+            xaxis=dict(title=f"Volume Flow ({x_units._repr_html_()})"),
+            yaxis=dict(title=f"{attr.capitalize()} ({y_units._repr_html_()})")
+        )
 
         return fig
 
