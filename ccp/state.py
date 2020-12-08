@@ -319,6 +319,82 @@ class State(CP.AbstractState):
                 f" not implemented"
             )
 
+    def plot_envelope(
+        self, T_units="degK", p_units="Pa", dew_point_margin=20, fig=None, **kwargs
+    ):
+        """Plot phase envelope
+            Plots the phase envelope and dew point limit.
+            Parameters
+            ----------
+            T_units : str
+                Temperature units.
+                Default is 'degK'.
+            p_units : str
+                Pressure units.
+                Default is 'Pa'.
+            dew_point_margin : float
+                Dew point margin.
+                Default is 20 degK (from API). Unit is the same as T_units.
+            fig : plotly.graph_objects.Figure, optional
+                The figure object with the rotor representation.
+            Returns
+            -------
+            fig : plotly.graph_objects.Figure
+                The figure object with the rotor representation.
+            """
+        if fig is None:
+            fig = go.Figure()
+
+        self.build_phase_envelope("dummy")
+        phase_envelope = self.get_phase_envelope_data()
+        T = Q_(np.array(phase_envelope.T), "degK").to(T_units).m
+        p = Q_(np.array(phase_envelope.p), "Pa").to(p_units).m
+
+        p_lower_bound = Q_(0.1, "atm").to(p_units).m
+        T = T[p > p_lower_bound]
+        p = p[p > p_lower_bound]
+
+        T_dew = (
+            np.add(
+                T[: np.argmax(T)], np.multiply(dew_point_margin, np.ones(np.argmax(T)))
+            ),
+        )
+        p_dew = (p[: np.argmax(T)],)
+
+        hovertemplate = (
+            f"Temperature ({T_units}): %{{x}}<br>" f"Pressure ({p_units}): %{{y}}"
+        )
+
+        fig.add_trace(
+            go.Scatter(
+                x=T,
+                y=p,
+                mode="lines",
+                hovertemplate=hovertemplate,
+                name="Phase Envelope",
+            )
+        )
+
+        fig.add_trace(
+            go.Scatter(
+                x=T_dew[0],
+                y=p_dew[0],
+                mode="lines",
+                line=dict(dash="dash"),
+                hovertemplate=hovertemplate,
+                name=f"Dew Point Margin ({dew_point_margin} {T_units})",
+            )
+        )
+
+        fig.update_layout(
+            xaxis=dict(title_text=f"Temperature ({T_units})"),
+            yaxis=dict(
+                type="log", exponentformat="e", title_text=f"Pressure ({p_units})"
+            ),
+        )
+
+        return fig
+
     def plot_point(self, T_units="degK", p_units="Pa", fig=None, **kwargs):
         """Plot point.
 
