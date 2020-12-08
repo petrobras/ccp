@@ -48,9 +48,7 @@ def plot_func(self, attr):
         if x_units is not None:
             flow_v = flow_v.to(x_units)
 
-        fig.add_trace(
-            go.Scatter(x=[flow_v], y=[value], name=name, **plot_kws)
-        )
+        fig.add_trace(go.Scatter(x=[flow_v], y=[value], name=name, **plot_kws))
 
         return fig
 
@@ -266,13 +264,26 @@ class Point:
         #  consider first an isentropic compression
         disch = State.define(rho=disch_rho, s=suc.s(), fluid=suc.fluid)
 
-        def update_pressure(p):
-            disch.update(rho=disch_rho, p=p)
+        def update_state(x, update_type):
+            if update_type == "pressure":
+                disch.update(rho=disch_rho, p=x)
+            elif update_type == "temperature":
+                disch.update(rho=disch_rho, T=x)
             new_eff = self._eff_pol_schultz(disch=disch)
+            if not 0.9 < new_eff < 1.1:
+                raise ValueError
 
             return (new_eff - eff).magnitude
 
-        newton(update_pressure, disch.p().magnitude, tol=1e-1)
+        try:
+            newton(update_state, disch.p().magnitude, args=("pressure",),
+                   tol=1e-1)
+        except ValueError:
+            # re-instantiate disch, since update with pressure not converging
+            # might break the state
+            disch = State.define(rho=disch_rho, s=suc.s(), fluid=suc.fluid)
+            newton(update_state, disch.T().magnitude, args=("temperature",),
+                   tol=1e-1)
 
         self.disch = disch
         self.head = self._head_pol_schultz()

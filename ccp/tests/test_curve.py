@@ -67,33 +67,3 @@ def curve1():
     p2 = Point(suc=suc, disch=disch2, flow_v=3, speed=1)
     p3 = Point(suc=suc, disch=disch3, flow_v=4, speed=1)
     return Curve([p0, p1, p2, p3])
-
-
-def test_curve_p_plot(curve1):
-    fig, ax = plt.subplots()
-    ax = curve1.suc.p_plot(ax=ax)
-    line0 = ax.get_lines()[0]
-    exp_xydata = np.array(
-        [
-            [1.00000000e00, 1.00000000e05],
-            [1.10344828e00, 1.00000000e05],
-            [1.20689655e00, 1.00000000e05],
-            [1.31034483e00, 1.00000000e05],
-        ]
-    )
-    assert_allclose(line0.get_xydata()[:4], exp_xydata)
-
-
-def test_curve_head_plot(curve1):
-    fig, ax = plt.subplots()
-    ax = curve1.head_plot(ax=ax)
-    line0 = ax.get_lines()[0]
-    exp_xydata = np.array(
-        [
-            [1.00000000e00, 4.35277801e04],
-            [1.10344828e00, 4.59134091e04],
-            [1.20689655e00, 4.80593494e04],
-            [1.31034483e00, 4.99786240e04],
-        ]
-    )
-    assert_allclose(line0.get_xydata()[:4], exp_xydata)
