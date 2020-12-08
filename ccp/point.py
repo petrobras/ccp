@@ -270,7 +270,7 @@ class Point:
             elif update_type == "temperature":
                 disch.update(rho=disch_rho, T=x)
             new_eff = self._eff_pol_schultz(disch=disch)
-            if not 0.9 < new_eff < 1.1:
+            if not 0. < new_eff < 1.1:
                 raise ValueError
 
             return (new_eff - eff).magnitude
