@@ -396,13 +396,15 @@ class Impeller:
 
         return sigma
 
-    def _calc_from_non_dimensional(self, point):
+    def _calc_from_non_dimensional(self, point, new_suc=None):
         """Calculate dimensional point from non-dimensional.
 
         Point will be calculated considering new impeller suction condition.
         """
+        if new_suc is None:
+            new_suc = self.new_suc
         new_point = Point(
-            suc=self.new_suc, eff=point.eff, volume_ratio=point.volume_ratio
+            suc=new_suc, eff=point.eff, volume_ratio=point.volume_ratio
         )
 
         new_point.phi = point.phi
