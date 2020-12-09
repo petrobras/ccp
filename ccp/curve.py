@@ -52,8 +52,8 @@ def plot_func(self, attr):
         fig.add_trace(go.Scatter(x=flow_v_range, y=values_range, name=name), **plot_kws)
 
         fig.update_layout(
-            xaxis=dict(title=f"Volume Flow ({x_units._repr_html_()})"),
-            yaxis=dict(title=f"{attr.capitalize()} ({y_units._repr_html_()})")
+            xaxis=dict(title=f"Volume Flow ({x_units:~H})"),
+            yaxis=dict(title=f"{attr.capitalize()} ({y_units:~H})")
         )
 
         return fig
