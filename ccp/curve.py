@@ -28,7 +28,10 @@ def plot_func(self, attr):
 
         x_units = kwargs.get("flow_v_units", self.flow_v.units)
         x_units = ureg.Unit(x_units)
-        y_units = kwargs.get(f"{attr}_units", getattr(self, attr).units)
+        try:
+            y_units = kwargs.get(f"{attr}_units", getattr(self, attr).units)
+        except AttributeError:
+            y_units = kwargs.get(f"{attr}_units", getattr(self, attr)().units)
         y_units = ureg.Unit(y_units)
         speed_units = kwargs.get("speed_units", self.speed.units)
         speed_units = ureg.Unit(speed_units)
@@ -47,7 +50,10 @@ def plot_func(self, attr):
         if x_units is not None:
             flow_v_range = Q_(flow_v_range, self.flow_v.units).to(x_units).m
         if y_units is not None:
-            values_range = Q_(values_range, getattr(self, attr).units).to(y_units).m
+            try:
+                values_range = Q_(values_range, getattr(self, attr).units).to(y_units).m
+            except AttributeError:
+                values_range = Q_(values_range, getattr(self, attr)().units).to(y_units).m
 
         fig.add_trace(go.Scatter(x=flow_v_range, y=values_range, name=name), **plot_kws)
 
