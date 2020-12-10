@@ -93,4 +93,4 @@ ENV/
 /ccp/debug.py
 /ccp/.pytest_cache/
 /ccp/tests/.pytest_cache/
-!/ccp.egg-info/
+/ccp.egg-info/
