@@ -76,7 +76,7 @@ def normalize_mix(molar_fractions):
         Molar fractions list will be modified in place.
     """
     total = sum(molar_fractions)
-    if not (0.95 < total < 1.05) or (95 < total < 105):
+    if not ((0.95 < total < 1.05) or (95 < total < 105)):
         warn(f"Molar fraction far from 1 or 100% -> Total: {total}")
 
     for i, comp in enumerate(molar_fractions):
