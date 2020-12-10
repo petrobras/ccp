@@ -276,13 +276,13 @@ class Point:
             return (new_eff - eff).magnitude
 
         try:
-            newton(update_state, disch.p().magnitude, args=("pressure",),
+            newton(update_state, disch.T().magnitude, args=("temperature",),
                    tol=1e-1)
         except ValueError:
-            # re-instantiate disch, since update with pressure not converging
+            # re-instantiate disch, since update with temperature not converging
             # might break the state
             disch = State.define(rho=disch_rho, s=suc.s(), fluid=suc.fluid)
-            newton(update_state, disch.T().magnitude, args=("temperature",),
+            newton(update_state, disch.p().magnitude, args=("pressure",),
                    tol=1e-1)
 
         self.disch = disch

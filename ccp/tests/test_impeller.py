@@ -124,7 +124,7 @@ def test_impeller_new_suction(imp1):
     p0 = imp1[0]
     new_p0 = imp1.new.points[0]
 
-    assert_allclose(new_p0.eff, p0.eff)
+    assert_allclose(new_p0.eff, p0.eff, rtol=1e-4)
     assert_allclose(new_p0.phi, p0.phi, rtol=1e-2)
     assert_allclose(new_p0.psi, p0.psi, rtol=1e-2)
     assert_allclose(new_p0.head, 208933.668804, rtol=1e-2)

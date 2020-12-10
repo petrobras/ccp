@@ -86,8 +86,8 @@ def test_calc_from_eff_suc_volume_ratio(suc_0, point_0):
     volume_ratio = point_0.volume_ratio
     point_1 = Point(flow_v=flow_v, suc=suc_0, eff=eff, volume_ratio=volume_ratio)
     assert_allclose(point_1.eff, point_0.eff)
-    assert_allclose(point_1.disch.p(), point_0.disch.p())
-    assert_allclose(point_1.disch.T(), point_0.disch.T())
+    assert_allclose(point_1.disch.p(), point_0.disch.p(), rtol=1e-4)
+    assert_allclose(point_1.disch.T(), point_0.disch.T(), rtol=1e-4)
 
 
 @pytest.mark.skipif(skip is True, reason="Slow test")
