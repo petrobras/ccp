@@ -269,6 +269,10 @@ class State(CP.AbstractState):
         if isinstance(fluid, str) and len(state.fluid) == 1:
             state.fluid[get_name(fluid)] = 1.0
 
+        if isinstance(fluid, dict):
+            if len(state.fluid) < len(fluid):
+                raise ValueError("You might have repeated components in the fluid dictionary.")
+
         state.update(**state.setup_args)
 
         return state
