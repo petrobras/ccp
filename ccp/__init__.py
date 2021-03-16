@@ -72,7 +72,7 @@ _library_path = _path / _shared_library
 if not _library_path.is_file():
     raise FileNotFoundError(f"{_library_path}.\nREFPROP not configured.")
 
-__version__ = "0.0.1"
+__version__ = "0.0.2"
 
 __version__full = (
     f"ccp: {__version__} | "
