@@ -1,18 +1,12 @@
-import warnings
 from copy import copy
 
-import CoolProp
 import CoolProp.CoolProp as CP
 import numpy as np
-from CoolProp.Plots import PropertyPlot
-from CoolProp.Plots.Common import interpolate_values_1d
 from plotly import graph_objects as go
-from bokeh.plotting import figure
-from bokeh.models import HoverTool, ColumnDataSource
 
 from . import Q_
 from .config.fluids import get_name, normalize_mix
-from .config.units import check_units, change_data_units
+from .config.units import check_units
 
 
 class State(CP.AbstractState):
@@ -165,10 +159,7 @@ class State(CP.AbstractState):
         return 1 / (1 - (self.p() / self.T()) * self.dTdp_s())
 
     def __reduce__(self):
-        # fluid_ = self.fluid
-        # kwargs = {k: v for k, v in self.init_args.items() if v is not None}
         kwargs = dict(p=self.p(), T=self.T(), fluid=self.fluid)
-        # kwargs['fluid'] = fluid_
         return self._rebuild, (self.__class__, kwargs)
 
     @staticmethod
@@ -271,7 +262,9 @@ class State(CP.AbstractState):
 
         if isinstance(fluid, dict):
             if len(state.fluid) < len(fluid):
-                raise ValueError("You might have repeated components in the fluid dictionary.")
+                raise ValueError(
+                    "You might have repeated components in the fluid dictionary."
+                )
 
         state.update(**state.setup_args)
 
@@ -279,7 +272,13 @@ class State(CP.AbstractState):
 
     @check_units
     def update(
-        self, p=None, T=None, rho=None, h=None, s=None, **kwargs,
+        self,
+        p=None,
+        T=None,
+        rho=None,
+        h=None,
+        s=None,
+        **kwargs,
     ):
         """Simple state update.
 
@@ -329,25 +328,25 @@ class State(CP.AbstractState):
         self, T_units="degK", p_units="Pa", dew_point_margin=20, fig=None, **kwargs
     ):
         """Plot phase envelope
-            Plots the phase envelope and dew point limit.
-            Parameters
-            ----------
-            T_units : str
-                Temperature units.
-                Default is 'degK'.
-            p_units : str
-                Pressure units.
-                Default is 'Pa'.
-            dew_point_margin : float
-                Dew point margin.
-                Default is 20 degK (from API). Unit is the same as T_units.
-            fig : plotly.graph_objects.Figure, optional
-                The figure object with the rotor representation.
-            Returns
-            -------
-            fig : plotly.graph_objects.Figure
-                The figure object with the rotor representation.
-            """
+        Plots the phase envelope and dew point limit.
+        Parameters
+        ----------
+        T_units : str
+            Temperature units.
+            Default is 'degK'.
+        p_units : str
+            Pressure units.
+            Default is 'Pa'.
+        dew_point_margin : float
+            Dew point margin.
+            Default is 20 degK (from API). Unit is the same as T_units.
+        fig : plotly.graph_objects.Figure, optional
+            The figure object with the rotor representation.
+        Returns
+        -------
+        fig : plotly.graph_objects.Figure
+            The figure object with the rotor representation.
+        """
         if fig is None:
             fig = go.Figure()
 
