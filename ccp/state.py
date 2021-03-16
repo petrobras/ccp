@@ -198,10 +198,9 @@ class State(CP.AbstractState):
         rho : float
             Specific mass
 
-        fluid : dict or str
-            Dictionary with constituent and composition
+        fluid : dict
+            Dictionary with constituent and composition.
             (e.g.: ({'Oxygen': 0.2096, 'Nitrogen': 0.7812, 'Argon': 0.0092})
-            A pure fluid can be created with a string.
         EOS : string
             String with HEOS or REFPROP
 
@@ -215,10 +214,6 @@ class State(CP.AbstractState):
         >>> s = State.define(fluid=fluid, p=101008, T=273, EOS='HEOS')
         >>> s.rhomass()
         1.2893965217814896
-        >>> # pure fluid
-        >>> s = State.define(p=101008, T=273, fluid='CO2')
-        >>> s.rho()
-        1.9716931060214515
         """
         if fluid is None:
             raise TypeError("A fluid is required. Provide as fluid=dict(...)")
@@ -226,31 +221,17 @@ class State(CP.AbstractState):
         constituents = []
         molar_fractions = []
 
-        # if fluid is a string, consider pure fluid
-        try:
-            for k, v in fluid.items():
-                k = get_name(k)
-                constituents.append(k)
-                molar_fractions.append(v)
-                # create an adequate fluid string to cp.AbstractState
-            _fluid = "&".join(constituents)
-        except AttributeError:
-            # workaround https://github.com/CoolProp/CoolProp/issues/1544
-            # so we can build phase envelopes for pure substances
-            molar_fractions = [1 - 1e-15, 1e-15]
-            # First try to use the same fluid, if it does not work, use a mixture with a different fluid.
-            _fluid = f"{get_name(fluid)}&{get_name(fluid)}"
+        if len(fluid) < 2:
+            raise ValueError("Only mixtures are accepted.")
 
-        try:
-            state = cls(EOS, _fluid)
-        except ValueError:
-            mix_options = [get_name(f) for f in ("n2", "o2")]
-            if get_name(fluid) != mix_options[0]:
-                _fluid = f"{get_name(fluid)}&{mix_options[0]}"
-            else:
-                _fluid = f"{get_name(fluid)}&{mix_options[1]}"
-            state = cls(EOS, _fluid)
-            # TODO handle this with better error message, checking hmx.bnc
+        for k, v in fluid.items():
+            k = get_name(k)
+            constituents.append(k)
+            molar_fractions.append(v)
+            # create an adequate fluid string to cp.AbstractState
+        _fluid = "&".join(constituents)
+
+        state = cls(EOS, _fluid)
 
         normalize_mix(molar_fractions)
         state.set_mole_fractions(molar_fractions)
