@@ -1,4 +1,5 @@
 from copy import copy
+from warnings import warn
 
 import CoolProp.CoolProp as CP
 import numpy as np
@@ -222,7 +223,10 @@ class State(CP.AbstractState):
         molar_fractions = []
 
         if len(fluid) < 2:
-            raise ValueError("Only mixtures are accepted.")
+            warn(
+                "Pure fluids are not fully supported and might break things (e.g. plot_phase_envelope"
+                "See https://github.com/CoolProp/CoolProp/issues/1544"
+            )
 
         for k, v in fluid.items():
             k = get_name(k)
