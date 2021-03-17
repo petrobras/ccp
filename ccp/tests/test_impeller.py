@@ -119,7 +119,7 @@ def imp1():
 
 
 def test_impeller_new_suction(imp1):
-    new_suc = State.define(p=Q_(0.2, "MPa"), T=301.58, fluid="nitrogen")
+    new_suc = State.define(p=Q_(0.2, "MPa"), T=301.58, fluid={"n2": 1 - 1e-15, "co2": 1e-15})
     imp1.new_suc = new_suc
     p0 = imp1[0]
     new_p0 = imp1.new.points[0]
@@ -134,7 +134,7 @@ def test_impeller_new_suction(imp1):
 
 def test_impeller_new_speed(imp1):
     assert imp1.speed is None
-    new_suc = State.define(p=Q_(0.2, "MPa"), T=301.58, fluid="nitrogen")
+    new_suc = State.define(p=Q_(0.2, "MPa"), T=301.58, fluid={"n2": 1 - 1e-15, "co2": 1e-15})
     with pytest.raises(NotImplementedError) as ex:
         imp1.suc = new_suc
         imp1.flow_v = 2.0
