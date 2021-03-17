@@ -1,12 +1,9 @@
 from copy import copy
 from warnings import warn
 
-import matplotlib.pyplot as plt
 import numpy as np
 import toml
 import plotly.graph_objects as go
-from bokeh.models import ColumnDataSource
-from bokeh.models import HoverTool
 from scipy.optimize import newton
 
 from ccp import check_units, State, Q_
@@ -55,73 +52,6 @@ def plot_func(self, attr):
     return inner
 
 
-def _bokeh_source_func(point, attr):
-    def inner(*args, **kwargs):
-        """Return source data for bokeh plots."""
-        x_units = kwargs.get("x_units", None)
-        y_units = kwargs.get("y_units", None)
-        x_data = point.flow_v
-        y_data = r_getattr(point, attr)
-
-        flow_m = point.flow_v * point.suc.rho()
-
-        if callable(y_data):
-            y_data = y_data()
-
-        x_data, y_data = change_data_units(x_data, y_data, x_units, y_units)
-
-        source = ColumnDataSource(
-            data=dict(
-                x=[x_data.magnitude],
-                y=[y_data.magnitude],
-                flow_m=[flow_m.magnitude],
-                x_units=[f"{x_data.units:~P}"],
-                y_units=[f"{y_data.units:~P}"],
-                flow_m_units=[f"{flow_m.units:~P}"],
-            )
-        )
-
-        return source
-
-    return inner
-
-
-def _bokeh_plot_func(point, attr):
-    def inner(*args, fig=None, source=None, plot_kws=None, **kwargs):
-        if plot_kws is None:
-            plot_kws = {}
-
-        plot_kws.setdefault("color", "navy")
-        plot_kws.setdefault("size", 8)
-        plot_kws.setdefault("alpha", 0.5)
-        plot_kws.setdefault("name", "point")
-
-        if source is None:
-            source = r_getattr(point, attr + "_bokeh_source")(*args, **kwargs)
-
-        fig.circle("x", "y", source=source, **plot_kws)
-        x_units_str = source.data["x_units"][0]
-        y_units_str = source.data["y_units"][0]
-        flow_m_units_str = source.data["flow_m_units"][0]
-        fig.xaxis.axis_label = f"Flow ({x_units_str})"
-        fig.yaxis.axis_label = f"{attr} ({y_units_str})"
-
-        fig.add_tools(
-            HoverTool(
-                names=["point"],
-                tooltips=[
-                    ("Flow", f"@x ({x_units_str})"),
-                    ("Mass Flow", f"@flow_m ({flow_m_units_str})"),
-                    (f"{attr}", f"@y ({y_units_str})"),
-                ],
-            )
-        )
-
-        return fig
-
-    return inner
-
-
 class Point:
     """Point.
     A point in the compressor map that can be defined in different ways.
@@ -140,6 +70,7 @@ class Point:
         Suction state, polytropic head and gas power.
     suc, eff, vol_ratio : ccp.State, float, float
         Suction state, polytropic efficiency and volume ratio.
+
 
     Returns
     -------
@@ -204,17 +135,9 @@ class Point:
             for attr in ["p", "T"]:
                 plot = plot_func(self, ".".join([state, attr]))
                 setattr(getattr(self, state), attr + "_plot", plot)
-                bokeh_source = _bokeh_source_func(self, ".".join([state, attr]))
-                setattr(getattr(self, state), attr + "_bokeh_source", bokeh_source)
-                bokeh_plot = _bokeh_plot_func(self, ".".join([state, attr]))
-                setattr(getattr(self, state), attr + "_bokeh_plot", bokeh_plot)
         for attr in ["head", "eff", "power"]:
             plot = plot_func(self, attr)
             setattr(self, attr + "_plot", plot)
-            bokeh_source = _bokeh_source_func(self, attr)
-            setattr(self, attr + "_bokeh_source", bokeh_source)
-            bokeh_plot = _bokeh_plot_func(self, attr)
-            setattr(self, attr + "_bokeh_plot", bokeh_plot)
 
     def __str__(self):
         return (
@@ -270,20 +193,18 @@ class Point:
             elif update_type == "temperature":
                 disch.update(rho=disch_rho, T=x)
             new_eff = self._eff_pol_schultz(disch=disch)
-            if not 0. < new_eff < 1.1:
+            if not 0.0 < new_eff < 1.1:
                 raise ValueError
 
             return (new_eff - eff).magnitude
 
         try:
-            newton(update_state, disch.T().magnitude, args=("temperature",),
-                   tol=1e-1)
+            newton(update_state, disch.T().magnitude, args=("temperature",), tol=1e-1)
         except ValueError:
             # re-instantiate disch, since update with temperature not converging
             # might break the state
             disch = State.define(rho=disch_rho, s=suc.s(), fluid=suc.fluid)
-            newton(update_state, disch.p().magnitude, args=("pressure",),
-                   tol=1e-1)
+            newton(update_state, disch.p().magnitude, args=("pressure",), tol=1e-1)
 
         self.disch = disch
         self.head = self._head_pol_schultz()
