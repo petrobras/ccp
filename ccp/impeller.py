@@ -6,10 +6,8 @@ from itertools import groupby
 from pathlib import Path
 from warnings import warn
 
-import matplotlib.pyplot as plt
 import numpy as np
 import plotly.graph_objects as go
-from bokeh.models import ColumnDataSource
 from openpyxl import Workbook
 from scipy.interpolate import interp1d
 
@@ -98,8 +96,6 @@ class Impeller:
                 r_setattr(self, attr, Q_(values, units))
 
             r_setattr(self, attr + "_plot", self.plot_func(attr))
-            r_setattr(self, attr + "_bokeh_source", self._bokeh_source_func(attr))
-            r_setattr(self, attr + "_bokeh_plot", self._bokeh_plot_func(attr))
 
         self._suc = _suc
         self._speed = _speed
@@ -144,34 +140,6 @@ class Impeller:
             return fig
 
         inner.__doc__ = r_getattr(self.curves[0], attr + "_plot").__doc__
-
-        return inner
-
-    def _bokeh_source_func(self, attr):
-        def inner(*args, fig=None, plot_kws=None, **kwargs):
-            sources = []
-
-            for curve in self.curves:
-                source = r_getattr(curve, attr + "_bokeh_source")(*args, **kwargs)
-                sources.append(source)
-
-            return sources
-
-        return inner
-
-    def _bokeh_plot_func(self, attr):
-        def inner(*args, fig=None, source=None, plot_kws=None, **kwargs):
-            if source is None:
-                for curve in self.curves:
-                    fig = r_getattr(curve, attr + "_bokeh_plot")(
-                        fig=fig, plot_kws=plot_kws, **kwargs
-                    )
-            else:
-                for s, curve in zip(source, self.curves):
-                    fig = r_getattr(curve, attr + "_bokeh_plot")(
-                        fig=fig, source=s, plot_kws=plot_kws, **kwargs
-                    )
-            return fig
 
         return inner
 
@@ -494,29 +462,6 @@ class Impeller:
             path_name = Path.cwd() / file_name
 
         wb.save(str(path_name))
-
-    def export_to_bokeh_source(self, sources, **kwargs):
-        """Export curves to bokeh source for download."""
-        speed_units = kwargs.get("speed_units")
-
-        sources_dict = {k: [] for k in sources}
-        sources_dict["flow_v"] = []
-        sources_dict["speed"] = []
-
-        for curve in self.curves:
-            for p in curve:
-                sources_dict["flow_v"].append(p.flow_v.magnitude)
-                if speed_units is None:
-                    sources_dict["speed"].append(p.speed.magnitude)
-                else:
-                    sources_dict["speed"].append(p.speed.to(speed_units).magnitude)
-                for s in sources:
-                    if callable(r_getattr(p, s)):
-                        sources_dict[s].append(r_getattr(p, s)().magnitude)
-                    else:
-                        sources_dict[s].append(r_getattr(p, s).magnitude)
-
-        return ColumnDataSource(sources_dict)
 
     @classmethod
     def from_engauge_csv(
