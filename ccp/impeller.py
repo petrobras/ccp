@@ -70,7 +70,6 @@ class Impeller:
             raise ValueError("Width(b) and diameter(D) must be provided.")
 
         self.points = deepcopy(points)
-        # TODO group points with the same speed in curves
 
         for p in self.points:
             self._add_non_dimensional_attributes(p)
