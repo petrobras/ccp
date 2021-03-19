@@ -7,7 +7,6 @@ import plotly.graph_objects as go
 from scipy.optimize import newton
 
 from ccp import check_units, State, Q_
-from ccp.config.units import change_data_units
 from ccp.config.utilities import r_getattr
 
 
@@ -441,3 +440,45 @@ class Point:
             parameters = toml.load(f)
 
         return cls(**cls._dict_from_load(parameters))
+
+
+def plot_func(self, attr):
+    def inner(*args, plot_kws=None, **kwargs):
+        """Plot parameter versus volumetric flow.
+
+        You can choose units with the arguments x_units='...' and
+        y_units='...'.
+        """
+        fig = kwargs.pop("fig", None)
+
+        if fig is None:
+            fig = go.Figure()
+
+        if plot_kws is None:
+            plot_kws = {}
+
+        x_units = kwargs.get("flow_v_units", None)
+        y_units = kwargs.get(f"{attr}_units", None)
+        name = kwargs.get("name", None)
+
+        point_attr = r_getattr(self, attr)
+        if callable(point_attr):
+            point_attr = point_attr()
+
+        if y_units is not None:
+            point_attr = point_attr.to(y_units)
+
+        value = getattr(point_attr, "magnitude")
+        units = getattr(point_attr, "units")
+
+        flow_v = self.flow_v
+
+        if x_units is not None:
+            flow_v = flow_v.to(x_units)
+
+        fig.add_trace(go.Scatter(x=[flow_v], y=[value], name=name, **plot_kws))
+
+        return fig
+
+    return inner
+
