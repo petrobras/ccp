@@ -11,82 +11,66 @@ from ccp.config.units import change_data_units
 from ccp.config.utilities import r_getattr
 
 
-def plot_func(self, attr):
-    def inner(*args, plot_kws=None, **kwargs):
-        """Plot parameter versus volumetric flow.
-
-        You can choose units with the arguments x_units='...' and
-        y_units='...'.
-        """
-        fig = kwargs.pop("fig", None)
-
-        if fig is None:
-            fig = go.Figure()
-
-        if plot_kws is None:
-            plot_kws = {}
-
-        x_units = kwargs.get("flow_v_units", None)
-        y_units = kwargs.get(f"{attr}_units", None)
-        name = kwargs.get("name", None)
-
-        point_attr = r_getattr(self, attr)
-        if callable(point_attr):
-            point_attr = point_attr()
-
-        if y_units is not None:
-            point_attr = point_attr.to(y_units)
-
-        value = getattr(point_attr, "magnitude")
-        units = getattr(point_attr, "units")
-
-        flow_v = self.flow_v
-
-        if x_units is not None:
-            flow_v = flow_v.to(x_units)
-
-        fig.add_trace(go.Scatter(x=[flow_v], y=[value], name=name, **plot_kws))
-
-        return fig
-
-    return inner
-
-
 class Point:
-    """Point.
-    A point in the compressor map that can be defined in different ways.
-
-    Parameters
-    ----------
-    speed : float
-        Speed in 1/s.
-    flow_v or flow_m : float
-        Volumetric or mass flow.
-    suc, disch : ccp.State, ccp.State
-        Suction and discharge states for the point.
-    suc, head, eff : ccp.State, float, float
-        Suction state, polytropic head and polytropic efficiency.
-    suc, head, power : ccp.State, float, float
-        Suction state, polytropic head and gas power.
-    suc, eff, vol_ratio : ccp.State, float, float
-        Suction state, polytropic efficiency and volume ratio.
-
-
-    Returns
-    -------
-    Point : ccp.Point
-        A point in the compressor map.
-    """
-
     @check_units
-    def __init__(self, *args, **kwargs):
-        self.flow_v = kwargs.get("flow_v", None)
-        self.flow_m = kwargs.get("flow_m", None)
-        self.volume_ratio = kwargs.get("volume_ratio")
+    def __init__(
+        self,
+        suc=None,
+        disch=None,
+        flow_v=None,
+        flow_m=None,
+        speed=None,
+        head=None,
+        eff=None,
+        volume_ratio=None,
+        power=None,
+        b=None,
+        D=None,
+    ):
+        """Point.
+        A point in the compressor map that can be defined in different ways.
+
+        Parameters
+        ----------
+        speed : float
+            Speed in 1/s.
+        flow_v or flow_m : float
+            Volumetric or mass flow.
+        suc, disch : ccp.State, ccp.State
+            Suction and discharge states for the point.
+        suc, head, eff : ccp.State, float, float
+            Suction state, polytropic head and polytropic efficiency.
+        suc, head, power : ccp.State, float, float
+            Suction state, polytropic head and gas power.
+        suc, eff, volume_ratio : ccp.State, float, float
+            Suction state, polytropic efficiency and volume ratio.
+        b, D : pint.Quantity, float, optional
+            Impeller width and diameter.
+            This is optional, if not provided it will be set when the point is
+            assigned to an impeller.
+
+
+        Returns
+        -------
+        Point : ccp.Point
+            A point in the compressor map.
+        """
+        self.suc = suc
+        self.disch = disch
+        self.flow_v = flow_v
+        self.flow_m = flow_m
+        self.speed = speed
+        self.head = head
+        self.eff = eff
+        self.volume_ratio = volume_ratio
+        self.power = power
+
+        self.b = b
+        self.D = D
+
         if not (self.flow_m or self.flow_v or self.volume_ratio):
             raise ValueError("flow_v, flow_m or volume_ratio must be provided.")
 
-        self.suc = kwargs["suc"]
         # dummy state used to avoid copying states
         self._dummy_state = copy(self.suc)
 
@@ -94,12 +78,6 @@ class Point:
             self.flow_m = self.flow_v * self.suc.rho()
         elif self.flow_m is not None:
             self.flow_v = self.flow_m / self.suc.rho()
-
-        self.disch = kwargs.get("disch")
-        self.head = kwargs.get("head")
-        self.eff = kwargs.get("eff")
-        self.power = kwargs.get("power")
-        self.speed = kwargs.get("speed")
 
         # check if some values are within a reasonable range
         try:
@@ -115,10 +93,22 @@ class Point:
         self.mach = None
         self.reynolds = None
 
-        kwargs_keys = [
-            k for k in kwargs.keys() if k not in ["flow_v", "flow_m", "speed"]
-        ]
-        kwargs_keys = "-".join(sorted(kwargs_keys))
+        # The values below are related to the point similarity.
+        # If the point is created by the __init__ constructor the value of 1 is assigned,
+        # if the point is created with the .convert_from() constructor the value is
+        # calculated by comparing the original point and the point being instantiated.
+        self.phi_ratio = 1.
+        self.psi_ratio = 1.
+        self.reynolds_ratio = 1.
+        # mach in the ptc 10 is compared with Mmt - Mmsp
+        self.mach_diff = 0.
+
+        kwargs_list = []
+        for k in ["suc", 'disch', 'eff', 'head', 'volume_ratio']:
+            if getattr(self, k):
+                kwargs_list.append(k)
+
+        kwargs_str = '-'.join(sorted(kwargs_list))
 
         calc_options = {
             "disch-suc": self._calc_from_disch_suc,
@@ -126,7 +116,7 @@ class Point:
             "eff-head-suc": self._calc_from_eff_head_suc,
         }
 
-        calc_options[kwargs_keys]()
+        calc_options[kwargs_str]()
         self._add_point_plot()
 
     def _add_point_plot(self):
