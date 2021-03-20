@@ -21,8 +21,10 @@ class Point:
         speed=None,
         head=None,
         eff=None,
-        volume_ratio=None,
         power=None,
+        phi=None,
+        psi=None,
+        volume_ratio=None,
         b=None,
         D=None,
     ):
@@ -61,62 +63,174 @@ class Point:
         self.speed = speed
         self.head = head
         self.eff = eff
-        self.volume_ratio = volume_ratio
         self.power = power
+
+        self.phi = phi
+        self.psi = psi
+        self.volume_ratio = volume_ratio
 
         self.b = b
         self.D = D
 
-        if not (self.flow_m or self.flow_v or self.volume_ratio):
-            raise ValueError("flow_v, flow_m or volume_ratio must be provided.")
-
         # dummy state used to avoid copying states
         self._dummy_state = copy(self.suc)
 
-        if self.flow_v is not None:
-            self.flow_m = self.flow_v * self.suc.rho()
-        elif self.flow_m is not None:
-            self.flow_v = self.flow_m / self.suc.rho()
-
-        # check if some values are within a reasonable range
-        try:
-            if self.speed.m > 5000:
-                warn(f'Speed seems to high: {self.speed} - {self.speed.to("RPM")}')
-        except AttributeError:
-            pass
-
-        # non dimensional parameters will be added when the point is associated
-        # to an impeller (when the impeller object is instantiated)
-        self.phi = None
-        self.psi = None
-        self.mach = None
-        self.reynolds = None
-
-        # The values below are related to the point similarity.
-        # If the point is created by the __init__ constructor the value of 1 is assigned,
-        # if the point is created with the .convert_from() constructor the value is
-        # calculated by comparing the original point and the point being instantiated.
-        self.phi_ratio = 1.
-        self.psi_ratio = 1.
-        self.reynolds_ratio = 1.
-        # mach in the ptc 10 is compared with Mmt - Mmsp
-        self.mach_diff = 0.
-
         kwargs_list = []
-        for k in ["suc", 'disch', 'eff', 'head', 'volume_ratio']:
+
+        for k in [
+            "suc",
+            "disch",
+            "flow_v",
+            "flow_m",
+            "speed",
+            "head",
+            "eff",
+            "power",
+            "phi",
+            "psi",
+            "volume_ratio",
+        ]:
             if getattr(self, k):
                 kwargs_list.append(k)
 
-        kwargs_str = '-'.join(sorted(kwargs_list))
+        kwargs_str = "_".join(sorted(kwargs_list))
 
-        calc_options = {
-            "disch-suc": self._calc_from_disch_suc,
-            "eff-suc-volume_ratio": self._calc_from_eff_suc_volume_ratio,
-            "eff-head-suc": self._calc_from_eff_head_suc,
-        }
+        # calc_options = {
+        #     "disch_flow_v_speed_suc": self._calc_fro,
+        #     "eff-suc-volume_ratio": self._calc_from_eff_suc_volume_ratio,
+        #     "eff-head-suc": self._calc_from_eff_head_suc,
+        # }
+        # calc_options[kwargs_str]()
+        getattr(self, '_calc_from_' + kwargs_str)()
 
-        calc_options[kwargs_str]()
+        self.phi_ratio = 1.0
+        self.psi_ratio = 1.0
+        self.reynolds_ratio = 1.0
+        # mach in the ptc 10 is compared with Mmt - Mmsp
+        self.mach_diff = 0.0
+        # ratio between specific volume ratios in original and converted conditions
+        self.volume_ratio_ratio = 1.0
+
         self._add_point_plot()
+
+    def _u(self):
+        """Impeller tip speed."""
+        speed = self.speed
+
+        u = speed * self.D / 2
+
+        return u
+
+    def _phi(self):
+        """Flow coefficient."""
+        flow_v = self.flow_v
+
+        u = self._u()
+
+        phi = flow_v * 4 / (np.pi * self.D ** 2 * u)
+
+        return phi.to("dimensionless")
+
+    def _psi(self):
+        """Head coefficient."""
+        head = self.head
+
+        u = self._u()
+
+        psi = 2 * head / u ** 2
+
+        return psi.to("dimensionless")
+
+    def _mach(self):
+        """Mach number."""
+        suc = self.suc
+
+        u = self._u()
+        a = suc.speed_sound()
+
+        mach = u / a
+
+        return mach.to("dimensionless")
+
+    def _reynolds(self):
+        """Reynolds number."""
+        suc = self.suc
+
+        u = self._u()
+        b = self.b
+        v = suc.viscosity() / suc.rho()
+
+        reynolds = u * b / v
+
+        return reynolds.to("dimensionless")
+
+    def _u_from_psi(self):
+        psi = self.psi
+        head = self.head
+
+        u = np.sqrt(2 * head / psi)
+
+        return u.to("m/s")
+
+    def _speed_from_psi(self):
+        D = self.D
+        u = self._u_from_psi()
+
+        speed = 2 * u / D
+
+        return speed.to("rad/s")
+
+    def _flow_from_phi(self, D=None):
+        # TODO get flow for point generated from suc-eff-volume_ratio
+        phi = self.phi
+        if D is None:
+            D = self.D
+        u = self._u_from_psi()
+
+        flow_v = phi * (np.pi * D ** 2 * u) / 4
+
+        return flow_v
+
+    @classmethod
+    def convert_from(
+        cls, original_point, suc=None, volume_ratio=None, speed=None, D=None
+    ):
+        """Convert point from an original point.
+
+        The user must provide 3 of the 4 available arguments. The argument which is not
+        provided will be calculated.
+        """
+
+        if volume_ratio is None:
+            flow_v = flow_from_phi(D=D, phi=original_point.phi, speed=speed)
+            head = head_from_psi(D=D, psi=original_point.psi, speed=speed)
+            converted_point = cls(
+                suc=suc,
+                eff=original_point.eff,
+                head=head,
+                flow_v=flow_v,
+                speed=speed,
+                b=original_point.b,
+                D=D,
+            )
+
+        # TODO Implement speed and D as None
+        if speed is None:
+            pass
+        if D is None:
+            pass
+
+        converted_point.phi_ratio = converted_point.phi / original_point.phi
+        converted_point.psi_ratio = converted_point.psi / original_point.psi
+        converted_point.reynolds_ratio = (
+            converted_point.reynolds / original_point.reynolds
+        )
+        converted_point.mach_diff = converted_point.mach - original_point.mach
+        converted_point.volume_ratio_ratio = (
+            converted_point.volume_ratio / original_point.volume_ratio
+        )
+
+        return converted_point
 
     def _add_point_plot(self):
         """Add plot to point after point is fully defined."""
@@ -160,18 +274,22 @@ class Point:
             f' eff=Q_("{self.eff:.3f~P}"))'
         )
 
-    def _calc_from_disch_suc(self):
-        self.head = self._head_pol_schultz()
-        self.eff = self._eff_pol_schultz()
-        self.volume_ratio = self._volume_ratio()
-        self.power = self._power_calc()
+    def _calc_from_disch_flow_v_speed_suc(self):
+        self.head = head_pol_schultz(self.suc, self.disch)
+        self.eff = eff_pol_schultz(self.suc, self.disch)
+        self.volume_ratio = self.suc.v() / self.disch.v()
+        self.flow_m = self.suc.rho() * self.flow_v
+        self.power = power_calc(self.flow_m, self.head, self.eff)
+        self.phi = phi(self.flow_v, self.speed, self.D)
+        self.psi = psi(self.head, self.speed, self.D)
 
     def _calc_from_eff_suc_volume_ratio(self):
         eff = self.eff
         suc = self.suc
         volume_ratio = self.volume_ratio
 
-        disch_rho = suc.rho() / volume_ratio
+        disch_v = suc.v() / volume_ratio
+        disch_rho = 1 / disch_v
 
         #  consider first an isentropic compression
         disch = State.define(rho=disch_rho, s=suc.s(), fluid=suc.fluid)
@@ -196,7 +314,7 @@ class Point:
             newton(update_state, disch.p().magnitude, args=("pressure",), tol=1e-1)
 
         self.disch = disch
-        self.head = self._head_pol_schultz()
+        self.head = head_pol_schultz(suc, disch)
 
     def _calc_from_eff_head_suc(self):
         eff = self.eff
@@ -482,3 +600,309 @@ def plot_func(self, attr):
 
     return inner
 
+
+def n_exp(suc, disch):
+    """Polytropic exponent.
+
+    Parameters
+    ----------
+    suc : ccp.State
+        Suction state.
+    disch : ccp.State
+        Discharge state.
+
+    Returns
+    -------
+    n_exp : float
+        Polytropic exponent.
+    """
+    ps = suc.p()
+    vs = 1 / suc.rho()
+    pd = disch.p()
+    vd = 1 / disch.rho()
+
+    return np.log(pd / ps) / np.log(vs / vd)
+
+
+def head_polytropic(suc, disch):
+    """Polytropic head.
+
+    Parameters
+    ----------
+    suc : ccp.State
+        Suction state.
+    disch : ccp.State
+        Discharge state.
+
+    Returns
+    -------
+    head_polytropic : pint.Quantity
+        Polytropic head (J/kg).
+    """
+
+    n = n_exp(suc, disch)
+
+    p2 = disch.p()
+    v2 = 1 / disch.rho()
+    p1 = suc.p()
+    v1 = 1 / suc.rho()
+
+    return (n / (n - 1)) * (p2 * v2 - p1 * v1).to("joule/kilogram")
+
+
+def head_isen(suc, disch):
+    """Isentropic head.
+    Parameters
+    ----------
+    suc : ccp.State
+        Suction state.
+    disch : ccp.State
+        Discharge state.
+
+    Returns
+    -------
+    head_isen : pint.Quantity
+        Isentropic head.
+    """
+    # define state to isentropic discharge using dummy state
+    disch_s = copy(disch)
+    disch_s.update(p=disch.p(), s=suc.s())
+
+    return head_polytropic(suc, disch_s).to("joule/kilogram")
+
+
+def schultz_f(suc, disch):
+    """Schultz factor.
+
+    Parameters
+    ----------
+    suc : ccp.State
+        Suction state.
+    disch : ccp.State
+        Discharge state.
+
+    Returns
+    -------
+    schultz_f : float
+        Schultz polytropic factor.
+    """
+
+    # define state to isentropic discharge using dummy state
+    disch_s = copy(disch)
+    disch_s.update(p=disch.p(), s=suc.s())
+
+    h2s_h1 = disch_s.h() - suc.h()
+    h_isen = head_isen(suc, disch)
+
+    return h2s_h1 / h_isen
+
+
+def head_pol_schultz(suc, disch):
+    """Polytropic head corrected by the Schultz factor.
+
+    Parameters
+    ----------
+    suc : ccp.State
+        Suction state.
+    disch : ccp.State
+        Discharge state.
+
+    Returns
+    -------
+    head_pol_schultz : pint.Quantity
+        Schultz polytropic head (J/kg).
+    """
+
+    f = schultz_f(suc, disch)
+    head = head_polytropic(suc, disch)
+
+    return f * head
+
+
+def eff_pol_schultz(suc, disch):
+    """Schultz polytropic efficiency.
+        Parameters
+    ----------
+    suc : ccp.State
+        Suction state.
+    disch : ccp.State
+        Discharge state.
+
+    Returns
+    -------
+    head_pol_schultz : pint.Quantity
+        Schultz polytropic efficiency (dimensionless).
+    """
+    wp = head_pol_schultz(suc, disch)
+    dh = disch.h() - suc.h()
+
+    return (wp / dh).to("dimensionless")
+
+
+@check_units
+def power_calc(flow_m, head, eff):
+    """Calculate power.
+
+    Parameters
+    ----------
+    flow_m : pint.Quantity, float
+        Mass flow (kg/s).
+    head : pint.Quantity, float
+        Head (J/kg).
+    eff : pint.Quantity, float
+        Efficiency (dimensionless).
+
+    Returns
+    -------
+    power : pint.Quantity
+        Power (watt).
+    """
+    power = flow_m * head / eff
+
+    return power.to("watt")
+
+
+@check_units
+def u_calc(D, speed):
+    """Calculate the impeller tip speed.
+
+    Parameters
+    ----------
+    D : pint.Quantity, float
+        Impeller diameter (m).
+    speed : pint.Quantity, float
+        Impeller speed (rad/s).
+
+    Returns
+    -------
+    u_calc : pint.Quantity
+        Impeller tip speed (m/s).
+    """
+    u = speed * D / 2
+    return u.to("m/s")
+
+
+@check_units
+def psi(head, speed, D):
+    """Polytropic head coefficient.
+
+    Parameters
+    ----------
+    head : pint.Quantity, float
+        Polytropic head (J/kg).
+    speed : pint.Quantity, float
+        Impeller speed (rad/s).
+    D : pint.Quantity, float
+        Impeller diameter.
+
+    Returns
+    -------
+    psi : pint.Quantity
+        Polytropic head coefficient (dimensionless).
+    """
+    u = u_calc(D, speed)
+    psi = head / (u ** 2 / 2)
+    return psi.to("dimensionless")
+
+
+@check_units
+def u_from_psi(head, psi):
+    """Calculate u_calc from non dimensional psi.
+
+    Parameters
+    ----------
+    head : pint.Quantity, float
+        Polytropic head.
+    psi : pint.Quantity, float
+        Head coefficient.
+
+    Returns
+    -------
+    u_calc : pint.Quantity, float
+        Impeller tip speed.
+    """
+    u = np.sqrt(2 * head / psi)
+
+    return u.to("m/s")
+
+
+@check_units
+def speed_from_psi(D, head, psi):
+    """Calculate speed from non dimensional psi.
+
+    Parameters
+    ----------
+    D : pint.Quantity, float
+        Impeller diameter.
+    head : pint.Quantity, float
+        Polytropic head.
+    psi : pint.Quantity, float
+        Head coefficient.
+
+    Returns
+    -------
+    u_calc : pint.Quantity, float
+        Impeller tip speed.
+    """
+    u = u_from_psi(head, psi)
+
+    speed = 2 * u / D
+
+    return speed.to("rad/s")
+
+
+@check_units
+def phi(flow_v, speed, D):
+    """Flow coefficient."""
+    u = u_calc(D, speed)
+
+    phi = flow_v * 4 / (np.pi * D ** 2 * u)
+
+    return phi.to("dimensionless")
+
+
+@check_units
+def flow_from_phi(D, phi, speed):
+    """Calculate flow from non dimensional phi.
+
+    Parameters
+    ----------
+    D : pint.Quantity, float
+        Impeller diameter (m).
+    phi : pint.Quantity, float
+        Flow coefficient (m³/s).
+    speed : pint.Quantity, float
+        Speed (rad/s).
+
+    Returns
+    -------
+    u_calc : pint.Quantity, float
+        Impeller tip speed.
+    """
+    u = speed * D / 2
+
+    flow_v = phi * (np.pi * D ** 2 * u) / 4
+
+    return flow_v.to("m**3/s")
+
+
+def head_from_psi(D, psi, speed):
+    """Calculate head from non dimensional psi.
+
+    Parameters
+    ----------
+    D : pint.Quantity, float
+        Impeller diameter (m).
+    psi : pint.Quantity, float
+        Head coefficient.
+    speed : pint.Quantity, float
+        Speed (rad/s).
+    Returns
+    -------
+    u_calc : pint.Quantity, float
+        Impeller tip speed.
+    """
+    u = speed * D / 2
+    head = psi * (u ** 2 / 2)
+
+    return head.to("J/kg")

@@ -42,8 +42,8 @@ class State(CP.AbstractState):
             other_fluid_rounded = {k: round(v, 3) for k, v in other.fluid.items()}
             if (
                 self_fluid_rounded == other_fluid_rounded
-                and np.allclose(self.p(), other.p())
-                and np.allclose(self.T(), other.T())
+                and np.allclose(self.p(), other.p(), rtol=1e-3)
+                and np.allclose(self.T(), other.T(), rtol=1e-3)
             ):
                 return True
         return False
