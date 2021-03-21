@@ -95,12 +95,6 @@ class Point:
 
         kwargs_str = "_".join(sorted(kwargs_list))
 
-        # calc_options = {
-        #     "disch_flow_v_speed_suc": self._calc_fro,
-        #     "eff-suc-volume_ratio": self._calc_from_eff_suc_volume_ratio,
-        #     "eff-head-suc": self._calc_from_eff_head_suc,
-        # }
-        # calc_options[kwargs_str]()
         getattr(self, '_calc_from_' + kwargs_str)()
 
         self.phi_ratio = 1.0
@@ -283,7 +277,7 @@ class Point:
         self.phi = phi(self.flow_v, self.speed, self.D)
         self.psi = psi(self.head, self.speed, self.D)
 
-    def _calc_from_eff_suc_volume_ratio(self):
+    def _calc_from_eff_phi_psi_suc_volume_ratio(self):
         eff = self.eff
         suc = self.suc
         volume_ratio = self.volume_ratio
@@ -291,7 +285,7 @@ class Point:
         disch_v = suc.v() / volume_ratio
         disch_rho = 1 / disch_v
 
-        #  consider first an isentropic compression
+        # consider first an isentropic compression
         disch = State.define(rho=disch_rho, s=suc.s(), fluid=suc.fluid)
 
         def update_state(x, update_type):
@@ -299,7 +293,7 @@ class Point:
                 disch.update(rho=disch_rho, p=x)
             elif update_type == "temperature":
                 disch.update(rho=disch_rho, T=x)
-            new_eff = self._eff_pol_schultz(disch=disch)
+            new_eff = eff_pol_schultz(self.suc, disch)
             if not 0.0 < new_eff < 1.1:
                 raise ValueError
 
@@ -315,8 +309,12 @@ class Point:
 
         self.disch = disch
         self.head = head_pol_schultz(suc, disch)
+        self.speed = speed_from_psi(self.D, self.head, self.psi)
+        self.flow_v = flow_from_phi(self.D, self.phi, self.speed)
+        self.flow_m = self.flow_v * self.suc.rho()
+        self.power = power_calc(self.flow_m, self.head, self.eff)
 
-    def _calc_from_eff_head_suc(self):
+    def _calc_from_eff_flow_v_head_speed_suc(self):
         eff = self.eff
         head = self.head
         suc = self.suc
@@ -328,15 +326,18 @@ class Point:
 
         def update_pressure(p):
             disch.update(h=h_disch, p=p)
-            new_head = self._head_pol_schultz(disch)
+            new_head = head_pol_schultz(suc, disch)
 
             return (new_head - head).magnitude
 
         newton(update_pressure, disch.p().magnitude, tol=1e-1)
 
         self.disch = disch
-        self.volume_ratio = self._volume_ratio()
-        self.power = self._power_calc()
+        self.flow_m = self.flow_v * self.suc.rho()
+        self.power = power_calc(self.flow_m, self.head, self.eff)
+        self.phi = phi(self.flow_v, self.speed, self.D)
+        self.psi = psi(self.head, self.speed, self.D)
+        self.volume_ratio = self.suc.v() / self.disch.v()
 
     def _head_pol_schultz(self, disch=None):
         """Polytropic head corrected by the Schultz factor."""
