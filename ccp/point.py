@@ -1,5 +1,4 @@
 from copy import copy
-from warnings import warn
 
 import numpy as np
 import toml
@@ -56,6 +55,9 @@ class Point:
         Point : ccp.Point
             A point in the compressor map.
         """
+        if b is None or D is None:
+            raise ValueError("Arguments b and D must be provided.")
+
         self.suc = suc
         self.disch = disch
         self.flow_v = flow_v
@@ -106,84 +108,6 @@ class Point:
         self.volume_ratio_ratio = 1.0
 
         self._add_point_plot()
-
-    def _u(self):
-        """Impeller tip speed."""
-        speed = self.speed
-
-        u = speed * self.D / 2
-
-        return u
-
-    def _phi(self):
-        """Flow coefficient."""
-        flow_v = self.flow_v
-
-        u = self._u()
-
-        phi = flow_v * 4 / (np.pi * self.D ** 2 * u)
-
-        return phi.to("dimensionless")
-
-    def _psi(self):
-        """Head coefficient."""
-        head = self.head
-
-        u = self._u()
-
-        psi = 2 * head / u ** 2
-
-        return psi.to("dimensionless")
-
-    def _mach(self):
-        """Mach number."""
-        suc = self.suc
-
-        u = self._u()
-        a = suc.speed_sound()
-
-        mach = u / a
-
-        return mach.to("dimensionless")
-
-    def _reynolds(self):
-        """Reynolds number."""
-        suc = self.suc
-
-        u = self._u()
-        b = self.b
-        v = suc.viscosity() / suc.rho()
-
-        reynolds = u * b / v
-
-        return reynolds.to("dimensionless")
-
-    def _u_from_psi(self):
-        psi = self.psi
-        head = self.head
-
-        u = np.sqrt(2 * head / psi)
-
-        return u.to("m/s")
-
-    def _speed_from_psi(self):
-        D = self.D
-        u = self._u_from_psi()
-
-        speed = 2 * u / D
-
-        return speed.to("rad/s")
-
-    def _flow_from_phi(self, D=None):
-        # TODO get flow for point generated from suc-eff-volume_ratio
-        phi = self.phi
-        if D is None:
-            D = self.D
-        u = self._u_from_psi()
-
-        flow_v = phi * (np.pi * D ** 2 * u) / 4
-
-        return flow_v
 
     @classmethod
     def convert_from(
@@ -339,191 +263,6 @@ class Point:
         self.psi = psi(self.head, self.speed, self.D)
         self.volume_ratio = self.suc.v() / self.disch.v()
 
-    def _head_pol_schultz(self, disch=None):
-        """Polytropic head corrected by the Schultz factor."""
-        if disch is None:
-            disch = self.disch
-
-        f = self._schultz_f(disch=disch)
-        head = self._head_pol(disch=disch)
-
-        return f * head
-
-    def _head_pol_mallen_saville(self, disch=None):
-        """Polytropic head as per Mallen-Saville"""
-        if disch is None:
-            disch = self.disch
-
-        suc = self.suc
-
-        head = (disch.h() - suc.h()) - (disch.s() - suc.s()) * (
-            disch.T() - suc.T()
-        ) / np.log(disch.T() / suc.T())
-
-        return head
-
-    def _head_reference(self, disch=None):
-        """Reference head as described by Huntington (1985).
-
-        It consists of two loops.
-        One converges the T1 temperature at each step by evaluating the
-        diffence between H = vm * delta_p and H = eff * delta_h.
-        The other evaluates the efficiency by checking the difference between
-        the last T1 to the discharge temperature Td.
-
-        Results are stored at self._ref_eff, self._ref_H and self._ref_n.
-        self._ref_n is a list with n_exp at each step for the final converged
-        efficiency.
-
-        """
-        if disch is None:
-            disch = self.disch
-
-        suc = self.suc
-
-        def calc_step_discharge_temp(T1, T0, self, p1, e):
-            s0 = State.define(p=self, T=T0, fluid=suc.fluid)
-            s1 = State.define(p=p1, T=T1, fluid=suc.fluid)
-            h0 = s0.h()
-            h1 = s1.h()
-
-            vm = ((1 / s0.rho()) + (1 / s1.rho())) / 2
-            delta_p = Q_(p1 - self, "Pa")
-            H0 = vm * delta_p
-            H1 = e * (h1 - h0)
-
-            return (H1 - H0).magnitude
-
-        def calc_eff(e, suc, disch):
-            p_intervals = np.linspace(suc.p(), disch.p(), 1000)
-
-            T0 = suc.T().magnitude
-
-            self._ref_H = 0
-            self._ref_n = []
-
-            for self, p1 in zip(p_intervals[:-1], p_intervals[1:]):
-                T1 = newton(
-                    calc_step_discharge_temp, (T0 + 1e-3), args=(T0, self, p1, e)
-                )
-
-                s0 = State.define(p=self, T=T0, fluid=suc.fluid)
-                s1 = State.define(p=p1, T=T1, fluid=suc.fluid)
-                step_point = Point(flow_m=1, speed=1, suc=s0, disch=s1)
-
-                self._ref_H += step_point._head_pol()
-                self._ref_n.append(step_point._n_exp())
-                T0 = T1
-
-            return disch.T().magnitude - T1
-
-        self._ref_eff = newton(calc_eff, 0.8, args=(suc, disch))
-
-    def _schultz_f(self, disch=None):
-        """Schultz factor."""
-        suc = self.suc
-        if disch is None:
-            disch = self.disch
-
-        # define state to isentropic discharge using dummy state
-        disch_s = self._dummy_state
-        disch_s.update(p=disch.p(), s=suc.s())
-
-        h2s_h1 = disch_s.h() - suc.h()
-        h_isen = self._head_isen(disch=disch)
-
-        return h2s_h1 / h_isen
-
-    def _head_isen(self, disch=None):
-        """Isentropic head."""
-        suc = self.suc
-        if disch is None:
-            disch = self.disch
-
-        # define state to isentropic discharge using dummy state
-        disch_s = self._dummy_state
-        disch_s.update(p=disch.p(), s=suc.s())
-
-        return self._head_pol(disch=disch_s).to("joule/kilogram")
-
-    def _eff_isen(self):
-        """Isentropic efficiency."""
-        suc = self.suc
-        disch = self.disch
-
-        ws = self._head_isen()
-        dh = disch.h() - suc.h()
-        return ws / dh
-
-    def _head_pol(self, disch=None):
-        """Polytropic head."""
-        suc = self.suc
-
-        if disch is None:
-            disch = self.disch
-
-        n = self._n_exp(disch=disch)
-
-        p2 = disch.p()
-        v2 = 1 / disch.rho()
-        p1 = suc.p()
-        v1 = 1 / suc.rho()
-
-        return (n / (n - 1)) * (p2 * v2 - p1 * v1).to("joule/kilogram")
-
-    def _eff_pol(self):
-        """Polytropic efficiency."""
-        suc = self.suc
-        disch = self.disch
-
-        wp = self._head_pol()
-
-        dh = disch.h() - suc.h()
-
-        return wp / dh
-
-    def _n_exp(self, disch=None):
-        """Polytropic exponent."""
-        suc = self.suc
-
-        if disch is None:
-            disch = self.disch
-
-        ps = suc.p()
-        vs = 1 / suc.rho()
-        pd = disch.p()
-        vd = 1 / disch.rho()
-
-        return np.log(pd / ps) / np.log(vs / vd)
-
-    def _eff_pol_schultz(self, disch=None):
-        """Schultz polytropic efficiency."""
-        suc = self.suc
-        if disch is None:
-            disch = self.disch
-
-        wp = self._head_pol_schultz(disch=disch)
-        dh = disch.h() - suc.h()
-
-        return wp / dh
-
-    def _power_calc(self):
-        """Power."""
-        flow_m = self.flow_m
-        head = self.head
-        eff = self.eff
-
-        return (flow_m * head / eff).to("watt")
-
-    def _volume_ratio(self):
-        suc = self.suc
-        disch = self.disch
-
-        vs = 1 / suc.rho()
-        vd = 1 / disch.rho()
-
-        return vd / vs
-
     def _dict_to_save(self):
         """Returns a dict that will be saved to a toml file."""
         return dict(
@@ -534,6 +273,8 @@ class Point:
             flow_v=str(self.flow_v),
             head=str(self.head),
             eff=str(self.eff),
+            b=str(self.b),
+            D=str(self.D)
         )
 
     @staticmethod
@@ -651,8 +392,9 @@ def head_polytropic(suc, disch):
     return (n / (n - 1)) * (p2 * v2 - p1 * v1).to("joule/kilogram")
 
 
-def head_isen(suc, disch):
-    """Isentropic head.
+def eff_polytropic(suc, disch):
+    """Polytropic efficiency.
+
     Parameters
     ----------
     suc : ccp.State
@@ -662,7 +404,30 @@ def head_isen(suc, disch):
 
     Returns
     -------
-    head_isen : pint.Quantity
+    eff_polytropic : pint.Quantity
+        Polytropic head (J/kg).
+
+    """
+    wp = head_polytropic(suc, disch)
+
+    dh = disch.h() - suc.h()
+
+    return wp / dh
+
+
+def head_isentropic(suc, disch):
+    """Isentropic head.
+
+    Parameters
+    ----------
+    suc : ccp.State
+        Suction state.
+    disch : ccp.State
+        Discharge state.
+
+    Returns
+    -------
+    head_isentropic : pint.Quantity
         Isentropic head.
     """
     # define state to isentropic discharge using dummy state
@@ -670,6 +435,27 @@ def head_isen(suc, disch):
     disch_s.update(p=disch.p(), s=suc.s())
 
     return head_polytropic(suc, disch_s).to("joule/kilogram")
+
+
+def eff_isentropic(suc, disch):
+    """Isentropic efficiency.
+
+    Parameters
+    ----------
+    suc : ccp.State
+        Suction state.
+    disch : ccp.State
+        Discharge state.
+
+    Returns
+    -------
+    eff_isentropic : pint.Quantity
+        Isentropic efficiency.
+    """
+    ws = head_isentropic(suc, disch)
+    dh = disch.h() - suc.h()
+
+    return ws / dh
 
 
 def schultz_f(suc, disch):
@@ -693,7 +479,7 @@ def schultz_f(suc, disch):
     disch_s.update(p=disch.p(), s=suc.s())
 
     h2s_h1 = disch_s.h() - suc.h()
-    h_isen = head_isen(suc, disch)
+    h_isen = head_isentropic(suc, disch)
 
     return h2s_h1 / h_isen
 
@@ -722,7 +508,8 @@ def head_pol_schultz(suc, disch):
 
 def eff_pol_schultz(suc, disch):
     """Schultz polytropic efficiency.
-        Parameters
+
+    Parameters
     ----------
     suc : ccp.State
         Suction state.
@@ -738,6 +525,82 @@ def eff_pol_schultz(suc, disch):
     dh = disch.h() - suc.h()
 
     return (wp / dh).to("dimensionless")
+
+
+def head_pol_mallen_saville(suc, disch):
+    """Polytropic head as per Mallen-Saville
+
+    Parameters
+    ----------
+    suc : ccp.State
+        Suction state.
+    disch : ccp.State
+        Discharge state.
+
+    Returns
+    -------
+    head_pol_mallen_saville : pint.Quantity
+        Mallen-Saville polytropic efficiency (dimensionless).
+    """
+
+    head = (disch.h() - suc.h()) - (disch.s() - suc.s()) * (
+        disch.T() - suc.T()
+    ) / np.log(disch.T() / suc.T())
+
+    return head
+
+
+def head_reference(suc, disch):
+    """Reference head as described by Huntington (1985).
+
+    It consists of two loops.
+    One converges the T1 temperature at each step by evaluating the
+    diffence between H = vm * delta_p and H = eff * delta_h.
+    The other evaluates the efficiency by checking the difference between
+    the last T1 to the discharge temperature Td.
+
+    Results are stored at self._ref_eff, self._ref_H and self._ref_n.
+    self._ref_n is a list with n_exp at each step for the final converged
+    efficiency.
+
+    """
+    def calc_step_discharge_temp(T1, T0, self, p1, e):
+        s0 = State.define(p=self, T=T0, fluid=suc.fluid)
+        s1 = State.define(p=p1, T=T1, fluid=suc.fluid)
+        h0 = s0.h()
+        h1 = s1.h()
+
+        vm = ((1 / s0.rho()) + (1 / s1.rho())) / 2
+        delta_p = Q_(p1 - self, "Pa")
+        H0 = vm * delta_p
+        H1 = e * (h1 - h0)
+
+        return (H1 - H0).magnitude
+
+    def calc_eff(e, suc, disch):
+        p_intervals = np.linspace(suc.p(), disch.p(), 1000)
+
+        T0 = suc.T().magnitude
+
+        _ref_H = 0
+        _ref_n = []
+
+        for self, p1 in zip(p_intervals[:-1], p_intervals[1:]):
+            T1 = newton(
+                calc_step_discharge_temp, (T0 + 1e-3), args=(T0, self, p1, e)
+            )
+
+            s0 = State.define(p=self, T=T0, fluid=suc.fluid)
+            s1 = State.define(p=p1, T=T1, fluid=suc.fluid)
+            step_point = Point(flow_m=1, speed=1, suc=s0, disch=s1)
+
+            _ref_H += step_point._head_pol()
+            _ref_n.append(step_point._n_exp())
+            T0 = T1
+
+        return disch.T().magnitude - T1
+
+    _ref_eff = newton(calc_eff, 0.8, args=(suc, disch))
 
 
 @check_units
