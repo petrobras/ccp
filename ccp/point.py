@@ -251,8 +251,12 @@ class Point:
         converted_point = cls(**convert_point_options[find])
         converted_point.phi_ratio = converted_point.phi / original_point.phi
         converted_point.psi_ratio = converted_point.psi / original_point.psi
-        converted_point.volume_ratio_ratio = converted_point.volume_ratio / original_point.volume_ratio
-        converted_point.reynolds_ratio = converted_point.reynolds / original_point.reynolds
+        converted_point.volume_ratio_ratio = (
+            converted_point.volume_ratio / original_point.volume_ratio
+        )
+        converted_point.reynolds_ratio = (
+            converted_point.reynolds / original_point.reynolds
+        )
         converted_point.mach_diff = converted_point.mach - original_point.mach
 
         return converted_point
@@ -821,7 +825,7 @@ def reynolds(suc, speed, b, D):
     u = u_calc(D, speed)
     re = u * b * suc.rho() / suc.viscosity()
 
-    return re.to('dimensionless')
+    return re.to("dimensionless")
 
 
 @check_units
@@ -847,4 +851,3 @@ def mach(suc, speed, D):
     ma = u / a
 
     return ma.to("dimensionless")
-

@@ -50,13 +50,15 @@ def plot_func(self, attr):
             try:
                 values_range = Q_(values_range, getattr(self, attr).units).to(y_units).m
             except AttributeError:
-                values_range = Q_(values_range, getattr(self, attr)().units).to(y_units).m
+                values_range = (
+                    Q_(values_range, getattr(self, attr)().units).to(y_units).m
+                )
 
         fig.add_trace(go.Scatter(x=flow_v_range, y=values_range, name=name), **plot_kws)
 
         fig.update_layout(
             xaxis=dict(title=f"Volume Flow ({x_units:~H})"),
-            yaxis=dict(title=f"{attr.capitalize()} ({y_units:~H})")
+            yaxis=dict(title=f"{attr.capitalize()} ({y_units:~H})"),
         )
 
         return fig

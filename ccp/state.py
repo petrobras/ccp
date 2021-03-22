@@ -257,13 +257,7 @@ class State(CP.AbstractState):
 
     @check_units
     def update(
-        self,
-        p=None,
-        T=None,
-        rho=None,
-        h=None,
-        s=None,
-        **kwargs,
+        self, p=None, T=None, rho=None, h=None, s=None, **kwargs,
     ):
         """Simple state update.
 

@@ -101,7 +101,10 @@ class Impeller:
 
             try:
                 fig = r_getattr(self.current_curve, attr + "_plot")(
-                    fig=fig, name=f"Current Curve {str(self.current_curve.speed.to('RPM'))}", plot_kws=plot_kws, **kwargs
+                    fig=fig,
+                    name=f"Current Curve {str(self.current_curve.speed.to('RPM'))}",
+                    plot_kws=plot_kws,
+                    **kwargs,
                 )
                 fig = r_getattr(self.current_point, attr + "_plot")(
                     fig=fig, name="Current Point", plot_kws=plot_kws, **kwargs
@@ -185,6 +188,33 @@ class Impeller:
         self.current_point = Point(
             flow_v=self.flow_v, speed=self.speed, suc=self.suc, disch=current_disch
         )
+
+    @classmethod
+    def convert_from(cls, original_impeller, suc=None, find="speed"):
+        all_converted_points = []
+        for curve in original_impeller.curves:
+            converted_points = []
+            for point in curve:
+                converted_points.append(Point.convert_from(point, suc=suc, find=find))
+
+            speed_mean = np.mean([p.speed.magnitude for p in converted_points])
+
+            converted_points = [
+                Point(
+                    suc=p.suc,
+                    eff=p.eff,
+                    phi=p.phi,
+                    psi=p.psi,
+                    speed=speed_mean,
+                    b=p.b,
+                    D=p.D,
+                )
+                for p in converted_points
+            ]
+
+            all_converted_points += converted_points
+
+        return cls(all_converted_points)
 
     def _calc_new_points(self):
         """Calculate new dimensional points based on the suction condition."""
@@ -332,6 +362,8 @@ class Impeller:
                         flow_v=Q_(flow, flow_units).to("m**3/s"),
                         head=Q_(head, head_units).to("J/kg"),
                         eff=eff,
+                        b=b,
+                        D=D,
                     )
                     for flow, head, eff in zip(points_x, points_head, points_eff)
                 ]
@@ -343,11 +375,13 @@ class Impeller:
                         flow_m=Q_(flow, flow_units).to("kg/s"),
                         head=Q_(head, head_units).to("J/kg"),
                         eff=eff,
+                        b=b,
+                        D=D,
                     )
                     for flow, head, eff in zip(points_x, points_head, points_eff)
                 ]
 
-        return cls(points, b=b, D=D)
+        return cls(points)
 
     def save(self, file):
         """Save impeller to a toml file.
@@ -363,7 +397,10 @@ class Impeller:
             dict_to_save = {"b": self.b.m, "D": self.D.m}
             toml.dump(dict_to_save, f)
             # add points to file
-            dict_to_save = {f"Point{i}": point._dict_to_save() for i, point in enumerate(self.points)}
+            dict_to_save = {
+                f"Point{i}": point._dict_to_save()
+                for i, point in enumerate(self.points)
+            }
             toml.dump(dict_to_save, f)
 
     @classmethod
@@ -383,7 +420,9 @@ class Impeller:
         parameters = toml.load(file)
         b = parameters.pop("b")
         D = parameters.pop("D")
-        points = [Point(**Point._dict_from_load(kwargs)) for kwargs in parameters.values()]
+        points = [
+            Point(**Point._dict_from_load(kwargs)) for kwargs in parameters.values()
+        ]
 
         return cls(points, b=b, D=D)
 

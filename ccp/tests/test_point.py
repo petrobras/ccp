@@ -209,11 +209,27 @@ def test_converted_from_find_speed(point_eff_flow_v_head_speed_suc_1):
         original_point=point_eff_flow_v_head_speed_suc_1, suc=suc_2, find="speed"
     )
 
-    assert_allclose(point_converted_from_find_speed.b, point_eff_flow_v_head_speed_suc_1.b)
-    assert_allclose(point_converted_from_find_speed.D, point_eff_flow_v_head_speed_suc_1.D)
-    assert_allclose(point_converted_from_find_speed.eff, point_eff_flow_v_head_speed_suc_1.eff, rtol=1e-4)
-    assert_allclose(point_converted_from_find_speed.phi, point_eff_flow_v_head_speed_suc_1.phi, rtol=1e-2)
-    assert_allclose(point_converted_from_find_speed.psi, point_eff_flow_v_head_speed_suc_1.psi, rtol=1e-2)
+    assert_allclose(
+        point_converted_from_find_speed.b, point_eff_flow_v_head_speed_suc_1.b
+    )
+    assert_allclose(
+        point_converted_from_find_speed.D, point_eff_flow_v_head_speed_suc_1.D
+    )
+    assert_allclose(
+        point_converted_from_find_speed.eff,
+        point_eff_flow_v_head_speed_suc_1.eff,
+        rtol=1e-4,
+    )
+    assert_allclose(
+        point_converted_from_find_speed.phi,
+        point_eff_flow_v_head_speed_suc_1.phi,
+        rtol=1e-2,
+    )
+    assert_allclose(
+        point_converted_from_find_speed.psi,
+        point_eff_flow_v_head_speed_suc_1.psi,
+        rtol=1e-2,
+    )
     assert_allclose(point_converted_from_find_speed.volume_ratio_ratio, 1.0)
     assert_allclose(point_converted_from_find_speed.speed, 1259.934797)
     assert_allclose(point_converted_from_find_speed.head, 208933.668804, rtol=1e-2)
@@ -228,18 +244,36 @@ def test_converted_from_find_volume_ratio(point_eff_flow_v_head_speed_suc_1):
         original_point=point_eff_flow_v_head_speed_suc_1, suc=suc_2, find="volume_ratio"
     )
 
-    assert_allclose(point_converted_from_find_speed.b, point_eff_flow_v_head_speed_suc_1.b)
-    assert_allclose(point_converted_from_find_speed.D, point_eff_flow_v_head_speed_suc_1.D)
-    assert_allclose(point_converted_from_find_speed.eff, point_eff_flow_v_head_speed_suc_1.eff, rtol=1e-4)
-    assert_allclose(point_converted_from_find_speed.phi, point_eff_flow_v_head_speed_suc_1.phi, rtol=1e-2)
-    assert_allclose(point_converted_from_find_speed.psi, point_eff_flow_v_head_speed_suc_1.psi, rtol=1e-2)
+    assert_allclose(
+        point_converted_from_find_speed.b, point_eff_flow_v_head_speed_suc_1.b
+    )
+    assert_allclose(
+        point_converted_from_find_speed.D, point_eff_flow_v_head_speed_suc_1.D
+    )
+    assert_allclose(
+        point_converted_from_find_speed.eff,
+        point_eff_flow_v_head_speed_suc_1.eff,
+        rtol=1e-4,
+    )
+    assert_allclose(
+        point_converted_from_find_speed.phi,
+        point_eff_flow_v_head_speed_suc_1.phi,
+        rtol=1e-2,
+    )
+    assert_allclose(
+        point_converted_from_find_speed.psi,
+        point_eff_flow_v_head_speed_suc_1.psi,
+        rtol=1e-2,
+    )
     assert_allclose(point_converted_from_find_speed.volume_ratio, 2.703027, rtol=1e-4)
     assert_allclose(point_converted_from_find_speed.speed, 1167.101671)
-    assert_allclose(point_converted_from_find_speed.head, 179275., rtol=1e-2)
+    assert_allclose(point_converted_from_find_speed.head, 179275.0, rtol=1e-2)
     assert_allclose(point_converted_from_find_speed.power, 875741.275802, rtol=1e-2)
-    assert_allclose(point_converted_from_find_speed.phi_ratio, 1.)
-    assert_allclose(point_converted_from_find_speed.psi_ratio, 1.)
-    assert_allclose(point_converted_from_find_speed.volume_ratio_ratio, 0.882883, rtol=1e-4)
+    assert_allclose(point_converted_from_find_speed.phi_ratio, 1.0)
+    assert_allclose(point_converted_from_find_speed.psi_ratio, 1.0)
+    assert_allclose(
+        point_converted_from_find_speed.volume_ratio_ratio, 0.882883, rtol=1e-4
+    )
 
 
 def test_save_load(point_disch_flow_v_speed_suc):
