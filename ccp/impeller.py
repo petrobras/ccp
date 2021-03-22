@@ -43,35 +43,19 @@ class ImpellerState:
 
 class Impeller:
     @check_units
-    def __init__(self, points, b=None, D=None, _suc=None, _flow_v=None, _speed=None):
+    def __init__(self, points):
         """Impeller class.
 
         Impeller instance is initialized with the list of points.
-        The created instance will hold the dimensional points used in instantiation
-        non dimensional points generated from the given dimensional points and
-        another list of dimensional points based on current suction condition.
+        The created instance will hold the dimensional points used in instantiation.
         Curves will be generated from points close in similarity.
 
         Parameters
         ----------
         points : list
             List with ccp.Point objects.
-        b : float, pint.Quantity
-            Impeller width (m).
-        D : float, pint.Quantity
-            Impeller diameter (m).
         """
-
-        self.b = b
-        self.D = D
-        if not (self.b and self.D):
-            raise ValueError("Width(b) and diameter(D) must be provided.")
-
         self.points = deepcopy(points)
-
-        for p in self.points:
-            self._add_non_dimensional_attributes(p)
-            p._add_point_plot()
 
         curves = []
         for speed, grouped_points in groupby(
@@ -97,20 +81,8 @@ class Impeller:
 
             r_setattr(self, attr + "_plot", self.plot_func(attr))
 
-        self._suc = _suc
-        self._speed = _speed
-        self._flow_v = _flow_v
-
-        self.current_curve = None
-        self.current_point = None
-
     def __getitem__(self, item):
         return self.points.__getitem__(item)
-
-    def _add_non_dimensional_attributes(self, point):
-        additional_point_attributes = ["phi", "psi", "mach", "reynolds"]
-        for attr in additional_point_attributes:
-            setattr(point, attr, getattr(self, "_" + attr)(point))
 
     def plot_func(self, attr):
         def inner(*args, plot_kws=None, **kwargs):
@@ -143,55 +115,6 @@ class Impeller:
 
         return inner
 
-    @property
-    def new_suc(self):
-        return self._suc
-
-    @new_suc.setter
-    def new_suc(self, new_suc):
-        self._suc = new_suc
-        self._calc_new_points()
-        try:
-            self._calc_current_point()
-        except (AttributeError, TypeError):
-            warn("Current point not set (flow and speed)")
-
-    @property
-    def speed(self):
-        return self._speed
-
-    @speed.setter
-    @check_units
-    def speed(self, speed):
-        if speed.magnitude > 5000:
-            warn(f'Speed seems to high: {self.speed} - {self.speed.to("RPM")}')
-        self._speed = speed
-        if self.flow_v is None:
-            return
-
-        if len(self.curves) < 2:
-            raise NotImplementedError("Not implemented for less them two curves.")
-
-        self._calc_current_point()
-
-    @property
-    def flow_v(self):
-        #  TODO check if flow_v is within reasonable range
-        return self._flow_v
-
-    @flow_v.setter
-    @check_units
-    def flow_v(self, flow_v):
-        min_flow = min([p.flow_v.m for p in self.points])
-        max_flow = max([p.flow_v.m for p in self.points])
-        if not min_flow < flow_v.m < max_flow:
-            warn(f"Flow outside the flow range " f"min: {min_flow} max: {max_flow}")
-        self._flow_v = flow_v
-        if self.speed is None:
-            return
-
-        self._calc_current_point()
-
     @staticmethod
     def _find_closest_speeds(array, value):
         diff = array - value
@@ -210,7 +133,6 @@ class Impeller:
         return np.array(idx)
 
     def _calc_current_point(self):
-        #  TODO refactor this function
         try:
             speeds = np.array([curve.speed.magnitude for curve in self.curves])
         except AttributeError:
@@ -290,154 +212,6 @@ class Impeller:
             _flow_v=self.flow_v,
             _speed=self.speed,
         )
-
-    def _u(self, point):
-        """Impeller tip speed."""
-        speed = point.speed
-
-        u = speed * self.D / 2
-
-        return u
-
-    def _phi(self, point):
-        """Flow coefficient."""
-        flow_v = point.flow_v
-
-        u = self._u(point)
-
-        phi = flow_v * 4 / (np.pi * self.D ** 2 * u)
-
-        return phi.to("dimensionless")
-
-    def _psi(self, point):
-        """Head coefficient."""
-        head = point.head
-
-        u = self._u(point)
-
-        psi = 2 * head / u ** 2
-
-        return psi.to("dimensionless")
-
-    def _work_input_factor(self, point):
-        """Work input factor."""
-        suc = point.suc
-        disch = point.disch
-
-        delta_h = disch.h() - suc.h()
-        u = self._u(point)
-
-        s = delta_h / u ** 2
-
-        return s.to("dimensionless")
-
-    def _mach(self, point):
-        """Mach number."""
-        suc = point.suc
-
-        u = self._u(point)
-        a = suc.speed_sound()
-
-        mach = u / a
-
-        return mach.to("dimensionless")
-
-    def _reynolds(self, point):
-        """Reynolds number."""
-        suc = point.suc
-
-        u = self._u(point)
-        b = self.b
-        v = suc.viscosity() / suc.rho()
-
-        reynolds = u * b / v
-
-        return reynolds.to("dimensionless")
-
-    def _sigma(self, point):
-        """Specific speed."""
-        phi = self._phi(point)
-        psi = self._psi(point)
-
-        sigma = phi ** (1 / 2) / psi ** (3 / 4)
-
-        return sigma
-
-    def _calc_from_non_dimensional(self, point, new_suc=None):
-        """Calculate dimensional point from non-dimensional.
-
-        Point will be calculated considering new impeller suction condition.
-        """
-        if new_suc is None:
-            new_suc = self.new_suc
-        new_point = Point(
-            suc=new_suc, eff=point.eff, volume_ratio=point.volume_ratio
-        )
-
-        new_point.phi = point.phi
-        new_point.psi = point.psi
-        new_point.speed = self._speed_from_psi(new_point)
-        new_point.flow_v = self._flow_from_phi(new_point)
-        new_point.flow_m = new_point.flow_v * self.new_suc.rho()
-        new_point.power = new_point._power_calc()
-
-        return new_point
-
-    def _calc_from_speed(self, point, new_speed):
-        """Calculate new point give a point and new speed.
-
-        The new point is calculated considering dimensionless parameters from 'self' at 'point'
-        under .new_suc suction conditions and speed equals new_speed.
-
-        Parameters
-        ----------
-        point : ccp.Point
-            Point in a compressor map.
-        new_speed : float, pint.Quantity
-            New speed for the point. If float is used the unit is rad/s.
-
-        Returns
-        -------
-        new_point : ccp.Point
-            Point recalculated with the new speed.
-        """
-        speed_ratio = new_speed / point.speed
-
-        new_point = Point(
-            suc=self.new_suc,
-            eff=point._eff_pol_schultz(),
-            speed=new_speed,
-            flow_v=point.flow_v * speed_ratio,
-            head=point._head_pol_schultz() * speed_ratio ** 2,
-        )
-
-        return new_point
-
-    def _u_from_psi(self, point):
-        psi = point.psi
-        head = point.head
-
-        u = np.sqrt(2 * head / psi)
-
-        return u.to("m/s")
-
-    def _speed_from_psi(self, point):
-        D = self.D
-        u = self._u_from_psi(point)
-
-        speed = 2 * u / D
-
-        return speed.to("rad/s")
-
-    def _flow_from_phi(self, point):
-        # TODO get flow for point generated from suc-eff-vol_ratio
-        phi = point.phi
-        D = self.D
-        u = self._u_from_psi(point)
-
-        flow_v = phi * (np.pi * D ** 2 * u) / 4
-
-        return flow_v
 
     def export_to_excel(self, path_name=None):
         """Export curves to excel file."""
