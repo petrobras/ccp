@@ -208,7 +208,7 @@ class Curve:
         file_type: str
             File type can be: toml.
         """
-        if file_type is "toml":
+        if file_type == "toml":
             with open(file_name, mode="w") as f:
                 toml.dump(self._dict_to_save(), f)
 
