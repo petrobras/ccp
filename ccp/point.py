@@ -97,7 +97,10 @@ class Point:
 
         kwargs_str = "_".join(sorted(kwargs_list))
 
-        getattr(self, '_calc_from_' + kwargs_str)()
+        getattr(self, "_calc_from_" + kwargs_str)()
+
+        self.reynolds = reynolds(self.suc, self.speed, self.b, self.D)
+        self.mach = mach(self.suc, self.speed, self.D)
 
         self.phi_ratio = 1.0
         self.psi_ratio = 1.0
@@ -108,47 +111,6 @@ class Point:
         self.volume_ratio_ratio = 1.0
 
         self._add_point_plot()
-
-    @classmethod
-    def convert_from(
-        cls, original_point, suc=None, volume_ratio=None, speed=None, D=None
-    ):
-        """Convert point from an original point.
-
-        The user must provide 3 of the 4 available arguments. The argument which is not
-        provided will be calculated.
-        """
-
-        if volume_ratio is None:
-            flow_v = flow_from_phi(D=D, phi=original_point.phi, speed=speed)
-            head = head_from_psi(D=D, psi=original_point.psi, speed=speed)
-            converted_point = cls(
-                suc=suc,
-                eff=original_point.eff,
-                head=head,
-                flow_v=flow_v,
-                speed=speed,
-                b=original_point.b,
-                D=D,
-            )
-
-        # TODO Implement speed and D as None
-        if speed is None:
-            pass
-        if D is None:
-            pass
-
-        converted_point.phi_ratio = converted_point.phi / original_point.phi
-        converted_point.psi_ratio = converted_point.psi / original_point.psi
-        converted_point.reynolds_ratio = (
-            converted_point.reynolds / original_point.reynolds
-        )
-        converted_point.mach_diff = converted_point.mach - original_point.mach
-        converted_point.volume_ratio_ratio = (
-            converted_point.volume_ratio / original_point.volume_ratio
-        )
-
-        return converted_point
 
     def _add_point_plot(self):
         """Add plot to point after point is fully defined."""
@@ -242,26 +204,58 @@ class Point:
         eff = self.eff
         head = self.head
         suc = self.suc
-
-        h_disch = head / eff + suc.h()
-
-        #  consider first an isentropic compression
-        disch = State.define(h=h_disch, s=suc.s(), fluid=suc.fluid)
-
-        def update_pressure(p):
-            disch.update(h=h_disch, p=p)
-            new_head = head_pol_schultz(suc, disch)
-
-            return (new_head - head).magnitude
-
-        newton(update_pressure, disch.p().magnitude, tol=1e-1)
-
+        disch = disch_from_suc_head_eff(suc, head, eff)
         self.disch = disch
         self.flow_m = self.flow_v * self.suc.rho()
         self.power = power_calc(self.flow_m, self.head, self.eff)
         self.phi = phi(self.flow_v, self.speed, self.D)
         self.psi = psi(self.head, self.speed, self.D)
         self.volume_ratio = self.suc.v() / self.disch.v()
+
+    def _calc_from_eff_phi_psi_speed_suc(self):
+        self.head = head_from_psi(self.D, self.psi, self.speed)
+        self.disch = disch_from_suc_head_eff(self.suc, self.head, self.eff)
+        self.flow_v = flow_from_phi(self.D, self.phi, self.speed)
+        self.flow_m = self.flow_v * self.suc.rho()
+        self.power = power_calc(self.flow_m, self.head, self.eff)
+        self.volume_ratio = self.suc.v() / self.disch.v()
+
+    @classmethod
+    def convert_from(cls, original_point, suc=None, find="speed"):
+        """Convert point from an original point.
+
+        The user must provide 3 of the 4 available arguments. The argument which is not
+        provided will be calculated.
+        """
+        convert_point_options = {
+            "speed": dict(
+                suc=suc,
+                eff=original_point.eff,
+                phi=original_point.phi,
+                psi=original_point.psi,
+                volume_ratio=original_point.volume_ratio,
+                b=original_point.b,
+                D=original_point.D,
+            ),
+            "volume_ratio": dict(
+                suc=suc,
+                eff=original_point.eff,
+                phi=original_point.phi,
+                psi=original_point.psi,
+                speed=original_point.speed,
+                b=original_point.b,
+                D=original_point.D,
+            ),
+        }
+
+        converted_point = cls(**convert_point_options[find])
+        converted_point.phi_ratio = converted_point.phi / original_point.phi
+        converted_point.psi_ratio = converted_point.psi / original_point.psi
+        converted_point.volume_ratio_ratio = converted_point.volume_ratio / original_point.volume_ratio
+        converted_point.reynolds_ratio = converted_point.reynolds / original_point.reynolds
+        converted_point.mach_diff = converted_point.mach - original_point.mach
+
+        return converted_point
 
     def _dict_to_save(self):
         """Returns a dict that will be saved to a toml file."""
@@ -274,7 +268,7 @@ class Point:
             head=str(self.head),
             eff=str(self.eff),
             b=str(self.b),
-            D=str(self.D)
+            D=str(self.D),
         )
 
     @staticmethod
@@ -564,6 +558,7 @@ def head_reference(suc, disch):
     efficiency.
 
     """
+
     def calc_step_discharge_temp(T1, T0, self, p1, e):
         s0 = State.define(p=self, T=T0, fluid=suc.fluid)
         s1 = State.define(p=p1, T=T1, fluid=suc.fluid)
@@ -586,9 +581,7 @@ def head_reference(suc, disch):
         _ref_n = []
 
         for self, p1 in zip(p_intervals[:-1], p_intervals[1:]):
-            T1 = newton(
-                calc_step_discharge_temp, (T0 + 1e-3), args=(T0, self, p1, e)
-            )
+            T1 = newton(calc_step_discharge_temp, (T0 + 1e-3), args=(T0, self, p1, e))
 
             s0 = State.define(p=self, T=T0, fluid=suc.fluid)
             s1 = State.define(p=p1, T=T1, fluid=suc.fluid)
@@ -770,3 +763,88 @@ def head_from_psi(D, psi, speed):
     head = psi * (u ** 2 / 2)
 
     return head.to("J/kg")
+
+
+def disch_from_suc_head_eff(suc, head, eff):
+    """Calculate discharge state from suction, head and efficiency.
+
+    Parameters
+    ----------
+    suc : ccp.State
+        Suction state.
+    head : pint.Quantity, float
+        Polytropic head (J/kg).
+    eff : pint.Quantity, float
+        Polytropic efficiency (dimensionless).
+
+    Returns
+    -------
+    disch : ccp.State
+        Discharge state.
+    """
+    h_disch = head / eff + suc.h()
+
+    #  consider first an isentropic compression
+    disch = State.define(h=h_disch, s=suc.s(), fluid=suc.fluid)
+
+    def update_pressure(p):
+        disch.update(h=h_disch, p=p)
+        new_head = head_pol_schultz(suc, disch)
+
+        return (new_head - head).magnitude
+
+    newton(update_pressure, disch.p().magnitude, tol=1e-1)
+
+    return disch
+
+
+@check_units
+def reynolds(suc, speed, b, D):
+    """Calculate the Reynolds number.
+
+    Parameters
+    ----------
+    suc : ccp.State
+        Suction state.
+    speed : pint.Quantity, float
+        Impeller speed (rad/s).
+    b : pint.Quantity, float
+        Impeller width (m).
+    D : pint.Quantity, float
+        Impeller diameter (m).
+
+    Returns
+    -------
+    reynolds : pint.Quantity
+        Reynolds number (dimensionless).
+    """
+    u = u_calc(D, speed)
+    re = u * b * suc.rho() / suc.viscosity()
+
+    return re.to('dimensionless')
+
+
+@check_units
+def mach(suc, speed, D):
+    """Calculate the Mach number.
+
+    Parameters
+    ----------
+    suc : ccp.State
+        Suction state.
+    speed : pint.Quantity, float
+        Impeller speed (rad/s).
+    D : pint.Quantity, float
+        Impeller diameter (m).
+
+    Returns
+    -------
+    mach : pint.Quantity
+        Mach number (dimensionless).
+    """
+    u = u_calc(D, speed)
+    a = suc.speed_sound()
+    ma = u / a
+
+    return ma.to("dimensionless")
+
