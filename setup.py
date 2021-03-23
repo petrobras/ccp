@@ -76,6 +76,7 @@ setup(
             "black",
             "isort",
             "myst-nb",
+            "linkify-it-py",
             "sphinx-book-theme",
             "sphinx-panels",
         ]
