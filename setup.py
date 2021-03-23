@@ -51,7 +51,7 @@ setup(
     long_description_content_type="text/markdown",
     author="Raphael Timbó",
     author_email="raphaelts@gmail.com",
-    packages=find_packages(exclude=('tests',)),
+    packages=find_packages(exclude=("tests",)),
     package_data={"ccp.config": ["new_units.txt"]},
     install_requires=[
         "numpy",
@@ -63,15 +63,15 @@ setup(
         "openpyxl",
         "tqdm",
     ],
-    extra_require={
+    extras_require={
         "dev": [
-            "pytest>=4.6",
+            "pytest",
             "pytest-cov",
             "coverage",
             "codecov",
             "sphinx",
             "nbsphinx",
-            "numpydoc==0.9.2",
+            "numpydoc",
             "sphinxcontrib-bibtex",
             "black",
             "isort",
@@ -79,7 +79,7 @@ setup(
             "linkify-it-py",
             "sphinx-book-theme",
             "sphinx-panels",
-        ]
+        ],
     },
     license="MIT",
     classifiers=[
