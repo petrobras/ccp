@@ -163,6 +163,15 @@ class Point:
         self.phi = phi(self.flow_v, self.speed, self.D)
         self.psi = psi(self.head, self.speed, self.D)
 
+    def _calc_from_disch_flow_m_speed_suc(self):
+        self.head = head_pol_schultz(self.suc, self.disch)
+        self.eff = eff_pol_schultz(self.suc, self.disch)
+        self.volume_ratio = self.suc.v() / self.disch.v()
+        self.flow_v = self.flow_m / self.suc.rho()
+        self.power = power_calc(self.flow_m, self.head, self.eff)
+        self.phi = phi(self.flow_v, self.speed, self.D)
+        self.psi = psi(self.head, self.speed, self.D)
+
     def _calc_from_eff_phi_psi_suc_volume_ratio(self):
         eff = self.eff
         suc = self.suc
