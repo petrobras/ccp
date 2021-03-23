@@ -35,7 +35,7 @@ def impeller_lp_sec1_from_csv():
         D=Q_(550, "mm"),
         head_units="kJ/kg",
         flow_units="m³/h",
-        speeds=Q_([6882, 7865, 8848, 9831, 10322], "RPM"),
+        speed_units="RPM",
         number_of_points=7,
     )
 

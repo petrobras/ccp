@@ -457,3 +457,37 @@ class Impeller:
                     limit["Speed (RPM)"], limit["Volume Flow (m3/h)"]
                 ):
                     writer.writerow({"Speed (RPM)": speed, "Volume Flow (m3/h)": flow})
+
+
+def impeller_example():
+    test_dir = Path(__file__).parent
+    data_dir = test_dir / "data"
+
+    suc = State.define(
+        p=Q_(4.08, "bar"),
+        T=Q_(33.6, "degC"),
+        fluid={
+            "METHANE": 58.976,
+            "ETHANE": 3.099,
+            "PROPANE": 0.6,
+            "N-BUTANE": 0.08,
+            "I-BUTANE": 0.05,
+            "N-PENTANE": 0.01,
+            "I-PENTANE": 0.01,
+            "NITROGEN": 0.55,
+            "HYDROGEN SULFIDE": 0.02,
+            "CARBON DIOXIDE": 36.605,
+        },
+    )
+    imp = Impeller.from_engauge_csv(
+        suc=suc,
+        curve_name="lp-sec1-caso-a",
+        curve_path=data_dir,
+        b=Q_(5.7, "mm"),
+        D=Q_(550, "mm"),
+        head_units="kJ/kg",
+        flow_units="m³/h",
+        number_of_points=7,
+    )
+
+    return imp
