@@ -1,18 +1,13 @@
-import warnings
 from copy import copy
+from warnings import warn
 
-import CoolProp
 import CoolProp.CoolProp as CP
 import numpy as np
-from CoolProp.Plots import PropertyPlot
-from CoolProp.Plots.Common import interpolate_values_1d
 from plotly import graph_objects as go
-from bokeh.plotting import figure
-from bokeh.models import HoverTool, ColumnDataSource
 
 from . import Q_
 from .config.fluids import get_name, normalize_mix
-from .config.units import check_units, change_data_units
+from .config.units import check_units
 
 
 class State(CP.AbstractState):
@@ -47,8 +42,8 @@ class State(CP.AbstractState):
             other_fluid_rounded = {k: round(v, 3) for k, v in other.fluid.items()}
             if (
                 self_fluid_rounded == other_fluid_rounded
-                and np.allclose(self.p(), other.p())
-                and np.allclose(self.T(), other.T())
+                and np.allclose(self.p(), other.p(), rtol=1e-3)
+                and np.allclose(self.T(), other.T(), rtol=1e-3)
             ):
                 return True
         return False
@@ -165,10 +160,7 @@ class State(CP.AbstractState):
         return 1 / (1 - (self.p() / self.T()) * self.dTdp_s())
 
     def __reduce__(self):
-        # fluid_ = self.fluid
-        # kwargs = {k: v for k, v in self.init_args.items() if v is not None}
         kwargs = dict(p=self.p(), T=self.T(), fluid=self.fluid)
-        # kwargs['fluid'] = fluid_
         return self._rebuild, (self.__class__, kwargs)
 
     @staticmethod
@@ -207,10 +199,9 @@ class State(CP.AbstractState):
         rho : float
             Specific mass
 
-        fluid : dict or str
-            Dictionary with constituent and composition
+        fluid : dict
+            Dictionary with constituent and composition.
             (e.g.: ({'Oxygen': 0.2096, 'Nitrogen': 0.7812, 'Argon': 0.0092})
-            A pure fluid can be created with a string.
         EOS : string
             String with HEOS or REFPROP
 
@@ -224,10 +215,6 @@ class State(CP.AbstractState):
         >>> s = State.define(fluid=fluid, p=101008, T=273, EOS='HEOS')
         >>> s.rhomass()
         1.2893965217814896
-        >>> # pure fluid
-        >>> s = State.define(p=101008, T=273, fluid='CO2')
-        >>> s.rho()
-        1.9716931060214515
         """
         if fluid is None:
             raise TypeError("A fluid is required. Provide as fluid=dict(...)")
@@ -235,31 +222,20 @@ class State(CP.AbstractState):
         constituents = []
         molar_fractions = []
 
-        # if fluid is a string, consider pure fluid
-        try:
-            for k, v in fluid.items():
-                k = get_name(k)
-                constituents.append(k)
-                molar_fractions.append(v)
-                # create an adequate fluid string to cp.AbstractState
-            _fluid = "&".join(constituents)
-        except AttributeError:
-            # workaround https://github.com/CoolProp/CoolProp/issues/1544
-            # so we can build phase envelopes for pure substances
-            molar_fractions = [1 - 1e-15, 1e-15]
-            # First try to use the same fluid, if it does not work, use a mixture with a different fluid.
-            _fluid = f"{get_name(fluid)}&{get_name(fluid)}"
+        if len(fluid) < 2:
+            warn(
+                "Pure fluids are not fully supported and might break things (e.g. plot_phase_envelope"
+                "See https://github.com/CoolProp/CoolProp/issues/1544"
+            )
 
-        try:
-            state = cls(EOS, _fluid)
-        except ValueError:
-            mix_options = [get_name(f) for f in ("n2", "o2")]
-            if get_name(fluid) != mix_options[0]:
-                _fluid = f"{get_name(fluid)}&{mix_options[0]}"
-            else:
-                _fluid = f"{get_name(fluid)}&{mix_options[1]}"
-            state = cls(EOS, _fluid)
-            # TODO handle this with better error message, checking hmx.bnc
+        for k, v in fluid.items():
+            k = get_name(k)
+            constituents.append(k)
+            molar_fractions.append(v)
+            # create an adequate fluid string to cp.AbstractState
+        _fluid = "&".join(constituents)
+
+        state = cls(EOS, _fluid)
 
         normalize_mix(molar_fractions)
         state.set_mole_fractions(molar_fractions)
@@ -271,7 +247,9 @@ class State(CP.AbstractState):
 
         if isinstance(fluid, dict):
             if len(state.fluid) < len(fluid):
-                raise ValueError("You might have repeated components in the fluid dictionary.")
+                raise ValueError(
+                    "You might have repeated components in the fluid dictionary."
+                )
 
         state.update(**state.setup_args)
 
@@ -329,25 +307,25 @@ class State(CP.AbstractState):
         self, T_units="degK", p_units="Pa", dew_point_margin=20, fig=None, **kwargs
     ):
         """Plot phase envelope
-            Plots the phase envelope and dew point limit.
-            Parameters
-            ----------
-            T_units : str
-                Temperature units.
-                Default is 'degK'.
-            p_units : str
-                Pressure units.
-                Default is 'Pa'.
-            dew_point_margin : float
-                Dew point margin.
-                Default is 20 degK (from API). Unit is the same as T_units.
-            fig : plotly.graph_objects.Figure, optional
-                The figure object with the rotor representation.
-            Returns
-            -------
-            fig : plotly.graph_objects.Figure
-                The figure object with the rotor representation.
-            """
+        Plots the phase envelope and dew point limit.
+        Parameters
+        ----------
+        T_units : str
+            Temperature units.
+            Default is 'degK'.
+        p_units : str
+            Pressure units.
+            Default is 'Pa'.
+        dew_point_margin : float
+            Dew point margin.
+            Default is 20 degK (from API). Unit is the same as T_units.
+        fig : plotly.graph_objects.Figure, optional
+            The figure object with the rotor representation.
+        Returns
+        -------
+        fig : plotly.graph_objects.Figure
+            The figure object with the rotor representation.
+        """
         if fig is None:
             fig = go.Figure()
 

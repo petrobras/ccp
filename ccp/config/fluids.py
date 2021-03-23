@@ -18,11 +18,13 @@ fluid_list = {name: Fluid(name) for name in _fluid_list}
 
 # define possible names
 fluid_list["IsoButane"].possible_names.extend(
-    ["isobutane", "i-butane", "ibutane", "isobutan"]
+    ["isobutane", "i-butane", "ibutane", "isobutan", "I-BUTANE"]
 )
 fluid_list["n-Butane"].possible_names.extend(["butane", "n-butane", "nbutane"])
 fluid_list["n-Pentane"].possible_names.extend(["pentane", "n-pentane", "npentane"])
-fluid_list["Isopentane"].possible_names.extend(["isopentane", "i-pentane", "ipentane"])
+fluid_list["Isopentane"].possible_names.extend(
+    ["isopentane", "i-pentane", "ipentane", "I-PENTANE"]
+)
 fluid_list["n-Hexane"].possible_names.extend(["hexane", "n-hexane", "nhexane"])
 fluid_list["Isohexane"].possible_names.extend(["isohexane", "i-hexane"])
 fluid_list["n-Heptane"].possible_names.extend(["heptane", "n-heptane"])
