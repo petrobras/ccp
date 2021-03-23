@@ -70,7 +70,7 @@ else:
 _library_path = _path / _shared_library
 
 if not _library_path.is_file():
-    raise FileNotFoundError(f"{_library_path}.\nREFPROP not configured.")
+    _warnings.warn(f"{_library_path}.\nREFPROP not configured.")
 
 __version__ = "0.0.2"
 
