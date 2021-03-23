@@ -6,11 +6,8 @@ from numpy.testing import assert_allclose
 
 def test_state_possible_name():
     with pytest.raises(ValueError) as exc:
-        State.define(p=100000, T=300, fluid="fake_name")
+        State.define(p=100000, T=300, fluid={"fake_name": 0.5, "fake_name2": 0.5})
     assert "Fluid fake_name not available." in str(exc.value)
-
-    #  pure fluid
-    State.define(p=100000, T=300, fluid="n2")
 
 
 def test_state_define():
@@ -18,7 +15,7 @@ def test_state_define():
         State.define(p=100000, T=300)
     assert "A fluid is required" in str(exc.value)
 
-    state = State.define(p=100000, T=300, fluid="Methane")
+    state = State.define(p=100000, T=300, fluid={"Methane": 1 - 1e-15, "Ethane": 1e-15})
     assert state.p().units == "pascal"
     assert state.T().units == "kelvin"
     assert state.p().magnitude == 100000
@@ -27,7 +24,11 @@ def test_state_define():
 
 
 def test_state_define_units():
-    state = State.define(p=Q_(1, "bar"), T=Q_(300 - 273.15, "celsius"), fluid="Methane")
+    state = State.define(
+        p=Q_(1, "bar"),
+        T=Q_(300 - 273.15, "celsius"),
+        fluid={"Methane": 1 - 1e-15, "Ethane": 1e-15},
+    )
 
     assert state.p().units == "pascal"
     assert state.T().units == "kelvin"
@@ -92,7 +93,7 @@ def test_state_define_units_mix():
 
 
 def test_state_copy():
-    state = State.define(p=100000, T=300, fluid="Methane")
+    state = State.define(p=100000, T=300, fluid={"Methane": 1 - 1e-15, "Ethane": 1e-15})
     state1 = copy(state)
 
     assert state == state
@@ -140,15 +141,8 @@ def test_T_s_inputs():
     assert_allclose(state.rho().magnitude, 0.9280595769591103)
 
 
-def test_pure():
-    pure_h2 = State.define(p=1e6, T=300, fluid="h2")
-    assert pure_h2.fluid == {"HYDROGEN": 0.999999999999999, "NITROGEN": 1e-15}
-    pure_methane = State.define(p=1e6, T=300, fluid="methane")
-    assert pure_methane.fluid == {"METHANE": 1.0}
-
-
 def test_equality():
-    state = State.define(p=100000, T=300, fluid="Methane")
+    state = State.define(p=100000, T=300, fluid={"Methane": 1 - 1e-15, "Ethane": 1e-15})
     state1 = State.define(p=state.p(), T=state.T(), fluid=state.fluid)
     state2 = State.define(h=state.h(), s=state.s(), fluid=state.fluid)
 
@@ -167,28 +161,28 @@ def test_equality():
 
 def test_mix_composition():
     fluid = {
-        'Isobutene': 0.20,
-        'HYDROGEN SULFIDE': 2.67,
-        'HEXANE': 7.01,
-        'propylene': 0.55,
-        'ISOBUTANE': 5.43,
-        'Methane': 7.04,
-        'ethylene': 0.24,
-        'hydrogen': 0.75,
-        'Nitrogen': 11.39,
-        'BUTANE': 26.70,
-        'PROPANE': 21.23,
-        'ETHANE': 2.88,
-        '1Butene': 0.16,
-        'C2BUTENE': 0.02,
-        'ISOPENTANE': 5.12,
-        'PENTANE': 7.11,
-        'T2BUTENE': 0.02,
-        'CO': 0.03,
-        'carbon dioxide': 1.15,
-        'N2': 0.30,
+        "Isobutene": 0.20,
+        "HYDROGEN SULFIDE": 2.67,
+        "HEXANE": 7.01,
+        "propylene": 0.55,
+        "ISOBUTANE": 5.43,
+        "Methane": 7.04,
+        "ethylene": 0.24,
+        "hydrogen": 0.75,
+        "Nitrogen": 11.39,
+        "BUTANE": 26.70,
+        "PROPANE": 21.23,
+        "ETHANE": 2.88,
+        "1Butene": 0.16,
+        "C2BUTENE": 0.02,
+        "ISOPENTANE": 5.12,
+        "PENTANE": 7.11,
+        "T2BUTENE": 0.02,
+        "CO": 0.03,
+        "carbon dioxide": 1.15,
+        "N2": 0.30,
     }
 
     with pytest.raises(ValueError) as exc:
-        State.define(p=Q_(0.804, 'kgf/cm**2'), T=Q_(37.4, 'degC'), fluid=fluid)
+        State.define(p=Q_(0.804, "kgf/cm**2"), T=Q_(37.4, "degC"), fluid=fluid)
     assert "You might have repeated" in str(exc.value)

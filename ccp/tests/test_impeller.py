@@ -22,62 +22,30 @@ def points0():
     suc = State.define(p=Q_(62.7, "bar"), T=Q_(31.2, "degC"), fluid=fluid)
     disch = State.define(p=Q_(76.82, "bar"), T=Q_(48.2, "degC"), fluid=fluid)
     disch1 = State.define(p=Q_(76.0, "bar"), T=Q_(48.0, "degC"), fluid=fluid)
-    p0 = Point(suc=suc, disch=disch, flow_m=85.9, speed=Q_(13971, "RPM"))
-    p1 = Point(suc=suc, disch=disch1, flow_m=86.9, speed=Q_(13971, "RPM"))
+    p0 = Point(
+        suc=suc,
+        disch=disch,
+        flow_m=85.9,
+        speed=Q_(13971, "RPM"),
+        b=Q_(44.2, "mm"),
+        D=0.318,
+    )
+    p1 = Point(
+        suc=suc,
+        disch=disch1,
+        flow_m=86.9,
+        speed=Q_(13971, "RPM"),
+        b=Q_(44.2, "mm"),
+        D=0.318,
+    )
     return p0, p1
 
 
 @pytest.fixture
 def imp0(points0):
     p0, p1 = points0
-    imp0 = Impeller([p0, p1], b=Q_(44.2, "mm"), D=0.318)
+    imp0 = Impeller([p0, p1])
     return imp0
-
-
-def test_impeller_tip_speed(imp0):
-    assert imp0._u(point=imp0[0]).units == "meter * radian/second"
-    assert imp0._u(point=imp0[0]).magnitude == 232.62331210550587
-
-
-def test_impeller_phi(imp0):
-    assert imp0._phi(point=imp0[0]).units == ureg.dimensionless
-    assert_allclose(imp0._phi(point=imp0[0]).magnitude, 0.089302, rtol=1e-3)
-
-
-def test_impeller_psi(imp0):
-    assert imp0._psi(point=imp0[0]).units == ureg.dimensionless
-    assert_allclose(imp0._psi(point=imp0[0]).magnitude, 0.932116, rtol=1e-3)
-
-
-def test_impeller_s(imp0):
-    assert imp0._work_input_factor(point=imp0[0]).units == ureg.dimensionless
-    assert_allclose(
-        imp0._work_input_factor(point=imp0[0]).magnitude, 0.547231, rtol=1e-6
-    )
-
-
-def test_impeller_mach(imp0):
-    assert imp0._mach(point=imp0[0]).units == ureg.dimensionless
-    assert_allclose(imp0._mach(point=imp0[0]).magnitude, 0.578539, rtol=1e-4)
-
-
-def test_impeller_reynolds(imp0):
-    assert imp0._reynolds(point=imp0[0]).units == ureg.dimensionless
-    assert_allclose(imp0._reynolds(point=imp0[0]).magnitude, 41962131.803386, rtol=1e-4)
-
-
-def test_impeller_s(imp0):
-    assert imp0._sigma(point=imp0[0]).units == ureg.dimensionless
-    assert_allclose(imp0._sigma(point=imp0[0]).magnitude, 0.31502, rtol=1e-6)
-
-
-def test_impeller_non_dimensional_parameters_for_points(imp0):
-    assert_allclose(imp0.points[0].phi, 0.089292, rtol=1e-5)
-    assert_allclose(imp0.points[0].psi, 0.932116, rtol=1e-3)
-    assert_allclose(imp0.points[0].eff, 0.851666, rtol=1e-3)
-    assert_allclose(imp0.points[0].volume_ratio, 0.867777, rtol=1e-5)
-    assert_allclose(imp0.points[0].mach, 0.578539, rtol=1e-4)
-    assert_allclose(imp0.points[0].reynolds, 41962131.803386, rtol=1e-3)
 
 
 @pytest.fixture
@@ -104,6 +72,8 @@ def imp1():
         speed=Q_(11145, "RPM"),
         head=Q_(179.275, "kJ/kg"),
         eff=0.826357,
+        b=Q_(28.5, "mm"),
+        D=Q_(365, "mm"),
     )
     p1 = Point(
         suc=suc,
@@ -111,18 +81,22 @@ def imp1():
         speed=Q_(11145, "RPM"),
         head=Q_(173.057, "kJ/kg"),
         eff=0.834625,
+        b=Q_(28.5, "mm"),
+        D=Q_(365, "mm"),
     )
 
-    imp1 = Impeller([p0, p1], b=Q_(28.5, "mm"), D=Q_(365, "mm"))
+    imp1 = Impeller([p0, p1])
 
     return imp1
 
 
 def test_impeller_new_suction(imp1):
-    new_suc = State.define(p=Q_(0.2, "MPa"), T=301.58, fluid="nitrogen")
-    imp1.new_suc = new_suc
+    new_suc = State.define(
+        p=Q_(0.2, "MPa"), T=301.58, fluid={"n2": 1 - 1e-15, "co2": 1e-15}
+    )
+    imp2 = Impeller.convert_from(imp1, suc=new_suc, find="speed")
     p0 = imp1[0]
-    new_p0 = imp1.new.points[0]
+    new_p0 = imp2[0]
 
     assert_allclose(new_p0.eff, p0.eff, rtol=1e-4)
     assert_allclose(new_p0.phi, p0.phi, rtol=1e-2)
@@ -130,16 +104,6 @@ def test_impeller_new_suction(imp1):
     assert_allclose(new_p0.head, 208933.668804, rtol=1e-2)
     assert_allclose(new_p0.power, 1101698.5104, rtol=1e-2)
     assert_allclose(new_p0.speed, 1257.17922, rtol=1e-3)
-
-
-def test_impeller_new_speed(imp1):
-    assert imp1.speed is None
-    new_suc = State.define(p=Q_(0.2, "MPa"), T=301.58, fluid="nitrogen")
-    with pytest.raises(NotImplementedError) as ex:
-        imp1.suc = new_suc
-        imp1.flow_v = 2.0
-        imp1.speed = 1000.0
-    assert "Not implemented for less" in str(ex.value)
 
 
 @pytest.fixture()
@@ -151,6 +115,8 @@ def imp2():
             flow_v=Q_("1.15 m³/s"),
             head=Q_("147634 J/kg"),
             eff=Q_("0.819"),
+            b=0.010745,
+            D=0.32560,
         ),
         Point(
             suc=State.define(p=Q_("100663 Pa"), T=Q_("305 K"), fluid={"AIR": 1.00000}),
@@ -158,6 +124,8 @@ def imp2():
             flow_v=Q_("1.26 m³/s"),
             head=Q_("144664 J/kg"),
             eff=Q_("0.829"),
+            b=0.010745,
+            D=0.32560,
         ),
         Point(
             suc=State.define(p=Q_("100663 Pa"), T=Q_("305 K"), fluid={"AIR": 1.00000}),
@@ -165,6 +133,8 @@ def imp2():
             flow_v=Q_("1.36 m³/s"),
             head=Q_("139945 J/kg"),
             eff=Q_("0.831"),
+            b=0.010745,
+            D=0.32560,
         ),
         Point(
             suc=State.define(p=Q_("100663 Pa"), T=Q_("305 K"), fluid={"AIR": 1.00000}),
@@ -172,6 +142,8 @@ def imp2():
             flow_v=Q_("1.22 m³/s"),
             head=Q_("166686 J/kg"),
             eff=Q_("0.814"),
+            b=0.010745,
+            D=0.32560,
         ),
         Point(
             suc=State.define(p=Q_("100663 Pa"), T=Q_("305 K"), fluid={"AIR": 1.00000}),
@@ -179,6 +151,8 @@ def imp2():
             flow_v=Q_("1.35 m³/s"),
             head=Q_("163620 J/kg"),
             eff=Q_("0.825"),
+            b=0.010745,
+            D=0.32560,
         ),
         Point(
             suc=State.define(p=Q_("100663 Pa"), T=Q_("305 K"), fluid={"AIR": 1.00000}),
@@ -186,10 +160,12 @@ def imp2():
             flow_v=Q_("1.48 m³/s"),
             head=Q_("158536 J/kg"),
             eff=Q_("0.830"),
+            b=0.010745,
+            D=0.32560,
         ),
     ]
 
-    imp2 = Impeller(points, b=0.010745, D=0.32560)
+    imp2 = Impeller(points)
 
     return imp2
 
