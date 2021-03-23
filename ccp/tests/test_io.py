@@ -1,4 +1,3 @@
-import numpy as np
 import pytest
 from pathlib import Path
 from numpy.testing import assert_allclose
@@ -49,5 +48,5 @@ def test_impeller_lp_sec1_from_csv(impeller_lp_sec1_from_csv):
     assert_allclose(p0.speed.to("RPM"), 6882.0)
     assert_allclose(p0.disch.p().to("bar"), 9.039631560903004)
     assert_allclose(p0.head.to("kJ/kg"), 83.0088)
-    assert_allclose(p0.eff, 0.789377)
+    assert_allclose(p0.eff, 0.789377, rtol=1e-5)
     assert_allclose(p0.power.to("kW"), 1431.024873304792)
