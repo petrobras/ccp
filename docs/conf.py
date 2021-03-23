@@ -108,6 +108,8 @@ myst_enable_extensions = [
     "linkify",
 ]
 
+jupyter_execute_notebooks = "off"
+
 # Custom sidebar templates, must be a dictionary that maps document names
 # to template names.
 #
