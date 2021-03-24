@@ -86,6 +86,10 @@ import sphinx_rtd_theme
 
 html_theme = "sphinx_book_theme"
 html_logo = "_static/ccp.png"
+html_favicon = "_static/favicon.ico"
+html_title = "<p style='font-family: Fira Code Medium, monospace'>ccp</p>"
+html_sidebars = {}
+extra_navbar = ""
 html_theme_options = {
     "github_url": "https://github.com/raphaeltimbo/ccp",
     "repository_url": "https://github.com/raphaeltimbo/ccp",
@@ -177,3 +181,7 @@ texinfo_documents = [
         "Miscellaneous",
     ),
 ]
+
+
+def setup(app):
+    app.add_css_file('custom.css')
