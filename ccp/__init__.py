@@ -1,105 +1,111 @@
 """
-ccp
-===
+ccp is a python library for calculation of centrifugal compressor performance.
+It is based on the book of {cite}`ludtke2004process` and uses
+[CoolProp](http://www.coolprop.org/)
+[REFPROP](https://www.nist.gov/srd/refprop)
+for the gas properties calculations.
 
-Package to evaluate the performance of a centrifugal compressor.
-Example of use:
+```{code-block} python
+import ccp
 
-Define the fluid as a dictionary:
-
-fluid = {'CarbonDioxide': 0.79585,
-         'R134a': 0.16751,
-         'Nitrogen': 0.02903,
-         'Oxygen': 0.00761}
-
-Use pint quantity to define a value:
+# ccp uses pint to handle units. Q_ is a pint quantity.
+# If a pint quantity is not provided, SI units are assumed.
+Q_ = ccp.Q_
 ps = Q_(3, 'bar')
 Ts = 300
 
-If a pint quantity is not provided, SI units are assumed.
+# Define the fluid as a dictionary:
+fluid = {
+    "CarbonDioxide": 0.79585,
+    "R134a": 0.16751,
+    "Nitrogen": 0.02903,
+    "Oxygen": 0.00761,
+}
 
-Define suction and discharge states:
+# Define suction and discharge states:
 
-suc0 = State.define(fluid=fluid, p=ps, T=Ts)
-disch0 = State.define(fluid=fluid, p=Q_(7.255, 'bar'), T=391.1)
+suc0 = ccp.State.define(fluid=fluid, p=ps, T=Ts)
+disch0 = ccp.State.define(fluid=fluid, p=Q_(7.255, 'bar'), T=391.1)
 
-Create performance point(s):
+# Create performance point(s):
 
-point0 = Point(suc=suc0, disch=disch0, speed=Q_(7941, 'RPM'),
-              flow_m=Q_(34203.6, 'kg/hr')
+point0 = ccp.Point(
+    suc=suc0,
+    disch=disch0,
+    speed=Q_(7941, 'RPM'),
+    flow_m=Q_(34203.6, 'kg/hr'),
+    b=0.0285,
+    D=0.365)
+)
 point1...
 
-Create a curve with the points:
+# Create an impeller with those points:
 
-curve = Curve(points)
-
-Create an impeller that will hold and convert curves.
-
-imp = Impeller(Curve, b=0.0285, D=0.365)
+imp = Impeller([point0, point1, ...])
 """
 
 
 ###############################################################################
-# set refprop _path in the beginning to avoid strange behavior
+# set refprop path in the beginning to avoid strange behavior
 ###############################################################################
 
-import os as _os
-import warnings as _warnings
-from pathlib import Path as _Path
+import os
+import warnings
+from pathlib import Path
 
-import CoolProp.CoolProp as _CP
+import CoolProp.CoolProp as CP
 
 # use _ to avoid polluting the namespace when importing
 
 try:
-    _path = _Path(_os.environ["RPPREFIX"])
+    path = Path(os.environ["RPPREFIX"])
 except KeyError:
-    if _os.path.exists("C:\\Users\\Public\\REFPROP"):
-        _os.environ["RPprefix"] = "C:\\Users\\Public\\REFPROP"
-        _path = _Path(_os.environ["RPPREFIX"])
+    if os.path.exists("C:\\Users\\Public\\REFPROP"):
+        os.environ["RPprefix"] = "C:\\Users\\Public\\REFPROP"
+        path = Path(os.environ["RPPREFIX"])
     else:
-        _path = _Path.cwd()
+        path = Path.cwd()
 
-_CP.set_config_string(_CP.ALTERNATIVE_REFPROP_PATH, str(_path))
+CP.set_config_string(CP.ALTERNATIVE_REFPROP_PATH, str(path))
 
-if _os.name is "posix":
-    _shared_library = "librefprop.so"
+if os.name == "posix":
+    shared_library = "librefprop.so"
 else:
-    _shared_library = "REFPRP64.DLL"
+    shared_library = "REFPRP64.DLL"
 
-_library_path = _path / _shared_library
+library_path = path / shared_library
 
-if not _library_path.is_file():
-    _warnings.warn(f"{_library_path}.\nREFPROP not configured.")
+if not library_path.is_file():
+    warnings.warn(f"{library_path}.\nREFPROP not configured.")
 
 __version__ = "0.0.2"
 
 __version__full = (
     f"ccp: {__version__} | "
-    + f'CP : {_CP.get_global_param_string("version")} | '
-    + f'REFPROP : {_CP.get_global_param_string("REFPROP_version")}'
+    + f'CP : {CP.get_global_param_string("version")} | '
+    + f'REFPROP : {CP.get_global_param_string("REFPROP_version")}'
 )
 
 ###############################################################################
 # pint
 ###############################################################################
 
-from pint import UnitRegistry as _UnitRegistry
+from pint import UnitRegistry
 
-_new_units = _Path(__file__).parent / "config/new_units.txt"
-ureg = _UnitRegistry()
-ureg.load_definitions(str(_new_units))
+new_units = Path(__file__).parent / "config/new_units.txt"
+ureg = UnitRegistry()
+ureg.load_definitions(str(new_units))
 Q_ = ureg.Quantity
-_warnings.filterwarnings("ignore", message="The unit of the quantity is stripped")
+warnings.filterwarnings("ignore", message="The unit of the quantity is stripped")
 
 ###############################################################################
 # plotly theme
 ###############################################################################
 
-from plotly import io as _pio
+from plotly import io as pio
 import ccp.plotly_theme
 
-_pio.templates.default = "ccp"
+pio.templates.default = "ccp"
 
 ###############################################################################
 # imports
@@ -114,3 +120,15 @@ from .impeller import Impeller
 from .fo import FlowOrifice
 from .data_io import read_csv
 from .similarity import check_similarity
+
+__all__ = [
+    "check_units",
+    "fluid_list",
+    "State",
+    "Point",
+    "Curve",
+    "Impeller",
+    "FlowOrifice",
+    "read_csv",
+    "check_similarity",
+]
