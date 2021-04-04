@@ -1,0 +1,23 @@
+h1 {
+    font-size: 175%;
+}
+
+/*Copy button tooltip*/
+.o-tooltip--left:after {
+    font-size: 0.75rem;
+}
+
+div.cell_input.docutils.container, div.highlight-python, div.highlight-default, div.highlight pre {
+    border: none;
+    box-shadow: none;
+}
+
+div.output pre {
+    background-color: white;
+    box-shadow: none;
+}
+
+.prev-next-bottom a.left-prev, .prev-next-bottom a.right-next {
+    border: none;
+    font-size: 1rem;
+}

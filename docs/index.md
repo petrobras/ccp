@@ -11,6 +11,7 @@ for the gas properties calculations.
 :caption: Getting Started
 
 getting_started/overview
+getting_started/installation
 ```
 
 ```{toctree}
