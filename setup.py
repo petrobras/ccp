@@ -79,6 +79,7 @@ setup(
             "linkify-it-py",
             "sphinx-book-theme",
             "sphinx-panels",
+            "sphinx-copybutton",
         ],
     },
     license="MIT",
