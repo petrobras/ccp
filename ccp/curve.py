@@ -197,6 +197,13 @@ class Curve:
     def __getitem__(self, item):
         return self.points.__getitem__(item)
 
+    def __iter__(self):
+        for point in self.points:
+            yield point
+
+    def __len__(self):
+        return len(self.points)
+
     def _dict_to_save(self):
         return {f"point{i}": point._dict_to_save() for i, point in enumerate(self)}
 
