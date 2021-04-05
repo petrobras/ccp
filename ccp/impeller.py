@@ -85,7 +85,7 @@ class Impeller:
         return self.points.__getitem__(item)
 
     def plot_func(self, attr):
-        def inner(*args, plot_kws=None, **kwargs):
+        def inner(flow_v=None, speed=None, plot_kws=None, **kwargs):
             fig = kwargs.pop("fig", None)
 
             if fig is None:
@@ -268,7 +268,7 @@ class Impeller:
         wb.save(str(path_name))
 
     @classmethod
-    def from_engauge_csv(
+    def load_from_engauge_csv(
         cls,
         suc,
         curve_name,
@@ -460,7 +460,7 @@ class Impeller:
 
 
 def impeller_example():
-    test_dir = Path(__file__).parent
+    test_dir = Path(__file__).parent / 'tests'
     data_dir = test_dir / "data"
 
     suc = State.define(
@@ -479,7 +479,7 @@ def impeller_example():
             "CARBON DIOXIDE": 36.605,
         },
     )
-    imp = Impeller.from_engauge_csv(
+    imp = Impeller.load_from_engauge_csv(
         suc=suc,
         curve_name="lp-sec1-caso-a",
         curve_path=data_dir,
