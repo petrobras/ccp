@@ -131,5 +131,5 @@ __all__ = [
     "FlowOrifice",
     "read_csv",
     "check_similarity",
-    "impeller_example"
+    "impeller_example",
 ]
