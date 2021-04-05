@@ -85,6 +85,7 @@ class Impeller:
         return self.points.__getitem__(item)
 
     def plot_func(self, attr):
+        @check_units
         def inner(flow_v=None, speed=None, plot_kws=None, **kwargs):
             fig = kwargs.pop("fig", None)
 
@@ -99,18 +100,34 @@ class Impeller:
                     fig=fig, plot_kws=plot_kws, **kwargs
                 )
 
-            try:
-                fig = r_getattr(self.current_curve, attr + "_plot")(
-                    fig=fig,
-                    name=f"Current Curve {str(self.current_curve.speed.to('RPM'))}",
-                    plot_kws=plot_kws,
-                    **kwargs,
+            if flow_v and speed:
+                # plot defined point and curve
+                speeds = np.array([curve.speed.magnitude for curve in self.curves])
+
+                closest_curves_idxs = find_closest_speeds(speeds, speed.magnitude)
+                curves = [self.curves[closest_curves_idxs[0]], self.curves[closest_curves_idxs[1]]]
+
+                # calculate factor
+                speed_range = curves[1].speed.magnitude - curves[0].speed.magnitude
+                factor = (speed.magnitude - curves[0].speed.magnitude) / speed_range
+
+                min_flow = get_interpolated_value(
+                    factor, curves[0].flow_v.magnitude[0], curves[1].flow_v.magnitude[0]
                 )
-                fig = r_getattr(self.current_point, attr + "_plot")(
-                    fig=fig, name="Current Point", plot_kws=plot_kws, **kwargs
+                max_flow = get_interpolated_value(
+                    factor, curves[0].flow_v.magnitude[-1], curves[1].flow_v.magnitude[-1]
                 )
-            except AttributeError:
-                warn("Point not set for this impeller")
+                number_of_points = len(curves[0])
+                flow_v_range = np.linspace(min_flow, max_flow, number_of_points)
+                current_curve = Curve([self.point(flow_v=f, speed=speed) for f in flow_v_range])
+                current_point = self.point(flow_v=flow_v, speed=speed)
+
+                fig = r_getattr(current_curve, attr + '_plot')(
+                    fig=fig, plot_kws=plot_kws, **kwargs
+                )
+                fig = r_getattr(current_point, attr + '_plot')(
+                    fig=fig, plot_kws=plot_kws, **kwargs
+                )
 
             return fig
 
@@ -140,7 +157,7 @@ class Impeller:
         speeds = np.array([curve.speed.magnitude for curve in self.curves])
 
         closest_curves_idxs = find_closest_speeds(speeds, speed.magnitude)
-        curves = list(np.array(self.curves)[closest_curves_idxs])
+        curves = [self.curves[closest_curves_idxs[0]], self.curves[closest_curves_idxs[1]]]
 
         # calculate factor
         speed_range = curves[1].speed.magnitude - curves[0].speed.magnitude
