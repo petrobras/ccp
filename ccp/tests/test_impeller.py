@@ -175,7 +175,8 @@ def test_impeller_disch_state(imp2):
         [[482.850310, 477.243856, 471.29533], [506.668177, 500.418404, 493.30993]]
     )
     assert_allclose(
-        imp2.disch.T().magnitude, T_magnitude,
+        imp2.disch.T().magnitude,
+        T_magnitude,
     )
 
 
@@ -185,3 +186,44 @@ def test_impeller_point():
     assert_allclose(p0.eff, 0.815333, rtol=1e-4)
     assert_allclose(p0.head, 123609.404849, rtol=1e-4)
     assert_allclose(p0.power, 3310198.015505, rtol=1e-4)
+
+
+def test_impeller_plot():
+    imp = impeller_example()
+    fig = imp.eff_plot(flow_v=5, speed=900)
+    expected_eff_curve = np.array(
+        [
+            0.81934403,
+            0.82078268,
+            0.82198745,
+            0.82297089,
+            0.82374556,
+            0.82432402,
+            0.82471883,
+            0.82494253,
+            0.82500769,
+            0.82492687,
+            0.82471187,
+            0.82432943,
+            0.82367642,
+            0.82264374,
+            0.82112223,
+            0.81900472,
+            0.81622824,
+            0.81277414,
+            0.80862564,
+            0.80376599,
+            0.79815285,
+            0.79144644,
+            0.78311508,
+            0.77262388,
+            0.75943797,
+            0.74302246,
+            0.72284247,
+            0.69836312,
+            0.66904954,
+            0.63436684,
+        ]
+    )
+    assert_allclose(fig.data[5]["y"], expected_eff_curve, rtol=1e-4)
+    assert_allclose(fig.data[6]["y"], 0.8153328087147174, rtol=1e-4)

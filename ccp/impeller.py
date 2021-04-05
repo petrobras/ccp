@@ -105,7 +105,10 @@ class Impeller:
                 speeds = np.array([curve.speed.magnitude for curve in self.curves])
 
                 closest_curves_idxs = find_closest_speeds(speeds, speed.magnitude)
-                curves = [self.curves[closest_curves_idxs[0]], self.curves[closest_curves_idxs[1]]]
+                curves = [
+                    self.curves[closest_curves_idxs[0]],
+                    self.curves[closest_curves_idxs[1]],
+                ]
 
                 # calculate factor
                 speed_range = curves[1].speed.magnitude - curves[0].speed.magnitude
@@ -115,17 +118,21 @@ class Impeller:
                     factor, curves[0].flow_v.magnitude[0], curves[1].flow_v.magnitude[0]
                 )
                 max_flow = get_interpolated_value(
-                    factor, curves[0].flow_v.magnitude[-1], curves[1].flow_v.magnitude[-1]
+                    factor,
+                    curves[0].flow_v.magnitude[-1],
+                    curves[1].flow_v.magnitude[-1],
                 )
                 number_of_points = len(curves[0])
                 flow_v_range = np.linspace(min_flow, max_flow, number_of_points)
-                current_curve = Curve([self.point(flow_v=f, speed=speed) for f in flow_v_range])
+                current_curve = Curve(
+                    [self.point(flow_v=f, speed=speed) for f in flow_v_range]
+                )
                 current_point = self.point(flow_v=flow_v, speed=speed)
 
-                fig = r_getattr(current_curve, attr + '_plot')(
+                fig = r_getattr(current_curve, attr + "_plot")(
                     fig=fig, plot_kws=plot_kws, **kwargs
                 )
-                fig = r_getattr(current_point, attr + '_plot')(
+                fig = r_getattr(current_point, attr + "_plot")(
                     fig=fig, plot_kws=plot_kws, **kwargs
                 )
 
@@ -157,7 +164,10 @@ class Impeller:
         speeds = np.array([curve.speed.magnitude for curve in self.curves])
 
         closest_curves_idxs = find_closest_speeds(speeds, speed.magnitude)
-        curves = [self.curves[closest_curves_idxs[0]], self.curves[closest_curves_idxs[1]]]
+        curves = [
+            self.curves[closest_curves_idxs[0]],
+            self.curves[closest_curves_idxs[1]],
+        ]
 
         # calculate factor
         speed_range = curves[1].speed.magnitude - curves[0].speed.magnitude
@@ -175,10 +185,11 @@ class Impeller:
         p0 = self.points[0]
         disch = State.define(p=disch_p, T=disch_T, fluid=p0.suc.fluid)
 
-        point = Point(suc=p0.suc, disch=disch, flow_v=flow_v, speed=speed, b=p0.b, D=p0.D)
+        point = Point(
+            suc=p0.suc, disch=disch, flow_v=flow_v, speed=speed, b=p0.b, D=p0.D
+        )
 
         return point
-
 
     def _calc_current_point(self):
         try:
@@ -192,8 +203,6 @@ class Impeller:
         # calculate factor
         speed_range = curves[1].speed.magnitude - curves[0].speed.magnitude
         factor = (self.speed.magnitude - curves[0].speed.magnitude) / speed_range
-
-
 
         min_flow = get_interpolated_value(
             factor, curves[0].flow_v.magnitude[0], curves[1].flow_v.magnitude[0]
@@ -375,20 +384,14 @@ class Impeller:
 
         for speed, head_curve in head_curves.items():
             head_interpolated = interp1d(
-                head_curve["x"],
-                head_curve["y"],
-                kind=3,
-                fill_value="extrapolate",
+                head_curve["x"], head_curve["y"], kind=3, fill_value="extrapolate",
             )
             eff_curve = eff_curves[speed]
             # check eff scale
             if max(eff_curve["y"]) > 1:
                 eff_curve["y"] = [i / 100 for i in eff_curve["y"]]
             eff_interpolated = interp1d(
-                eff_curve["x"],
-                eff_curve["y"],
-                kind=3,
-                fill_value="extrapolate",
+                eff_curve["x"], eff_curve["y"], kind=3, fill_value="extrapolate",
             )
 
             min_x = min(head_curve["x"] + eff_curve["x"])
@@ -525,7 +528,7 @@ def get_interpolated_value(fac, val_0, val_1):
 
 
 def impeller_example():
-    test_dir = Path(__file__).parent / 'tests'
+    test_dir = Path(__file__).parent / "tests"
     data_dir = test_dir / "data"
 
     suc = State.define(
