@@ -118,22 +118,50 @@ class Impeller:
 
         return inner
 
-    @staticmethod
-    def _find_closest_speeds(array, value):
-        diff = array - value
-        idx = np.abs(diff).argmin()
+    @check_units
+    def point(self, flow_v=None, speed=None):
+        """Calculate specific point in the performance map.
 
-        if idx == 0:
-            return [0, 1]
-        elif idx == len(array) - 1:
-            return [len(array) - 2, len(array) - 1]
+        Given a volumetric flow and a speed this method will calculate a point in the
+        impeller map according to these arguments.
 
-        if diff[idx] > 0:
-            idx = [idx - 1, idx]
-        else:
-            idx = [idx, idx + 1]
+        Parameters
+        ----------
+        flow_v : pint.Quantity, float
+            Volumetric flow (m³/s).
+        speed : pint.Quantity, float
+            Speed (rad/s).
 
-        return np.array(idx)
+        Returns
+        -------
+        point : ccp.Point
+            Point in the performance map.
+        """
+        speeds = np.array([curve.speed.magnitude for curve in self.curves])
+
+        closest_curves_idxs = find_closest_speeds(speeds, speed.magnitude)
+        curves = list(np.array(self.curves)[closest_curves_idxs])
+
+        # calculate factor
+        speed_range = curves[1].speed.magnitude - curves[0].speed.magnitude
+        factor = (speed.magnitude - curves[0].speed.magnitude) / speed_range
+
+        # get disch p and T by interpolating between closest speeds
+        disch_T_0 = curves[0].disch.T_interpolated(flow_v).magnitude
+        disch_T_1 = curves[1].disch.T_interpolated(flow_v).magnitude
+        disch_p_0 = curves[0].disch.p_interpolated(flow_v).magnitude
+        disch_p_1 = curves[1].disch.p_interpolated(flow_v).magnitude
+
+        disch_T = get_interpolated_value(factor, disch_T_0, disch_T_1)
+        disch_p = get_interpolated_value(factor, disch_p_0, disch_p_1)
+
+        p0 = self.points[0]
+        disch = State.define(p=disch_p, T=disch_T, fluid=p0.suc.fluid)
+
+        point = Point(suc=p0.suc, disch=disch, flow_v=flow_v, speed=speed, b=p0.b, D=p0.D)
+
+        return point
+
 
     def _calc_current_point(self):
         try:
@@ -148,8 +176,7 @@ class Impeller:
         speed_range = curves[1].speed.magnitude - curves[0].speed.magnitude
         factor = (self.speed.magnitude - curves[0].speed.magnitude) / speed_range
 
-        def get_interpolated_value(fac, val_0, val_1):
-            return (1 - fac) * val_0 + fac * val_1
+
 
         min_flow = get_interpolated_value(
             factor, curves[0].flow_v.magnitude[0], curves[1].flow_v.magnitude[0]
@@ -457,6 +484,27 @@ class Impeller:
                     limit["Speed (RPM)"], limit["Volume Flow (m3/h)"]
                 ):
                     writer.writerow({"Speed (RPM)": speed, "Volume Flow (m3/h)": flow})
+
+
+def find_closest_speeds(array, value):
+    diff = array - value
+    idx = np.abs(diff).argmin()
+
+    if idx == 0:
+        return [0, 1]
+    elif idx == len(array) - 1:
+        return [len(array) - 2, len(array) - 1]
+
+    if diff[idx] > 0:
+        idx = [idx - 1, idx]
+    else:
+        idx = [idx, idx + 1]
+
+    return np.array(idx)
+
+
+def get_interpolated_value(fac, val_0, val_1):
+    return (1 - fac) * val_0 + fac * val_1
 
 
 def impeller_example():

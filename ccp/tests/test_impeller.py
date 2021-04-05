@@ -1,7 +1,7 @@
 import pytest
 import numpy as np
 from numpy.testing import assert_allclose
-from ccp import ureg, Q_, State, Point, Curve, Impeller
+from ccp import ureg, Q_, State, Point, Curve, Impeller, impeller_example
 
 
 @pytest.fixture
@@ -177,3 +177,11 @@ def test_impeller_disch_state(imp2):
     assert_allclose(
         imp2.disch.T().magnitude, T_magnitude,
     )
+
+
+def test_impeller_point():
+    imp = impeller_example()
+    p0 = imp.point(flow_v=5, speed=900)
+    assert_allclose(p0.eff, 0.815333, rtol=1e-4)
+    assert_allclose(p0.head, 123609.404849, rtol=1e-4)
+    assert_allclose(p0.power, 3310198.015505, rtol=1e-4)
