@@ -326,7 +326,6 @@ def plot_func(self, attr):
 
         x_units = kwargs.get("flow_v_units", None)
         y_units = kwargs.get(f"{attr}_units", None)
-        name = kwargs.get("name", None)
 
         point_attr = r_getattr(self, attr)
         if callable(point_attr):
@@ -339,6 +338,8 @@ def plot_func(self, attr):
         units = getattr(point_attr, "units")
 
         flow_v = self.flow_v
+
+        name = kwargs.get("name", f"Flow: {flow_v.m:.2f}, {attr.capitalize()}: {value:.2f}")
 
         if x_units is not None:
             flow_v = flow_v.to(x_units)
