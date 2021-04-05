@@ -27,7 +27,7 @@ def impeller_lp_sec1_from_csv():
             "CARBON DIOXIDE": 36.605,
         },
     )
-    imp = ccp.Impeller.from_engauge_csv(
+    imp = ccp.Impeller.load_from_engauge_csv(
         suc=suc,
         curve_name="lp-sec1-caso-a",
         curve_path=data_dir,

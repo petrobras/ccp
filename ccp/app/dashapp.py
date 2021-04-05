@@ -46,7 +46,7 @@ curve_name = "normal"
 curve_path = Path(CCP_PATH / "tests/data")
 
 speeds = list(Q_([12207, 11373, 10463, 9300, 8138], "RPM").to("rad/s").m)
-imp_fd = ccp.Impeller.from_engauge_csv(
+imp_fd = ccp.Impeller.load_from_engauge_csv(
     suc=suc_fd,
     curve_name=curve_name,
     curve_path=curve_path,

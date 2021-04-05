@@ -36,7 +36,7 @@ maxdepth: 1
 caption: How-To Guides
 ---
 
-how_to_guides/how_to_guides
+how_to_guides/engauge
 ```
 
 ```{toctree}
