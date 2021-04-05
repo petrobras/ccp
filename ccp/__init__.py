@@ -116,7 +116,7 @@ from .config.fluids import fluid_list
 from .state import State
 from .point import Point
 from .curve import Curve
-from .impeller import Impeller
+from .impeller import Impeller, impeller_example
 from .fo import FlowOrifice
 from .data_io import read_csv
 from .similarity import check_similarity
@@ -131,4 +131,5 @@ __all__ = [
     "FlowOrifice",
     "read_csv",
     "check_similarity",
+    "impeller_example"
 ]
