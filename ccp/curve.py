@@ -115,7 +115,7 @@ class _CurveState:
         self.speed = speed
 
         # set a method for each suction attribute in the list
-        for attr in ["p", "T", "h", "s"]:
+        for attr in ["p", "T", "h", "s", "rho"]:
             func = self.state_parameter(attr)
             setattr(self, attr, func)
 

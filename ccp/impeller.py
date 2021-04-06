@@ -20,7 +20,7 @@ class ImpellerState:
     def __init__(self, curves_state):
         self.curves_state = curves_state
 
-        for attr in ["p", "T"]:
+        for attr in ["p", "T", "h", "s", "rho"]:
             func = self.state_parameter(attr)
             setattr(self, attr, func)
 
@@ -69,7 +69,7 @@ class Impeller:
         self.curves = curves
         self.disch = ImpellerState([c.disch for c in self.curves])
 
-        for attr in ["disch.p", "disch.T", "head", "eff", "power"]:
+        for attr in ["disch.p", "disch.T", "disch.h", "disch.s", "disch.rho", "head", "eff", "power"]:
             values = []
             # for disch.p etc values are defined in _Impeller_State
             if "." not in attr:
@@ -94,6 +94,9 @@ class Impeller:
 
             if plot_kws is None:
                 plot_kws = {}
+
+            p0 = self.points[0]
+            flow_v_units = kwargs.get('flow_v_units', p0.flow_v.units)
 
             for curve in self.curves:
                 fig = r_getattr(curve, attr + "_plot")(
@@ -135,6 +138,13 @@ class Impeller:
                 fig = r_getattr(current_point, attr + "_plot")(
                     fig=fig, plot_kws=plot_kws, **kwargs
                 )
+
+            # extra x range
+            flow_values = [p.flow_v.to(flow_v_units) for p in self.points]
+            min_flow = min(flow_values)
+            max_flow = max(flow_values)
+            delta = 0.05 * (max_flow - min_flow)
+            fig.update_layout(xaxis=dict(range=[min_flow - delta, max_flow + delta]))
 
             return fig
 
