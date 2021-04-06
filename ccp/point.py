@@ -115,7 +115,7 @@ class Point:
     def _add_point_plot(self):
         """Add plot to point after point is fully defined."""
         for state in ["suc", "disch"]:
-            for attr in ["p", "T"]:
+            for attr in ["p", "T", "h", "s", "rho"]:
                 plot = plot_func(self, ".".join([state, attr]))
                 setattr(getattr(self, state), attr + "_plot", plot)
         for attr in ["head", "eff", "power"]:
@@ -313,8 +313,8 @@ def plot_func(self, attr):
     def inner(*args, plot_kws=None, **kwargs):
         """Plot parameter versus volumetric flow.
 
-        You can choose units with the arguments x_units='...' and
-        y_units='...'.
+        You can choose units with the arguments flow_v_units='...' and
+        attr_units='...'.
         """
         fig = kwargs.pop("fig", None)
 
@@ -324,25 +324,27 @@ def plot_func(self, attr):
         if plot_kws is None:
             plot_kws = {}
 
-        x_units = kwargs.get("flow_v_units", None)
-        y_units = kwargs.get(f"{attr}_units", None)
-
         point_attr = r_getattr(self, attr)
         if callable(point_attr):
             point_attr = point_attr()
 
-        if y_units is not None:
-            point_attr = point_attr.to(y_units)
+        flow_v_units = kwargs.get("flow_v_units", self.flow_v.units)
+        # Split in '.' for cases such as disch.rho.
+        # In this case the user gives rho_units instead of disch.rho_units
+        attr_units = kwargs.get(f"{attr.split('.')[-1]}_units", point_attr.units)
+
+        if attr_units is not None:
+            point_attr = point_attr.to(attr_units)
 
         value = getattr(point_attr, "magnitude")
         units = getattr(point_attr, "units")
 
         flow_v = self.flow_v
 
-        name = kwargs.get("name", f"Flow: {flow_v.m:.2f}, {attr.capitalize()}: {value:.2f}")
+        name = kwargs.get("name", f"Flow: {flow_v.to(flow_v_units).m:.2f}, {attr}: {value:.2f}")
 
-        if x_units is not None:
-            flow_v = flow_v.to(x_units)
+        if flow_v_units is not None:
+            flow_v = flow_v.to(flow_v_units)
 
         fig.add_trace(go.Scatter(x=[flow_v], y=[value], name=name, **plot_kws))
 

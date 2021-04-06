@@ -227,3 +227,50 @@ def test_impeller_plot():
     )
     assert_allclose(fig.data[5]["y"], expected_eff_curve, rtol=1e-4)
     assert_allclose(fig.data[6]["y"], 0.8153328087147174, rtol=1e-4)
+
+
+def test_impeller_plot_units():
+    imp = impeller_example()
+    fig = imp.disch.rho_plot(
+        flow_v=Q_(20000, "m³/h"),
+        speed=Q_(8594, "RPM"),
+        flow_v_units="m³/h",
+        speed_units="RPM",
+        rho_units="g/cm³",
+    )
+    expected_rho_curve = np.array(
+        [
+            0.01110513,
+            0.01105899,
+            0.01101538,
+            0.01097349,
+            0.01093254,
+            0.01089172,
+            0.01085023,
+            0.01080728,
+            0.01076205,
+            0.01071377,
+            0.01066161,
+            0.01060454,
+            0.01054117,
+            0.01047004,
+            0.01038972,
+            0.01029881,
+            0.01019658,
+            0.01008298,
+            0.00995798,
+            0.00982157,
+            0.00967354,
+            0.00951139,
+            0.00933119,
+            0.00912894,
+            0.00890069,
+            0.00864246,
+            0.00835027,
+            0.00802016,
+            0.00764814,
+            0.00723025,
+        ]
+    )
+    assert_allclose(fig.data[5]["y"], expected_rho_curve, rtol=1e-4)
+    assert_allclose(fig.data[6]["y"], 0.00845738254224696, rtol=1e-4)
