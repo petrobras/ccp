@@ -14,7 +14,7 @@
 # add these directories to sys.path here. If the directory is relative to the
 # documentation root, use os.path.abspath to make it absolute, like shown here.
 #
-# import os
+import os
 # import sys
 # sys.path.insert(0, os.path.abspath('.'))
 import ccp
@@ -100,6 +100,8 @@ html_theme_options = {
     "repository_url": "https://github.com/raphaeltimbo/ccp",
 }
 
+html_js_files = ["https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"]
+
 # Theme options are theme-specific and customize the look and feel of a theme
 # further.  For a list of options available for each theme, see the
 # documentation.
@@ -117,7 +119,7 @@ myst_enable_extensions = [
     "linkify",
 ]
 
-jupyter_execute_notebooks = "off"
+jupyter_execute_notebooks = "force"
 
 # Custom sidebar templates, must be a dictionary that maps document names
 # to template names.
