@@ -40,7 +40,7 @@ jobs:
       # Running pytest
       - name: Test with pytest
         run: |
-          export RPPREFIX="$(echo ${HOME}/REFPROP/build)"
+          export RPPREFIX="$(echo ${GITHUB_WORKSPACE}/REFPROP/build)"
           ls REFPROP/build
           pip install pytest
           pytest ccp
