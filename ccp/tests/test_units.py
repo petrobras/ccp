@@ -24,20 +24,21 @@ def auxiliary_function():
         D=None,
         head=None,
         eff=None,
+        power=None,
     ):
-        return p, T, rho, speed, flow_v, flow_m, h, s, b, D, head, eff
+        return p, T, rho, speed, flow_v, flow_m, h, s, b, D, head, eff, power
 
     return func
 
 
 def test_units(auxiliary_function):
     results = auxiliary_function(
-        p=1, T=1, rho=1, speed=1, flow_v=1, flow_m=1, h=1, s=1, b=1, D=1, head=1, eff=1
+        p=1, T=1, rho=1, speed=1, flow_v=1, flow_m=1, h=1, s=1, b=1, D=1, head=1, eff=1, power=1,
     )
     # check if all available units are tested
     assert len(results) == len(units)
 
-    p, T, rho, speed, flow_v, flow_m, h, s, b, D, head, eff = results
+    p, T, rho, speed, flow_v, flow_m, h, s, b, D, head, eff, power = results
 
     assert p.magnitude == 1
     assert p.units == "pascal"
@@ -75,6 +76,9 @@ def test_units(auxiliary_function):
     assert eff.magnitude == 1
     #  see https://github.com/hgrecco/pint/issues/634
     assert eff.units == ""  # dimensionless
+
+    assert power.magnitude == 1
+    assert power.units == "watt"
 
 
 def test_unit_Q_(auxiliary_function):
@@ -91,11 +95,12 @@ def test_unit_Q_(auxiliary_function):
         D=Q_(1, "meter"),
         head=Q_(1, "joule/kilogram"),
         eff=Q_(1, "dimensionless"),
+        power=Q_(1, "watt")
     )
     # check if all available units are tested
     assert len(results) == len(units)
 
-    p, T, rho, speed, flow_v, flow_m, h, s, b, D, head, eff = results
+    p, T, rho, speed, flow_v, flow_m, h, s, b, D, head, eff, power = results
 
     assert p.magnitude == 1
     assert p.units == "pascal"
@@ -134,6 +139,9 @@ def test_unit_Q_(auxiliary_function):
     #  see https://github.com/hgrecco/pint/issues/634
     assert eff.units == ""  # dimensionless
 
+    assert power.magnitude == 1
+    assert power.units == "watt"
+
 
 def test_unit_Q_conversion(auxiliary_function):
     results = auxiliary_function(
@@ -149,12 +157,13 @@ def test_unit_Q_conversion(auxiliary_function):
         D=Q_(1, "inches"),
         head=Q_(1, "BTU/lb"),
         eff=Q_(1, "dimensionless"),
+        power=Q_(1, "hp")
     )
 
     # check if all available units are tested
     assert len(results) == len(units)
 
-    p, T, rho, speed, flow_v, flow_m, h, s, b, D, head, eff = results
+    p, T, rho, speed, flow_v, flow_m, h, s, b, D, head, eff, power = results
 
     assert p.magnitude == 1e5
     assert p.units == "pascal"
@@ -192,3 +201,6 @@ def test_unit_Q_conversion(auxiliary_function):
     assert eff.magnitude == 1
     #  see https://github.com/hgrecco/pint/issues/634
     assert eff.units == ""  # dimensionless
+
+    assert_allclose(power.magnitude, 745.699872)
+    assert power.units == "watt"
