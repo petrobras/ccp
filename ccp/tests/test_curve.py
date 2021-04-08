@@ -1,6 +1,5 @@
 import pytest
 import numpy as np
-import matplotlib.pyplot as plt
 from numpy.testing import assert_allclose
 from ccp import ureg, Q_
 from ccp.state import State
