@@ -21,3 +21,20 @@ div.output pre {
     border: none;
     font-size: 1rem;
 }
+
+/* adjust left navbar margins */
+nav.bd-links p {
+    margin-bottom: 0;
+}
+
+nav.bd-links ul.nav.sidenav_l1 {
+    margin-bottom: 1em;
+}
+
+.classifier::before {
+    content: " : ";
+}
+
+image {
+    margin-bottom: 1em;
+}

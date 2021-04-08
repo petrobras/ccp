@@ -7,16 +7,15 @@ It is based on the book of {cite}`ludtke2004process` and uses
 for the gas properties calculations.
 
 ```{toctree}
-:maxdepth: 1
+:maxdepth: 2
 :caption: Getting Started
-
 getting_started/overview
 getting_started/installation
 ```
 
 ```{toctree}
 ---
-maxdepth: 1
+maxdepth: 2
 caption: Tutorial
 ---
 tutorials/tutorial
@@ -24,7 +23,7 @@ tutorials/tutorial
 
 ```{toctree}
 ---
-maxdepth: 1
+maxdepth: 2
 caption: Topic Guides
 ---
 topic_guides/topic_guides
@@ -32,16 +31,15 @@ topic_guides/topic_guides
 
 ```{toctree}
 ---
-maxdepth: 1
+maxdepth: 2
 caption: How-To Guides
 ---
-
 how_to_guides/engauge
 ```
 
 ```{toctree}
 ---
-maxdepth: 1
+maxdepth: 2
 caption: References
 ---
 references/references

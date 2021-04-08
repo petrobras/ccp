@@ -11,11 +11,49 @@ from .config.units import check_units
 
 
 class State(CP.AbstractState):
-    """State class.
+    """A thermodynamic state.
+
+    .. note::
+        To create a state use State.define(...)
+
 
     This class is inherited from CP.AbstractState.
     Some extra functionality has been added.
-    To create a State see constructor .define().
+
+
+    Creates a state from fluid composition and two properties.
+    Properties should be in SI units, **kwargs can be passed
+    to change units.
+
+    Parameters
+    ----------
+    p : float
+        Pressure
+    T : float
+        Temperature
+    h : float
+        Enthalpy
+    s : float
+        Entropy
+    rho : float
+        Specific mass
+
+    fluid : dict
+        Dictionary with constituent and composition.
+        (e.g.: ({'Oxygen': 0.2096, 'Nitrogen': 0.7812, 'Argon': 0.0092})
+    EOS : string
+        String with HEOS or REFPROP
+
+    Returns
+    -------
+    state : State object
+
+    Examples
+    --------
+    >>> fluid = {'Oxygen': 0.2096, 'Nitrogen': 0.7812, 'Argon': 0.0092}
+    >>> s = State.define(fluid=fluid, p=101008, T=273, EOS='HEOS')
+    >>> s.rhomass()
+    1.2893965217814896
     """
 
     def __init__(self, EOS, _fluid):
@@ -57,37 +95,85 @@ class State(CP.AbstractState):
         return fluid_dict
 
     def gas_constant(self):
+        """Gas constant in joule / (mol kelvin).
+
+        Returns
+        -------
+        gas_constant : pint.Quantity
+            Gas constant (joule / (mol kelvin).
+        """
         return Q_(super().gas_constant(), "joule / (mol kelvin)")
 
     def molar_mass(self):
+        """Molar mass in kg/mol.
+
+        Returns
+        -------
+        molar_mass : pint.Quantity
+            Molar mass (kg/mol).
+        """
         return Q_(super().molar_mass(), "kg/mol")
 
     def T(self):
+        """Temperature in Kelvin.
+
+        Returns
+        -------
+        T : pint.Quantity
+            Temperature (Kelvin).
+        """
         return Q_(super().T(), "kelvin")
 
     def p(self):
+        """Pressure in Pascal.
+
+        Returns
+        -------
+        p : pint.Quantity
+            Pressure (pascal).
+        """
         return Q_(super().p(), "pascal")
 
     def cp(self):
+        """Specific heat at constant pressure joule/(kilogram kelvin).
+
+        Returns
+        -------
+        cp : pint.Quantity
+            Specific heat at constant pressure joule/(kilogram kelvin).
+        """
         return Q_(super().cpmass(), "joule/(kilogram kelvin)")
 
     def cv(self):
+        """Specific heat at constant volume joule/(kilogram kelvin).
+
+        Returns
+        -------
+        cv : pint.Quantity
+            Specific heat at constant volume joule/(kilogram kelvin).
+        """
         return Q_(super().cvmass(), "joule/(kilogram kelvin)")
 
     def h(self):
-        """Specific Enthalpy (per unit of mass)."""
+        """Specific Enthalpy (joule/kilogram).
+
+        Returns
+        -------
+        h : pint.Quantity
+            Enthalpy (joule/kilogram).
+        """
         return Q_(super().hmass(), "joule/kilogram")
 
     def s(self):
         """Specific entropy (per unit of mass)."""
         return Q_(super().smass(), "joule/(kelvin kilogram)")
 
-    def p_crit(self):
-        """ Critical Pressure in Pa """
+    def p_critical(self):
+        """Critical Pressure in Pa"""
         return Q_(super().p_critical(), "Pa")
 
-    def T_crit(self):
-        """ Critical Temperature in K """
+    def T_critical(self):
+        """Critical Temperature in K"""
         return Q_(super().T_critical(), "K")
 
     def rho(self):
@@ -107,10 +193,24 @@ class State(CP.AbstractState):
         return Q_(np.sqrt(self.first_partial_deriv(CP.iP, CP.iDmass, CP.iSmass)), "m/s")
 
     def viscosity(self):
+        """Viscosity in pascal second.
+
+        Returns
+        -------
+        viscosity : pint.Quantity
+            Viscosity (pascal second)
+        """
         return Q_(super().viscosity(), "pascal second")
 
     def kinematic_viscosity(self):
-        return (self.viscosity() / self.rho()).to("m**2/s")
+        """Kinematic viscosity in m²/s.
+
+        Returns
+        -------
+        kinematic_viscosity : pint.Quantity
+            Kinematic viscosity (m²/s)
+        """
+        return (self.viscosity() / self.rho()).to("m²/s")
 
     def dpdv_s(self):
         """
@@ -143,7 +243,13 @@ class State(CP.AbstractState):
         )
 
     def kv(self):
-        """Isentropic volume exponent (2.60)."""
+        """Isentropic volume exponent (dimensionless).
+
+        Returns
+        -------
+        kv : pint.Quantity
+            Isentropic volume exponent (dimensionless).
+        """
         return -(self.v() / self.p()) * self.dpdv_s()
 
     def dTdp_s(self):
@@ -156,7 +262,13 @@ class State(CP.AbstractState):
         )
 
     def kT(self):
-        """Isentropic temperature exponent (2.61)."""
+        """Isentropic temperature exponent (dimensionless).
+
+        Returns
+        -------
+        kT : pint.Quantity
+            Isentropic temperature exponent (dimensionless).
+        """
         return 1 / (1 - (self.p() / self.T()) * self.dTdp_s())
 
     def __reduce__(self):
@@ -259,7 +371,7 @@ class State(CP.AbstractState):
     def update(
         self, p=None, T=None, rho=None, h=None, s=None, **kwargs,
     ):
-        """Simple state update.
+        """Update the state.
 
         This method simplifies the state update. Only keyword arguments are
         required to update.
@@ -306,8 +418,10 @@ class State(CP.AbstractState):
     def plot_envelope(
         self, T_units="degK", p_units="Pa", dew_point_margin=20, fig=None, **kwargs
     ):
-        """Plot phase envelope
+        """Plot phase envelope.
+
         Plots the phase envelope and dew point limit.
+
         Parameters
         ----------
         T_units : str
@@ -321,6 +435,7 @@ class State(CP.AbstractState):
             Default is 20 degK (from API). Unit is the same as T_units.
         fig : plotly.graph_objects.Figure, optional
             The figure object with the rotor representation.
+
         Returns
         -------
         fig : plotly.graph_objects.Figure

@@ -10,6 +10,80 @@ from ccp.config.utilities import r_getattr
 
 
 class Point:
+    """A performance point.
+    A point in the compressor map that can be defined in different ways.
+
+    Parameters
+    ----------
+    speed : pint.Quantity, float
+        Speed in rad/s.
+    flow_v or flow_m : pint.Quantity, float
+        Volumetric (m³/s) or mass (kg/s) flow.
+    suc, disch : ccp.State, ccp.State
+        Suction and discharge states for the point.
+    suc, head, eff : ccp.State, float, float
+        Suction state, polytropic head and polytropic efficiency.
+    suc, head, power : ccp.State, pint.Quantity or float, pint.Quantity or float
+        Suction state, polytropic head (J/kg) and gas power (Watt).
+    suc, eff, volume_ratio : ccp.State, float, float
+        Suction state, polytropic efficiency and volume ratio.
+    b, D : pint.Quantity, float
+        Impeller width and diameter.
+
+    Returns
+    -------
+    Point : ccp.Point
+        A point in the compressor map.
+
+    Attributes
+    ----------
+    suc : ccp.State
+        A ccp.State object.
+        For more information on attributes and methods available see:
+        :py:class:`ccp.State`
+    disch : ccp.State
+        A ccp.State object.
+        For more information on attributes and methods available see:
+        :py:class:`ccp.State`
+    flow_v : pint.Quantity
+        Volumetric flow (m³/s).
+    flow_m : pint.Quantity
+        Mass flow (kg/s)
+    speed : pint.Quantity
+        Speed (rad/s).
+    head : pint.Quantity
+        Polytropic head (J/kg).
+    eff : pint.Quantity
+        Polytropic efficiency (dimensionless).
+    power : pint.Quantity
+        Power (Watt).
+    phi : pint.Quantity
+        Volume flow coefficient (dimensionless).
+    psi : pint.Quantity
+        Polytropic head coefficient (dimensionless).
+    volume_ratio : pint.Quantity
+        Volume ratio - suc.v() / disch.v() (dimensionless).
+    b : pint.Quantity
+        Impeller width (m).
+    D : pint.Quantity
+        Impeller diameter (m).
+    reynolds : pint.Quantity
+        Reynolds number (dimensionless).
+    mach : pint.Quantity
+        Mach number (dimensionless).
+    phi_ratio : float
+        Ratio between phi for this point and the original point from which it was converted from.
+    psi_ratio : float
+        Ratio between psi for this point and the original point from which it was converted from.
+    reynolds_ratio : float
+        Ratio between Reynolds for this point and the original point from which it was converted from.
+    mach_diff : float
+        Difference between Mach for this point and the original point from which it was converted from.
+    volume_ratio_ratio = 1.0
+        Ratio between volume_ratio for this point and the original point from which it was converted from.
+
+    """
+
     @check_units
     def __init__(
         self,
@@ -27,34 +101,6 @@ class Point:
         b=None,
         D=None,
     ):
-        """Point.
-        A point in the compressor map that can be defined in different ways.
-
-        Parameters
-        ----------
-        speed : float
-            Speed in 1/s.
-        flow_v or flow_m : float
-            Volumetric or mass flow.
-        suc, disch : ccp.State, ccp.State
-            Suction and discharge states for the point.
-        suc, head, eff : ccp.State, float, float
-            Suction state, polytropic head and polytropic efficiency.
-        suc, head, power : ccp.State, float, float
-            Suction state, polytropic head and gas power.
-        suc, eff, volume_ratio : ccp.State, float, float
-            Suction state, polytropic efficiency and volume ratio.
-        b, D : pint.Quantity, float, optional
-            Impeller width and diameter.
-            This is optional, if not provided it will be set when the point is
-            assigned to an impeller.
-
-
-        Returns
-        -------
-        Point : ccp.Point
-            A point in the compressor map.
-        """
         if b is None or D is None:
             raise ValueError("Arguments b and D must be provided.")
 
@@ -341,7 +387,9 @@ def plot_func(self, attr):
 
         flow_v = self.flow_v
 
-        name = kwargs.get("name", f"Flow: {flow_v.to(flow_v_units).m:.2f}, {attr}: {value:.2f}")
+        name = kwargs.get(
+            "name", f"Flow: {flow_v.to(flow_v_units).m:.2f}, {attr}: {value:.2f}"
+        )
 
         if flow_v_units is not None:
             flow_v = flow_v.to(flow_v_units)
