@@ -129,7 +129,7 @@ myst_enable_extensions = [
 try:
     jupyter_execute_notebooks = os.environ["EXECUTE_NOTEBOOKS"]
 except KeyError:
-    jupyter_execute_notebooks = "force"
+    jupyter_execute_notebooks = "off"
 
 # Custom sidebar templates, must be a dictionary that maps document names
 # to template names.
