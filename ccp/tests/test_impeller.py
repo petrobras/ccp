@@ -175,8 +175,7 @@ def test_impeller_disch_state(imp2):
         [[482.850310, 477.243856, 471.29533], [506.668177, 500.418404, 493.30993]]
     )
     assert_allclose(
-        imp2.disch.T().magnitude,
-        T_magnitude,
+        imp2.disch.T().magnitude, T_magnitude,
     )
 
 

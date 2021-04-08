@@ -42,19 +42,25 @@ class ImpellerState:
 
 
 class Impeller:
+    """An impeller with a performance map.
+
+    Impeller instance is initialized with the list of points.
+    The created instance will hold the dimensional points used in instantiation.
+    Curves will be generated from points close in similarity.
+
+    Parameters
+    ----------
+    points : list
+        List with ccp.Point objects.
+
+    Returns
+    -------
+    impeller : ccp.Impeller
+    """
+
     @check_units
     def __init__(self, points):
-        """Impeller class.
 
-        Impeller instance is initialized with the list of points.
-        The created instance will hold the dimensional points used in instantiation.
-        Curves will be generated from points close in similarity.
-
-        Parameters
-        ----------
-        points : list
-            List with ccp.Point objects.
-        """
         self.points = deepcopy(points)
 
         curves = []
@@ -69,7 +75,16 @@ class Impeller:
         self.curves = curves
         self.disch = ImpellerState([c.disch for c in self.curves])
 
-        for attr in ["disch.p", "disch.T", "disch.h", "disch.s", "disch.rho", "head", "eff", "power"]:
+        for attr in [
+            "disch.p",
+            "disch.T",
+            "disch.h",
+            "disch.s",
+            "disch.rho",
+            "head",
+            "eff",
+            "power",
+        ]:
             values = []
             # for disch.p etc values are defined in _Impeller_State
             if "." not in attr:
@@ -87,6 +102,45 @@ class Impeller:
     def plot_func(self, attr):
         @check_units
         def inner(flow_v=None, speed=None, plot_kws=None, **kwargs):
+            """Plot parameter versus volumetric flow.
+
+            You can plot an specific point in the plot giving its flow_v and speed.
+
+            You can choose units with the arguments flow_v_units='...' and
+            {attr}_units='...'. For the speed you can use speed_units='...'.
+
+            Parameters
+            ----------
+            flow_v : pint.Quantity, float
+                Volumetric flow (m³/s) for a specific point in the plot.
+            speed : pint.Quantity, float
+                Speed (rad/s) for a specific point in the plot.
+            flow_v_units : str, optional
+                Flow units used for the plot. Default is m³/s.
+            {attr}_units : str, optional
+                Units for the parameter being plotted (e.g. for a head plot we could use
+                head_units='J/kg' or head_units='J/g'. Default is SI.
+            speed_units : str, optional
+                Speed units for the plot. Default is 'rad/s'.
+
+            Returns
+            -------
+            fig : plotly.Figure
+                Plotly figure that can be customized.
+
+            Examples
+            --------
+            >>> import ccp
+            >>> imp = ccp.impeller_example()
+            >>> fig = imp.plot_head(
+            ...    flow_v=5.5,
+            ...    speed=900,
+            ...    flow_v_units='m³/h',
+            ...    head_units='j/kg',
+            ...    speed_units='RPM'
+            ... )
+
+            """
             fig = kwargs.pop("fig", None)
 
             if fig is None:
@@ -96,7 +150,7 @@ class Impeller:
                 plot_kws = {}
 
             p0 = self.points[0]
-            flow_v_units = kwargs.get('flow_v_units', p0.flow_v.units)
+            flow_v_units = kwargs.get("flow_v_units", p0.flow_v.units)
 
             for curve in self.curves:
                 fig = r_getattr(curve, attr + "_plot")(
@@ -254,6 +308,26 @@ class Impeller:
 
     @classmethod
     def convert_from(cls, original_impeller, suc=None, find="speed"):
+        """Convert performance map from an impeller.
+
+        Parameters
+        ----------
+        original_impeller : ccp.Impeller
+            The original impeller.
+        suc : ccp.State
+            The new suction condition to which we want to convert to.
+        find : str, optional
+            The method in which the curves will be converted.
+            For now only 'speed' is implemented, which means that, based on volume ratio,
+            we calculate new values of speed for each curve and the respective discharge
+            condition.
+
+        Returns
+        -------
+        converted_impeller : ccp.Impeller
+            The new impeller with the converted performance map for the required
+            suction condition.
+        """
         all_converted_points = []
         for curve in original_impeller.curves:
             converted_points = []
