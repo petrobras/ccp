@@ -30,7 +30,7 @@ jobs:
           TOKEN: ${{ secrets.ACCESS_TOKEN }}
         run: |
           git config --global url."https://${TOKEN}:x-oauth-basic@github.com/".insteadOf "https://github.com/"
-          git clone git@github.com:raphaeltimbo/REFPROP.git
+          git clone https://github.com/raphaeltimbo/REFPROP.git
           cd REFPROP
           echo $PWD
 
