@@ -15,7 +15,7 @@
 # documentation root, use os.path.abspath to make it absolute, like shown here.
 #
 import os
-# import sys
+import sys
 # sys.path.insert(0, os.path.abspath('.'))
 import ccp
 
@@ -47,9 +47,16 @@ extensions = [
     "myst_nb",
     "sphinxcontrib.bibtex",
     "sphinx_copybutton",
+    "sphinx.ext.autodoc",
+    "sphinx.ext.autosummary",
+    "numpydoc",
 ]
 
 bibtex_bibfiles = ["references.bib"]
+
+# Generate the API documentation when building
+autosummary_generate = True
+numpydoc_show_class_members = False
 
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ["_templates"]
@@ -119,7 +126,10 @@ myst_enable_extensions = [
     "linkify",
 ]
 
-jupyter_execute_notebooks = "force"
+try:
+    jupyter_execute_notebooks = os.environ["EXECUTE_NOTEBOOKS"]
+except KeyError:
+    jupyter_execute_notebooks = "force"
 
 # Custom sidebar templates, must be a dictionary that maps document names
 # to template names.
