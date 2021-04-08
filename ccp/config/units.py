@@ -16,6 +16,7 @@ units = {
     "D": "meter",
     "head": "joule/kilogram",
     "eff": "dimensionless",
+    "power": "watt",
 }
 
 
