@@ -9,7 +9,7 @@ on:
     branches: [ master ]
 
 env:
-  RPPREFIX: "/home/REFPROP/build"
+  RPPREFIX: "/home/runner/work/ccp/ccp/REFPROP/build"
 
 jobs:
   build:
@@ -33,11 +33,7 @@ jobs:
           TOKEN: ${{ secrets.ACCESS_TOKEN }}
         run: |
           git config --global url."https://${TOKEN}:x-oauth-basic@github.com/".insteadOf "https://github.com/"
-          cd $HOME
-          echo $PWD
           git clone https://github.com/raphaeltimbo/REFPROP.git
-          cd REFPROP
-          echo $PWD
 
     # Installing dependencies
       - name: Install dependencies
