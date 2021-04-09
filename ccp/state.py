@@ -369,7 +369,13 @@ class State(CP.AbstractState):
 
     @check_units
     def update(
-        self, p=None, T=None, rho=None, h=None, s=None, **kwargs,
+        self,
+        p=None,
+        T=None,
+        rho=None,
+        h=None,
+        s=None,
+        **kwargs,
     ):
         """Update the state.
 
@@ -482,6 +488,15 @@ class State(CP.AbstractState):
                 line=dict(dash="dash"),
                 hovertemplate=hovertemplate,
                 name=f"Dew Point Margin ({dew_point_margin} {T_units})",
+            )
+        )
+
+        fig.add_trace(
+            go.Scatter(
+                x=[self.T().to(T_units).m],
+                y=[self.p().to(p_units).m],
+                hovertemplate=hovertemplate,
+                name="State",
             )
         )
 
