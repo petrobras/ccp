@@ -108,6 +108,7 @@ html_theme_options = {
     "extra_navbar": "",
     "navbar_footer_text": "",
 }
+html_sourcelink_suffix = ""
 
 html_js_files = [
     "https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"
