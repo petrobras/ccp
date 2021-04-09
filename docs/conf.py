@@ -16,6 +16,7 @@
 #
 import os
 import sys
+
 # sys.path.insert(0, os.path.abspath('.'))
 import ccp
 
@@ -101,13 +102,16 @@ html_logo = "_static/ccp.png"
 html_favicon = "_static/favicon.ico"
 html_title = "<p style='font-family: Fira Code Medium, monospace'>ccp</p>"
 html_sidebars = {}
-extra_navbar = ""
 html_theme_options = {
     "github_url": "https://github.com/raphaeltimbo/ccp",
     "repository_url": "https://github.com/raphaeltimbo/ccp",
+    "extra_navbar": "",
+    "navbar_footer_text": "",
 }
 
-html_js_files = ["https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"]
+html_js_files = [
+    "https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"
+]
 
 # Theme options are theme-specific and customize the look and feel of a theme
 # further.  For a list of options available for each theme, see the
