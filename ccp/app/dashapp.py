@@ -15,8 +15,9 @@ from copy import copy
 
 
 Q_ = ccp.Q_
-CCP_PATH = Path(__file__).parent.parent
-app = dash.Dash(external_stylesheets=[dbc.themes.FLATLY])
+CCP_PATH = Path(ccp.__file__).parent
+print("ccp path", CCP_PATH)
+app = dash.Dash(__name__, external_stylesheets=[dbc.themes.FLATLY])
 
 # ----------------------
 # Data
@@ -45,12 +46,10 @@ suc_fd = ccp.State.define(p=Q_(3876, "kPa"), T=Q_(11, "degC"), fluid=composition
 curve_name = "normal"
 curve_path = Path(CCP_PATH / "tests/data")
 
-speeds = list(Q_([12207, 11373, 10463, 9300, 8138], "RPM").to("rad/s").m)
 imp_fd = ccp.Impeller.load_from_engauge_csv(
     suc=suc_fd,
     curve_name=curve_name,
     curve_path=curve_path,
-    speeds=speeds,
     b=Q_(10.6, "mm"),
     D=Q_(390, "mm"),
     number_of_points=6,
@@ -188,13 +187,16 @@ def calculate_performance(tag, sample):
 
     suc_st = ccp.State.define(p=ps_st, T=Ts_st, fluid=composition_st)
     disch_st = ccp.State.define(p=pd_st, T=Td_st, fluid=composition_st)
-    imp_st = copy(imp_fd)
+    imp_st = ccp.Impeller.convert_from(imp_fd, suc=suc_st)
 
-    imp_st.new_suc = suc_st
-    imp_st.new.suc = suc_st
-    imp_st.new.flow_v = flow_v_st
-    imp_st.new.speed = speed_st
-    point_st = ccp.Point(speed=speed_st, flow_v=flow_v_st, suc=suc_st, disch=disch_st)
+    point_st = ccp.Point(
+        speed=speed_st,
+        flow_v=flow_v_st,
+        suc=suc_st,
+        disch=disch_st,
+        b=Q_(10.6, "mm"),
+        D=Q_(390, "mm"),
+    )
 
     return imp_st, point_st
 
@@ -211,7 +213,13 @@ def calculate_performance(tag, sample):
 app.layout = dbc.Container(
     [
         dcc.Store(id="store"),
-        html.H1("Dynamically rendered tab content"),
+        html.Title("ccp - dashboard"),
+        html.H1(
+            [
+                html.Img(src="/assets/ccp.png", width=90),
+                "ccp - Centrifugal Compressor Performance",
+            ]
+        ),
         html.Hr(),
         dbc.Button(
             "Regenerate graphs",
@@ -249,7 +257,14 @@ def render_tab_content(active_tab, data):
     """
     if active_tab and data is not None:
         if active_tab == "atual":
-            return dcc.Graph(figure=data["atual"])
+            container = dbc.Container(
+                [
+                    dbc.Row(dbc.Col(dcc.Graph(figure=data["head"]), width=12)),
+                    dbc.Row(dbc.Col(dcc.Graph(figure=data["eff"]), width=12)),
+                    dbc.Row(dbc.Col(dcc.Graph(figure=data["power"]), width=12)),
+                ],
+            )
+            return container
         elif active_tab == "trend":
             return dbc.Row(
                 [
@@ -267,7 +282,9 @@ def generate_graphs(n):
     """
     if not n:
         # generate empty graphs when app loads
-        return {k: go.Figure(data=[]) for k in ["atual", "hist_1", "hist_2"]}
+        return {
+            k: go.Figure(data=[]) for k in ["head", "eff", "power", "hist_1", "hist_2"]
+        }
 
     # simulate expensive graph generation process
     print(n)
@@ -277,19 +294,52 @@ def generate_graphs(n):
     data = np.random.multivariate_normal([0, 0], [[1, 0.5], [0.5, 1]], 100)
 
     imp_b, point_b = calculate_performance("b", n)
-    fig = imp_b.new.disch.p_plot(speed_units="RPM")
-    point_b.disch.p_plot(fig=fig, speed_units="RPM", name="Operation Point")
-    fig.for_each_trace(
+
+    # Head
+    head_fig = imp_b.head_plot(
+        flow_v=point_b.flow_v, speed=point_b.speed, speed_units="RPM"
+    )
+    head_fig = point_b.head_plot(
+        fig=head_fig, speed_units="RPM", name="Operation Point"
+    )
+    head_fig.for_each_trace(
         lambda trace: trace.update(name="Expected Point")
         if trace.name == "Current Point"
         else ()
     )
-    atual = fig
+
+    # Eff
+    eff_fig = imp_b.eff_plot(
+        flow_v=point_b.flow_v, speed=point_b.speed, speed_units="RPM"
+    )
+    eff_fig = point_b.eff_plot(fig=eff_fig, speed_units="RPM", name="Operation Point")
+    eff_fig.for_each_trace(
+        lambda trace: trace.update(name="Expected Point")
+        if trace.name == "Current Point"
+        else ()
+    )
+    power_fig = imp_b.power_plot(
+        flow_v=point_b.flow_v, speed=point_b.speed, speed_units="RPM"
+    )
+    power_fig = point_b.power_plot(
+        fig=power_fig, speed_units="RPM", name="Operation Point"
+    )
+    power_fig.for_each_trace(
+        lambda trace: trace.update(name="Expected Point")
+        if trace.name == "Current Point"
+        else ()
+    )
     hist_1 = go.Figure(data=[go.Histogram(x=data[:, 0])])
     hist_2 = go.Figure(data=[go.Histogram(x=data[:, 1])])
 
     # save figures in a dictionary for sending to the dcc.Store
-    return {"atual": atual, "hist_1": hist_1, "hist_2": hist_2}
+    return {
+        "head": head_fig,
+        "eff": eff_fig,
+        "power": power_fig,
+        "hist_1": hist_1,
+        "hist_2": hist_2,
+    }
 
 
 if __name__ == "__main__":
