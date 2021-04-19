@@ -267,6 +267,18 @@ class Point:
         self.psi = psi(self.head, self.speed, self.D)
         self.volume_ratio = self.suc.v() / self.disch.v()
 
+    def _calc_from_eff_flow_m_head_speed_suc(self):
+        eff = self.eff
+        head = self.head
+        suc = self.suc
+        disch = disch_from_suc_head_eff(suc, head, eff)
+        self.disch = disch
+        self.flow_v = self.flow_m / self.suc.rho()
+        self.power = power_calc(self.flow_m, self.head, self.eff)
+        self.phi = phi(self.flow_v, self.speed, self.D)
+        self.psi = psi(self.head, self.speed, self.D)
+        self.volume_ratio = self.suc.v() / self.disch.v()
+
     def _calc_from_eff_phi_psi_speed_suc(self):
         self.head = head_from_psi(self.D, self.psi, self.speed)
         self.disch = disch_from_suc_head_eff(self.suc, self.head, self.eff)
