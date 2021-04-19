@@ -271,6 +271,16 @@ class State(CP.AbstractState):
         """
         return 1 / (1 - (self.p() / self.T()) * self.dTdp_s())
 
+    def conductivity(self):
+        """Thermal conductivity (W/m/K).
+
+        Returns
+        -------
+        conductivity : pint.Quantity
+            Thermal conductivity (W/m/K).
+        """
+        return Q_(super().conductivity(), "W/m/degK")
+
     def __reduce__(self):
         kwargs = dict(p=self.p(), T=self.T(), fluid=self.fluid)
         return self._rebuild, (self.__class__, kwargs)
