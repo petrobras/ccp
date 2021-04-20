@@ -17,7 +17,9 @@ from copy import copy
 Q_ = ccp.Q_
 CCP_PATH = Path(ccp.__file__).parent
 print("ccp path", CCP_PATH)
-app = dash.Dash(__name__, external_stylesheets=[dbc.themes.FLATLY])
+app = dash.Dash(
+    __name__, external_stylesheets=[dbc.themes.FLATLY], title="ccp - Dashboard"
+)
 
 # ----------------------
 # Data
@@ -210,35 +212,43 @@ def calculate_performance(tag, sample):
 # App Layout
 # ----------------------
 
-app.layout = dbc.Container(
-    [
-        dcc.Store(id="store"),
-        html.Title("ccp - dashboard"),
-        html.H1(
-            [
-                html.Img(src="/assets/ccp.png", width=90),
-                "ccp - Centrifugal Compressor Performance",
-            ]
-        ),
-        html.Hr(),
-        dbc.Button(
-            "Regenerate graphs",
-            color="primary",
-            block=True,
-            id="button",
-            className="mb-3",
-        ),
-        dbc.Tabs(
-            [
-                dbc.Tab(label="Atual", tab_id="atual"),
-                dbc.Tab(label="Trend", tab_id="trend"),
-            ],
-            id="tabs",
-            active_tab="atual",
-        ),
-        html.Div(id="tab-content", className="p-4"),
-    ]
-)
+
+def serve_layout():
+    return dbc.Container(
+        [
+            dcc.Store(id="store"),
+            html.Title("ccp - dashboard"),
+            html.H1(
+                [
+                    html.Img(src="/assets/ccp.png", width=90),
+                    "ccp - Centrifugal Compressor Performance",
+                ]
+            ),
+            html.Hr(),
+            dcc.Interval(
+                id="interval-component",
+                interval=60 * 1000,  # in milliseconds
+                n_intervals=0,
+            ),
+            dbc.Button(
+                "Regenerate graphs",
+                color="primary",
+                block=True,
+                id="button",
+                className="mb-3",
+            ),
+            dbc.Tabs(
+                [
+                    dbc.Tab(label="Atual", tab_id="atual"),
+                    dbc.Tab(label="Trend", tab_id="trend"),
+                ],
+                id="tabs",
+                active_tab="atual",
+            ),
+            html.Div(id="tab-content", className="p-4"),
+        ]
+    )
+
 
 # ----------------------
 # Callbacks
@@ -275,25 +285,18 @@ def render_tab_content(active_tab, data):
     return "No tab selected"
 
 
-@app.callback(Output("store", "data"), [Input("button", "n_clicks")])
-def generate_graphs(n):
+@app.callback(Output("store", "data"), [Input("interval-component", "n_intervals")])
+def generate_graphs(n_intervals):
     """
     This callback generates three simple graphs from random data.
     """
-    if not n:
-        # generate empty graphs when app loads
-        return {
-            k: go.Figure(data=[]) for k in ["head", "eff", "power", "hist_1", "hist_2"]
-        }
-
     # simulate expensive graph generation process
-    print(n)
-    time.sleep(2)
+    print("n_intervals ", n_intervals)
 
     # generate 100 multivariate normal samples
     data = np.random.multivariate_normal([0, 0], [[1, 0.5], [0.5, 1]], 100)
 
-    imp_b, point_b = calculate_performance("b", n)
+    imp_b, point_b = calculate_performance("b", n_intervals)
 
     # Head
     head_fig = imp_b.head_plot(
@@ -340,6 +343,9 @@ def generate_graphs(n):
         "hist_1": hist_1,
         "hist_2": hist_2,
     }
+
+
+app.layout = serve_layout
 
 
 if __name__ == "__main__":
