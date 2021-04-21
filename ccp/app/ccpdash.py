@@ -146,7 +146,6 @@ def generate_graphs(n_intervals):
     # simulate expensive graph generation process
     print("running")
     print("n_intervals: ", n_intervals)
-    global last_update
 
     # generate 100 multivariate normal samples
     data = np.random.multivariate_normal([0, 0], [[1, 0.5], [0.5, 1]], 100)
