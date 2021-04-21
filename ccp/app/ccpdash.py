@@ -13,6 +13,10 @@ from dash.dependencies import Input, Output
 app = dash.Dash(external_stylesheets=[dbc.themes.FLATLY], title="ccp - Dashboard")
 app.config.suppress_callback_exceptions = True
 
+
+COMPRESSOR_TAGS = ["C-1231-A", "C-1231-B", "C-1231-C", "C-1231-D", "C-1231-E"]
+
+
 # the style arguments for the sidebar. We use position:fixed and a fixed width
 SIDEBAR_STYLE = {
     "position": "fixed",
@@ -34,14 +38,26 @@ CONTENT_STYLE = {
 
 sidebar = html.Div(
     [
-        html.H2("Sidebar", className="display-4"),
+        html.H1(
+            [
+                html.Img(
+                    src="/assets/ccp.png", width=150, style={"display": "inline-block"}
+                ),
+                html.P("ccp Dashboard", className="lead", style={"font-size": 26}),
+            ],
+            style={"text-align": "center"},
+            className="display-4",
+        ),
         html.Hr(),
-        html.P("A simple sidebar layout with navigation links", className="lead"),
+        html.P(
+            "Monitoramento de Performance dos Compressores da UTGCA",
+            className="lead",
+            style={"fontSize": "0.8rem"},
+        ),
         dbc.Nav(
             [
-                dbc.NavLink("Home", href="/", active="exact"),
-                dbc.NavLink("Page 1", href="/page-1", active="exact"),
-                dbc.NavLink("Page 2", href="/page-2", active="exact"),
+                dbc.NavLink(f"{ctag}", href=f"/{ctag}", active="exact")
+                for ctag in COMPRESSOR_TAGS
             ],
             vertical=True,
             pills=True,
@@ -53,21 +69,19 @@ sidebar = html.Div(
 content = html.Div(id="page-content", style=CONTENT_STYLE)
 interval = dcc.Interval(
     id="interval-component",
-    interval=60 * 1000,  # in milliseconds
+    interval=600 * 1000,  # in milliseconds
     n_intervals=0,
 )
+store = dcc.Store(id="store")
 
-app.layout = html.Div([dcc.Location(id="url"), sidebar, content, interval])
+
+app.layout = html.Div([dcc.Location(id="url"), sidebar, content, store, interval])
 
 
 @app.callback(Output("page-content", "children"), [Input("url", "pathname")])
 def render_page_content(pathname):
-    if pathname == "/":
-        return html.P("This is the content of the home page!")
-    elif pathname == "/page-1":
+    if pathname[1:] in COMPRESSOR_TAGS:
         return page_layout()
-    elif pathname == "/page-2":
-        return html.P("Oh cool, this is page 2!")
     # If the user tries to reach a different page, return a 404 message
     return dbc.Jumbotron(
         [
@@ -80,14 +94,6 @@ def render_page_content(pathname):
 
 def page_layout():
     page = [
-        dcc.Store(id="store"),
-        dbc.Button(
-            "Regenerate graphs",
-            color="primary",
-            block=True,
-            id="button",
-            className="mb-3",
-        ),
         dbc.Tabs(
             [
                 dbc.Tab(label="Atual", tab_id="atual"),
@@ -103,21 +109,22 @@ def page_layout():
 
 @app.callback(
     Output("tab-content", "children"),
-    [Input("tabs", "active_tab"), Input("store", "data")],
+    [Input("tabs", "active_tab"), Input("store", "data"), Input("url", "pathname")],
 )
-def render_tab_content(active_tab, data):
+def render_tab_content(active_tab, data, pathname):
     """
     This callback takes the 'active_tab' property as input, as well as the
     stored graphs, and renders the tab content depending on what the value of
     'active_tab' is.
     """
+    path = pathname.replace("/", "")
     if active_tab and data is not None:
         if active_tab == "atual":
             container = dbc.Container(
                 [
-                    dbc.Row(dbc.Col(dcc.Graph(figure=data["head"]), width=12)),
-                    dbc.Row(dbc.Col(dcc.Graph(figure=data["eff"]), width=12)),
-                    dbc.Row(dbc.Col(dcc.Graph(figure=data["power"]), width=12)),
+                    dbc.Row(dbc.Col(dcc.Graph(figure=data[f"head-{path}"]), width=12)),
+                    dbc.Row(dbc.Col(dcc.Graph(figure=data[f"eff-{path}"]), width=12)),
+                    dbc.Row(dbc.Col(dcc.Graph(figure=data[f"power-{path}"]), width=12)),
                 ],
             )
             return container
@@ -139,7 +146,7 @@ def generate_graphs(n_intervals):
     # simulate expensive graph generation process
     print("running")
     print("n_intervals: ", n_intervals)
-    time.sleep(2)
+    global last_update
 
     # generate 100 multivariate normal samples
     data = np.random.multivariate_normal([0, 0], [[1, 0.5], [0.5, 1]], 100)
@@ -147,53 +154,33 @@ def generate_graphs(n_intervals):
     scatter = go.Figure(data=[go.Scatter(x=data[:, 0], y=data[:, 1], mode="markers")])
     hist_1 = go.Figure(data=[go.Histogram(x=data[:, 0])])
     hist_2 = go.Figure(data=[go.Histogram(x=data[:, 1])])
-    imp_b, point_b = calculate_performance("b", n_intervals)
 
-    # Head
-    head_fig = imp_b.head_plot(
-        flow_v=point_b.flow_v, speed=point_b.speed, speed_units="RPM"
-    )
-    head_fig = point_b.head_plot(
-        fig=head_fig, speed_units="RPM", name="Operation Point"
-    )
-    head_fig.for_each_trace(
-        lambda trace: trace.update(name="Expected Point")
-        if trace.name == "Current Point"
-        else ()
-    )
+    results_dict = {}
 
-    # Eff
-    eff_fig = imp_b.eff_plot(
-        flow_v=point_b.flow_v, speed=point_b.speed, speed_units="RPM"
-    )
-    eff_fig = point_b.eff_plot(fig=eff_fig, speed_units="RPM", name="Operation Point")
-    eff_fig.for_each_trace(
-        lambda trace: trace.update(name="Expected Point")
-        if trace.name == "Current Point"
-        else ()
-    )
-    power_fig = imp_b.power_plot(
-        flow_v=point_b.flow_v, speed=point_b.speed, speed_units="RPM"
-    )
-    power_fig = point_b.power_plot(
-        fig=power_fig, speed_units="RPM", name="Operation Point"
-    )
-    power_fig.for_each_trace(
-        lambda trace: trace.update(name="Expected Point")
-        if trace.name == "Current Point"
-        else ()
-    )
-    hist_1 = go.Figure(data=[go.Histogram(x=data[:, 0])])
-    hist_2 = go.Figure(data=[go.Histogram(x=data[:, 1])])
+    for ctag in COMPRESSOR_TAGS:
+        print(f"Calculating {ctag}.")
+        imp_op, point_op = calculate_performance(
+            ctag.split("-")[-1].lower(), n_intervals
+        )
+
+        for curve in ["head", "eff", "power"]:
+            # Head
+            fig = getattr(imp_op, f"{curve}_plot")(
+                flow_v=point_op.flow_v, speed=point_op.speed, speed_units="RPM"
+            )
+            fig = getattr(point_op, f"{curve}_plot")(
+                fig=fig, speed_units="RPM", name="Operation Point"
+            )
+
+            fig.for_each_trace(
+                lambda trace: trace.update(name="Expected Point")
+                if "Flow" in trace.name
+                else ()
+            )
+            results_dict[f"{curve}-{ctag}"] = fig
 
     # save figures in a dictionary for sending to the dcc.Store
-    return {
-        "head": head_fig,
-        "eff": eff_fig,
-        "power": power_fig,
-        "hist_1": hist_1,
-        "hist_2": hist_2,
-    }
+    return results_dict
 
 
 # ----------------------
