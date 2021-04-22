@@ -99,6 +99,15 @@ class Impeller:
     def __getitem__(self, item):
         return self.points.__getitem__(item)
 
+    def __eq__(self, other):
+        if isinstance(other, self.__class__):
+            points_other = sorted(other.points, key=lambda x: x.flow_v)
+            points_self = sorted(self.points, key=lambda x: x.flow_v)
+            if len(points_other) != len(points_self):
+                return False
+            else:
+                return points_other == points_self
+
     def plot_func(self, attr):
         @check_units
         def inner(flow_v=None, speed=None, plot_kws=None, **kwargs):
@@ -468,14 +477,20 @@ class Impeller:
 
         for speed, head_curve in head_curves.items():
             head_interpolated = interp1d(
-                head_curve["x"], head_curve["y"], kind=3, fill_value="extrapolate",
+                head_curve["x"],
+                head_curve["y"],
+                kind=3,
+                fill_value="extrapolate",
             )
             eff_curve = eff_curves[speed]
             # check eff scale
             if max(eff_curve["y"]) > 1:
                 eff_curve["y"] = [i / 100 for i in eff_curve["y"]]
             eff_interpolated = interp1d(
-                eff_curve["x"], eff_curve["y"], kind=3, fill_value="extrapolate",
+                eff_curve["x"],
+                eff_curve["y"],
+                kind=3,
+                fill_value="extrapolate",
             )
 
             min_x = min(head_curve["x"] + eff_curve["x"])
@@ -518,15 +533,12 @@ class Impeller:
         """Save impeller to a toml file.
 
         Parameters
-        ==========
+        ----------
         file : str or pathlib.Path
             Filename to which the data is saved.
         """
 
         with open(file, mode="w") as f:
-            # add impeller geometry to file
-            dict_to_save = {"b": self.b.m, "D": self.D.m}
-            toml.dump(dict_to_save, f)
             # add points to file
             dict_to_save = {
                 f"Point{i}": point._dict_to_save()
@@ -539,23 +551,21 @@ class Impeller:
         """Load impeller from toml file.
 
         Parameters
-        ==========
+        ----------
         file : str or pathlib.Path
             Filename to which the data is saved.
 
         Returns
-        =======
+        -------
         impeller : ccp.Impeller
             Impeller object.
         """
         parameters = toml.load(file)
-        b = parameters.pop("b")
-        D = parameters.pop("D")
         points = [
             Point(**Point._dict_from_load(kwargs)) for kwargs in parameters.values()
         ]
 
-        return cls(points, b=b, D=D)
+        return cls(points)
 
     def save_hysys_csv(self, curve_dir):
         """Save curve to a csv with hysys format.
