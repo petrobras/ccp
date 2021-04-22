@@ -1,5 +1,7 @@
 import pytest
 import numpy as np
+from pathlib import Path
+from tempfile import tempdir
 from numpy.testing import assert_allclose
 from ccp import ureg, Q_, State, Point, Curve, Impeller, impeller_example
 
@@ -175,7 +177,8 @@ def test_impeller_disch_state(imp2):
         [[482.850310, 477.243856, 471.29533], [506.668177, 500.418404, 493.30993]]
     )
     assert_allclose(
-        imp2.disch.T().magnitude, T_magnitude,
+        imp2.disch.T().magnitude,
+        T_magnitude,
     )
 
 
@@ -273,3 +276,40 @@ def test_impeller_plot_units():
     )
     assert_allclose(fig.data[5]["y"], expected_rho_curve, rtol=1e-4)
     assert_allclose(fig.data[6]["y"], 0.00845738254224696, rtol=1e-4)
+
+
+def test_save_load():
+    composition_fd = dict(
+        n2=0.4,
+        co2=0.22,
+        methane=92.11,
+        ethane=4.94,
+        propane=1.71,
+        ibutane=0.24,
+        butane=0.3,
+        ipentane=0.04,
+        pentane=0.03,
+        hexane=0.01,
+    )
+    suc_fd = State.define(p=Q_(3876, "kPa"), T=Q_(11, "degC"), fluid=composition_fd)
+
+    test_dir = Path(__file__).parent
+    curve_path = test_dir / "data"
+    curve_name = "normal"
+
+    imp_fd = Impeller.load_from_engauge_csv(
+        suc=suc_fd,
+        curve_name=curve_name,
+        curve_path=curve_path,
+        b=Q_(10.6, "mm"),
+        D=Q_(390, "mm"),
+        number_of_points=6,
+        flow_units="kg/h",
+        head_units="kJ/kg",
+    )
+    file = Path(tempdir) / "imp.toml"
+    imp_fd.save(file)
+
+    imp_fd_loaded = Impeller.load(file)
+
+    assert imp_fd == imp_fd_loaded
