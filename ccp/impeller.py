@@ -5,6 +5,8 @@ from copy import deepcopy
 from itertools import groupby
 from pathlib import Path
 from warnings import warn
+from dask.distributed import Client
+from dask import delayed
 
 import numpy as np
 import plotly.graph_objects as go
@@ -14,6 +16,9 @@ from scipy.interpolate import interp1d
 from ccp import Q_, check_units, State, Point, Curve
 from ccp.config.utilities import r_getattr, r_setattr
 from ccp.data_io.read_csv import read_data_from_engauge_csv
+
+
+client = Client(n_workers=4)
 
 
 class ImpellerState:
@@ -263,57 +268,6 @@ class Impeller:
         )
 
         return point
-
-    def _calc_current_point(self):
-        try:
-            speeds = np.array([curve.speed.magnitude for curve in self.curves])
-        except AttributeError:
-            return
-
-        closest_curves_idxs = self._find_closest_speeds(speeds, self.speed.magnitude)
-        curves = list(np.array(self.curves)[closest_curves_idxs])
-
-        # calculate factor
-        speed_range = curves[1].speed.magnitude - curves[0].speed.magnitude
-        factor = (self.speed.magnitude - curves[0].speed.magnitude) / speed_range
-
-        min_flow = get_interpolated_value(
-            factor, curves[0].flow_v.magnitude[0], curves[1].flow_v.magnitude[0]
-        )
-        max_flow = get_interpolated_value(
-            factor, curves[0].flow_v.magnitude[-1], curves[1].flow_v.magnitude[-1]
-        )
-
-        flow_v = np.linspace(min_flow, max_flow, 6)
-
-        disch_T_0 = curves[0].disch.T_interpolated(flow_v).magnitude
-        disch_T_1 = curves[1].disch.T_interpolated(flow_v).magnitude
-        disch_p_0 = curves[0].disch.p_interpolated(flow_v).magnitude
-        disch_p_1 = curves[1].disch.p_interpolated(flow_v).magnitude
-
-        disch_T = get_interpolated_value(factor, disch_T_0, disch_T_1)
-        disch_p = get_interpolated_value(factor, disch_p_0, disch_p_1)
-        points_current = []
-
-        for f, p, T in zip(flow_v, disch_p, disch_T):
-            disch = State.define(p=p, T=T, fluid=self.suc.fluid)
-            points_current.append(
-                Point(flow_v=f, speed=self.speed, suc=self.suc, disch=disch)
-            )
-
-        self.current_curve = Curve(points_current)
-
-        disch_T_0 = curves[0].disch.T_interpolated(self.flow_v).magnitude
-        disch_T_1 = curves[1].disch.T_interpolated(self.flow_v).magnitude
-        disch_p_0 = curves[0].disch.p_interpolated(self.flow_v).magnitude
-        disch_p_1 = curves[1].disch.p_interpolated(self.flow_v).magnitude
-
-        disch_T = get_interpolated_value(factor, disch_T_0, disch_T_1)
-        disch_p = get_interpolated_value(factor, disch_p_0, disch_p_1)
-        current_disch = State.define(p=disch_p, T=disch_T, fluid=self.suc.fluid)
-        self.current_point = Point(
-            flow_v=self.flow_v, speed=self.speed, suc=self.suc, disch=current_disch
-        )
 
     @classmethod
     def convert_from(cls, original_impeller, suc=None, find="speed"):
