@@ -16,10 +16,8 @@ Ts = 300
 
 # Define the fluid as a dictionary:
 fluid = {
-    "CarbonDioxide": 0.79585,
-    "R134a": 0.16751,
-    "Nitrogen": 0.02903,
-    "Oxygen": 0.00761,
+    "CarbonDioxide": 0.8,
+    "Nitrogen": 0.2,
 }
 
 # Define suction and discharge states:
