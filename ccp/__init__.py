@@ -88,11 +88,12 @@ __version__full = (
 # pint
 ###############################################################################
 
-from pint import UnitRegistry
+from pint import UnitRegistry, set_application_registry
 
 new_units = Path(__file__).parent / "config/new_units.txt"
 ureg = UnitRegistry()
 ureg.load_definitions(str(new_units))
+set_application_registry(ureg)
 Q_ = ureg.Quantity
 warnings.filterwarnings("ignore", message="The unit of the quantity is stripped")
 
