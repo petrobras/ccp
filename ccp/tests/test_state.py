@@ -1,4 +1,5 @@
 import pytest
+import pickle
 from copy import copy
 from ccp.state import *
 from numpy.testing import assert_allclose
@@ -186,3 +187,8 @@ def test_mix_composition():
     with pytest.raises(ValueError) as exc:
         State.define(p=Q_(0.804, "kgf/cm**2"), T=Q_(37.4, "degC"), fluid=fluid)
     assert "You might have repeated" in str(exc.value)
+
+
+def test_pickle():
+    state = State.define(p=100000, T=300, fluid={"Methane": 1 - 1e-15, "Ethane": 1e-15})
+    assert pickle.loads(pickle.dumps(state)) == state
