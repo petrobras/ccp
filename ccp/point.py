@@ -156,7 +156,7 @@ class Point:
         # ratio between specific volume ratios in original and converted conditions
         self.volume_ratio_ratio = 1.0
 
-        # self._add_point_plot()
+        self._add_point_plot()
 
     def _add_point_plot(self):
         """Add plot to point after point is fully defined."""
