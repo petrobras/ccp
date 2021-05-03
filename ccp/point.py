@@ -156,7 +156,7 @@ class Point:
         # ratio between specific volume ratios in original and converted conditions
         self.volume_ratio_ratio = 1.0
 
-        self._add_point_plot()
+        # self._add_point_plot()
 
     def _add_point_plot(self):
         """Add plot to point after point is fully defined."""
@@ -327,6 +327,16 @@ class Point:
         converted_point.mach_diff = converted_point.mach - original_point.mach
 
         return converted_point
+
+    def __getstate__(self):
+        attributes = self.__dict__.copy()
+        final_attributes = {k: v for k, v in attributes.items() if "plot" not in k}
+
+        return final_attributes
+
+    def __setstate__(self, state):
+        self.__dict__ = state
+        self._add_point_plot()
 
     def _dict_to_save(self):
         """Returns a dict that will be saved to a toml file."""

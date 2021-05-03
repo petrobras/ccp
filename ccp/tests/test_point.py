@@ -1,9 +1,9 @@
 import pytest
 from numpy.testing import assert_allclose
-from ccp import ureg
 from ccp.point import *
 from pathlib import Path
 from tempfile import tempdir
+import pickle
 
 skip = False  # skip slow tests
 
@@ -305,3 +305,10 @@ def test_save_load(point_disch_flow_v_speed_suc):
     point_disch_flow_v_speed_suc.save(file)
     point_0_loaded = Point.load(file)
     assert point_disch_flow_v_speed_suc == point_0_loaded
+
+
+def test_pickle(point_disch_flow_v_speed_suc):
+    pickled_point = pickle.loads(pickle.dumps(point_disch_flow_v_speed_suc))
+    assert pickled_point == point_disch_flow_v_speed_suc
+    assert hasattr(point_disch_flow_v_speed_suc, "head_plot") is True
+    assert hasattr(pickled_point, "head_plot") is True
