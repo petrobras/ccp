@@ -1,12 +1,12 @@
 """Module to define impeller class."""
 import csv
+import multiprocessing
+
 import toml
 from copy import deepcopy
 from itertools import groupby
 from pathlib import Path
 from warnings import warn
-from dask.distributed import Client
-from dask import delayed
 
 import numpy as np
 import plotly.graph_objects as go
@@ -16,9 +16,6 @@ from scipy.interpolate import interp1d
 from ccp import Q_, check_units, State, Point, Curve
 from ccp.config.utilities import r_getattr, r_setattr
 from ccp.data_io.read_csv import read_data_from_engauge_csv
-
-
-client = Client(n_workers=4)
 
 
 class ImpellerState:
@@ -291,11 +288,12 @@ class Impeller:
             The new impeller with the converted performance map for the required
             suction condition.
         """
+        pool = multiprocessing.Pool()
+
         all_converted_points = []
         for curve in original_impeller.curves:
-            converted_points = []
-            for point in curve:
-                converted_points.append(Point.convert_from(point, suc=suc, find=find))
+            converter_args = [(p, suc, find) for p in curve]
+            converted_points = pool.map(converter, converter_args)
 
             speed_mean = np.mean([p.speed.magnitude for p in converted_points])
 
@@ -607,3 +605,11 @@ def impeller_example():
     )
 
     return imp
+
+
+def converter(x):
+    """Helper function used to parallelize conversion of points."""
+    point = x[0]
+    suc = x[1]
+    find = x[2]
+    return Point.convert_from(point, suc=suc, find=find)
