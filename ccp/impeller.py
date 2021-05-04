@@ -6,7 +6,6 @@ import toml
 from copy import deepcopy
 from itertools import groupby
 from pathlib import Path
-from warnings import warn
 
 import numpy as np
 import plotly.graph_objects as go
@@ -288,29 +287,28 @@ class Impeller:
             The new impeller with the converted performance map for the required
             suction condition.
         """
-        pool = multiprocessing.Pool()
-
         all_converted_points = []
         for curve in original_impeller.curves:
-            converter_args = [(p, suc, find) for p in curve]
-            converted_points = pool.map(converter, converter_args)
+            with multiprocessing.Pool() as pool:
+                converter_args = [(p, suc, find) for p in curve]
+                converted_points = pool.map(converter, converter_args)
 
-            speed_mean = np.mean([p.speed.magnitude for p in converted_points])
+                speed_mean = np.mean([p.speed.magnitude for p in converted_points])
 
-            converted_points = [
-                Point(
-                    suc=p.suc,
-                    eff=p.eff,
-                    phi=p.phi,
-                    psi=p.psi,
-                    speed=speed_mean,
-                    b=p.b,
-                    D=p.D,
-                )
-                for p in converted_points
-            ]
+                converted_points = [
+                    Point(
+                        suc=p.suc,
+                        eff=p.eff,
+                        phi=p.phi,
+                        psi=p.psi,
+                        speed=speed_mean,
+                        b=p.b,
+                        D=p.D,
+                    )
+                    for p in converted_points
+                ]
 
-            all_converted_points += converted_points
+                all_converted_points += converted_points
 
         return cls(all_converted_points)
 
@@ -452,32 +450,24 @@ class Impeller:
             points_head = head_interpolated(points_x)
             points_eff = eff_interpolated(points_x)
 
-            if flow_type == "volumetric":
-                points += [
-                    Point(
-                        suc=suc,
-                        speed=Q_(float(speed), speed_units),
-                        flow_v=Q_(flow, flow_units),
-                        head=Q_(head, head_units),
-                        eff=eff,
-                        b=b,
-                        D=D,
-                    )
-                    for flow, head, eff in zip(points_x, points_head, points_eff)
-                ]
-            else:
-                points += [
-                    Point(
-                        suc=suc,
-                        speed=Q_(float(speed), speed_units),
-                        flow_m=Q_(flow, flow_units),
-                        head=Q_(head, head_units),
-                        eff=eff,
-                        b=b,
-                        D=D,
-                    )
-                    for flow, head, eff in zip(points_x, points_head, points_eff)
-                ]
+            args_list = [
+                (
+                    suc,
+                    Q_(float(speed), speed_units),
+                    Q_(flow, flow_units),
+                    Q_(head, head_units),
+                    eff,
+                    b,
+                    D,
+                )
+                for flow, head, eff in zip(points_x, points_head, points_eff)
+            ]
+
+            with multiprocessing.Pool() as pool:
+                if flow_type == "volumetric":
+                    points += pool.map(create_points_flow_v, args_list)
+                else:
+                    points += pool.map(create_points_flow_m, args_list)
 
         return cls(points)
 
@@ -609,7 +599,33 @@ def impeller_example():
 
 def converter(x):
     """Helper function used to parallelize conversion of points."""
-    point = x[0]
-    suc = x[1]
-    find = x[2]
+    point, suc, find = x
     return Point.convert_from(point, suc=suc, find=find)
+
+
+def create_points_flow_v(x):
+    """Helper function used to parallelize creation of points."""
+    suc, speed, flow, head, eff, b, D = x
+    return Point(
+        suc=suc,
+        speed=speed,
+        flow_v=flow,
+        head=head,
+        eff=eff,
+        b=b,
+        D=D,
+    )
+
+
+def create_points_flow_m(x):
+    """Helper function used to parallelize creation of points."""
+    suc, speed, flow, head, eff, b, D = x
+    return Point(
+        suc=suc,
+        speed=speed,
+        flow_m=flow,
+        head=head,
+        eff=eff,
+        b=b,
+        D=D,
+    )
