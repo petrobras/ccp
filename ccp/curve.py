@@ -104,7 +104,7 @@ class _CurveState:
     """Class used to create list with states from curve.
 
     This enables the following call:
-    >>> curve.suc.p()
+    # >>> curve.suc.p()
     (100000, 100000) pascal
 
     """
