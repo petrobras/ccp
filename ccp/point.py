@@ -621,7 +621,7 @@ def head_pol_mallen_saville(suc, disch):
     Returns
     -------
     head_pol_mallen_saville : pint.Quantity
-        Mallen-Saville polytropic efficiency (dimensionless).
+        Mallen-Saville polytropic polytropic head (J/kg).
     """
 
     head = (disch.h() - suc.h()) - (disch.s() - suc.s()) * (
@@ -643,6 +643,18 @@ def head_reference(suc, disch):
     Results are stored at self._ref_eff, self._ref_H and self._ref_n.
     self._ref_n is a list with n_exp at each step for the final converged
     efficiency.
+
+    Parameters
+    ----------
+    suc : ccp.State
+        Suction state.
+    disch : ccp.State
+        Discharge state.
+
+    Returns
+    -------
+    head_reference : pint.Quantity
+       Reference head as described by Huntington (1985) (J/kg).
 
     """
 
@@ -841,6 +853,7 @@ def head_from_psi(D, psi, speed):
         Head coefficient.
     speed : pint.Quantity, float
         Speed (rad/s).
+
     Returns
     -------
     u_calc : pint.Quantity, float
