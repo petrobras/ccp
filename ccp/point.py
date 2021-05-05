@@ -5,7 +5,8 @@ import toml
 import plotly.graph_objects as go
 from scipy.optimize import newton
 
-from ccp import check_units, State, Q_
+from .state import State
+from ccp.config.units import check_units, Q_
 from ccp.config.utilities import r_getattr
 
 
