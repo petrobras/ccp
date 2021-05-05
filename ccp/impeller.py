@@ -12,7 +12,8 @@ import plotly.graph_objects as go
 from openpyxl import Workbook
 from scipy.interpolate import interp1d
 
-from ccp import Q_, check_units, State, Point, Curve
+from ccp import Q_, State, Point, Curve
+from ccp.config.units import check_units
 from ccp.config.utilities import r_getattr, r_setattr
 from ccp.data_io.read_csv import read_data_from_engauge_csv
 

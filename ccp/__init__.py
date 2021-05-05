@@ -47,88 +47,87 @@ imp = Impeller([point0, point1, ...])
 # set refprop path in the beginning to avoid strange behavior
 ###############################################################################
 
-import os
-import warnings
-from pathlib import Path
+import os as _os
+import warnings as _warnings
+from pathlib import Path as _Path
 
-import CoolProp.CoolProp as CP
+import CoolProp.CoolProp as _CP
 
 # use _ to avoid polluting the namespace when importing
 
 try:
-    path = Path(os.environ["RPPREFIX"])
+    _path = _Path(_os.environ["RPPREFIX"])
 except KeyError:
-    if os.path.exists("C:\\Users\\Public\\REFPROP"):
-        os.environ["RPprefix"] = "C:\\Users\\Public\\REFPROP"
-        path = Path(os.environ["RPPREFIX"])
+    if _os.path.exists("C:\\Users\\Public\\REFPROP"):
+        _os.environ["RPprefix"] = "C:\\Users\\Public\\REFPROP"
+        _path = _Path(_os.environ["RPPREFIX"])
     else:
-        path = Path.cwd()
+        _path = _Path.cwd()
 
-CP.set_config_string(CP.ALTERNATIVE_REFPROP_PATH, str(path))
+_CP.set_config_string(_CP.ALTERNATIVE_REFPROP_PATH, str(_path))
 
-if os.name == "posix":
-    shared_library = "librefprop.so"
+if _os.name == "posix":
+    _shared_library = "librefprop.so"
 else:
-    shared_library = "REFPRP64.DLL"
+    _shared_library = "REFPRP64.DLL"
 
-library_path = path / shared_library
+_library_path = _path / _shared_library
 
-if not library_path.is_file():
-    warnings.warn(f"{library_path}.\nREFPROP not configured.")
+if not _library_path.is_file():
+    _warnings.warn(f"{_library_path}.\nREFPROP not configured.")
 
 __version__ = "0.1.2"
 
 __version__full = (
     f"ccp: {__version__} | "
-    + f'CP : {CP.get_global_param_string("version")} | '
-    + f'REFPROP : {CP.get_global_param_string("REFPROP_version")}'
+    + f'CP : {_CP.get_global_param_string("version")} | '
+    + f'REFPROP : {_CP.get_global_param_string("REFPROP_version")}'
 )
 
 ###############################################################################
 # pint
 ###############################################################################
 
-from pint import UnitRegistry, set_application_registry
+from pint import (
+    UnitRegistry as _UnitRegistry,
+    set_application_registry as _set_application_registry,
+)
 
-new_units = Path(__file__).parent / "config/new_units.txt"
-ureg = UnitRegistry()
-ureg.load_definitions(str(new_units))
-set_application_registry(ureg)
+_new_units = _Path(__file__).parent / "config/new_units.txt"
+ureg = _UnitRegistry()
+ureg.load_definitions(str(_new_units))
+_set_application_registry(ureg)
 Q_ = ureg.Quantity
-warnings.filterwarnings("ignore", message="The unit of the quantity is stripped")
+_warnings.filterwarnings("ignore", message="The unit of the quantity is stripped")
 
 ###############################################################################
 # plotly theme
 ###############################################################################
 
-from plotly import io as pio
+from plotly import io as _pio
 import ccp.plotly_theme
 
-pio.templates.default = "ccp"
+_pio.templates.default = "ccp"
 
 ###############################################################################
 # imports
 ###############################################################################
 
-from .config.units import check_units
 from .config.fluids import fluid_list
 from .state import State
 from .point import Point
 from .curve import Curve
 from .impeller import Impeller, impeller_example
 from .fo import FlowOrifice
-from .data_io import read_csv
 from .similarity import check_similarity
 
 __all__ = [
-    "check_units",
-    "fluid_list",
     "State",
     "Point",
     "Curve",
     "Impeller",
     "FlowOrifice",
-    "read_csv",
+    "fluid_list",
     "check_similarity",
     "impeller_example",
 ]
