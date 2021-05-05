@@ -23,6 +23,7 @@ API Reference
 .. toctree::
 
     plot_methods
+    performance_functions
 
 
 
