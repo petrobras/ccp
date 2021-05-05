@@ -22,8 +22,7 @@ class State(CP.AbstractState):
 
 
     Creates a state from fluid composition and two properties.
-    Properties should be in SI units, **kwargs can be passed
-    to change units.
+    Properties can be floats (SI units are considered) or pint quantities.
 
     Parameters
     ----------
@@ -50,10 +49,16 @@ class State(CP.AbstractState):
 
     Examples
     --------
+    >>> import ccp
+    >>> Q_ = ccp.Q_
     >>> fluid = {'Oxygen': 0.2096, 'Nitrogen': 0.7812, 'Argon': 0.0092}
-    >>> s = State.define(fluid=fluid, p=101008, T=273, EOS='HEOS')
-    >>> s.rhomass()
-    1.2893965217814896
+    >>> s = ccp.State.define(p=101008, T=273, fluid=fluid)
+    >>> s.rho()
+    <Quantity(1.28939426, 'kilogram / meter ** 3')>
+    >>> # Using pint quantities
+    >>> s = ccp.State.define(fluid=fluid, p=Q_(1, 'atm'), T=Q_(0, 'degC'))
+    >>> s.h()
+    <Quantity(273291.7, 'joule / kilogram')>
     """
 
     def __init__(self, EOS, _fluid):
@@ -165,31 +170,74 @@ class State(CP.AbstractState):
         return Q_(super().hmass(), "joule/kilogram")
 
     def s(self):
-        """Specific entropy (per unit of mass)."""
+        """Specific entropy (per unit of mass).
+
+        Returns
+        -------
+        s : pint.Quantity
+            Entropy (joule/(kelvin kilogram)).
+        """
         return Q_(super().smass(), "joule/(kelvin kilogram)")
 
     def p_critical(self):
-        """Critical Pressure in Pa"""
+        """Critical Pressure in Pa.
+
+        Returns
+        -------
+        p_critical : pint.Quantity
+            Critical pressure (Pa).
+        """
         return Q_(super().p_critical(), "Pa")
 
     def T_critical(self):
-        """Critical Temperature in K"""
+        """Critical Temperature in K.
+
+        Returns
+        -------
+        T_critical : pint.Quantity
+            Critical temperature (degK).
+        """
         return Q_(super().T_critical(), "K")
 
     def rho(self):
-        """Specific mass (kilogram/m**3)."""
+        """Specific mass (kilogram/m**3).
+
+        Returns
+        -------
+        rho : pint.Quantity
+            Specific mass (kilogram/m**3).
+        """
         return Q_(super().rhomass(), "kilogram/m**3")
 
     def v(self):
-        """Specific volume (m**3/kilogram)."""
+        """Specific volume (m**3/kilogram).
+
+        Returns
+        -------
+        v : pint.Quantity
+            Specific volume (m**3/kilogram).
+        """
         return 1 / self.rho()
 
     def z(self):
+        """Compressibility (dimensionless).
+
+        Returns
+        -------
+        z : pint.Quantity
+            Compressibility (dimensionless).
+        """
         z = self.p() * self.molar_mass() / (self.rho() * self.gas_constant() * self.T())
         return z.to("dimensionless")
 
     def speed_sound(self):
-        """ Speed of sound - Eq. 8.1 from P. Nederstigt - Real Gas Thermodynamics"""
+        """Speed of sound - Eq. 8.1 from P. Nederstigt - Real Gas Thermodynamics.
+
+        Returns
+        -------
+        speed_sound : pint.Quantity
+            Speed of sound (m/s).
+        """
         return Q_(np.sqrt(self.first_partial_deriv(CP.iP, CP.iDmass, CP.iSmass)), "m/s")
 
     def viscosity(self):
@@ -333,10 +381,16 @@ class State(CP.AbstractState):
 
         Examples
         --------
+        >>> import ccp
+        >>> Q_ = ccp.Q_
         >>> fluid = {'Oxygen': 0.2096, 'Nitrogen': 0.7812, 'Argon': 0.0092}
-        >>> s = State.define(fluid=fluid, p=101008, T=273, EOS='HEOS')
-        >>> s.rhomass()
-        1.2893965217814896
+        >>> s = ccp.State.define(p=101008, T=273, fluid=fluid)
+        >>> s.rho()
+        <Quantity(1.28939426, 'kilogram / meter ** 3')>
+        >>> # Using pint quantities
+        >>> s = ccp.State.define(fluid=fluid, p=Q_(1, 'atm'), T=Q_(0, 'degC'))
+        >>> s.h()
+        <Quantity(273291.7, 'joule / kilogram')>
         """
         if fluid is None:
             raise TypeError("A fluid is required. Provide as fluid=dict(...)")
