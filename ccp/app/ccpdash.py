@@ -1,13 +1,9 @@
-import ccp
-import pandas as pd
 import dash
 import dash_bootstrap_components as dbc
 import dash_core_components as dcc
 import dash_html_components as html
 import numpy as np
 import plotly.graph_objs as go
-import time
-from pathlib import Path
 from dash.dependencies import Input, Output
 from calculate_performance import calculate_performance
 
@@ -15,7 +11,7 @@ app = dash.Dash(external_stylesheets=[dbc.themes.FLATLY], title="ccp - Dashboard
 app.config.suppress_callback_exceptions = True
 
 
-COMPRESSOR_TAGS = ["C-1231-A", "C-1231-B", "C-1231-C", "C-1231-D", "C-1231-E"]
+COMPRESSOR_TAGS = ["C-1231-A", "C-1231-B"]  # , "C-1231-C", "C-1231-D", "C-1231-E"]
 
 
 # the style arguments for the sidebar. We use position:fixed and a fixed width
@@ -98,6 +94,7 @@ def page_layout():
         dbc.Tabs(
             [
                 dbc.Tab(label="Atual", tab_id="atual"),
+                dbc.Tab(label="Intervalo", tab_id="intervalo"),
                 dbc.Tab(label="Trend", tab_id="trend"),
             ],
             id="tabs",
@@ -121,8 +118,86 @@ def render_tab_content(active_tab, data, pathname):
     path = pathname.replace("/", "")
     if active_tab and data is not None:
         if active_tab == "atual":
+            # TODO Insert sample time
             container = dbc.Container(
                 [
+                    dbc.Row(dbc.Col(dcc.Graph(figure=data[f"head-{path}"]), width=12)),
+                    dbc.Row(dbc.Col(dcc.Graph(figure=data[f"eff-{path}"]), width=12)),
+                    dbc.Row(dbc.Col(dcc.Graph(figure=data[f"power-{path}"]), width=12)),
+                ],
+            )
+            return container
+        elif active_tab == "intervalo":
+            container = dbc.Container(
+                [
+                    dbc.Row(
+                        [
+                            dbc.Col(
+                                dbc.FormGroup(
+                                    [
+                                        dbc.Input(
+                                            id="start-date",
+                                            type="text",
+                                        ),
+                                        dbc.FormText("Data Inicial"),
+                                        dbc.Popover(
+                                            dbc.PopoverBody(
+                                                "Data Inicial em formato aceito pelo PI."
+                                            ),
+                                            id="popover-start-date",
+                                            target="start-date",
+                                            trigger="hover",
+                                            placement="bottom",
+                                        ),
+                                    ]
+                                ),
+                                width=4,
+                            ),
+                            dbc.Col(
+                                dbc.FormGroup(
+                                    [
+                                        dbc.Input(
+                                            id="end-date",
+                                            type="text",
+                                        ),
+                                        dbc.FormText("Data Final"),
+                                        dbc.Popover(
+                                            dbc.PopoverBody(
+                                                "Data Final em formato aceito pelo PI."
+                                            ),
+                                            id="popover-end-date",
+                                            target="end-date",
+                                            trigger="hover",
+                                            placement="bottom",
+                                        ),
+                                    ]
+                                ),
+                                width=4,
+                            ),
+                            dbc.Col(
+                                dbc.FormGroup(
+                                    [
+                                        dbc.Input(
+                                            id="time-span",
+                                            type="text",
+                                        ),
+                                        dbc.FormText("Tempo entre amostras"),
+                                        dbc.Popover(
+                                            dbc.PopoverBody(
+                                                "Tempo entre amostras em formato aceito pelo PI (ex.: 1s, 2h etc.)."
+                                            ),
+                                            id="popover-time-span",
+                                            target="time-span",
+                                            trigger="hover",
+                                            placement="bottom",
+                                        ),
+                                    ]
+                                ),
+                                width=4,
+                            ),
+                        ]
+                    ),
+                    dbc.Button("Calcular", color="primary", block=True),
                     dbc.Row(dbc.Col(dcc.Graph(figure=data[f"head-{path}"]), width=12)),
                     dbc.Row(dbc.Col(dcc.Graph(figure=data[f"eff-{path}"]), width=12)),
                     dbc.Row(dbc.Col(dcc.Graph(figure=data[f"power-{path}"]), width=12)),
@@ -184,4 +259,4 @@ def generate_graphs(n_intervals):
 
 
 if __name__ == "__main__":
-    app.run_server(debug=True, port=8888)
+    app.run_server(debug=True, port=8880)
