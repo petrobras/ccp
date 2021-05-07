@@ -128,7 +128,7 @@ class Data:
 data = Data(df)
 
 
-def calculate_performance(tag, sample):
+def calculate_performance(tag, sample, date=None):
     ps_st = Q_(getattr(data, f"df{tag}")[tags_dict[f"tags_{tag}"][1]][sample], "kPa")
     pd_st = Q_(getattr(data, f"df{tag}")[tags_dict[f"tags_{tag}"][3]][sample], "kPa")
     Ts_st = Q_(getattr(data, f"df{tag}")[tags_dict[f"tags_{tag}"][0]][sample], "degC")
@@ -137,6 +137,7 @@ def calculate_performance(tag, sample):
         getattr(data, f"df{tag}")[tags_dict[f"tags_{tag}"][4]][sample], "m**3/h"
     )
     speed_st = Q_(getattr(data, f"df{tag}")[tags_dict[f"tags_{tag}"][5]][sample], "rpm")
+    sample_time = getattr(data, f"df{tag}").index[sample]
 
     composition_st = dict(
         methane=getattr(data, f"df{tag}").UTGCA_1231_AI_002_C1[
@@ -173,7 +174,8 @@ def calculate_performance(tag, sample):
 
     suc_st = ccp.State.define(p=ps_st, T=Ts_st, fluid=composition_st)
     disch_st = ccp.State.define(p=pd_st, T=Td_st, fluid=composition_st)
-    imp_st = ccp.Impeller.convert_from(imp_fd, suc=suc_st)
+    # imp_st = ccp.Impeller.convert_from(imp_fd, suc=suc_st)
+    imp_st = imp_fd
 
     point_st = ccp.Point(
         speed=speed_st,
@@ -184,4 +186,4 @@ def calculate_performance(tag, sample):
         D=Q_(390, "mm"),
     )
 
-    return imp_st, point_st
+    return imp_st, point_st, sample_time
