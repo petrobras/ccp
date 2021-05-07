@@ -5,6 +5,7 @@ import dash_html_components as html
 import numpy as np
 import plotly.graph_objs as go
 from dash.dependencies import Input, Output
+from dash.exceptions import PreventUpdate
 from calculate_performance import calculate_performance
 
 app = dash.Dash(external_stylesheets=[dbc.themes.FLATLY], title="ccp - Dashboard")
@@ -70,9 +71,12 @@ interval = dcc.Interval(
     n_intervals=0,
 )
 store = dcc.Store(id="store")
+store_int = dcc.Store(id="store-int")
 
 
-app.layout = html.Div([dcc.Location(id="url"), sidebar, content, store, interval])
+app.layout = html.Div(
+    [dcc.Location(id="url"), sidebar, content, store, interval, store_int]
+)
 
 
 @app.callback(Output("page-content", "children"), [Input("url", "pathname")])
@@ -107,9 +111,14 @@ def page_layout():
 
 @app.callback(
     Output("tab-content", "children"),
-    [Input("tabs", "active_tab"), Input("store", "data"), Input("url", "pathname")],
+    [
+        Input("tabs", "active_tab"),
+        Input("store", "data"),
+        Input("store-int", "data"),
+        Input("url", "pathname"),
+    ],
 )
-def render_tab_content(active_tab, data, pathname):
+def render_tab_content(active_tab, data, data_int, pathname):
     """
     This callback takes the 'active_tab' property as input, as well as the
     stored graphs, and renders the tab content depending on what the value of
@@ -121,6 +130,12 @@ def render_tab_content(active_tab, data, pathname):
             # TODO Insert sample time
             container = dbc.Container(
                 [
+                    dbc.Row(
+                        [
+                            dbc.Col(html.P("Horário da medição: "), width=4),
+                            dbc.Col(html.P(data[f"sample-time-{path}"]), width=4),
+                        ]
+                    ),
                     dbc.Row(dbc.Col(dcc.Graph(figure=data[f"head-{path}"]), width=12)),
                     dbc.Row(dbc.Col(dcc.Graph(figure=data[f"eff-{path}"]), width=12)),
                     dbc.Row(dbc.Col(dcc.Graph(figure=data[f"power-{path}"]), width=12)),
@@ -128,6 +143,8 @@ def render_tab_content(active_tab, data, pathname):
             )
             return container
         elif active_tab == "intervalo":
+            if data_int is None:
+                data_int = data
             container = dbc.Container(
                 [
                     dbc.Row(
@@ -137,6 +154,7 @@ def render_tab_content(active_tab, data, pathname):
                                     [
                                         dbc.Input(
                                             id="start-date",
+                                            persistence=True,
                                             type="text",
                                         ),
                                         dbc.FormText("Data Inicial"),
@@ -158,6 +176,7 @@ def render_tab_content(active_tab, data, pathname):
                                     [
                                         dbc.Input(
                                             id="end-date",
+                                            persistence=True,
                                             type="text",
                                         ),
                                         dbc.FormText("Data Final"),
@@ -179,6 +198,7 @@ def render_tab_content(active_tab, data, pathname):
                                     [
                                         dbc.Input(
                                             id="time-span",
+                                            persistence=True,
                                             type="text",
                                         ),
                                         dbc.FormText("Tempo entre amostras"),
@@ -197,10 +217,16 @@ def render_tab_content(active_tab, data, pathname):
                             ),
                         ]
                     ),
-                    dbc.Button("Calcular", color="primary", block=True),
-                    dbc.Row(dbc.Col(dcc.Graph(figure=data[f"head-{path}"]), width=12)),
-                    dbc.Row(dbc.Col(dcc.Graph(figure=data[f"eff-{path}"]), width=12)),
-                    dbc.Row(dbc.Col(dcc.Graph(figure=data[f"power-{path}"]), width=12)),
+                    dbc.Button("Calcular", color="primary", block=True, id="calcular"),
+                    dbc.Row(
+                        dbc.Col(dcc.Graph(figure=data_int[f"head-{path}"]), width=12)
+                    ),
+                    dbc.Row(
+                        dbc.Col(dcc.Graph(figure=data_int[f"eff-{path}"]), width=12)
+                    ),
+                    dbc.Row(
+                        dbc.Col(dcc.Graph(figure=data_int[f"power-{path}"]), width=12)
+                    ),
                 ],
             )
             return container
@@ -234,9 +260,11 @@ def generate_graphs(n_intervals):
 
     for ctag in COMPRESSOR_TAGS:
         print(f"Calculating {ctag}.")
-        imp_op, point_op = calculate_performance(
+        imp_op, point_op, sample_time = calculate_performance(
             ctag.split("-")[-1].lower(), n_intervals
         )
+
+        results_dict[f"sample-time-{ctag}"] = sample_time
 
         for curve in ["head", "eff", "power"]:
             # Head
@@ -256,6 +284,61 @@ def generate_graphs(n_intervals):
 
     # save figures in a dictionary for sending to the dcc.Store
     return results_dict
+
+
+@app.callback(
+    Output("store-int", "data"),
+    Output("calcular", "n_clicks"),
+    Input("calcular", "n_clicks"),
+    Input("start-date", "value"),
+    Input("end-date", "value"),
+    Input("url", "pathname"),
+    prevent_initial_call=True,
+)
+def generate_interval_fig(n_clicks, start_date, end_date, pathname):
+    """
+    This callback generates three simple graphs from random data.
+    """
+    # simulate expensive graph generation process
+    print("running calc")
+    print("n_clicks: ", n_clicks)
+
+    results_dict = {}
+
+    if n_clicks in [0, None]:
+        return None, 0
+    else:
+        ctag = pathname.replace("/", "")
+
+        print(f"Calculating {ctag} interval.")
+        imp_op, point_op, sample_time = calculate_performance(
+            ctag.split("-")[-1].lower(), 10
+        )
+
+        results_dict[f"sample-time-{ctag}"] = sample_time
+
+        for curve in ["head", "eff", "power"]:
+            # Head
+            fig = getattr(imp_op, f"{curve}_plot")(
+                flow_v=point_op.flow_v, speed=point_op.speed, speed_units="RPM"
+            )
+            fig = getattr(point_op, f"{curve}_plot")(
+                fig=fig, speed_units="RPM", name="Operation Point"
+            )
+
+            fig.for_each_trace(
+                lambda trace: trace.update(name="Expected Point")
+                if "Flow" in trace.name
+                else ()
+            )
+            results_dict[f"{curve}-{ctag}"] = fig
+
+        print(f"Calculating {ctag} interval ended.")
+        n_clicks = 0
+
+        # save figures in a dictionary for sending to the dcc.Store
+    print("n_clicks: ", n_clicks)
+    return results_dict, n_clicks
 
 
 if __name__ == "__main__":
