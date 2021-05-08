@@ -157,10 +157,10 @@ def render_tab_content(active_tab, data, data_int, pathname):
                                             persistence=True,
                                             type="text",
                                         ),
-                                        dbc.FormText("Data Inicial"),
+                                        dbc.FormText("Data e Horário"),
                                         dbc.Popover(
                                             dbc.PopoverBody(
-                                                "Data Inicial em formato aceito pelo PI."
+                                                "Data e Horário em formato aceito pelo PI."
                                             ),
                                             id="popover-start-date",
                                             target="start-date",
@@ -169,55 +169,19 @@ def render_tab_content(active_tab, data, data_int, pathname):
                                         ),
                                     ]
                                 ),
-                                width=4,
+                                width=6,
                             ),
                             dbc.Col(
-                                dbc.FormGroup(
-                                    [
-                                        dbc.Input(
-                                            id="end-date",
-                                            persistence=True,
-                                            type="text",
-                                        ),
-                                        dbc.FormText("Data Final"),
-                                        dbc.Popover(
-                                            dbc.PopoverBody(
-                                                "Data Final em formato aceito pelo PI."
-                                            ),
-                                            id="popover-end-date",
-                                            target="end-date",
-                                            trigger="hover",
-                                            placement="bottom",
-                                        ),
-                                    ]
+                                dbc.Button(
+                                    "Calcular",
+                                    color="primary",
+                                    block=True,
+                                    id="calcular",
                                 ),
-                                width=4,
-                            ),
-                            dbc.Col(
-                                dbc.FormGroup(
-                                    [
-                                        dbc.Input(
-                                            id="time-span",
-                                            persistence=True,
-                                            type="text",
-                                        ),
-                                        dbc.FormText("Tempo entre amostras"),
-                                        dbc.Popover(
-                                            dbc.PopoverBody(
-                                                "Tempo entre amostras em formato aceito pelo PI (ex.: 1s, 2h etc.)."
-                                            ),
-                                            id="popover-time-span",
-                                            target="time-span",
-                                            trigger="hover",
-                                            placement="bottom",
-                                        ),
-                                    ]
-                                ),
-                                width=4,
+                                width=6,
                             ),
                         ]
                     ),
-                    dbc.Button("Calcular", color="primary", block=True, id="calcular"),
                     dbc.Row(
                         dbc.Col(dcc.Graph(figure=data_int[f"head-{path}"]), width=12)
                     ),
@@ -291,11 +255,10 @@ def generate_graphs(n_intervals):
     Output("calcular", "n_clicks"),
     Input("calcular", "n_clicks"),
     Input("start-date", "value"),
-    Input("end-date", "value"),
     Input("url", "pathname"),
     prevent_initial_call=True,
 )
-def generate_interval_fig(n_clicks, start_date, end_date, pathname):
+def generate_interval_fig(n_clicks, start_date, pathname):
     """
     This callback generates three simple graphs from random data.
     """
