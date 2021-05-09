@@ -1,5 +1,6 @@
 import ccp
 import pandas as pd
+import numpy as np
 from pathlib import Path
 
 Q_ = ccp.Q_
@@ -47,46 +48,46 @@ imp_fd.suc = imp_fd.points[0].suc
 imp_fd.flow_v = imp_fd.points[0].flow_v
 imp_fd.speed = imp_fd.points[0].speed
 
-tags_a = [
-    "UTGCA_1231_TIT_218_A",  # Temperatura de sucção
-    "UTGCA_1231_PIT_203_A",  # Pressão de sucção
-    "UTGCA_1231_TIT_202_A",  # Temperatura de descarga
-    "UTGCA_1231_PIT_204_A",  # Pressão de descarga
-    "UTGCA_1231_FIT_201_A",  # Vazão
-    "UTGCA_1231_SE_02_S_A",  # Rotação
-]
-tags_b = [
-    "UTGCA_1231_TIT_219_B",  # Temperatura de sucção
-    "UTGCA_1231_PIT_207_B",  # Pressão de sucção
-    "UTGCA_1231_TIT_205_B",  # Temperatura de descarga
-    "UTGCA_1231_PIT_208_B",  # Pressão de descarga
-    "UTGCA_1231_FIT_203_B",  # Vazão
-    "UTGCA_1231_SE_02_S_B",  # Rotação
-]
-tags_c = [
-    "UTGCA_1231_TIT_220_C",  # Temperatura de sucção
-    "UTGCA_1231_PIT_230_C",  # Pressão de sucção
-    "UTGCA_1231_TIT_208_C",  # Temperatura de descarga
-    "UTGCA_1231_PIT_212_C",  # Pressão de descarga
-    "UTGCA_1231_FIT_205_C",  # Vazão
-    "UTGCA_1231_SE_02_S_C",  # Rotação
-]
-tags_d = [
-    "UTGCA_1231_TIT_221_D",  # Temperatura de sucção
-    "UTGCA_1231_PIT_224_D",  # Pressão de sucção
-    "UTGCA_1231_TIT_213_D",  # Temperatura de descarga
-    "UTGCA_1231_PIT_225_D",  # Pressão de descarga
-    "UTGCA_1231_FIT_215_D",  # Vazão
-    "UTGCA_1231_SE_02_S_D",  # Rotação
-]
-tags_e = [
-    "UTGCA_1231_TIT_222_E",  # Temperatura de sucção
-    "UTGCA_1231_PIT_228_E",  # Pressão de sucção
-    "UTGCA_1231_TIT_216_E",  # Temperatura de descarga
-    "UTGCA_1231_PIT_229_E",  # Pressão de descarga
-    "UTGCA_1231_FIT_216_E",  # Vazão
-    "UTGCA_1231_SE_02_S_E",  # Rotação
-]
+tags_a = {
+    "Ts": "UTGCA_1231_TIT_218_A",  # Temperatura de sucção
+    "ps": "UTGCA_1231_PIT_203_A",  # Pressão de sucção
+    "Td": "UTGCA_1231_TIT_202_A",  # Temperatura de descarga
+    "pd": "UTGCA_1231_PIT_204_A",  # Pressão de descarga
+    "flow_v": "UTGCA_1231_FIT_201_A",  # Vazão
+    "speed": "UTGCA_1231_SE_02_S_A",  # Rotação
+}
+tags_b = {
+    "Ts": "UTGCA_1231_TIT_219_B",  # Temperatura de sucção
+    "ps": "UTGCA_1231_PIT_207_B",  # Pressão de sucção
+    "Td": "UTGCA_1231_TIT_205_B",  # Temperatura de descarga
+    "pd": "UTGCA_1231_PIT_208_B",  # Pressão de descarga
+    "flow_v": "UTGCA_1231_FIT_203_B",  # Vazão
+    "speed": "UTGCA_1231_SE_02_S_B",  # Rotação
+}
+tags_c = {
+    "Ts": "UTGCA_1231_TIT_220_C",  # Temperatura de sucção
+    "ps": "UTGCA_1231_PIT_230_C",  # Pressão de sucção
+    "Td": "UTGCA_1231_TIT_208_C",  # Temperatura de descarga
+    "pd": "UTGCA_1231_PIT_212_C",  # Pressão de descarga
+    "flow_v": "UTGCA_1231_FIT_205_C",  # Vazão
+    "speed": "UTGCA_1231_SE_02_S_C",  # Rotação
+}
+tags_d = {
+    "Ts": "UTGCA_1231_TIT_221_D",  # Temperatura de sucção
+    "ps": "UTGCA_1231_PIT_224_D",  # Pressão de sucção
+    "Td": "UTGCA_1231_TIT_213_D",  # Temperatura de descarga
+    "pd": "UTGCA_1231_PIT_225_D",  # Pressão de descarga
+    "flow_v": "UTGCA_1231_FIT_215_D",  # Vazão
+    "speed": "UTGCA_1231_SE_02_S_D",  # Rotação
+}
+tags_e = {
+    "Ts": "UTGCA_1231_TIT_222_E",  # Temperatura de sucção
+    "ps": "UTGCA_1231_PIT_228_E",  # Pressão de sucção
+    "Td": "UTGCA_1231_TIT_216_E",  # Temperatura de descarga
+    "pd": "UTGCA_1231_PIT_229_E",  # Pressão de descarga
+    "flow_v": "UTGCA_1231_FIT_216_E",  # Vazão
+    "speed": "UTGCA_1231_SE_02_S_E",  # Rotação
+}
 tags_cromatografia = [
     # Cromatografia
     "UTGCA_1231_AI_002_C1",  # Analisador_METANO_AW-002',
@@ -100,7 +101,6 @@ tags_cromatografia = [
     "UTGCA_1231_AI_002_NC4",  # Analisador_N-BUTANO_AW-002',
     "UTGCA_1231_AI_002_NC5",  # Analisador_N-PENTANO_AW-002',
 ]
-tags = tags_a + tags_b + tags_c + tags_d + tags_e + tags_cromatografia
 tags_dict = {
     "tags_a": tags_a,
     "tags_b": tags_b,
@@ -116,7 +116,7 @@ class Data:
         self.tags = tags
 
         for tag in tags:
-            dfx = df[tags_dict[f"tags_{tag}"] + tags_cromatografia]
+            dfx = df[list(tags_dict[f"tags_{tag}"].values()) + tags_cromatografia]
             # eliminate errors such as 'comm fail'
             dfx = dfx.apply(pd.to_numeric, errors="coerce")
             # drop rows that have speed, flow etc. == 0.
@@ -128,54 +128,46 @@ class Data:
 data = Data(df)
 
 
-def calculate_performance(tag, sample, date=None):
-    ps_st = Q_(getattr(data, f"df{tag}")[tags_dict[f"tags_{tag}"][1]][sample], "kPa")
-    pd_st = Q_(getattr(data, f"df{tag}")[tags_dict[f"tags_{tag}"][3]][sample], "kPa")
-    Ts_st = Q_(getattr(data, f"df{tag}")[tags_dict[f"tags_{tag}"][0]][sample], "degC")
-    Td_st = Q_(getattr(data, f"df{tag}")[tags_dict[f"tags_{tag}"][2]][sample], "degC")
-    flow_v_st = Q_(
-        getattr(data, f"df{tag}")[tags_dict[f"tags_{tag}"][4]][sample], "m**3/h"
-    )
-    speed_st = Q_(getattr(data, f"df{tag}")[tags_dict[f"tags_{tag}"][5]][sample], "rpm")
-    sample_time = getattr(data, f"df{tag}").index[sample]
+def calculate_performance(tag, time):
+    # TODO get data from PI
+    # TODO organize data into required format
+    data_tag = getattr(data, f"df{tag}")
+
+    # mean around required time
+    # calculate fluctuation -> percent difference between the minimum and
+    # maximum reading divided by the average of all readings (PTC 10 table 3.4)
+    # 3 readings on a timespan of 15 minutes.
+
+    # get 3 random samples
+    random_sample = np.random.randint(0, len(data_tag))
+    data_tag = data_tag.iloc[random_sample - 1 : random_sample + 2]
+    sample_time = data_tag.index[1]
+    data_tag = data_tag.mean()
+
+    tags = tags_dict[f"tags_{tag}"]
+    ps_st = Q_(data_tag[tags["ps"]], "kPa")
+    pd_st = Q_(data_tag[tags["pd"]], "kPa")
+    Ts_st = Q_(data_tag[tags["Ts"]], "degC")
+    Td_st = Q_(data_tag[tags["Td"]], "degC")
+    flow_v_st = Q_(data_tag[tags["flow_v"]], "m³/h")
+    speed_st = Q_(data_tag[tags["speed"]], "rpm")
 
     composition_st = dict(
-        methane=getattr(data, f"df{tag}").UTGCA_1231_AI_002_C1[
-            sample
-        ],  # Analisador_METANO_AW-002',
-        ethane=getattr(data, f"df{tag}").UTGCA_1231_AI_002_C2[
-            sample
-        ],  # Analisador_ETANO_AW-002',
-        propane=getattr(data, f"df{tag}").UTGCA_1231_AI_002_C3[
-            sample
-        ],  # CPR_Analisador_PROPANO_AW-002',
-        hexane=getattr(data, f"df{tag}").UTGCA_1231_AI_002_C6[
-            sample
-        ],  # Analisador_HEXANO_AW-002',
-        co2=getattr(data, f"df{tag}").UTGCA_1231_AI_002_CO2[
-            sample
-        ],  # Analisador_GÁS CARBÔNICO_AW-002',
-        ibutane=getattr(data, f"df{tag}").UTGCA_1231_AI_002_IC4[
-            sample
-        ],  # Analisador_I-BUTANO_AW-002',
-        ipentane=getattr(data, f"df{tag}").UTGCA_1231_AI_002_IC5[
-            sample
-        ],  # Analisador_I-PENTANO_AW-002',
-        nitrogen=getattr(data, f"df{tag}").UTGCA_1231_AI_002_N2[
-            sample
-        ],  # Analisador_NITROGÊNIO_AW-002',
-        nbutane=getattr(data, f"df{tag}").UTGCA_1231_AI_002_NC4[
-            sample
-        ],  # Analisador_N-BUTANO_AW-002',
-        npentane=getattr(data, f"df{tag}").UTGCA_1231_AI_002_NC5[
-            sample
-        ],  # Analisador_N-PENTANO_AW-002',
+        methane=data_tag.UTGCA_1231_AI_002_C1,  # Analisador_METANO_AW-002',
+        ethane=data_tag.UTGCA_1231_AI_002_C2,  # Analisador_ETANO_AW-002',
+        propane=data_tag.UTGCA_1231_AI_002_C3,  # CPR_Analisador_PROPANO_AW-002',
+        hexane=data_tag.UTGCA_1231_AI_002_C6,  # Analisador_HEXANO_AW-002',
+        co2=data_tag.UTGCA_1231_AI_002_CO2,  # Analisador_GÁS CARBÔNICO_AW-002',
+        ibutane=data_tag.UTGCA_1231_AI_002_IC4,  # Analisador_I-BUTANO_AW-002',
+        ipentane=data_tag.UTGCA_1231_AI_002_IC5,  # Analisador_I-PENTANO_AW-002',
+        nitrogen=data_tag.UTGCA_1231_AI_002_N2,  # Analisador_NITROGÊNIO_AW-002',
+        nbutane=data_tag.UTGCA_1231_AI_002_NC4,  # Analisador_N-BUTANO_AW-002',
+        npentane=data_tag.UTGCA_1231_AI_002_NC5,  # Analisador_N-PENTANO_AW-002',
     )
 
     suc_st = ccp.State.define(p=ps_st, T=Ts_st, fluid=composition_st)
     disch_st = ccp.State.define(p=pd_st, T=Td_st, fluid=composition_st)
-    # imp_st = ccp.Impeller.convert_from(imp_fd, suc=suc_st)
-    imp_st = imp_fd
+    imp_st = ccp.Impeller.convert_from(imp_fd, suc=suc_st)
 
     point_st = ccp.Point(
         speed=speed_st,
