@@ -67,7 +67,7 @@ sidebar = html.Div(
 content = html.Div(id="page-content", style=CONTENT_STYLE)
 interval = dcc.Interval(
     id="interval-component",
-    interval=600 * 1000,  # in milliseconds
+    interval=900 * 1000,  # in milliseconds
     n_intervals=0,
 )
 store = dcc.Store(id="store")
@@ -143,8 +143,12 @@ def render_tab_content(active_tab, data, data_int, pathname):
             )
             return container
         elif active_tab == "intervalo":
+
             if data_int is None:
                 data_int = data
+            else:
+                if f"head-{path}" not in data_int:
+                    data_int = data
             container = dbc.Container(
                 [
                     dbc.Row(
@@ -256,20 +260,22 @@ def generate_graphs(n_intervals):
     Input("calcular", "n_clicks"),
     Input("start-date", "value"),
     Input("url", "pathname"),
+    Input("store-int", "data"),
     prevent_initial_call=True,
 )
-def generate_interval_fig(n_clicks, start_date, pathname):
+def generate_interval_fig(n_clicks, start_date, pathname, data):
     """
     This callback generates three simple graphs from random data.
     """
     # simulate expensive graph generation process
     print("running calc")
     print("n_clicks: ", n_clicks)
+    print(data)
 
     results_dict = {}
 
     if n_clicks in [0, None]:
-        return None, 0
+        return data, 0
     else:
         ctag = pathname.replace("/", "")
 
@@ -305,4 +311,4 @@ def generate_interval_fig(n_clicks, start_date, pathname):
 
 
 if __name__ == "__main__":
-    app.run_server(debug=True, port=8880)
+    app.run_server(debug=True, port=8881)
