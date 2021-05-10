@@ -5,11 +5,14 @@ This module will calculate and save json files with results.
 import ccp
 import pandas as pd
 import numpy as np
+import schedule
 import time
+from datetime import datetime
 from pathlib import Path
 
 Q_ = ccp.Q_
 CCP_PATH = Path(ccp.__file__).parent
+DATA_PATH = CCP_PATH / "app/data"
 
 # ----------------------
 # Data
@@ -102,7 +105,7 @@ class Data:
 data = Data(df)
 
 
-def calculate_performance(tag, time):
+def calculate_performance(tag, run_time):
     # TODO get data from PI
     # TODO organize data into required format
     data_tag = getattr(data, f"df{tag}")
@@ -155,6 +158,34 @@ def calculate_performance(tag, time):
     return imp_st, point_st, sample_time
 
 
+def run_save_json(tag, run_time):
+    print(f"Running {tag} : {run_time}")
+    imp_op, point_op, sample_time = calculate_performance(tag, run_time)
+
+    for curve in ["head", "eff", "power"]:
+        # Head
+        fig = getattr(imp_op, f"{curve}_plot")(
+            flow_v=point_op.flow_v, speed=point_op.speed, speed_units="RPM"
+        )
+        fig = getattr(point_op, f"{curve}_plot")(
+            fig=fig, speed_units="RPM", name="Operation Point"
+        )
+
+        fig.for_each_trace(
+            lambda trace: trace.update(name="Expected Point")
+            if "Flow" in trace.name
+            else ()
+        )
+        run_time = str(run_time)[:19].replace(" ", "_").replace(":", "-")
+        fig.write_json(
+            str(
+                DATA_PATH
+                / f"C_1231_{tag.capitalize()}_{curve}_plot-time-{run_time}.json"
+            )
+        )
+    print(f"Finished {tag} : {run_time}")
+
+
 if __name__ == "__main__":
     composition_fd = dict(
         n2=0.4,
@@ -183,3 +214,14 @@ if __name__ == "__main__":
         flow_units="kg/h",
         head_units="kJ/kg",
     )
+
+    # download data
+    # run
+    run_time = datetime.now()
+
+    for tag in ["a", "b"]:
+        schedule.every(2).minutes.do(run_save_json, tag, run_time)
+
+    while True:
+        schedule.run_pending()
+        time.sleep(1)
