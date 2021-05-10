@@ -51,7 +51,6 @@ setup(
     long_description_content_type="text/markdown",
     author="Raphael Timbó",
     author_email="raphaelts@gmail.com",
-    packages=find_packages(exclude=("tests",)),
     package_data={"ccp.config": ["new_units.txt"]},
     install_requires=[
         "numpy",
