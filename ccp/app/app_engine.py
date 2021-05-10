@@ -1,6 +1,11 @@
+"""Module responsible for calculation.
+
+This module will calculate and save json files with results.
+"""
 import ccp
 import pandas as pd
 import numpy as np
+import time
 from pathlib import Path
 
 Q_ = ccp.Q_
@@ -16,37 +21,6 @@ df = pd.read_csv(
 df = df.set_index("Unnamed: 0")
 df.index.name = None
 
-composition_fd = dict(
-    n2=0.4,
-    co2=0.22,
-    methane=92.11,
-    ethane=4.94,
-    propane=1.71,
-    ibutane=0.24,
-    butane=0.3,
-    ipentane=0.04,
-    pentane=0.03,
-    hexane=0.01,
-)
-suc_fd = ccp.State.define(p=Q_(3876, "kPa"), T=Q_(11, "degC"), fluid=composition_fd)
-
-curve_name = "normal"
-curve_path = Path(CCP_PATH / "tests/data")
-
-imp_fd = ccp.Impeller.load_from_engauge_csv(
-    suc=suc_fd,
-    curve_name=curve_name,
-    curve_path=curve_path,
-    b=Q_(10.6, "mm"),
-    D=Q_(390, "mm"),
-    number_of_points=6,
-    flow_units="kg/h",
-    head_units="kJ/kg",
-)
-
-imp_fd.suc = imp_fd.points[0].suc
-imp_fd.flow_v = imp_fd.points[0].flow_v
-imp_fd.speed = imp_fd.points[0].speed
 
 tags_a = {
     "Ts": "UTGCA_1231_TIT_218_A",  # Temperatura de sucção
@@ -179,3 +153,33 @@ def calculate_performance(tag, time):
     )
 
     return imp_st, point_st, sample_time
+
+
+if __name__ == "__main__":
+    composition_fd = dict(
+        n2=0.4,
+        co2=0.22,
+        methane=92.11,
+        ethane=4.94,
+        propane=1.71,
+        ibutane=0.24,
+        butane=0.3,
+        ipentane=0.04,
+        pentane=0.03,
+        hexane=0.01,
+    )
+    suc_fd = ccp.State.define(p=Q_(3876, "kPa"), T=Q_(11, "degC"), fluid=composition_fd)
+
+    curve_name = "normal"
+    curve_path = Path(CCP_PATH / "tests/data")
+
+    imp_fd = ccp.Impeller.load_from_engauge_csv(
+        suc=suc_fd,
+        curve_name=curve_name,
+        curve_path=curve_path,
+        b=Q_(10.6, "mm"),
+        D=Q_(390, "mm"),
+        number_of_points=6,
+        flow_units="kg/h",
+        head_units="kJ/kg",
+    )

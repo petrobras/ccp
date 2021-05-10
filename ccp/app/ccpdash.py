@@ -6,7 +6,7 @@ import numpy as np
 import plotly.graph_objs as go
 from dash.dependencies import Input, Output
 from dash.exceptions import PreventUpdate
-from calculate_performance import calculate_performance
+from app_engine import calculate_performance
 
 app = dash.Dash(external_stylesheets=[dbc.themes.FLATLY], title="ccp - Dashboard")
 app.config.suppress_callback_exceptions = True
