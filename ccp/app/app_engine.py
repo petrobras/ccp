@@ -189,7 +189,7 @@ def calculate_performance(tag, run_time, imp_fd):
     return imp_st, point_st, sample_time
 
 
-def run_save_json(tag, run_time):
+def run_save_json(tag, run_time, imp_fd):
     run_time = datetime.now()
     print(f"Running {tag} : {run_time}")
     # erase old tags for that tag
@@ -197,7 +197,7 @@ def run_save_json(tag, run_time):
     old_files = [f for f in old_files if f"C-1231-{tag.capitalize()}" in str(f)]
     for f in old_files:
         f.unlink()
-    imp_op, point_op, sample_time = calculate_performance(tag, run_time)
+    imp_op, point_op, sample_time = calculate_performance(tag, run_time, imp_fd)
 
     for curve in ["head", "eff", "power"]:
         # Head
