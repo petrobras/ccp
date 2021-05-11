@@ -195,8 +195,7 @@ def run_save_json(tag, run_time, imp_fd):
     # erase old tags for that tag
     old_files = [f for f in DATA_PATH.glob("*.json")]
     old_files = [f for f in old_files if f"C-1231-{tag.capitalize()}" in str(f)]
-    for f in old_files:
-        f.unlink()
+
     imp_op, point_op, sample_time = calculate_performance(tag, run_time, imp_fd)
 
     for curve in ["head", "eff", "power"]:
@@ -220,6 +219,9 @@ def run_save_json(tag, run_time, imp_fd):
                 / f"C-1231-{tag.capitalize()}_{curve}_plot-time-{run_time}.json"
             )
         )
+
+    for f in old_files:
+        f.unlink()
     print(f"Finished {tag} : {run_time}")
 
 
