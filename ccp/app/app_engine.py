@@ -105,7 +105,38 @@ class Data:
 data = Data(df)
 
 
-def calculate_performance(tag, run_time):
+def get_imp_fd():
+    composition_fd = dict(
+        n2=0.4,
+        co2=0.22,
+        methane=92.11,
+        ethane=4.94,
+        propane=1.71,
+        ibutane=0.24,
+        butane=0.3,
+        ipentane=0.04,
+        pentane=0.03,
+        hexane=0.01,
+    )
+    suc_fd = ccp.State.define(p=Q_(3876, "kPa"), T=Q_(11, "degC"), fluid=composition_fd)
+
+    curve_name = "normal"
+    curve_path = Path(CCP_PATH / "tests/data")
+
+    imp_fd = ccp.Impeller.load_from_engauge_csv(
+        suc=suc_fd,
+        curve_name=curve_name,
+        curve_path=curve_path,
+        b=Q_(10.6, "mm"),
+        D=Q_(390, "mm"),
+        number_of_points=6,
+        flow_units="kg/h",
+        head_units="kJ/kg",
+    )
+    return imp_fd
+
+
+def calculate_performance(tag, run_time, imp_fd):
     # TODO get data from PI
     # TODO organize data into required format
     data_tag = getattr(data, f"df{tag}")
@@ -159,7 +190,13 @@ def calculate_performance(tag, run_time):
 
 
 def run_save_json(tag, run_time):
+    run_time = datetime.now()
     print(f"Running {tag} : {run_time}")
+    # erase old tags for that tag
+    old_files = [f for f in DATA_PATH.glob("*.json")]
+    old_files = [f for f in old_files if f"C-1231-{tag.capitalize()}" in str(f)]
+    for f in old_files:
+        f.unlink()
     imp_op, point_op, sample_time = calculate_performance(tag, run_time)
 
     for curve in ["head", "eff", "power"]:
@@ -180,47 +217,20 @@ def run_save_json(tag, run_time):
         fig.write_json(
             str(
                 DATA_PATH
-                / f"C_1231_{tag.capitalize()}_{curve}_plot-time-{run_time}.json"
+                / f"C-1231-{tag.capitalize()}_{curve}_plot-time-{run_time}.json"
             )
         )
     print(f"Finished {tag} : {run_time}")
 
 
 if __name__ == "__main__":
-    composition_fd = dict(
-        n2=0.4,
-        co2=0.22,
-        methane=92.11,
-        ethane=4.94,
-        propane=1.71,
-        ibutane=0.24,
-        butane=0.3,
-        ipentane=0.04,
-        pentane=0.03,
-        hexane=0.01,
-    )
-    suc_fd = ccp.State.define(p=Q_(3876, "kPa"), T=Q_(11, "degC"), fluid=composition_fd)
-
-    curve_name = "normal"
-    curve_path = Path(CCP_PATH / "tests/data")
-
-    imp_fd = ccp.Impeller.load_from_engauge_csv(
-        suc=suc_fd,
-        curve_name=curve_name,
-        curve_path=curve_path,
-        b=Q_(10.6, "mm"),
-        D=Q_(390, "mm"),
-        number_of_points=6,
-        flow_units="kg/h",
-        head_units="kJ/kg",
-    )
-
+    imp_fd = get_imp_fd()
     # download data
     # run
     run_time = datetime.now()
 
     for tag in ["a", "b"]:
-        schedule.every(2).minutes.do(run_save_json, tag, run_time)
+        schedule.every(2).minutes.do(run_save_json, tag, run_time, imp_fd)
 
     while True:
         schedule.run_pending()

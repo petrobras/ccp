@@ -1,17 +1,21 @@
+import ccp
 import dash
 import dash_bootstrap_components as dbc
 import dash_core_components as dcc
 import dash_html_components as html
 import numpy as np
 import plotly.graph_objs as go
+import plotly.io as pio
+from pathlib import Path
 from dash.dependencies import Input, Output
 from dash.exceptions import PreventUpdate
-from app_engine import calculate_performance
+from app_engine import calculate_performance, get_imp_fd
 
 app = dash.Dash(external_stylesheets=[dbc.themes.FLATLY], title="ccp - Dashboard")
 app.config.suppress_callback_exceptions = True
 
 
+DATA_PATH = Path(ccp.__file__).parent / "app/data"
 COMPRESSOR_TAGS = ["C-1231-A", "C-1231-B"]  # , "C-1231-C", "C-1231-D", "C-1231-E"]
 
 
@@ -217,37 +221,27 @@ def generate_graphs(n_intervals):
     print("running")
     print("n_intervals: ", n_intervals)
 
-    # generate 100 multivariate normal samples
-    data = np.random.multivariate_normal([0, 0], [[1, 0.5], [0.5, 1]], 100)
-
-    scatter = go.Figure(data=[go.Scatter(x=data[:, 0], y=data[:, 1], mode="markers")])
-    hist_1 = go.Figure(data=[go.Histogram(x=data[:, 0])])
-    hist_2 = go.Figure(data=[go.Histogram(x=data[:, 1])])
-
     results_dict = {}
 
     for ctag in COMPRESSOR_TAGS:
-        print(f"Calculating {ctag}.")
-        imp_op, point_op, sample_time = calculate_performance(
-            ctag.split("-")[-1].lower(), n_intervals
-        )
+        print(f"Loading {ctag}.")
+        json_files = [str(f) for f in DATA_PATH.glob("*.json")]
+        json_files = [f for f in json_files if ctag in f]
+        json_files = sorted(json_files)
 
-        results_dict[f"sample-time-{ctag}"] = sample_time
+        eff_file = json_files[0]
+        sample_datetime_raw = eff_file.split("time-")[-1]
+        sample_date, sample_time = sample_datetime_raw.split("_")
+        sample_time = sample_time.replace("-", ":").replace(".json", "")
+
+        sample_datetime = sample_date + " " + sample_time
+
+        results_dict[f"sample-time-{ctag}"] = sample_datetime
 
         for curve in ["head", "eff", "power"]:
             # Head
-            fig = getattr(imp_op, f"{curve}_plot")(
-                flow_v=point_op.flow_v, speed=point_op.speed, speed_units="RPM"
-            )
-            fig = getattr(point_op, f"{curve}_plot")(
-                fig=fig, speed_units="RPM", name="Operation Point"
-            )
-
-            fig.for_each_trace(
-                lambda trace: trace.update(name="Expected Point")
-                if "Flow" in trace.name
-                else ()
-            )
+            file_path = DATA_PATH / f"{ctag}_{curve}_plot-time-{sample_datetime_raw}"
+            fig = pio.read_json(str(file_path))
             results_dict[f"{curve}-{ctag}"] = fig
 
     # save figures in a dictionary for sending to the dcc.Store
@@ -281,7 +275,7 @@ def generate_interval_fig(n_clicks, start_date, pathname, data):
 
         print(f"Calculating {ctag} interval.")
         imp_op, point_op, sample_time = calculate_performance(
-            ctag.split("-")[-1].lower(), 10
+            ctag.split("-")[-1].lower(), 10, imp_fd
         )
 
         results_dict[f"sample-time-{ctag}"] = sample_time
@@ -311,4 +305,5 @@ def generate_interval_fig(n_clicks, start_date, pathname, data):
 
 
 if __name__ == "__main__":
+    imp_fd = get_imp_fd()
     app.run_server(debug=True, port=8881)
