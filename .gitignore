@@ -95,3 +95,4 @@ ENV/
 /ccp/tests/.pytest_cache/
 /ccp.egg-info/
 /docs/references/generated/
+/ccp/app/data/**/
