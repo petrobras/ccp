@@ -18,10 +18,8 @@ Ts = 300
 
 # Define the fluid as a dictionary:
 fluid = {
-    "CarbonDioxide": 0.79585,
-    "R134a": 0.16751,
-    "Nitrogen": 0.02903,
-    "Oxygen": 0.00761,
+    "CarbonDioxide": 0.8,
+    "Nitrogen": 0.2,
 }
 
 # Define suction and discharge states:
@@ -37,7 +35,7 @@ point0 = ccp.Point(
     speed=Q_(7941, 'RPM'),
     flow_m=Q_(34203.6, 'kg/hr'),
     b=0.0285,
-    D=0.365)
+    D=0.365,
 )
 point1...
 
