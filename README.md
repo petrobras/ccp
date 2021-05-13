@@ -36,7 +36,7 @@ point0 = ccp.Point(
     speed=Q_(7941, 'RPM'),
     flow_m=Q_(34203.6, 'kg/hr'),
     b=0.0285,
-    D=0.365)
+    D=0.365
 )
 point1...
 
