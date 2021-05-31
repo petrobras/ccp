@@ -631,7 +631,15 @@ def head_pol_mallen_saville(suc, disch):
     return head
 
 
-def head_reference(suc, disch):
+_ref_H = 0
+_ref_n = []
+_ref_k = []
+_ref_p = []
+_ref_v = []
+_ref_vs = []
+
+
+def head_reference(suc, disch, num_steps=100):
     """Reference head as described by Huntington (1985).
 
     It consists of two loops.
@@ -658,41 +666,50 @@ def head_reference(suc, disch):
 
     """
 
-    def calc_step_discharge_temp(T1, T0, self, p1, e):
-        s0 = State.define(p=self, T=T0, fluid=suc.fluid)
+    def calc_step_discharge_temp(T1, T0, p0, p1, e):
+        s0 = State.define(p=p0, T=T0, fluid=suc.fluid)
         s1 = State.define(p=p1, T=T1, fluid=suc.fluid)
         h0 = s0.h()
         h1 = s1.h()
 
         vm = ((1 / s0.rho()) + (1 / s1.rho())) / 2
-        delta_p = Q_(p1 - self, "Pa")
+        delta_p = Q_(p1 - p0, "Pa")
         H0 = vm * delta_p
         H1 = e * (h1 - h0)
 
         return (H1 - H0).magnitude
 
     def calc_eff(e, suc, disch):
-        p_intervals = np.linspace(suc.p(), disch.p(), 1000)
+        p_intervals = np.linspace(suc.p().m, disch.p().m, num_steps + 1)
 
         T0 = suc.T().magnitude
 
-        _ref_H = 0
-        _ref_n = []
+        global _ref_H
+        global _ref_n
+        global _ref_k
+        global _ref_p
+        global _ref_v
+        global _ref_vs
 
-        for self, p1 in zip(p_intervals[:-1], p_intervals[1:]):
-            T1 = newton(calc_step_discharge_temp, (T0 + 1e-3), args=(T0, self, p1, e))
+        for p0, p1 in zip(p_intervals[:-1], p_intervals[1:]):
+            T1 = newton(calc_step_discharge_temp, (T0 + 1e-3), args=(T0, p0, p1, e))
 
-            s0 = State.define(p=self, T=T0, fluid=suc.fluid)
+            s0 = State.define(p=p0, T=T0, fluid=suc.fluid)
             s1 = State.define(p=p1, T=T1, fluid=suc.fluid)
-            step_point = Point(flow_m=1, speed=1, suc=s0, disch=s1)
-
-            _ref_H += step_point._head_pol()
-            _ref_n.append(step_point._n_exp())
+            s1s = State.define(p=p1, s=s0.s(), fluid=suc.fluid)
+            _ref_H += head_polytropic(s0, s1)
+            _ref_n.append(n_exp(s0, s1))
+            _ref_p.append(np.mean((s0.p().m, s1.p().m)))
+            _ref_v.append(np.mean((s0.v().m, s1.v().m)))
+            _ref_vs.append(np.mean((s0.v().m, s1s.v().m)))
+            _ref_k.append(n_exp(s0, s1s))
             T0 = T1
 
         return disch.T().magnitude - T1
 
     _ref_eff = newton(calc_eff, 0.8, args=(suc, disch))
+
+    return _ref_H, _ref_eff, _ref_n[-num_steps:], _ref_k[-num_steps:], _ref_p[-num_steps:], _ref_v[-num_steps:], _ref_vs[-num_steps:]
 
 
 @check_units
