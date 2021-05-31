@@ -691,6 +691,13 @@ def head_reference(suc, disch, num_steps=100):
         global _ref_v
         global _ref_vs
 
+        _ref_H = 0
+        _ref_n = []
+        _ref_k = []
+        _ref_p = []
+        _ref_v = []
+        _ref_vs = []
+
         for p0, p1 in zip(p_intervals[:-1], p_intervals[1:]):
             T1 = newton(calc_step_discharge_temp, (T0 + 1e-3), args=(T0, p0, p1, e))
 
@@ -709,7 +716,7 @@ def head_reference(suc, disch, num_steps=100):
 
     _ref_eff = newton(calc_eff, 0.8, args=(suc, disch))
 
-    return _ref_H, _ref_eff, _ref_n[-num_steps:], _ref_k[-num_steps:], _ref_p[-num_steps:], _ref_v[-num_steps:], _ref_vs[-num_steps:]
+    return _ref_H, _ref_eff, _ref_n, _ref_k, _ref_p, _ref_v, _ref_vs
 
 
 @check_units
