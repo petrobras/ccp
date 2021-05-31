@@ -26,15 +26,15 @@ class State(CP.AbstractState):
 
     Parameters
     ----------
-    p : float
+    p : float, pint.Quantity
         Pressure
-    T : float
+    T : float, pint.Quantity
         Temperature
-    h : float
+    h : float, pint.Quantity
         Enthalpy
-    s : float
+    s : float, pint.Quantity
         Entropy
-    rho : float
+    rho : float, pint.Quantity
         Specific mass
 
     fluid : dict
@@ -353,20 +353,19 @@ class State(CP.AbstractState):
         """Constructor for state.
 
         Creates a state from fluid composition and two properties.
-        Properties should be in SI units, **kwargs can be passed
-        to change units.
+        Properties can be floats (SI units are considered) or pint quantities.
 
         Parameters
         ----------
-        p : float
+        p : float, pint.Quantity
             Pressure
-        T : float
+        T : float, pint.Quantity
             Temperature
-        h : float
+        h : float, pint.Quantity
             Enthalpy
-        s : float
+        s : float, pint.Quantity
             Entropy
-        rho : float
+        rho : float, pint.Quantity
             Specific mass
 
         fluid : dict
