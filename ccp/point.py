@@ -672,7 +672,7 @@ def head_reference(suc, disch, num_steps=100):
         h0 = s0.h()
         h1 = s1.h()
 
-        vm = ((1 / s0.rho()) + (1 / s1.rho())) / 2
+        vm = (s0.v() + s1.v()) / 2
         delta_p = Q_(p1 - p0, "Pa")
         H0 = vm * delta_p
         H1 = e * (h1 - h0)
