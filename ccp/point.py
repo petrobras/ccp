@@ -289,12 +289,15 @@ class Point:
         self.volume_ratio = self.suc.v() / self.disch.v()
 
     @classmethod
-    def convert_from(cls, original_point, suc=None, find="speed"):
+    @check_units
+    def convert_from(cls, original_point, suc=None, find="speed", speed=None):
         """Convert point from an original point.
 
         The user must provide 3 of the 4 available arguments. The argument which is not
         provided will be calculated.
         """
+        if speed is None:
+            speed = original_point.speed
         convert_point_options = {
             "speed": dict(
                 suc=suc,
@@ -310,7 +313,7 @@ class Point:
                 eff=original_point.eff,
                 phi=original_point.phi,
                 psi=original_point.psi,
-                speed=original_point.speed,
+                speed=speed,
                 b=original_point.b,
                 D=original_point.D,
             ),
@@ -698,6 +701,7 @@ def head_reference(suc, disch, num_steps=100):
         _ref_v = []
         _ref_vs = []
 
+        # TODO implement p_intervals considering pressure ratio
         for p0, p1 in zip(p_intervals[:-1], p_intervals[1:]):
             T1 = newton(calc_step_discharge_temp, (T0 + 1e-3), args=(T0, p0, p1, e))
 
