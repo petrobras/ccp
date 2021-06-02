@@ -143,28 +143,33 @@ def test_f_sandberg_colby(suc_0, disch_0):
 
 
 def test_point_head_pol(suc_0, disch_0):
-    assert head_polytropic(suc_0, disch_0).units == "joule/kilogram"
-    assert_allclose(head_polytropic(suc_0, disch_0), 82741.114339)
+    h = head_polytropic(suc_0, disch_0)
+    assert h.units == "joule/kilogram"
+    assert_allclose(h, 82741.114339)
 
 
 def test_head_pol_schultz(suc_0, disch_0):
-    assert head_pol_schultz(suc_0, disch_0).units == "joule/kilogram"
-    assert_allclose(head_pol_schultz(suc_0, disch_0), 82877.366038, rtol=1e-6)
+    h = head_pol_schultz(suc_0, disch_0)
+    assert h.units == "joule/kilogram"
+    assert_allclose(h, 82877.366038, rtol=1e-6)
 
 
 def test_head_pol_sandberg_colby(suc_0, disch_0):
-    assert head_pol_sandberg_colby(suc_0, disch_0).units == "joule/kilogram"
-    assert_allclose(head_pol_sandberg_colby(suc_0, disch_0), 82816.596731, rtol=1e-6)
+    h = head_pol_sandberg_colby(suc_0, disch_0)
+    assert h.units == "joule/kilogram"
+    assert_allclose(h, 82816.596731, rtol=1e-6)
 
 
 def test_point_head_pol_mallen_saville(suc_0, disch_0):
-    assert head_pol_mallen_saville(suc_0, disch_0).units == "joule/kilogram"
-    assert_allclose(head_pol_mallen_saville(suc_0, disch_0), 83006.348299)
+    h = head_pol_mallen_saville(suc_0, disch_0)
+    assert h.units == "joule/kilogram"
+    assert_allclose(h, 83006.348299)
 
 
 def test_point_head_isen(suc_0, disch_0):
-    assert head_isentropic(suc_0, disch_0).units == "joule/kilogram"
-    assert_allclose(head_isentropic(suc_0, disch_0).magnitude, 79984.234009, rtol=1e-5)
+    h = head_isentropic(suc_0, disch_0)
+    assert h.units == "joule/kilogram"
+    assert_allclose(h.magnitude, 79984.234009, rtol=1e-5)
 
 
 def test_head_reference(suc_0, disch_0):
