@@ -540,7 +540,7 @@ def eff_isentropic(suc, disch):
 
 
 def f_schultz(suc, disch):
-    """Schultz factor.
+    """Correction factor as per :cite:`schultz1962`.
 
     Parameters
     ----------
@@ -566,7 +566,7 @@ def f_schultz(suc, disch):
 
 
 def head_pol_schultz(suc, disch):
-    """Polytropic head corrected by the Schultz factor.
+    """Polytropic head corrected by the :cite:`schultz1962` factor.
 
     Parameters
     ----------
@@ -588,7 +588,7 @@ def head_pol_schultz(suc, disch):
 
 
 def eff_pol_schultz(suc, disch):
-    """Schultz polytropic efficiency.
+    """Polytropic efficiency as per :cite:`schultz1962`.
 
     Parameters
     ----------
@@ -609,7 +609,7 @@ def eff_pol_schultz(suc, disch):
 
 
 def head_pol_mallen_saville(suc, disch):
-    """Polytropic head as per Mallen-Saville
+    """Polytropic head as per :cite:`mallen1977polytropic`.
 
     Parameters
     ----------
@@ -631,19 +631,40 @@ def head_pol_mallen_saville(suc, disch):
     return head
 
 
+def eff_pol_mallen_saville(suc, disch):
+    """Polytropic efficiency as per :cite:`mallen1977polytropic`.
+
+    Parameters
+    ----------
+    suc : ccp.State
+        Suction state.
+    disch : ccp.State
+        Discharge state.
+
+    Returns
+    -------
+    eff_pol_mallen_saville : pint.Quantity
+        Mallen-Saville polytropic efficiency (dimensionless).
+    """
+    wp = head_pol_mallen_saville(suc, disch)
+    dh = disch.h() - suc.h()
+
+    return (wp / dh).to("dimensionless")
+
+
 _ref_H = 0
 
 
 def head_reference(suc, disch, num_steps=100):
-    """Reference head as described by Huntington (1985).
+    """Reference head as described by :cite:`huntington1985`.
 
     It consists of two loops.
     One converges the T1 temperature at each step by evaluating the
-    diffence between H = vm * delta_p and H = eff * delta_h.
+    difference between H = vm * delta_p and H = eff * delta_h.
     The other evaluates the efficiency by checking the difference between
     the last T1 to the discharge temperature Td.
 
-    Results are stored at self._ref_eff, self._ref_H and self._ref_n.
+    Results are stored at _ref_eff, _ref_H and _ref_n.
     self._ref_n is a list with n_exp at each step for the final converged
     efficiency.
 
@@ -657,9 +678,9 @@ def head_reference(suc, disch, num_steps=100):
     Returns
     -------
     head_reference : pint.Quantity
-       Reference head as described by Huntington (1985) (J/kg).
+       Reference head as described by :cite:`huntington1985`. (J/kg).
     eff_reference : float
-        Reference efficiency as described by Huntington (1985) (dimensionless).
+        Reference efficiency as described by :cite:`huntington1985` (dimensionless).
     """
 
     def calc_step_discharge_temp(T1, p1, p0, h0, v0, e):
@@ -771,6 +792,10 @@ def eff_pol_sandberg_colby(suc, disch):
     dh = disch.h() - suc.h()
 
     return (wp / dh).to("dimensionless")
+
+
+def head_pol_huntington(suc, disch):
+    """"""
 
 
 @check_units
