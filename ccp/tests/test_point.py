@@ -162,7 +162,7 @@ def test_eff_isentropic(suc_0, disch_0):
 
 
 def test_schultz_f(suc_0, disch_0):
-    assert_allclose(schultz_f(suc_0, disch_0), 1.001647, rtol=1e-5)
+    assert_allclose(f_schultz(suc_0, disch_0), 1.001647, rtol=1e-5)
 
 
 def test_head_pol_schultz(suc_0, disch_0):

@@ -539,7 +539,7 @@ def eff_isentropic(suc, disch):
     return ws / dh
 
 
-def schultz_f(suc, disch):
+def f_schultz(suc, disch):
     """Schultz factor.
 
     Parameters
@@ -551,7 +551,7 @@ def schultz_f(suc, disch):
 
     Returns
     -------
-    schultz_f : float
+    f_schultz : float
         Schultz polytropic factor.
     """
 
@@ -581,7 +581,7 @@ def head_pol_schultz(suc, disch):
         Schultz polytropic head (J/kg).
     """
 
-    f = schultz_f(suc, disch)
+    f = f_schultz(suc, disch)
     head = head_polytropic(suc, disch)
 
     return f * head
@@ -599,7 +599,7 @@ def eff_pol_schultz(suc, disch):
 
     Returns
     -------
-    head_pol_schultz : pint.Quantity
+    eff_pol_schultz : pint.Quantity
         Schultz polytropic efficiency (dimensionless).
     """
     wp = head_pol_schultz(suc, disch)
