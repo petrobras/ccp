@@ -54,6 +54,8 @@ extensions = [
 ]
 
 bibtex_bibfiles = ["references.bib"]
+bibtex_default_style = "alpha"
+bibtex_reference_style = "author_year"
 
 # Generate the API documentation when building
 autosummary_generate = True
