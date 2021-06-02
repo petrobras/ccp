@@ -695,7 +695,13 @@ def head_reference(suc, disch, num_steps=100):
         return (H1 - H0).magnitude
 
     def calc_eff(e, suc, disch):
-        p_intervals = np.linspace(suc.p().m, disch.p().m, num_steps + 1)
+        rc = (disch.p().m / suc.p().m) ** (1 / num_steps)
+        p_intervals = [suc.p().m]
+        p = suc.p().m
+        for i in range(num_steps):
+            next_p = p * rc
+            p = next_p
+            p_intervals.append(p)
 
         T0 = suc.T().magnitude
 
