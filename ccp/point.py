@@ -632,11 +632,6 @@ def head_pol_mallen_saville(suc, disch):
 
 
 _ref_H = 0
-_ref_n = []
-_ref_k = []
-_ref_p = []
-_ref_v = []
-_ref_vs = []
 
 
 def head_reference(suc, disch, num_steps=100):
@@ -663,16 +658,15 @@ def head_reference(suc, disch, num_steps=100):
     -------
     head_reference : pint.Quantity
        Reference head as described by Huntington (1985) (J/kg).
-
+    eff_reference : float
+        Reference efficiency as described by Huntington (1985) (dimensionless).
     """
 
-    def calc_step_discharge_temp(T1, T0, p0, p1, e):
-        s0 = State.define(p=p0, T=T0, fluid=suc.fluid)
+    def calc_step_discharge_temp(T1, p1, p0, h0, v0, e):
         s1 = State.define(p=p1, T=T1, fluid=suc.fluid)
-        h0 = s0.h()
         h1 = s1.h()
 
-        vm = (s0.v() + s1.v()) / 2
+        vm = (v0 + s1.v()) / 2
         delta_p = Q_(p1 - p0, "Pa")
         H0 = vm * delta_p
         H1 = e * (h1 - h0)
@@ -685,38 +679,24 @@ def head_reference(suc, disch, num_steps=100):
         T0 = suc.T().magnitude
 
         global _ref_H
-        global _ref_n
-        global _ref_k
-        global _ref_p
-        global _ref_v
-        global _ref_vs
 
         _ref_H = 0
-        _ref_n = []
-        _ref_k = []
-        _ref_p = []
-        _ref_v = []
-        _ref_vs = []
 
         for p0, p1 in zip(p_intervals[:-1], p_intervals[1:]):
-            T1 = newton(calc_step_discharge_temp, (T0 + 1e-3), args=(T0, p0, p1, e))
-
             s0 = State.define(p=p0, T=T0, fluid=suc.fluid)
+            T1 = newton(
+                calc_step_discharge_temp, (T0 + 1e-3), args=(p1, p0, s0.h(), s0.v(), e)
+            )
             s1 = State.define(p=p1, T=T1, fluid=suc.fluid)
-            s1s = State.define(p=p1, s=s0.s(), fluid=suc.fluid)
             _ref_H += head_polytropic(s0, s1)
-            _ref_n.append(n_exp(s0, s1))
-            _ref_p.append(np.mean((s0.p().m, s1.p().m)))
-            _ref_v.append(np.mean((s0.v().m, s1.v().m)))
-            _ref_vs.append(np.mean((s0.v().m, s1s.v().m)))
-            _ref_k.append(n_exp(s0, s1s))
+
             T0 = T1
 
         return disch.T().magnitude - T1
 
     _ref_eff = newton(calc_eff, 0.8, args=(suc, disch))
 
-    return _ref_H, _ref_eff, _ref_n, _ref_k, _ref_p, _ref_v, _ref_vs
+    return _ref_H, _ref_eff
 
 
 @check_units
