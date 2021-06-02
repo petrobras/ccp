@@ -795,7 +795,90 @@ def eff_pol_sandberg_colby(suc, disch):
 
 
 def head_pol_huntington(suc, disch):
-    """"""
+    """Polytropic head calculated by the 3 point method described by :cite:`huntington1985`.
+
+    Parameters
+    ----------
+    suc : ccp.State
+        Suction state.
+    disch : ccp.State
+        Discharge state.
+
+    Returns
+    -------
+    head_pol_huntington : pint.Quantity
+       Polytropic head as described by :cite:`huntington1985` (J/kg).
+    """
+    eff = eff_pol_huntington(suc, disch)
+    head = (disch.h() - suc.h()) * eff
+
+    return head
+
+
+def eff_pol_huntington(suc, disch):
+    """Polytropic efficiency calculated by the 3 point method described by :cite:`huntington1985`.
+
+    Parameters
+    ----------
+    suc : ccp.State
+        Suction state.
+    disch : ccp.State
+        Discharge state.
+
+    Returns
+    -------
+    eff_pol_huntington : pint.Quantity
+       Polytropic efficiency as described by :cite:`huntington1985` (dimensionless).
+    """
+    p1 = suc.p()
+    p2 = disch.p()
+    s1 = suc.s()
+    s2 = disch.s()
+    z1 = suc.z()
+    z2 = disch.z()
+    T1 = suc.T()
+    T2 = disch.T()
+    p3 = np.sqrt(p1 * p2)
+
+    T3 = np.sqrt(T1 * T2)
+    error = 1
+    n = 0
+    while error > 1e-10:
+        state3 = State.define(p=p3, T=T3, fluid=suc.fluid)
+        s3 = state3.s()
+        z3 = state3.z()
+        cp3 = state3.cp()
+        b = (z1 + z2 - 2 * z3) / (np.sqrt(p2 / p1) - 1) ** 2
+        a = z1 - b
+        c = (z2 - a - b * (p2 / p1)) / np.log(p2 / p1)
+        s3_ = s1 + (s2 - s1) * (
+            (
+                ((a / 2) * np.log(p2 / p1))
+                + b * (np.sqrt(p2 / p1) - 1)
+                + (c / 8) * np.log(p2 / p1) ** 2
+            )
+            / (
+                a * np.log(p2 / p1)
+                + b * ((p2 / p1) - 1)
+                + (c / 2) * np.log(p2 / p1) ** 2
+            )
+        )
+        T3_new = T3 * np.exp((s3_ - s3) / cp3)
+        error = abs(T3_new - T3).m
+        T3 = T3_new
+
+        n += 1
+        if n == 100:
+            raise RecursionError("Maximum number of iterations exceeded.")
+
+    R = suc.gas_constant() / suc.molar_mass()
+    inv_e = 1 + (
+        ((s2 - s1) / R)
+        / (a * np.log(p2 / p1) + b * ((p2 / p1) - 1) + (c / 2) * np.log(p2 / p1) ** 2)
+    )
+    eff = 1 / inv_e
+
+    return eff
 
 
 @check_units

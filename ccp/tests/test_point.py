@@ -178,12 +178,22 @@ def test_head_reference(suc_0, disch_0):
     assert_allclose(h, 82951.470027, rtol=1e-6)
 
 
+def test_head_pol_huntington(suc_0, disch_0):
+    h = head_pol_huntington(suc_0, disch_0)
+    assert h.units == "joule/kilogram"
+    assert_allclose(h, 82951.470027, rtol=1e-6)
+
+
 def test_point_eff_polytropic(suc_0, disch_0):
     assert_allclose(eff_polytropic(suc_0, disch_0), 0.796499, rtol=1e-5)
 
 
 def test_point_eff_pol_schultz(suc_0, disch_0):
     assert_allclose(eff_pol_schultz(suc_0, disch_0), 0.797811, rtol=1e-5)
+
+
+def test_point_eff_pol_huntington(suc_0, disch_0):
+    assert_allclose(eff_pol_huntington(suc_0, disch_0), 0.798524, rtol=1e-5)
 
 
 def test_eff_isentropic(suc_0, disch_0):
