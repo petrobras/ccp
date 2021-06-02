@@ -134,14 +134,43 @@ def test_point_n_exp(suc_0, disch_0):
     assert_allclose(n_exp(suc_0, disch_0), 1.396545, rtol=1e-6)
 
 
+def test_f_schultz(suc_0, disch_0):
+    assert_allclose(f_schultz(suc_0, disch_0), 1.001647, rtol=1e-5)
+
+
+def test_f_sandberg_colby(suc_0, disch_0):
+    assert_allclose(f_sandberg_colby(suc_0, disch_0), 1.000912, rtol=1e-5)
+
+
 def test_point_head_pol(suc_0, disch_0):
     assert head_polytropic(suc_0, disch_0).units == "joule/kilogram"
     assert_allclose(head_polytropic(suc_0, disch_0), 82741.114339)
 
 
+def test_head_pol_schultz(suc_0, disch_0):
+    assert head_pol_schultz(suc_0, disch_0).units == "joule/kilogram"
+    assert_allclose(head_pol_schultz(suc_0, disch_0), 82877.366038, rtol=1e-6)
+
+
+def test_head_pol_sandberg_colby(suc_0, disch_0):
+    assert head_pol_sandberg_colby(suc_0, disch_0).units == "joule/kilogram"
+    assert_allclose(head_pol_sandberg_colby(suc_0, disch_0), 82816.596731, rtol=1e-6)
+
+
 def test_point_head_pol_mallen_saville(suc_0, disch_0):
     assert head_pol_mallen_saville(suc_0, disch_0).units == "joule/kilogram"
     assert_allclose(head_pol_mallen_saville(suc_0, disch_0), 83006.348299)
+
+
+def test_point_head_isen(suc_0, disch_0):
+    assert head_isentropic(suc_0, disch_0).units == "joule/kilogram"
+    assert_allclose(head_isentropic(suc_0, disch_0).magnitude, 79984.234009, rtol=1e-5)
+
+
+def test_head_reference(suc_0, disch_0):
+    h, eff = head_reference(suc_0, disch_0)
+    assert h.units == "joule/kilogram"
+    assert_allclose(h, 82951.470027, rtol=1e-6)
 
 
 def test_point_eff_polytropic(suc_0, disch_0):
@@ -152,22 +181,8 @@ def test_point_eff_pol_schultz(suc_0, disch_0):
     assert_allclose(eff_pol_schultz(suc_0, disch_0), 0.797811, rtol=1e-5)
 
 
-def test_point_head_isen(suc_0, disch_0):
-    assert head_isentropic(suc_0, disch_0).units == "joule/kilogram"
-    assert_allclose(head_isentropic(suc_0, disch_0).magnitude, 79984.234009, rtol=1e-5)
-
-
 def test_eff_isentropic(suc_0, disch_0):
     assert_allclose(eff_isentropic(suc_0, disch_0), 0.76996, rtol=1e-5)
-
-
-def test_schultz_f(suc_0, disch_0):
-    assert_allclose(f_schultz(suc_0, disch_0), 1.001647, rtol=1e-5)
-
-
-def test_head_pol_schultz(suc_0, disch_0):
-    assert head_pol_schultz(suc_0, disch_0).units == "joule/kilogram"
-    assert_allclose(head_pol_schultz(suc_0, disch_0), 82877.366038, rtol=1e-6)
 
 
 def test_reynolds(suc_0):

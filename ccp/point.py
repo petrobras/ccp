@@ -711,8 +711,8 @@ def f_sandberg_colby(suc, disch):
 
     Returns
     -------
-    head_pol_sandberg_colby : pint.Quantity
-       Reference head as described by :cite:`sandberg2013limitations` (J/kg).
+    f_sandberg_colby : pint.Quantity
+       Polytropic head correction factor as described by :cite:`sandberg2013limitations` (dimensionless).
     """
     Tm = (suc.T() + disch.T()) / 2
     hd = disch.h()
@@ -729,7 +729,7 @@ def f_sandberg_colby(suc, disch):
         (n / (n - 1)) * (pd * vd - ps * vs)
     )
 
-    return f_sandberg_colby
+    return f_sandberg_colby.to("dimensionless")
 
 
 def head_pol_sandberg_colby(suc, disch):
