@@ -704,7 +704,7 @@ def head_reference(suc, disch, num_steps=100):
             s0 = State.define(p=p0, T=T0, fluid=suc.fluid)
             s1 = State.define(p=p1, T=T1, fluid=suc.fluid)
             s1s = State.define(p=p1, s=s0.s(), fluid=suc.fluid)
-            _ref_H += s1s.h() - s0.h()
+            _ref_H += head_polytropic(s0, s1)
             _ref_n.append(n_exp(s0, s1))
             _ref_p.append(np.mean((s0.p().m, s1.p().m)))
             _ref_v.append(np.mean((s0.v().m, s1.v().m)))
