@@ -699,6 +699,80 @@ def head_reference(suc, disch, num_steps=100):
     return _ref_H, _ref_eff
 
 
+def f_sandberg_colby(suc, disch):
+    """Correction factor as proposed by Sandberg-Colby.
+
+    Parameters
+    ----------
+    suc : ccp.State
+        Suction state.
+    disch : ccp.State
+        Discharge state.
+
+    Returns
+    -------
+    head_pol_sandberg_colby : pint.Quantity
+       Reference head as described by :cite:`sandberg2013limitations` (J/kg).
+    """
+    Tm = (suc.T() + disch.T()) / 2
+    hd = disch.h()
+    hs = suc.h()
+    sd = disch.s()
+    ss = suc.s()
+    n = n_exp(suc, disch)
+    pd = disch.p()
+    ps = suc.p()
+    vd = disch.v()
+    vs = suc.v()
+
+    f_sandberg_colby = ((hd - hs) - Tm * (sd - ss)) / (
+        (n / (n - 1)) * (pd * vd - ps * vs)
+    )
+
+    return f_sandberg_colby
+
+
+def head_pol_sandberg_colby(suc, disch):
+    """Polytropic head corrected by the Sandberg-Colby factor.
+
+    Parameters
+    ----------
+    suc : ccp.State
+        Suction state.
+    disch : ccp.State
+        Discharge state.
+
+    Returns
+    -------
+    head_pol_sandberg_colby : pint.Quantity
+       Reference head as described by :cite:`sandberg2013limitations` (J/kg).
+    """
+    f = f_sandberg_colby(suc, disch)
+    h = f * head_polytropic(suc, disch)
+    return h
+
+
+def eff_pol_sandberg_colby(suc, disch):
+    """Sandberg-Colby polytropic efficiency.
+
+    Parameters
+    ----------
+    suc : ccp.State
+        Suction state.
+    disch : ccp.State
+        Discharge state.
+
+    Returns
+    -------
+    eff_pol_sandberg_colby: pint.Quantity
+        Sandberg-Colby polytropic efficiency (dimensionless).
+    """
+    wp = head_pol_sandberg_colby(suc, disch)
+    dh = disch.h() - suc.h()
+
+    return (wp / dh).to("dimensionless")
+
+
 @check_units
 def power_calc(flow_m, head, eff):
     """Calculate power.
