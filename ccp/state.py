@@ -99,7 +99,7 @@ class State(CP.AbstractState):
             self.fluid = fluid_dict
         return fluid_dict
 
-    def gas_constant(self):
+    def gas_constant(self, units=None):
         """Gas constant in joule / (mol kelvin).
 
         Returns
@@ -107,9 +107,12 @@ class State(CP.AbstractState):
         gas_constant : pint.Quantity
             Gas constant (joule / (mol kelvin).
         """
-        return Q_(super().gas_constant(), "joule / (mol kelvin)")
+        gas_constant = Q_(super().gas_constant(), "joule / (mol kelvin)")
+        if units:
+            gas_constant = gas_constant.to(units)
+        return gas_constant
 
-    def molar_mass(self):
+    def molar_mass(self, units=None):
         """Molar mass in kg/mol.
 
         Returns
@@ -117,9 +120,12 @@ class State(CP.AbstractState):
         molar_mass : pint.Quantity
             Molar mass (kg/mol).
         """
-        return Q_(super().molar_mass(), "kg/mol")
+        molar_mass = Q_(super().molar_mass(), "kg/mol")
+        if units:
+            molar_mass = molar_mass.to(units)
+        return molar_mass
 
-    def T(self):
+    def T(self, units=None):
         """Temperature in Kelvin.
 
         Returns
@@ -127,9 +133,12 @@ class State(CP.AbstractState):
         T : pint.Quantity
             Temperature (Kelvin).
         """
-        return Q_(super().T(), "kelvin")
+        T = Q_(super().T(), "kelvin")
+        if units:
+            T = T.to(units)
+        return T
 
-    def p(self):
+    def p(self, units=None):
         """Pressure in Pascal.
 
         Returns
@@ -137,9 +146,12 @@ class State(CP.AbstractState):
         p : pint.Quantity
             Pressure (pascal).
         """
-        return Q_(super().p(), "pascal")
+        p = Q_(super().p(), "pascal")
+        if units:
+            p = p.to(units)
+        return p
 
-    def cp(self):
+    def cp(self, units=None):
         """Specific heat at constant pressure joule/(kilogram kelvin).
 
         Returns
@@ -147,9 +159,12 @@ class State(CP.AbstractState):
         cp : pint.Quantity
             Specific heat at constant pressure joule/(kilogram kelvin).
         """
-        return Q_(super().cpmass(), "joule/(kilogram kelvin)")
+        cp = Q_(super().cpmass(), "joule/(kilogram kelvin)")
+        if units:
+            cp = cp.to(units)
+        return cp
 
-    def cv(self):
+    def cv(self, units=None):
         """Specific heat at constant volume joule/(kilogram kelvin).
 
         Returns
@@ -157,9 +172,12 @@ class State(CP.AbstractState):
         cv : pint.Quantity
             Specific heat at constant volume joule/(kilogram kelvin).
         """
-        return Q_(super().cvmass(), "joule/(kilogram kelvin)")
+        cv = Q_(super().cvmass(), "joule/(kilogram kelvin)")
+        if units:
+            cv = cv.to(units)
+        return cv
 
-    def h(self):
+    def h(self, units=None):
         """Specific Enthalpy (joule/kilogram).
 
         Returns
@@ -167,9 +185,12 @@ class State(CP.AbstractState):
         h : pint.Quantity
             Enthalpy (joule/kilogram).
         """
-        return Q_(super().hmass(), "joule/kilogram")
+        h = Q_(super().hmass(), "joule/kilogram")
+        if units:
+            h = h.to(units)
+        return h
 
-    def s(self):
+    def s(self, units=None):
         """Specific entropy (per unit of mass).
 
         Returns
@@ -177,9 +198,12 @@ class State(CP.AbstractState):
         s : pint.Quantity
             Entropy (joule/(kelvin kilogram)).
         """
-        return Q_(super().smass(), "joule/(kelvin kilogram)")
+        s = Q_(super().smass(), "joule/(kelvin kilogram)")
+        if units:
+            s = s.to(units)
+        return s
 
-    def p_critical(self):
+    def p_critical(self, units=None):
         """Critical Pressure in Pa.
 
         Returns
@@ -187,9 +211,12 @@ class State(CP.AbstractState):
         p_critical : pint.Quantity
             Critical pressure (Pa).
         """
-        return Q_(super().p_critical(), "Pa")
+        p_critical = Q_(super().p_critical(), "Pa")
+        if units:
+            p_critical = p_critical.to(units)
+        return p_critical
 
-    def T_critical(self):
+    def T_critical(self, units=None):
         """Critical Temperature in K.
 
         Returns
@@ -197,9 +224,12 @@ class State(CP.AbstractState):
         T_critical : pint.Quantity
             Critical temperature (degK).
         """
-        return Q_(super().T_critical(), "K")
+        T_critical = Q_(super().T_critical(), "K")
+        if units:
+            T_critical.to(units)
+        return T_critical
 
-    def rho(self):
+    def rho(self, units=None):
         """Specific mass (kilogram/m**3).
 
         Returns
@@ -207,9 +237,12 @@ class State(CP.AbstractState):
         rho : pint.Quantity
             Specific mass (kilogram/m**3).
         """
-        return Q_(super().rhomass(), "kilogram/m**3")
+        rho = Q_(super().rhomass(), "kilogram/m**3")
+        if units:
+            rho = rho.to(units)
+        return rho
 
-    def v(self):
+    def v(self, units=None):
         """Specific volume (m**3/kilogram).
 
         Returns
@@ -217,9 +250,12 @@ class State(CP.AbstractState):
         v : pint.Quantity
             Specific volume (m**3/kilogram).
         """
-        return 1 / self.rho()
+        v = 1 / self.rho()
+        if units:
+            v = (1 / self.rho()).to(units)
+        return v
 
-    def z(self):
+    def z(self, units=None):
         """Compressibility (dimensionless).
 
         Returns
@@ -230,7 +266,7 @@ class State(CP.AbstractState):
         z = self.p() * self.molar_mass() / (self.rho() * self.gas_constant() * self.T())
         return z.to("dimensionless")
 
-    def speed_sound(self):
+    def speed_sound(self, units=None):
         """Speed of sound - Eq. 8.1 from P. Nederstigt - Real Gas Thermodynamics.
 
         Returns
@@ -238,9 +274,14 @@ class State(CP.AbstractState):
         speed_sound : pint.Quantity
             Speed of sound (m/s).
         """
-        return Q_(np.sqrt(self.first_partial_deriv(CP.iP, CP.iDmass, CP.iSmass)), "m/s")
+        speed_sound = Q_(
+            np.sqrt(self.first_partial_deriv(CP.iP, CP.iDmass, CP.iSmass)), "m/s"
+        )
+        if units:
+            speed_sound = speed_sound.to(units)
+        return speed_sound
 
-    def viscosity(self):
+    def viscosity(self, units=None):
         """Viscosity in pascal second.
 
         Returns
@@ -248,9 +289,12 @@ class State(CP.AbstractState):
         viscosity : pint.Quantity
             Viscosity (pascal second)
         """
-        return Q_(super().viscosity(), "pascal second")
+        viscosity = Q_(super().viscosity(), "pascal second")
+        if units:
+            viscosity = viscosity.to(units)
+        return viscosity
 
-    def kinematic_viscosity(self):
+    def kinematic_viscosity(self, units=None):
         """Kinematic viscosity in m²/s.
 
         Returns
@@ -258,17 +302,23 @@ class State(CP.AbstractState):
         kinematic_viscosity : pint.Quantity
             Kinematic viscosity (m²/s)
         """
-        return (self.viscosity() / self.rho()).to("m²/s")
+        kinematic_viscosity = (self.viscosity() / self.rho()).to("m²/s")
+        if units:
+            kinematic_viscosity = kinematic_viscosity.to(units)
+        return kinematic_viscosity
 
-    def dpdv_s(self):
+    def dpdv_s(self, units=None):
         """
         Partial derivative of pressure to spec. volume with const. entropy.
         """
-        return Q_(
+        dpdv_s = Q_(
             -self.rho().magnitude ** 2
             * (self.first_partial_deriv(CP.iP, CP.iDmass, CP.iSmass)),
             "pascal * kg / m**3",
         )
+        if units:
+            dpdv_s = dpdv_s.to(units)
+        return dpdv_s
 
     def _X(self):
         """ Coeficiente de compressibilidade X de Schultz """
@@ -300,14 +350,18 @@ class State(CP.AbstractState):
         """
         return -(self.v() / self.p()) * self.dpdv_s()
 
-    def dTdp_s(self):
+    def dTdp_s(self, units=None):
         """(dT / dp)s
 
         First partial derivative of temperature related to pressure with
         constant entropy."""
-        return Q_(
+        dTdp_s = Q_(
             super().first_partial_deriv(CP.iT, CP.iP, CP.iSmass), "kelvin / pascal"
         )
+        if units:
+            dTdp_s = dTdp_s.to(units)
+
+        return dTdp_s
 
     def kT(self):
         """Isentropic temperature exponent (dimensionless).
@@ -319,7 +373,7 @@ class State(CP.AbstractState):
         """
         return 1 / (1 - (self.p() / self.T()) * self.dTdp_s())
 
-    def conductivity(self):
+    def conductivity(self, units=None):
         """Thermal conductivity (W/m/K).
 
         Returns
@@ -327,7 +381,10 @@ class State(CP.AbstractState):
         conductivity : pint.Quantity
             Thermal conductivity (W/m/K).
         """
-        return Q_(super().conductivity(), "W/m/degK")
+        conductivity = Q_(super().conductivity(), "W/m/degK")
+        if units:
+            conductivity = conductivity.to(units)
+        return conductivity
 
     def __reduce__(self):
         kwargs = dict(p=self.p(), T=self.T(), fluid=self.fluid)
