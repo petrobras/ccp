@@ -79,7 +79,6 @@ setup(
             "sphinx-book-theme",
             "sphinx-panels",
             "sphinx-copybutton",
-            "sphinx-rtd-theme",
         ],
     },
     license="MIT",
