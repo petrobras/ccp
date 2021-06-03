@@ -1,7 +1,7 @@
 # Overview
 
 ccp is a python library for calculation of centrifugal compressor performance.
-It is based on the book of {cite}`ludtke2004process` and uses 
+The code uses 
 [CoolProp](http://www.coolprop.org/)
 [REFPROP](https://www.nist.gov/srd/refprop)
 for the gas properties calculations.
