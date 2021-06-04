@@ -91,6 +91,6 @@ setup(
         "Programming Language :: Python",
         "Programming Language :: Python :: 3",
         "Programming Language :: Python :: Implementation :: CPython",
-        "Operating System:: OS Independent",
+        "Operating System :: OS Independent",
     ],
 )
