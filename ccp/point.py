@@ -437,7 +437,15 @@ def plot_func(self, attr):
 
 
 def n_exp(suc, disch):
-    """Polytropic exponent.
+    r"""Polytropic exponent.
+
+    The polytropic exponent :math:`n` is calculated as per :cite:`schultz1962` eq. 27:
+
+    .. math::
+
+        \begin{equation}
+            n = \frac{\log{\frac{p_d}{p_s}}}{\log{\frac{v_s}{v_d}}}
+        \end{equation}
 
     Parameters
     ----------
@@ -462,13 +470,15 @@ def n_exp(suc, disch):
 def head_pol(suc, disch):
     r"""Polytropic head.
 
-    The polytropic head is calculated as per :cite:`schultz1962` eq. 27
+    The polytropic head is calculated as per :cite:`schultz1962` eq. 27:
 
     .. math::
 
        \begin{equation}
-          W_p = (\frac{n}{n - 1}) (p_d v_d - p_s v_s)
+          H_p = (\frac{n}{n - 1}) (p_d v_d - p_s v_s)
        \end{equation}
+
+    And :math:`n` is calculated by :py:func:`n_exp`.
 
     Parameters
     ----------
@@ -560,7 +570,14 @@ def eff_isentropic(suc, disch):
 
 
 def f_schultz(suc, disch):
-    """Correction factor as per :cite:`schultz1962`.
+    r"""Correction factor as per :cite:`schultz1962` eq 32:
+
+    .. math::
+
+       \begin{equation}
+          f = \frac{H_{ds} - H_s}{\frac{n_s}{n_s - 1}(p_d v_{ds} - p_s v_s)}
+       \end{equation}
+
 
     Parameters
     ----------
@@ -586,7 +603,16 @@ def f_schultz(suc, disch):
 
 
 def head_pol_schultz(suc, disch):
-    """Polytropic head corrected by the :cite:`schultz1962` factor.
+    r"""Polytropic head corrected by the :cite:`schultz1962` factor.
+
+    .. math::
+
+       \begin{equation}
+          H_{p_{schultz}} = f_{schultz} H_p
+       \end{equation}
+
+    Where :math:`f_{schultz}` is calculated by :py:func:`f_schultz` and
+    :math:`H_p` is calculated by :py:func:`head_pol`.
 
     Parameters
     ----------
@@ -600,7 +626,6 @@ def head_pol_schultz(suc, disch):
     head_pol_schultz : pint.Quantity
         Schultz polytropic head (J/kg).
     """
-
     f = f_schultz(suc, disch)
     head = head_pol(suc, disch)
 
@@ -821,7 +846,49 @@ def eff_pol_sandberg_colby(suc, disch):
 
 
 def head_pol_huntington(suc, disch):
-    """Polytropic head calculated by the 3 point method described by :cite:`huntington1985`.
+    r"""Polytropic head calculated by the 3 point method described by :cite:`huntington1985`.
+
+    The polytropic head in this case is calculated from the polytropic efficiency with:
+
+    .. math::
+
+       \begin{equation}
+          \frac{1}{e} =
+          1 +
+          \frac{\frac{(s_d - s_s)}{R}}
+          {a \ln(\frac{p_d}{p_s})
+          + b[(\frac{p_d}{p_s}) - 1])
+          + \frac{c}{2}(\ln{(\frac{p_d}{p_s})})^2}
+       \end{equation}
+
+    The constants :math:`a`, :math:`b` and :math:`c` are calculated with:
+
+    .. math::
+
+       \begin{equation}
+          a = z_s - b \\
+          b = \frac{(z_s + z_d - 2z_{int})}{((\frac{p_s}{p_s})^{0.5} - 1)^2} \\
+          c = \frac{(z_d - a - b(\frac{p_d}{p_s}))}{\ln{(\frac{p_d}{p_s})}}
+       \end{equation}
+
+    The intermediate values are calculated interactively:
+
+    .. math::
+
+       \begin{equation}
+          p_{int} = \sqrt{p_s p_d} \\
+          T_{int}' = T_{int} \exp{(\frac{(s_{int}' - s_{int})}{c_p})}
+       \end{equation}
+
+    And :math:`s_{int}` is calculated by:
+
+    .. math::
+
+       \begin{equation}
+            s_{int}' = s_s + (s_d - s_s)
+            \frac{\frac{a}{2}\ln{(\frac{p_d}{p_s})} + b((\frac{p_s}{p_s})^{0.5} - 1)) + \frac{c}{8}(\ln{(\frac{p_d}{p_s})})^2}
+            {a\ln(\frac{p_d}{p_s}) + b((\frac{p_d}{p_s})-1) + \frac{c}{2}(\ln(\frac{p_d}{p_s}))^2}
+       \end{equation}
 
     Parameters
     ----------
