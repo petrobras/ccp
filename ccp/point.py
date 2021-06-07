@@ -5,6 +5,7 @@ import toml
 import plotly.graph_objects as go
 from scipy.optimize import newton
 
+import ccp.config
 from .state import State
 from ccp.config.units import check_units, Q_
 from ccp.config.utilities import r_getattr
@@ -82,7 +83,12 @@ class Point:
         Difference between Mach for this point and the original point from which it was converted from.
     volume_ratio_ratio = 1.0
         Ratio between volume_ratio for this point and the original point from which it was converted from.
-
+    polytropic_method : str, optional
+        Polytropic method used for head and efficiency calculation.
+        Options are: "mallen_saveille", "sandberg_colby", "schultz" and "huntington".
+        The default is "schultz".
+        The default value can be changed in a global level with:
+        ccp.config.POLYTROPIC_METHOD = "<desired value>"
     """
 
     @check_units
@@ -101,9 +107,15 @@ class Point:
         volume_ratio=None,
         b=None,
         D=None,
+        polytropic_method=None,
     ):
         if b is None or D is None:
             raise ValueError("Arguments b and D must be provided.")
+        if polytropic_method is None:
+            polytropic_method = ccp.config.POLYTROPIC_METHOD
+
+        self.head_calc_func = globals()[f"head_pol_{polytropic_method}"]
+        self.eff_calc_func = globals()[f"eff_pol_{polytropic_method}"]
 
         self.suc = suc
         self.disch = disch
@@ -202,8 +214,8 @@ class Point:
         )
 
     def _calc_from_disch_flow_v_speed_suc(self):
-        self.head = head_pol_schultz(self.suc, self.disch)
-        self.eff = eff_pol_schultz(self.suc, self.disch)
+        self.head = self.head_calc_func(self.suc, self.disch)
+        self.eff = self.eff_calc_func(self.suc, self.disch)
         self.volume_ratio = self.suc.v() / self.disch.v()
         self.flow_m = self.suc.rho() * self.flow_v
         self.power = power_calc(self.flow_m, self.head, self.eff)
@@ -211,8 +223,8 @@ class Point:
         self.psi = psi(self.head, self.speed, self.D)
 
     def _calc_from_disch_flow_m_speed_suc(self):
-        self.head = head_pol_schultz(self.suc, self.disch)
-        self.eff = eff_pol_schultz(self.suc, self.disch)
+        self.head = self.head_calc_func(self.suc, self.disch)
+        self.eff = self.eff_calc_func(self.suc, self.disch)
         self.volume_ratio = self.suc.v() / self.disch.v()
         self.flow_v = self.flow_m / self.suc.rho()
         self.power = power_calc(self.flow_m, self.head, self.eff)
@@ -235,7 +247,7 @@ class Point:
                 disch.update(rho=disch_rho, p=x)
             elif update_type == "temperature":
                 disch.update(rho=disch_rho, T=x)
-            new_eff = eff_pol_schultz(self.suc, disch)
+            new_eff = self.eff_calc_func(self.suc, disch)
             if not 0.0 < new_eff < 1.1:
                 raise ValueError
 
@@ -250,7 +262,7 @@ class Point:
             newton(update_state, disch.p().magnitude, args=("pressure",), tol=1e-1)
 
         self.disch = disch
-        self.head = head_pol_schultz(suc, disch)
+        self.head = self.head_calc_func(suc, disch)
         self.speed = speed_from_psi(self.D, self.head, self.psi)
         self.flow_v = flow_from_phi(self.D, self.phi, self.speed)
         self.flow_m = self.flow_v * self.suc.rho()
@@ -447,7 +459,7 @@ def n_exp(suc, disch):
     return np.log(pd / ps) / np.log(vs / vd)
 
 
-def head_polytropic(suc, disch):
+def head_pol(suc, disch):
     """Polytropic head.
 
     Parameters
@@ -459,7 +471,7 @@ def head_polytropic(suc, disch):
 
     Returns
     -------
-    head_polytropic : pint.Quantity
+    head_pol : pint.Quantity
         Polytropic head (J/kg).
     """
 
@@ -489,7 +501,7 @@ def eff_polytropic(suc, disch):
         Polytropic head (J/kg).
 
     """
-    wp = head_polytropic(suc, disch)
+    wp = head_pol(suc, disch)
 
     dh = disch.h() - suc.h()
 
@@ -515,7 +527,7 @@ def head_isentropic(suc, disch):
     disch_s = copy(disch)
     disch_s.update(p=disch.p(), s=suc.s())
 
-    return head_polytropic(suc, disch_s).to("joule/kilogram")
+    return head_pol(suc, disch_s).to("joule/kilogram")
 
 
 def eff_isentropic(suc, disch):
@@ -582,7 +594,7 @@ def head_pol_schultz(suc, disch):
     """
 
     f = f_schultz(suc, disch)
-    head = head_polytropic(suc, disch)
+    head = head_pol(suc, disch)
 
     return f * head
 
@@ -715,7 +727,7 @@ def head_reference(suc, disch, num_steps=100):
                 calc_step_discharge_temp, (T0 + 1e-3), args=(p1, p0, s0.h(), s0.v(), e)
             )
             s1 = State.define(p=p1, T=T1, fluid=suc.fluid)
-            _ref_H += head_polytropic(s0, s1)
+            _ref_H += head_pol(s0, s1)
 
             T0 = T1
 
@@ -775,7 +787,7 @@ def head_pol_sandberg_colby(suc, disch):
        Reference head as described by :cite:`sandberg2013limitations` (J/kg).
     """
     f = f_sandberg_colby(suc, disch)
-    h = f * head_polytropic(suc, disch)
+    h = f * head_pol(suc, disch)
     return h
 
 
@@ -1057,7 +1069,7 @@ def head_from_psi(D, psi, speed):
     return head.to("J/kg")
 
 
-def disch_from_suc_head_eff(suc, head, eff):
+def disch_from_suc_head_eff(suc, head, eff, polytropic_method=None):
     """Calculate discharge state from suction, head and efficiency.
 
     Parameters
@@ -1074,6 +1086,10 @@ def disch_from_suc_head_eff(suc, head, eff):
     disch : ccp.State
         Discharge state.
     """
+    if polytropic_method is None:
+        polytropic_method = ccp.config.POLYTROPIC_METHOD
+
+    head_calc_func = globals()[f"head_pol_{polytropic_method}"]
     h_disch = head / eff + suc.h()
 
     #  consider first an isentropic compression
@@ -1081,7 +1097,7 @@ def disch_from_suc_head_eff(suc, head, eff):
 
     def update_pressure(p):
         disch.update(h=h_disch, p=p)
-        new_head = head_pol_schultz(suc, disch)
+        new_head = head_calc_func(suc, disch)
 
         return (new_head - head).magnitude
 

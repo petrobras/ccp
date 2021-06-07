@@ -1,4 +1,5 @@
 import pytest
+import ccp
 from numpy.testing import assert_allclose
 from ccp.point import *
 from pathlib import Path
@@ -143,7 +144,7 @@ def test_f_sandberg_colby(suc_0, disch_0):
 
 
 def test_point_head_pol(suc_0, disch_0):
-    h = head_polytropic(suc_0, disch_0)
+    h = head_pol(suc_0, disch_0)
     assert h.units == "joule/kilogram"
     assert_allclose(h, 82741.114339)
 
@@ -175,7 +176,7 @@ def test_point_head_isen(suc_0, disch_0):
 def test_head_reference(suc_0, disch_0):
     h, eff = head_reference(suc_0, disch_0)
     assert h.units == "joule/kilogram"
-    assert_allclose(h, 82951.470027, rtol=1e-6)
+    assert_allclose(h, 82951.386575, rtol=1e-6)
 
 
 def test_head_pol_huntington(suc_0, disch_0):
@@ -342,3 +343,10 @@ def test_pickle(point_disch_flow_v_speed_suc):
     assert pickled_point == point_disch_flow_v_speed_suc
     assert hasattr(point_disch_flow_v_speed_suc, "head_plot") is True
     assert hasattr(pickled_point, "head_plot") is True
+
+
+def test_global_polytropic_method(suc_0, disch_0):
+    ccp.config.POLYTROPIC_METHOD = "huntington"
+    p0 = Point(suc=suc_0, disch=disch_0, flow_v=1, speed=1, b=1, D=1)
+    assert p0.head.units == "joule/kilogram"
+    assert_allclose(p0.head, 82951.470027, rtol=1e-6)
