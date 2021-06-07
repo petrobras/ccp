@@ -460,7 +460,7 @@ def n_exp(suc, disch):
 
 
 def head_pol(suc, disch):
-    """Polytropic head.
+    r"""Polytropic head.
 
     The polytropic head is calculated as per :cite:`schultz1962` eq. 27
 
