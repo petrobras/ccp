@@ -485,7 +485,7 @@ def head_pol(suc, disch):
     return (n / (n - 1)) * (p2 * v2 - p1 * v1).to("joule/kilogram")
 
 
-def eff_polytropic(suc, disch):
+def eff_pol(suc, disch):
     """Polytropic efficiency.
 
     Parameters
@@ -497,8 +497,8 @@ def eff_polytropic(suc, disch):
 
     Returns
     -------
-    eff_polytropic : pint.Quantity
-        Polytropic head (J/kg).
+    eff_pol : pint.Quantity
+        Polytropic efficiency (dimensionless).
 
     """
     wp = head_pol(suc, disch)
