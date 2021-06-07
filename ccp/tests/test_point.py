@@ -186,7 +186,7 @@ def test_head_pol_huntington(suc_0, disch_0):
 
 
 def test_point_eff_polytropic(suc_0, disch_0):
-    assert_allclose(eff_polytropic(suc_0, disch_0), 0.796499, rtol=1e-5)
+    assert_allclose(eff_pol(suc_0, disch_0), 0.796499, rtol=1e-5)
 
 
 def test_point_eff_pol_schultz(suc_0, disch_0):
