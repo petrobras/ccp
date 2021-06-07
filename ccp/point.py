@@ -462,6 +462,14 @@ def n_exp(suc, disch):
 def head_pol(suc, disch):
     """Polytropic head.
 
+    The polytropic head is calculated as per :cite:`schultz1962` eq. 27
+
+    .. math::
+
+       \begin{equation}
+          W_p = (\frac{n}{n - 1}) (p_d v_d - p_s v_s)
+       \end{equation}
+
     Parameters
     ----------
     suc : ccp.State
