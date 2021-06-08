@@ -575,7 +575,7 @@ def f_schultz(suc, disch):
     .. math::
 
        \begin{equation}
-          f = \frac{H_{ds} - H_s}{\frac{n_s}{n_s - 1}(p_d v_{ds} - p_s v_s)}
+          f = \frac{H_{ds} - H_s}{(\frac{n_s}{n_s - 1})(p_d v_{ds} - p_s v_s)}
        \end{equation}
 
 
@@ -654,7 +654,13 @@ def eff_pol_schultz(suc, disch):
 
 
 def head_pol_mallen_saville(suc, disch):
-    """Polytropic head as per :cite:`mallen1977polytropic`.
+    r"""Polytropic head as per :cite:`mallen1977polytropic` calculated with:
+
+    .. math::
+
+       \begin{equation}
+          H_p = (h_d - h_s) - (s_d - s_s) \frac{T_d - Ts}{\ln{(\frac{T_d}{T_s})}}
+       \end{equation}
 
     Parameters
     ----------
@@ -701,17 +707,26 @@ _ref_H = 0
 
 
 def head_reference(suc, disch, num_steps=100):
-    """Reference head as described by :cite:`huntington1985`.
+    r"""Reference head.
 
-    It consists of two loops.
-    One converges the T1 temperature at each step by evaluating the
-    difference between H = vm * delta_p and H = eff * delta_h.
+    The reference head consists of the integration of :math:`v dp` along the
+    polytropic path as described by :cite:`huntington1985` and :cite:`sandberg2013limitations`.
+    To achieve this we break the polytropic path into a series of subpaths.
+    The compression ratio :math:`R_{c_i}` for each segment, as described by
+    :cite:`sandberg2013limitations` is calculated with:
+
+    .. math::
+
+       \begin{equation}
+          R_{c_i} = \sqrt[n_{steps}]{\frac{p_d}{p_s}}
+       \end{equation}
+
+
+    The calculation consists of two loops.
+    One converges the :math:`T_1` temperature at each step by evaluating the
+    difference between :math:`H = v_{avg} \Delta_p` and :math:`H = e \Delta_h`.
     The other evaluates the efficiency by checking the difference between
-    the last T1 to the discharge temperature Td.
-
-    Results are stored at _ref_eff, _ref_H and _ref_n.
-    self._ref_n is a list with n_exp at each step for the final converged
-    efficiency.
+    the last :math:`T_1` to the discharge temperature :math:`T_d`.
 
     Parameters
     ----------
@@ -772,7 +787,15 @@ def head_reference(suc, disch, num_steps=100):
 
 
 def f_sandberg_colby(suc, disch):
-    """Correction factor as proposed by Sandberg-Colby.
+    r"""Correction factor as proposed by :cite:`sandberg2013limitations`.
+
+    .. math::
+
+       \begin{equation}
+          f_p =
+           \frac{(h_d - h_s) - T_{avg} (s_d - s_s)}
+          {(\frac{n}{n-1})(p_d v_d - p_s v_s)}
+       \end{equation}
 
     Parameters
     ----------
@@ -805,7 +828,16 @@ def f_sandberg_colby(suc, disch):
 
 
 def head_pol_sandberg_colby(suc, disch):
-    """Polytropic head corrected by the Sandberg-Colby factor.
+    r"""Polytropic head corrected by the :cite:`sandberg2013limitations` factor.
+
+    .. math::
+
+       \begin{equation}
+          H_{p_{s-c}} = f_{s-c} H_p
+       \end{equation}
+
+    Where :math:`f_{s-c}` is calculated by :py:func:`f_sandberg_colby` and
+    :math:`H_p` is calculated by :py:func:`head_pol`.
 
     Parameters
     ----------
@@ -857,7 +889,7 @@ def head_pol_huntington(suc, disch):
           1 +
           \frac{\frac{(s_d - s_s)}{R}}
           {a \ln(\frac{p_d}{p_s})
-          + b[(\frac{p_d}{p_s}) - 1])
+          + b((\frac{p_d}{p_s}) - 1)
           + \frac{c}{2}(\ln{(\frac{p_d}{p_s})})^2}
        \end{equation}
 
