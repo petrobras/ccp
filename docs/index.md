@@ -24,9 +24,10 @@ tutorials/tutorial
 ```{toctree}
 ---
 maxdepth: 2
-caption: Topic Guides
+caption: Discussions
 ---
-topic_guides/topic_guides
+discussions/topic_guides
+discussions/polytropic_methods
 ```
 
 ```{toctree}
