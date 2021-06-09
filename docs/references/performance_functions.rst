@@ -15,6 +15,7 @@ by the ccp.Point class in the performance calculation.
         head_pol_huntington,
         head_pol,
         head_reference,
+        head_reference_2017,
         eff_isentropic,
         eff_pol_mallen_saville,
         eff_pol_sandberg_colby,

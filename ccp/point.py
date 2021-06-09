@@ -786,6 +786,90 @@ def head_reference(suc, disch, num_steps=100):
     return _ref_H, _ref_eff
 
 
+_ref_H_2017 = 0
+
+
+def head_reference_2017(suc, disch, num_steps=100):
+    r"""Reference head.
+
+    The reference head consists of the integration along the
+    polytropic path as described by :cite:`huntington2017`.
+    Contrary to the method presented by :cite:`huntington1985`, this method does
+    not use a specific volume linearized over each step of the integration, instead,
+    it is based on the assumption that the compressibility factor varies linearly
+    with the pressure within each step.
+
+    In this case the inner loop of the method is calculated by:
+
+    .. math::
+
+       \begin{equation}
+          a = \frac{z_i (\frac{p_{i+1}}{p_i}) - z_{i+1}}
+          {(\frac{p_{i+1}}{p_i} - 1)} \\
+          b = \frac{z_{i+1} - z_i}
+          {(\frac{p_{i+1}}{p_i} - 1)} \\
+          (s_{i+1} - s_i) = R \frac{(1-e)}{e}(a \ln{(\frac{p_{i+1}}{p_i})} + b(\frac{p_{i+1}}{p_i} - 1))
+      \end{equation}
+
+
+    Parameters
+    ----------
+    suc : ccp.State
+        Suction state.
+    disch : ccp.State
+        Discharge state.
+
+    Returns
+    -------
+    head_reference : pint.Quantity
+       Reference head as described by :cite:`huntington2017`. (J/kg).
+    eff_reference : float
+        Reference efficiency as described by :cite:`huntington2017` (dimensionless).
+    """
+    R = suc.gas_constant() / suc.molar_mass()
+    rc = (disch.p().m / suc.p().m) ** (1 / num_steps)
+    p_intervals = [suc.p().m]
+    p = suc.p().m
+    for i in range(num_steps):
+        next_p = p * rc
+        p = next_p
+        p_intervals.append(p)
+
+    def calc_step_discharge_z(s1, s0, p1, p0, z0, R, e):
+        state1 = ccp.State.define(p=p1, s=s1, fluid=suc.fluid)
+        z1 = state1.z()
+        a = (z0 * (p1 / p0) - z1) / ((p1 / p0) - 1)
+        b = (z1 - z0) / ((p1 / p0) - 1)
+
+        return (
+            (R * ((1 - e) / e)) * (a * np.log(p1 / p0) + b * ((p1 / p0) - 1))
+            - (state1.s() - Q_(s0, state1.s().units))
+        ).magnitude
+
+    def calc_eff(e, suc, disch, p_intervals):
+        global _ref_H_2017
+        _ref_H_2017 = 0
+        s0 = suc.s().magnitude
+
+        for p0, p1 in zip(p_intervals[:-1], p_intervals[1:]):
+            state0 = ccp.State.define(p=p0, s=s0, fluid=suc.fluid)
+            z0 = state0.z()
+
+            s1 = newton(calc_step_discharge_z, (s0 + 1e-8), args=(s0, p1, p0, z0, R, e))
+            state1 = ccp.State.define(p=p1, s=s1, fluid=suc.fluid)
+            _ref_H_2017 += ccp.point.head_pol(state0, state1)
+
+            s0 = s1
+            T1 = state1.T().magnitude
+
+        return disch.T().magnitude - T1
+
+    eff0 = ccp.point.eff_pol_huntington(suc, disch)
+    _ref_eff = newton(calc_eff, eff0, args=(suc, disch, p_intervals))
+
+    return _ref_H_2017, _ref_eff
+
+
 def f_sandberg_colby(suc, disch):
     r"""Correction factor as proposed by :cite:`sandberg2013limitations`.
 

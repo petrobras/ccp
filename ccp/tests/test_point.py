@@ -176,7 +176,13 @@ def test_point_head_isen(suc_0, disch_0):
 def test_head_reference(suc_0, disch_0):
     h, eff = head_reference(suc_0, disch_0)
     assert h.units == "joule/kilogram"
-    assert_allclose(h, 82951.386575, rtol=1e-6)
+    assert_allclose(h, 82951.386575, rtol=1e-8)
+
+
+def test_head_reference_2017(suc_0, disch_0):
+    h, eff = head_reference_2017(suc_0, disch_0)
+    assert h.units == "joule/kilogram"
+    assert_allclose(h, 82951.388465, rtol=1e-8)
 
 
 def test_head_pol_huntington(suc_0, disch_0):
