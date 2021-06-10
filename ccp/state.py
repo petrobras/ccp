@@ -454,12 +454,6 @@ class State(CP.AbstractState):
         constituents = []
         molar_fractions = []
 
-        if len(fluid) < 2:
-            warn(
-                "Pure fluids are not fully supported and might break things (e.g. plot_phase_envelope"
-                "See https://github.com/CoolProp/CoolProp/issues/1544"
-            )
-
         for k, v in fluid.items():
             k = get_name(k)
             constituents.append(k)
@@ -569,6 +563,12 @@ class State(CP.AbstractState):
         """
         if fig is None:
             fig = go.Figure()
+
+        if len(self.fluid) < 2:
+            warn(
+                "Pure fluids are not fully supported and might break things (e.g. plot_phase_envelope"
+                "See https://github.com/CoolProp/CoolProp/issues/1544"
+            )
 
         self.build_phase_envelope("dummy")
         phase_envelope = self.get_phase_envelope_data()
