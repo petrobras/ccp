@@ -26,7 +26,6 @@ tutorials/tutorial
 maxdepth: 2
 caption: Discussions
 ---
-discussions/topic_guides
 discussions/polytropic_methods
 ```
 
