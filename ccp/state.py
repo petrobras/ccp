@@ -4,6 +4,7 @@ from warnings import warn
 import CoolProp.CoolProp as CP
 import numpy as np
 from plotly import graph_objects as go
+from . import _RP
 
 from . import Q_
 from .config.fluids import get_name, normalize_mix
@@ -160,6 +161,22 @@ class State(CP.AbstractState):
             Specific heat at constant pressure joule/(kilogram kelvin).
         """
         cp = Q_(super().cpmass(), "joule/(kilogram kelvin)")
+        # use REFPROP directly with forced gas condition if cp value does not converge
+        if cp < 0:
+            fluids = self._fluid.replace("&", "*")
+            r = _RP.REFPROPdll(
+                fluids,
+                "PTV",
+                "Cp",
+                _RP.MASS_BASE_SI,
+                0,
+                0,
+                self.p("kPa").m,
+                self.T().m,
+                self.get_mole_fractions(),
+            )
+            cp = Q_(r.Output[0], "joule/(kilogram kelvin)")
+
         if units:
             cp = cp.to(units)
         return cp

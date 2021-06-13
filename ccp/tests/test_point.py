@@ -356,3 +356,13 @@ def test_global_polytropic_method(suc_0, disch_0):
     p0 = Point(suc=suc_0, disch=disch_0, flow_v=1, speed=1, b=1, D=1)
     assert p0.head.units == "joule/kilogram"
     assert_allclose(p0.head, 82951.470027, rtol=1e-6)
+
+
+def test_case_sc_at():
+    suc = State.define(
+        p=Q_("5516000 Pa"), T=Q_("311 K"), fluid={"CO2": 0.70000, "METHANE": 0.30000}
+    )
+    disch = State.define(
+        p=Q_("16547000 Pa"), T=Q_("416 K"), fluid={"CO2": 0.70000, "METHANE": 0.30000}
+    )
+    assert_allclose(eff_pol_huntington(suc, disch), 0.818206, rtol=1e-6)
