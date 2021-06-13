@@ -62,6 +62,7 @@ setup(
         "toml",
         "openpyxl",
         "tqdm",
+        "ctREFPROP",
     ],
     extras_require={
         "dev": [
