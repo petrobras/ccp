@@ -52,6 +52,7 @@ import warnings as _warnings
 from pathlib import Path as _Path
 
 import CoolProp.CoolProp as _CP
+from ctREFPROP.ctREFPROP import REFPROPFunctionLibrary as _REFPROPFunctionLibrary
 
 # use _ to avoid polluting the namespace when importing
 
@@ -65,6 +66,8 @@ except KeyError:
         _path = _Path.cwd()
 
 _CP.set_config_string(_CP.ALTERNATIVE_REFPROP_PATH, str(_path))
+_RP = _REFPROPFunctionLibrary(_path)
+_RP.SETPATHdll(str(_path))
 
 if _os.name == "posix":
     _shared_library = "librefprop.so"
