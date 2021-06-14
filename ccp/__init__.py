@@ -66,8 +66,11 @@ except KeyError:
         _path = _Path.cwd()
 
 _CP.set_config_string(_CP.ALTERNATIVE_REFPROP_PATH, str(_path))
-_RP = _REFPROPFunctionLibrary(_path)
-_RP.SETPATHdll(str(_path))
+try:
+    _RP = _REFPROPFunctionLibrary(_path)
+    _RP.SETPATHdll(str(_path))
+except TypeError:
+    pass
 
 if _os.name == "posix":
     _shared_library = "librefprop.so"
