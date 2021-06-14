@@ -70,7 +70,7 @@ try:
     _RP = _REFPROPFunctionLibrary(_path)
     _RP.SETPATHdll(str(_path))
 except TypeError:
-    pass
+    _RP = _REFPROPFunctionLibrary
 
 if _os.name == "posix":
     _shared_library = "librefprop.so"
