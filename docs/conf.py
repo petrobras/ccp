@@ -112,9 +112,10 @@ html_theme_options = {
     "navbar_footer_text": "",
 }
 html_sourcelink_suffix = ""
-
+html_static_path = ["_static"]
 html_js_files = [
-    "https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"
+    "https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js",
+    "custom.js",
 ]
 
 # Theme options are theme-specific and customize the look and feel of a theme
@@ -126,7 +127,6 @@ html_js_files = [
 # Add any paths that contain custom static files (such as style sheets) here,
 # relative to this directory. They are copied after the builtin static files,
 # so a file named "default.css" will overwrite the builtin "default.css".
-html_static_path = ["_static"]
 
 myst_enable_extensions = [
     "amsmath",
