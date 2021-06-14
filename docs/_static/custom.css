@@ -2,6 +2,10 @@ h1 {
     font-size: 175%;
 }
 
+h2 {
+    font-size: 150%;
+}
+
 /*Copy button tooltip*/
 .o-tooltip--left:after {
     font-size: 0.75rem;
