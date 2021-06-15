@@ -15,9 +15,10 @@
 # documentation root, use os.path.abspath to make it absolute, like shown here.
 #
 import os
+
 import sys
 
-# sys.path.insert(0, os.path.abspath('.'))
+sys.path.insert(0, os.path.abspath(os.path.pardir))
 import ccp
 
 # General information about the project.
@@ -54,6 +55,8 @@ extensions = [
 ]
 
 bibtex_bibfiles = ["references.bib"]
+bibtex_default_style = "alpha"
+bibtex_reference_style = "author_year"
 
 # Generate the API documentation when building
 autosummary_generate = True
@@ -109,9 +112,10 @@ html_theme_options = {
     "navbar_footer_text": "",
 }
 html_sourcelink_suffix = ""
-
+html_static_path = ["_static"]
 html_js_files = [
-    "https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"
+    "https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js",
+    "custom.js",
 ]
 
 # Theme options are theme-specific and customize the look and feel of a theme
@@ -123,7 +127,6 @@ html_js_files = [
 # Add any paths that contain custom static files (such as style sheets) here,
 # relative to this directory. They are copied after the builtin static files,
 # so a file named "default.css" will overwrite the builtin "default.css".
-html_static_path = ["_static"]
 
 myst_enable_extensions = [
     "amsmath",
@@ -207,3 +210,4 @@ texinfo_documents = [
 
 def setup(app):
     app.add_css_file("custom.css")
+    app.add_js_file("custom.js")

@@ -1,4 +1,5 @@
 import pytest
+import ccp
 from numpy.testing import assert_allclose
 from ccp.point import *
 from pathlib import Path
@@ -134,40 +135,76 @@ def test_point_n_exp(suc_0, disch_0):
     assert_allclose(n_exp(suc_0, disch_0), 1.396545, rtol=1e-6)
 
 
+def test_f_schultz(suc_0, disch_0):
+    assert_allclose(f_schultz(suc_0, disch_0), 1.001647, rtol=1e-5)
+
+
+def test_f_sandberg_colby(suc_0, disch_0):
+    assert_allclose(f_sandberg_colby(suc_0, disch_0), 1.000912, rtol=1e-5)
+
+
 def test_point_head_pol(suc_0, disch_0):
-    assert head_polytropic(suc_0, disch_0).units == "joule/kilogram"
-    assert_allclose(head_polytropic(suc_0, disch_0), 82741.114339)
+    h = head_pol(suc_0, disch_0)
+    assert h.units == "joule/kilogram"
+    assert_allclose(h, 82741.114339)
+
+
+def test_head_pol_schultz(suc_0, disch_0):
+    h = head_pol_schultz(suc_0, disch_0)
+    assert h.units == "joule/kilogram"
+    assert_allclose(h, 82877.366038, rtol=1e-6)
+
+
+def test_head_pol_sandberg_colby(suc_0, disch_0):
+    h = head_pol_sandberg_colby(suc_0, disch_0)
+    assert h.units == "joule/kilogram"
+    assert_allclose(h, 82816.596731, rtol=1e-6)
 
 
 def test_point_head_pol_mallen_saville(suc_0, disch_0):
-    assert head_pol_mallen_saville(suc_0, disch_0).units == "joule/kilogram"
-    assert_allclose(head_pol_mallen_saville(suc_0, disch_0), 83006.348299)
+    h = head_pol_mallen_saville(suc_0, disch_0)
+    assert h.units == "joule/kilogram"
+    assert_allclose(h, 83006.348299)
+
+
+def test_point_head_isen(suc_0, disch_0):
+    h = head_isentropic(suc_0, disch_0)
+    assert h.units == "joule/kilogram"
+    assert_allclose(h.magnitude, 79984.234009, rtol=1e-5)
+
+
+def test_head_reference(suc_0, disch_0):
+    h, eff = head_reference(suc_0, disch_0)
+    assert h.units == "joule/kilogram"
+    assert_allclose(h, 82951.386575, rtol=1e-8)
+
+
+def test_head_reference_2017(suc_0, disch_0):
+    h, eff = head_reference_2017(suc_0, disch_0)
+    assert h.units == "joule/kilogram"
+    assert_allclose(h, 82951.388465, rtol=1e-8)
+
+
+def test_head_pol_huntington(suc_0, disch_0):
+    h = head_pol_huntington(suc_0, disch_0)
+    assert h.units == "joule/kilogram"
+    assert_allclose(h, 82951.470027, rtol=1e-6)
 
 
 def test_point_eff_polytropic(suc_0, disch_0):
-    assert_allclose(eff_polytropic(suc_0, disch_0), 0.796499, rtol=1e-5)
+    assert_allclose(eff_pol(suc_0, disch_0), 0.796499, rtol=1e-5)
 
 
 def test_point_eff_pol_schultz(suc_0, disch_0):
     assert_allclose(eff_pol_schultz(suc_0, disch_0), 0.797811, rtol=1e-5)
 
 
-def test_point_head_isen(suc_0, disch_0):
-    assert head_isentropic(suc_0, disch_0).units == "joule/kilogram"
-    assert_allclose(head_isentropic(suc_0, disch_0).magnitude, 79984.234009, rtol=1e-5)
+def test_point_eff_pol_huntington(suc_0, disch_0):
+    assert_allclose(eff_pol_huntington(suc_0, disch_0), 0.798524, rtol=1e-5)
 
 
 def test_eff_isentropic(suc_0, disch_0):
     assert_allclose(eff_isentropic(suc_0, disch_0), 0.76996, rtol=1e-5)
-
-
-def test_schultz_f(suc_0, disch_0):
-    assert_allclose(schultz_f(suc_0, disch_0), 1.001647, rtol=1e-5)
-
-
-def test_head_pol_schultz(suc_0, disch_0):
-    assert head_pol_schultz(suc_0, disch_0).units == "joule/kilogram"
-    assert_allclose(head_pol_schultz(suc_0, disch_0), 82877.366038, rtol=1e-6)
 
 
 def test_reynolds(suc_0):
@@ -312,3 +349,20 @@ def test_pickle(point_disch_flow_v_speed_suc):
     assert pickled_point == point_disch_flow_v_speed_suc
     assert hasattr(point_disch_flow_v_speed_suc, "head_plot") is True
     assert hasattr(pickled_point, "head_plot") is True
+
+
+def test_global_polytropic_method(suc_0, disch_0):
+    ccp.config.POLYTROPIC_METHOD = "huntington"
+    p0 = Point(suc=suc_0, disch=disch_0, flow_v=1, speed=1, b=1, D=1)
+    assert p0.head.units == "joule/kilogram"
+    assert_allclose(p0.head, 82951.470027, rtol=1e-6)
+
+
+def test_case_sc_at():
+    suc = State.define(
+        p=Q_("5516000 Pa"), T=Q_("311 K"), fluid={"CO2": 0.70000, "METHANE": 0.30000}
+    )
+    disch = State.define(
+        p=Q_("16547000 Pa"), T=Q_("416 K"), fluid={"CO2": 0.70000, "METHANE": 0.30000}
+    )
+    assert_allclose(eff_pol_huntington(suc, disch), 0.818206, rtol=1e-6)
