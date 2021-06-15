@@ -5,6 +5,7 @@ import toml
 import plotly.graph_objects as go
 from scipy.optimize import newton
 
+import ccp.config
 from .state import State
 from ccp.config.units import check_units, Q_
 from ccp.config.utilities import r_getattr
@@ -82,7 +83,12 @@ class Point:
         Difference between Mach for this point and the original point from which it was converted from.
     volume_ratio_ratio = 1.0
         Ratio between volume_ratio for this point and the original point from which it was converted from.
-
+    polytropic_method : str, optional
+        Polytropic method used for head and efficiency calculation.
+        Options are: "mallen_saveille", "sandberg_colby", "schultz" and "huntington".
+        The default is "schultz".
+        The default value can be changed in a global level with:
+        ccp.config.POLYTROPIC_METHOD = "<desired value>"
     """
 
     @check_units
@@ -101,9 +107,15 @@ class Point:
         volume_ratio=None,
         b=None,
         D=None,
+        polytropic_method=None,
     ):
         if b is None or D is None:
             raise ValueError("Arguments b and D must be provided.")
+        if polytropic_method is None:
+            polytropic_method = ccp.config.POLYTROPIC_METHOD
+
+        self.head_calc_func = globals()[f"head_pol_{polytropic_method}"]
+        self.eff_calc_func = globals()[f"eff_pol_{polytropic_method}"]
 
         self.suc = suc
         self.disch = disch
@@ -202,8 +214,8 @@ class Point:
         )
 
     def _calc_from_disch_flow_v_speed_suc(self):
-        self.head = head_pol_schultz(self.suc, self.disch)
-        self.eff = eff_pol_schultz(self.suc, self.disch)
+        self.head = self.head_calc_func(self.suc, self.disch)
+        self.eff = self.eff_calc_func(self.suc, self.disch)
         self.volume_ratio = self.suc.v() / self.disch.v()
         self.flow_m = self.suc.rho() * self.flow_v
         self.power = power_calc(self.flow_m, self.head, self.eff)
@@ -211,8 +223,8 @@ class Point:
         self.psi = psi(self.head, self.speed, self.D)
 
     def _calc_from_disch_flow_m_speed_suc(self):
-        self.head = head_pol_schultz(self.suc, self.disch)
-        self.eff = eff_pol_schultz(self.suc, self.disch)
+        self.head = self.head_calc_func(self.suc, self.disch)
+        self.eff = self.eff_calc_func(self.suc, self.disch)
         self.volume_ratio = self.suc.v() / self.disch.v()
         self.flow_v = self.flow_m / self.suc.rho()
         self.power = power_calc(self.flow_m, self.head, self.eff)
@@ -235,7 +247,7 @@ class Point:
                 disch.update(rho=disch_rho, p=x)
             elif update_type == "temperature":
                 disch.update(rho=disch_rho, T=x)
-            new_eff = eff_pol_schultz(self.suc, disch)
+            new_eff = self.eff_calc_func(self.suc, disch)
             if not 0.0 < new_eff < 1.1:
                 raise ValueError
 
@@ -250,7 +262,7 @@ class Point:
             newton(update_state, disch.p().magnitude, args=("pressure",), tol=1e-1)
 
         self.disch = disch
-        self.head = head_pol_schultz(suc, disch)
+        self.head = self.head_calc_func(suc, disch)
         self.speed = speed_from_psi(self.D, self.head, self.psi)
         self.flow_v = flow_from_phi(self.D, self.phi, self.speed)
         self.flow_m = self.flow_v * self.suc.rho()
@@ -428,7 +440,15 @@ def plot_func(self, attr):
 
 
 def n_exp(suc, disch):
-    """Polytropic exponent.
+    r"""Polytropic exponent.
+
+    The polytropic exponent :math:`n` is calculated as per :cite:`schultz1962` eq. 27:
+
+    .. math::
+
+        \begin{equation}
+            n = \frac{\log{\frac{p_d}{p_s}}}{\log{\frac{v_s}{v_d}}}
+        \end{equation}
 
     Parameters
     ----------
@@ -450,8 +470,18 @@ def n_exp(suc, disch):
     return np.log(pd / ps) / np.log(vs / vd)
 
 
-def head_polytropic(suc, disch):
-    """Polytropic head.
+def head_pol(suc, disch):
+    r"""Polytropic head.
+
+    The polytropic head is calculated as per :cite:`schultz1962` eq. 27:
+
+    .. math::
+
+       \begin{equation}
+          H_p = (\frac{n}{n - 1}) (p_d v_d - p_s v_s)
+       \end{equation}
+
+    And :math:`n` is calculated by :py:func:`n_exp`.
 
     Parameters
     ----------
@@ -462,7 +492,7 @@ def head_polytropic(suc, disch):
 
     Returns
     -------
-    head_polytropic : pint.Quantity
+    head_pol : pint.Quantity
         Polytropic head (J/kg).
     """
 
@@ -476,7 +506,7 @@ def head_polytropic(suc, disch):
     return (n / (n - 1)) * (p2 * v2 - p1 * v1).to("joule/kilogram")
 
 
-def eff_polytropic(suc, disch):
+def eff_pol(suc, disch):
     """Polytropic efficiency.
 
     Parameters
@@ -488,11 +518,11 @@ def eff_polytropic(suc, disch):
 
     Returns
     -------
-    eff_polytropic : pint.Quantity
-        Polytropic head (J/kg).
+    eff_pol : pint.Quantity
+        Polytropic efficiency (dimensionless).
 
     """
-    wp = head_polytropic(suc, disch)
+    wp = head_pol(suc, disch)
 
     dh = disch.h() - suc.h()
 
@@ -518,7 +548,7 @@ def head_isentropic(suc, disch):
     disch_s = copy(disch)
     disch_s.update(p=disch.p(), s=suc.s())
 
-    return head_polytropic(suc, disch_s).to("joule/kilogram")
+    return head_pol(suc, disch_s).to("joule/kilogram")
 
 
 def eff_isentropic(suc, disch):
@@ -542,8 +572,15 @@ def eff_isentropic(suc, disch):
     return ws / dh
 
 
-def schultz_f(suc, disch):
-    """Schultz factor.
+def f_schultz(suc, disch):
+    r"""Correction factor as per :cite:`schultz1962` eq 32:
+
+    .. math::
+
+       \begin{equation}
+          f = \frac{H_{ds} - H_s}{(\frac{n_s}{n_s - 1})(p_d v_{ds} - p_s v_s)}
+       \end{equation}
+
 
     Parameters
     ----------
@@ -554,7 +591,7 @@ def schultz_f(suc, disch):
 
     Returns
     -------
-    schultz_f : float
+    f_schultz : float
         Schultz polytropic factor.
     """
 
@@ -569,7 +606,16 @@ def schultz_f(suc, disch):
 
 
 def head_pol_schultz(suc, disch):
-    """Polytropic head corrected by the Schultz factor.
+    r"""Polytropic head corrected by the :cite:`schultz1962` factor.
+
+    .. math::
+
+       \begin{equation}
+          H_{p_{schultz}} = f_{schultz} H_p
+       \end{equation}
+
+    Where :math:`f_{schultz}` is calculated by :py:func:`f_schultz` and
+    :math:`H_p` is calculated by :py:func:`head_pol`.
 
     Parameters
     ----------
@@ -583,15 +629,14 @@ def head_pol_schultz(suc, disch):
     head_pol_schultz : pint.Quantity
         Schultz polytropic head (J/kg).
     """
-
-    f = schultz_f(suc, disch)
-    head = head_polytropic(suc, disch)
+    f = f_schultz(suc, disch)
+    head = head_pol(suc, disch)
 
     return f * head
 
 
 def eff_pol_schultz(suc, disch):
-    """Schultz polytropic efficiency.
+    """Polytropic efficiency as per :cite:`schultz1962`.
 
     Parameters
     ----------
@@ -602,7 +647,7 @@ def eff_pol_schultz(suc, disch):
 
     Returns
     -------
-    head_pol_schultz : pint.Quantity
+    eff_pol_schultz : pint.Quantity
         Schultz polytropic efficiency (dimensionless).
     """
     wp = head_pol_schultz(suc, disch)
@@ -612,7 +657,13 @@ def eff_pol_schultz(suc, disch):
 
 
 def head_pol_mallen_saville(suc, disch):
-    """Polytropic head as per Mallen-Saville
+    r"""Polytropic head as per :cite:`mallen1977polytropic` calculated with:
+
+    .. math::
+
+       \begin{equation}
+          H_p = (h_d - h_s) - (s_d - s_s) \frac{T_d - Ts}{\ln{(\frac{T_d}{T_s})}}
+       \end{equation}
 
     Parameters
     ----------
@@ -634,26 +685,51 @@ def head_pol_mallen_saville(suc, disch):
     return head
 
 
+def eff_pol_mallen_saville(suc, disch):
+    """Polytropic efficiency as per :cite:`mallen1977polytropic`.
+
+    Parameters
+    ----------
+    suc : ccp.State
+        Suction state.
+    disch : ccp.State
+        Discharge state.
+
+    Returns
+    -------
+    eff_pol_mallen_saville : pint.Quantity
+        Mallen-Saville polytropic efficiency (dimensionless).
+    """
+    wp = head_pol_mallen_saville(suc, disch)
+    dh = disch.h() - suc.h()
+
+    return (wp / dh).to("dimensionless")
+
+
 _ref_H = 0
-_ref_n = []
-_ref_k = []
-_ref_p = []
-_ref_v = []
-_ref_vs = []
 
 
 def head_reference(suc, disch, num_steps=100):
-    """Reference head as described by Huntington (1985).
+    r"""Reference head.
 
-    It consists of two loops.
-    One converges the T1 temperature at each step by evaluating the
-    diffence between H = vm * delta_p and H = eff * delta_h.
+    The reference head consists of the integration of :math:`v dp` along the
+    polytropic path as described by :cite:`huntington1985` and :cite:`sandberg2013limitations`.
+    To achieve this we break the polytropic path into a series of subpaths.
+    The compression ratio :math:`R_{c_i}` for each segment, as described by
+    :cite:`sandberg2013limitations` is calculated with:
+
+    .. math::
+
+       \begin{equation}
+          R_{c_i} = \sqrt[n_{steps}]{\frac{p_d}{p_s}}
+       \end{equation}
+
+
+    The calculation consists of two loops.
+    One converges the :math:`T_1` temperature at each step by evaluating the
+    difference between :math:`H = v_{avg} \Delta_p` and :math:`H = e \Delta_h`.
     The other evaluates the efficiency by checking the difference between
-    the last T1 to the discharge temperature Td.
-
-    Results are stored at self._ref_eff, self._ref_H and self._ref_n.
-    self._ref_n is a list with n_exp at each step for the final converged
-    efficiency.
+    the last :math:`T_1` to the discharge temperature :math:`T_d`.
 
     Parameters
     ----------
@@ -665,17 +741,16 @@ def head_reference(suc, disch, num_steps=100):
     Returns
     -------
     head_reference : pint.Quantity
-       Reference head as described by Huntington (1985) (J/kg).
-
+       Reference head as described by :cite:`huntington1985`. (J/kg).
+    eff_reference : float
+        Reference efficiency as described by :cite:`huntington1985` (dimensionless).
     """
 
-    def calc_step_discharge_temp(T1, T0, p0, p1, e):
-        s0 = State.define(p=p0, T=T0, fluid=suc.fluid)
+    def calc_step_discharge_temp(T1, p1, p0, h0, v0, e):
         s1 = State.define(p=p1, T=T1, fluid=suc.fluid)
-        h0 = s0.h()
         h1 = s1.h()
 
-        vm = ((1 / s0.rho()) + (1 / s1.rho())) / 2
+        vm = (v0 + s1.v()) / 2
         delta_p = Q_(p1 - p0, "Pa")
         H0 = vm * delta_p
         H1 = e * (h1 - h0)
@@ -683,44 +758,340 @@ def head_reference(suc, disch, num_steps=100):
         return (H1 - H0).magnitude
 
     def calc_eff(e, suc, disch):
-        p_intervals = np.linspace(suc.p().m, disch.p().m, num_steps + 1)
+        rc = (disch.p().m / suc.p().m) ** (1 / num_steps)
+        p_intervals = [suc.p().m]
+        p = suc.p().m
+        for i in range(num_steps):
+            next_p = p * rc
+            p = next_p
+            p_intervals.append(p)
 
         T0 = suc.T().magnitude
 
         global _ref_H
-        global _ref_n
-        global _ref_k
-        global _ref_p
-        global _ref_v
-        global _ref_vs
 
         _ref_H = 0
-        _ref_n = []
-        _ref_k = []
-        _ref_p = []
-        _ref_v = []
-        _ref_vs = []
 
         # TODO implement p_intervals considering pressure ratio
         for p0, p1 in zip(p_intervals[:-1], p_intervals[1:]):
-            T1 = newton(calc_step_discharge_temp, (T0 + 1e-3), args=(T0, p0, p1, e))
-
             s0 = State.define(p=p0, T=T0, fluid=suc.fluid)
+            T1 = newton(
+                calc_step_discharge_temp, (T0 + 1e-3), args=(p1, p0, s0.h(), s0.v(), e)
+            )
             s1 = State.define(p=p1, T=T1, fluid=suc.fluid)
-            s1s = State.define(p=p1, s=s0.s(), fluid=suc.fluid)
-            _ref_H += head_polytropic(s0, s1)
-            _ref_n.append(n_exp(s0, s1))
-            _ref_p.append(np.mean((s0.p().m, s1.p().m)))
-            _ref_v.append(np.mean((s0.v().m, s1.v().m)))
-            _ref_vs.append(np.mean((s0.v().m, s1s.v().m)))
-            _ref_k.append(n_exp(s0, s1s))
+            _ref_H += head_pol(s0, s1)
+
             T0 = T1
 
         return disch.T().magnitude - T1
 
     _ref_eff = newton(calc_eff, 0.8, args=(suc, disch))
 
-    return _ref_H, _ref_eff, _ref_n, _ref_k, _ref_p, _ref_v, _ref_vs
+    return _ref_H, _ref_eff
+
+
+_ref_H_2017 = 0
+
+
+def head_reference_2017(suc, disch, num_steps=100):
+    r"""Reference head.
+
+    The reference head consists of the integration along the
+    polytropic path as described by :cite:`huntington2017`.
+    Contrary to the method presented by :cite:`huntington1985`, this method does
+    not use a specific volume linearized over each step of the integration, instead,
+    it is based on the assumption that the compressibility factor varies linearly
+    with the pressure within each step.
+
+    In this case the inner loop of the method is calculated by:
+
+    .. math::
+
+       \begin{equation}
+          a = \frac{z_i (\frac{p_{i+1}}{p_i}) - z_{i+1}}
+          {(\frac{p_{i+1}}{p_i} - 1)} \\
+          b = \frac{z_{i+1} - z_i}
+          {(\frac{p_{i+1}}{p_i} - 1)} \\
+          (s_{i+1} - s_i) = R \frac{(1-e)}{e}(a \ln{(\frac{p_{i+1}}{p_i})} + b(\frac{p_{i+1}}{p_i} - 1))
+      \end{equation}
+
+
+    Parameters
+    ----------
+    suc : ccp.State
+        Suction state.
+    disch : ccp.State
+        Discharge state.
+
+    Returns
+    -------
+    head_reference : pint.Quantity
+       Reference head as described by :cite:`huntington2017`. (J/kg).
+    eff_reference : float
+        Reference efficiency as described by :cite:`huntington2017` (dimensionless).
+    """
+    R = suc.gas_constant() / suc.molar_mass()
+    rc = (disch.p().m / suc.p().m) ** (1 / num_steps)
+    p_intervals = [suc.p().m]
+    p = suc.p().m
+    for i in range(num_steps):
+        next_p = p * rc
+        p = next_p
+        p_intervals.append(p)
+
+    def calc_step_discharge_z(s1, s0, p1, p0, z0, R, e):
+        state1 = ccp.State.define(p=p1, s=s1, fluid=suc.fluid)
+        z1 = state1.z()
+        a = (z0 * (p1 / p0) - z1) / ((p1 / p0) - 1)
+        b = (z1 - z0) / ((p1 / p0) - 1)
+
+        return (
+            (R * ((1 - e) / e)) * (a * np.log(p1 / p0) + b * ((p1 / p0) - 1))
+            - (state1.s() - Q_(s0, state1.s().units))
+        ).magnitude
+
+    def calc_eff(e, suc, disch, p_intervals):
+        global _ref_H_2017
+        _ref_H_2017 = 0
+        s0 = suc.s().magnitude
+
+        for p0, p1 in zip(p_intervals[:-1], p_intervals[1:]):
+            state0 = ccp.State.define(p=p0, s=s0, fluid=suc.fluid)
+            z0 = state0.z()
+
+            s1 = newton(calc_step_discharge_z, (s0 + 1e-8), args=(s0, p1, p0, z0, R, e))
+            state1 = ccp.State.define(p=p1, s=s1, fluid=suc.fluid)
+            _ref_H_2017 += ccp.point.head_pol(state0, state1)
+
+            s0 = s1
+            T1 = state1.T().magnitude
+
+        return disch.T().magnitude - T1
+
+    eff0 = ccp.point.eff_pol_huntington(suc, disch)
+    _ref_eff = newton(calc_eff, eff0, args=(suc, disch, p_intervals))
+
+    return _ref_H_2017, _ref_eff
+
+
+def f_sandberg_colby(suc, disch):
+    r"""Correction factor as proposed by :cite:`sandberg2013limitations`.
+
+    .. math::
+
+       \begin{equation}
+          f_p =
+           \frac{(h_d - h_s) - T_{avg} (s_d - s_s)}
+          {(\frac{n}{n-1})(p_d v_d - p_s v_s)}
+       \end{equation}
+
+    Parameters
+    ----------
+    suc : ccp.State
+        Suction state.
+    disch : ccp.State
+        Discharge state.
+
+    Returns
+    -------
+    f_sandberg_colby : pint.Quantity
+       Polytropic head correction factor as described by :cite:`sandberg2013limitations` (dimensionless).
+    """
+    Tm = (suc.T() + disch.T()) / 2
+    hd = disch.h()
+    hs = suc.h()
+    sd = disch.s()
+    ss = suc.s()
+    n = n_exp(suc, disch)
+    pd = disch.p()
+    ps = suc.p()
+    vd = disch.v()
+    vs = suc.v()
+
+    f_sandberg_colby = ((hd - hs) - Tm * (sd - ss)) / (
+        (n / (n - 1)) * (pd * vd - ps * vs)
+    )
+
+    return f_sandberg_colby.to("dimensionless")
+
+
+def head_pol_sandberg_colby(suc, disch):
+    r"""Polytropic head corrected by the :cite:`sandberg2013limitations` factor.
+
+    .. math::
+
+       \begin{equation}
+          H_{p_{s-c}} = f_{s-c} H_p
+       \end{equation}
+
+    Where :math:`f_{s-c}` is calculated by :py:func:`f_sandberg_colby` and
+    :math:`H_p` is calculated by :py:func:`head_pol`.
+
+    Parameters
+    ----------
+    suc : ccp.State
+        Suction state.
+    disch : ccp.State
+        Discharge state.
+
+    Returns
+    -------
+    head_pol_sandberg_colby : pint.Quantity
+       Reference head as described by :cite:`sandberg2013limitations` (J/kg).
+    """
+    f = f_sandberg_colby(suc, disch)
+    h = f * head_pol(suc, disch)
+    return h
+
+
+def eff_pol_sandberg_colby(suc, disch):
+    """Sandberg-Colby polytropic efficiency.
+
+    Parameters
+    ----------
+    suc : ccp.State
+        Suction state.
+    disch : ccp.State
+        Discharge state.
+
+    Returns
+    -------
+    eff_pol_sandberg_colby: pint.Quantity
+        Sandberg-Colby polytropic efficiency (dimensionless).
+    """
+    wp = head_pol_sandberg_colby(suc, disch)
+    dh = disch.h() - suc.h()
+
+    return (wp / dh).to("dimensionless")
+
+
+def head_pol_huntington(suc, disch):
+    r"""Polytropic head calculated by the 3 point method described by :cite:`huntington1985`.
+
+    The polytropic head in this case is calculated from the polytropic efficiency with:
+
+    .. math::
+
+       \begin{equation}
+          \frac{1}{e} =
+          1 +
+          \frac{\frac{(s_d - s_s)}{R}}
+          {a \ln(\frac{p_d}{p_s})
+          + b((\frac{p_d}{p_s}) - 1)
+          + \frac{c}{2}(\ln{(\frac{p_d}{p_s})})^2}
+       \end{equation}
+
+    The constants :math:`a`, :math:`b` and :math:`c` are calculated with:
+
+    .. math::
+
+       \begin{equation}
+          a = z_s - b \\
+          b = \frac{(z_s + z_d - 2z_{int})}{((\frac{p_s}{p_s})^{0.5} - 1)^2} \\
+          c = \frac{(z_d - a - b(\frac{p_d}{p_s}))}{\ln{(\frac{p_d}{p_s})}}
+       \end{equation}
+
+    The intermediate values are calculated interactively:
+
+    .. math::
+
+       \begin{equation}
+          p_{int} = \sqrt{p_s p_d} \\
+          T_{int}' = T_{int} \exp{(\frac{(s_{int}' - s_{int})}{c_p})}
+       \end{equation}
+
+    And :math:`s_{int}` is calculated by:
+
+    .. math::
+
+       \begin{equation}
+            s_{int}' = s_s + (s_d - s_s)
+            \frac{\frac{a}{2}\ln{(\frac{p_d}{p_s})} + b((\frac{p_s}{p_s})^{0.5} - 1)) + \frac{c}{8}(\ln{(\frac{p_d}{p_s})})^2}
+            {a\ln(\frac{p_d}{p_s}) + b((\frac{p_d}{p_s})-1) + \frac{c}{2}(\ln(\frac{p_d}{p_s}))^2}
+       \end{equation}
+
+    Parameters
+    ----------
+    suc : ccp.State
+        Suction state.
+    disch : ccp.State
+        Discharge state.
+
+    Returns
+    -------
+    head_pol_huntington : pint.Quantity
+       Polytropic head as described by :cite:`huntington1985` (J/kg).
+    """
+    eff = eff_pol_huntington(suc, disch)
+    head = (disch.h() - suc.h()) * eff
+
+    return head
+
+
+def eff_pol_huntington(suc, disch):
+    """Polytropic efficiency calculated by the 3 point method described by :cite:`huntington1985`.
+
+    Parameters
+    ----------
+    suc : ccp.State
+        Suction state.
+    disch : ccp.State
+        Discharge state.
+
+    Returns
+    -------
+    eff_pol_huntington : pint.Quantity
+       Polytropic efficiency as described by :cite:`huntington1985` (dimensionless).
+    """
+    p1 = suc.p()
+    p2 = disch.p()
+    s1 = suc.s()
+    s2 = disch.s()
+    z1 = suc.z()
+    z2 = disch.z()
+    T1 = suc.T()
+    T2 = disch.T()
+    p3 = np.sqrt(p1 * p2)
+
+    T3 = np.sqrt(T1 * T2)
+    error = 1
+    n = 0
+    while error > 1e-10:
+        state3 = State.define(p=p3, T=T3, fluid=suc.fluid)
+        s3 = state3.s()
+        z3 = state3.z()
+        cp3 = state3.cp()
+        b = (z1 + z2 - 2 * z3) / (np.sqrt(p2 / p1) - 1) ** 2
+        a = z1 - b
+        c = (z2 - a - b * (p2 / p1)) / np.log(p2 / p1)
+        s3_ = s1 + (s2 - s1) * (
+            (
+                ((a / 2) * np.log(p2 / p1))
+                + b * (np.sqrt(p2 / p1) - 1)
+                + (c / 8) * np.log(p2 / p1) ** 2
+            )
+            / (
+                a * np.log(p2 / p1)
+                + b * ((p2 / p1) - 1)
+                + (c / 2) * np.log(p2 / p1) ** 2
+            )
+        )
+        T3_new = T3 * np.exp((s3_ - s3) / cp3)
+        error = abs(T3_new - T3).m
+        T3 = T3_new
+
+        n += 1
+        if n == 100:
+            raise RecursionError("Maximum number of iterations exceeded.")
+
+    R = suc.gas_constant() / suc.molar_mass()
+    inv_e = 1 + (
+        ((s2 - s1) / R)
+        / (a * np.log(p2 / p1) + b * ((p2 / p1) - 1) + (c / 2) * np.log(p2 / p1) ** 2)
+    )
+    eff = 1 / inv_e
+
+    return eff
 
 
 @check_units
@@ -893,7 +1264,7 @@ def head_from_psi(D, psi, speed):
     return head.to("J/kg")
 
 
-def disch_from_suc_head_eff(suc, head, eff):
+def disch_from_suc_head_eff(suc, head, eff, polytropic_method=None):
     """Calculate discharge state from suction, head and efficiency.
 
     Parameters
@@ -910,6 +1281,10 @@ def disch_from_suc_head_eff(suc, head, eff):
     disch : ccp.State
         Discharge state.
     """
+    if polytropic_method is None:
+        polytropic_method = ccp.config.POLYTROPIC_METHOD
+
+    head_calc_func = globals()[f"head_pol_{polytropic_method}"]
     h_disch = head / eff + suc.h()
 
     #  consider first an isentropic compression
@@ -917,7 +1292,7 @@ def disch_from_suc_head_eff(suc, head, eff):
 
     def update_pressure(p):
         disch.update(h=h_disch, p=p)
-        new_head = head_pol_schultz(suc, disch)
+        new_head = head_calc_func(suc, disch)
 
         return (new_head - head).magnitude
 

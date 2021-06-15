@@ -1,0 +1,1 @@
+POLYTROPIC_METHOD = "schultz"

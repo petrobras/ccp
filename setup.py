@@ -51,6 +51,7 @@ setup(
     long_description_content_type="text/markdown",
     author="Raphael Timbó",
     author_email="raphaelts@gmail.com",
+    packages=find_packages(exclude=("tests",)),
     package_data={"ccp.config": ["new_units.txt"]},
     install_requires=[
         "numpy",
@@ -61,6 +62,7 @@ setup(
         "toml",
         "openpyxl",
         "tqdm",
+        "ctREFPROP",
     ],
     extras_require={
         "dev": [
@@ -89,7 +91,7 @@ setup(
         "License :: OSI Approved :: MIT License",
         "Programming Language :: Python",
         "Programming Language :: Python :: 3",
-        "Programming Language :: Python :: 3.6",
         "Programming Language :: Python :: Implementation :: CPython",
+        "Operating System :: OS Independent",
     ],
 )
