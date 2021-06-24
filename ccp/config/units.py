@@ -5,6 +5,7 @@ from .. import Q_
 
 units = {
     "p": "pascal",
+    "disch_p": "pascal",
     "T": "kelvin",
     "rho": "kilogram/m**3",
     "speed": "radian/second",
