@@ -23,6 +23,8 @@ class Point:
         Volumetric (m³/s) or mass (kg/s) flow.
     suc, disch : ccp.State, ccp.State
         Suction and discharge states for the point.
+    suc, disch_p, eff : ccp.State, float, float
+        Suction state, discharge pressure and polytropic efficiency.
     suc, head, eff : ccp.State, float, float
         Suction state, polytropic head and polytropic efficiency.
     suc, head, power : ccp.State, pint.Quantity or float, pint.Quantity or float
@@ -96,6 +98,7 @@ class Point:
         self,
         suc=None,
         disch=None,
+        disch_p=None,
         flow_v=None,
         flow_m=None,
         speed=None,
@@ -119,6 +122,7 @@ class Point:
 
         self.suc = suc
         self.disch = disch
+        self.disch_p = disch_p
         self.flow_v = flow_v
         self.flow_m = flow_m
         self.speed = speed
@@ -141,6 +145,7 @@ class Point:
         for k in [
             "suc",
             "disch",
+            "disch_p",
             "flow_v",
             "flow_m",
             "speed",
@@ -298,6 +303,30 @@ class Point:
         self.flow_v = flow_from_phi(self.D, self.phi, self.speed)
         self.flow_m = self.flow_v * self.suc.rho()
         self.power = power_calc(self.flow_m, self.head, self.eff)
+        self.volume_ratio = self.suc.v() / self.disch.v()
+
+    def _calc_from_disch_p_eff_flow_v_speed_suc(self):
+        eff = self.eff
+        suc = self.suc
+        disch = disch_from_suc_disch_p_eff(suc, self.disch_p, eff)
+        self.disch = disch
+        self.head = self.head_calc_func(suc, disch)
+        self.flow_m = self.flow_v * self.suc.rho()
+        self.power = power_calc(self.flow_m, self.head, self.eff)
+        self.phi = phi(self.flow_v, self.speed, self.D)
+        self.psi = psi(self.head, self.speed, self.D)
+        self.volume_ratio = self.suc.v() / self.disch.v()
+
+    def _calc_from_disch_p_eff_flow_m_speed_suc(self):
+        eff = self.eff
+        suc = self.suc
+        disch = disch_from_suc_disch_p_eff(suc, self.disch_p, eff)
+        self.disch = disch
+        self.head = self.head_calc_func(suc, disch)
+        self.flow_v = self.flow_m / self.suc.rho()
+        self.power = power_calc(self.flow_m, self.head, self.eff)
+        self.phi = phi(self.flow_v, self.speed, self.D)
+        self.psi = psi(self.head, self.speed, self.D)
         self.volume_ratio = self.suc.v() / self.disch.v()
 
     @classmethod
@@ -1297,6 +1326,41 @@ def disch_from_suc_head_eff(suc, head, eff, polytropic_method=None):
         return (new_head - head).magnitude
 
     newton(update_pressure, disch.p().magnitude, tol=1e-1)
+
+    return disch
+
+
+def disch_from_suc_disch_p_eff(suc, disch_p, eff, polytropic_method=None):
+    """Calculate discharge state from suction, discharge pressure and efficiency.
+
+    Parameters
+    ----------
+    suc : ccp.State
+        Suction state.
+    disch_p : pint.Quantity, float
+        Discharge pressure (Pa).
+    eff : pint.Quantity, float
+        Polytropic efficiency (dimensionless).
+
+    Returns
+    -------
+    disch : ccp.State
+        Discharge state.
+    """
+    # consider first an isentropic compression
+    if polytropic_method is None:
+        polytropic_method = ccp.config.POLYTROPIC_METHOD
+
+    disch = ccp.State.define(p=disch_p, s=suc.s(), fluid=suc.fluid)
+    eff_calc_func = globals()[f"eff_pol_{polytropic_method}"]
+
+    def update_state(x):
+        disch.update(p=disch_p, T=x)
+        new_eff = eff_calc_func(suc, disch)
+
+        return (new_eff - eff).magnitude
+
+    newton(update_state, disch.T().magnitude)
 
     return disch
 
