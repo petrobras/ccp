@@ -1,6 +1,6 @@
 import pytest
 import pickle
-from copy import copy
+import ccp
 from ccp.state import *
 from numpy.testing import assert_allclose
 
@@ -22,6 +22,42 @@ def test_state_define():
     assert state.p().magnitude == 100000
     assert state.T().magnitude == 300
     assert state.rhomass() == 0.6442542612980722
+
+
+def test_eos():
+    ccp.config.EOS = "REFPROP"
+    state = State.define(p=100000, T=300, fluid={"Methane": 1 - 1e-15, "Ethane": 1e-15})
+    assert state.p().units == "pascal"
+    assert state.T().units == "kelvin"
+    assert state.p().magnitude == 100000
+    assert state.T().magnitude == 300
+    assert state.rhomass() == 0.6442542612980722
+
+    ccp.config.EOS = "PR"
+    state = State.define(p=100000, T=300, fluid={"Methane": 1 - 1e-15, "Ethane": 1e-15})
+    assert state.p().units == "pascal"
+    assert state.T().units == "kelvin"
+    assert state.p().magnitude == 100000
+    assert state.T().magnitude == 300
+    assert state.rhomass() == 0.6445687063978816
+
+    ccp.config.EOS = "SRK"
+    state = State.define(p=100000, T=300, fluid={"Methane": 1 - 1e-15, "Ethane": 1e-15})
+    assert state.p().units == "pascal"
+    assert state.T().units == "kelvin"
+    assert state.p().magnitude == 100000
+    assert state.T().magnitude == 300
+    assert state.rhomass() == 0.6442384800595821
+
+    ccp.config.EOS = "HEOS"
+    state = State.define(p=100000, T=300, fluid={"Methane": 1 - 1e-15, "Ethane": 1e-15})
+    assert state.p().units == "pascal"
+    assert state.T().units == "kelvin"
+    assert_allclose(state.p().magnitude, 100000)
+    assert state.T().magnitude == 300
+    assert state.rhomass() == 0.6442581578304425
+
+    ccp.config.EOS = "REFPROP"
 
 
 def test_state_define_units():
