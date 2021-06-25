@@ -13,6 +13,7 @@ def auxiliary_function():
     @check_units
     def func(
         p=None,
+        disch_p=None,
         T=None,
         rho=None,
         speed=None,
@@ -26,22 +27,38 @@ def auxiliary_function():
         eff=None,
         power=None,
     ):
-        return p, T, rho, speed, flow_v, flow_m, h, s, b, D, head, eff, power
+        return p, disch_p, T, rho, speed, flow_v, flow_m, h, s, b, D, head, eff, power
 
     return func
 
 
 def test_units(auxiliary_function):
     results = auxiliary_function(
-        p=1, T=1, rho=1, speed=1, flow_v=1, flow_m=1, h=1, s=1, b=1, D=1, head=1, eff=1, power=1,
+        p=1,
+        disch_p=1,
+        T=1,
+        rho=1,
+        speed=1,
+        flow_v=1,
+        flow_m=1,
+        h=1,
+        s=1,
+        b=1,
+        D=1,
+        head=1,
+        eff=1,
+        power=1,
     )
     # check if all available units are tested
     assert len(results) == len(units)
 
-    p, T, rho, speed, flow_v, flow_m, h, s, b, D, head, eff, power = results
+    p, disch_p, T, rho, speed, flow_v, flow_m, h, s, b, D, head, eff, power = results
 
     assert p.magnitude == 1
     assert p.units == "pascal"
+
+    assert disch_p.magnitude == 1
+    assert disch_p.units == "pascal"
 
     assert T.magnitude == 1
     assert T.units == "kelvin"
@@ -84,6 +101,7 @@ def test_units(auxiliary_function):
 def test_unit_Q_(auxiliary_function):
     results = auxiliary_function(
         p=Q_(1, "pascal"),
+        disch_p=Q_(1, "pascal"),
         T=Q_(1, "kelvin"),
         rho=Q_(1, "kilogram/meter**3"),
         speed=Q_(1, "radian/second"),
@@ -95,15 +113,18 @@ def test_unit_Q_(auxiliary_function):
         D=Q_(1, "meter"),
         head=Q_(1, "joule/kilogram"),
         eff=Q_(1, "dimensionless"),
-        power=Q_(1, "watt")
+        power=Q_(1, "watt"),
     )
     # check if all available units are tested
     assert len(results) == len(units)
 
-    p, T, rho, speed, flow_v, flow_m, h, s, b, D, head, eff, power = results
+    p, disch_p, T, rho, speed, flow_v, flow_m, h, s, b, D, head, eff, power = results
 
     assert p.magnitude == 1
     assert p.units == "pascal"
+
+    assert disch_p.magnitude == 1
+    assert disch_p.units == "pascal"
 
     assert T.magnitude == 1
     assert T.units == "kelvin"
@@ -146,6 +167,7 @@ def test_unit_Q_(auxiliary_function):
 def test_unit_Q_conversion(auxiliary_function):
     results = auxiliary_function(
         p=Q_(1, "bar"),
+        disch_p=Q_(1, "bar"),
         T=Q_(1, "celsius"),
         rho=Q_(1, "lb/foot**3"),
         speed=Q_(1, "RPM"),
@@ -157,13 +179,13 @@ def test_unit_Q_conversion(auxiliary_function):
         D=Q_(1, "inches"),
         head=Q_(1, "BTU/lb"),
         eff=Q_(1, "dimensionless"),
-        power=Q_(1, "hp")
+        power=Q_(1, "hp"),
     )
 
     # check if all available units are tested
     assert len(results) == len(units)
 
-    p, T, rho, speed, flow_v, flow_m, h, s, b, D, head, eff, power = results
+    p, disch_p, T, rho, speed, flow_v, flow_m, h, s, b, D, head, eff, power = results
 
     assert p.magnitude == 1e5
     assert p.units == "pascal"
