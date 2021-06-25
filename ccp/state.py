@@ -3,6 +3,8 @@ from warnings import warn
 
 import CoolProp.CoolProp as CP
 import numpy as np
+import ccp.config
+from scipy.optimize import newton
 from plotly import graph_objects as go
 from . import _RP
 
@@ -421,7 +423,7 @@ class State(CP.AbstractState):
         s=None,
         rho=None,
         fluid=None,
-        EOS="REFPROP",
+        EOS=None,
         **kwargs,
     ):
         """Constructor for state.
@@ -467,6 +469,9 @@ class State(CP.AbstractState):
         """
         if fluid is None:
             raise TypeError("A fluid is required. Provide as fluid=dict(...)")
+
+        if EOS is None:
+            EOS = ccp.config.EOS
 
         constituents = []
         molar_fractions = []
@@ -533,7 +538,16 @@ class State(CP.AbstractState):
         elif p is not None and h is not None:
             super().update(CP.HmassP_INPUTS, h.magnitude, p.magnitude)
         elif p is not None and s is not None:
-            super().update(CP.PSmass_INPUTS, p.magnitude, s.magnitude)
+            if ccp.config.EOS == "REFPROP":
+                super().update(CP.PSmass_INPUTS, p.magnitude, s.magnitude)
+            else:
+                # ps update not available for some EOS, this is a workaround based on:
+                # https://github.com/CoolProp/CoolProp/issues/2000
+                def objective(T):
+                    super(State, self).update(CP.PT_INPUTS, p.magnitude, T)
+                    return self.smass() - s.magnitude
+
+                newton(objective, x0=self.T().m)
         elif rho is not None and s is not None:
             super().update(CP.DmassSmass_INPUTS, rho.magnitude, s.magnitude)
         elif rho is not None and T is not None:
