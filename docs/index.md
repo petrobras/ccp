@@ -7,7 +7,7 @@ The code uses
 for the gas properties calculations.
 
 ```{toctree}
-:maxdepth: 2
+:maxdepth: 1
 :caption: Getting Started
 getting_started/overview
 getting_started/installation
@@ -15,7 +15,7 @@ getting_started/installation
 
 ```{toctree}
 ---
-maxdepth: 2
+maxdepth: 1
 caption: Tutorial
 ---
 tutorials/tutorial
@@ -23,7 +23,7 @@ tutorials/tutorial
 
 ```{toctree}
 ---
-maxdepth: 2
+maxdepth: 1
 caption: Discussions
 ---
 discussions/polytropic_methods
@@ -31,7 +31,7 @@ discussions/polytropic_methods
 
 ```{toctree}
 ---
-maxdepth: 2
+maxdepth: 1
 caption: How-To Guides
 ---
 how_to_guides/engauge
@@ -39,7 +39,7 @@ how_to_guides/engauge
 
 ```{toctree}
 ---
-maxdepth: 2
+maxdepth: 1
 caption: References
 ---
 references/references
