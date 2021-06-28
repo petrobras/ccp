@@ -547,7 +547,10 @@ class State(CP.AbstractState):
                     super(State, self).update(CP.PT_INPUTS, p.magnitude, T)
                     return self.smass() - s.magnitude
 
-                newton(objective, x0=self.T().m)
+                T0 = self.T().m
+                if T0 == float("-inf"):
+                    T0 = 300
+                newton(objective, x0=T0)
         elif rho is not None and s is not None:
             super().update(CP.DmassSmass_INPUTS, rho.magnitude, s.magnitude)
         elif rho is not None and T is not None:
