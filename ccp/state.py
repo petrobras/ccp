@@ -308,7 +308,14 @@ class State(CP.AbstractState):
         viscosity : pint.Quantity
             Viscosity (pascal second)
         """
-        viscosity = Q_(super().viscosity(), "pascal second")
+        try:
+            viscosity = Q_(super().viscosity(), "pascal second")
+        except ValueError:
+            # handle error for cubic eos such as PR, SRK etc.
+            dummy_state = self.define(
+                p=self.p(), T=self.T(), fluid=self.fluid, EOS="REFPROP"
+            )
+            viscosity = Q_(super(State, dummy_state).viscosity(), "pascal second")
         if units:
             viscosity = viscosity.to(units)
         return viscosity
