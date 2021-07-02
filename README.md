@@ -1,3 +1,10 @@
+> :bangbang: **ATENÇÃO** :bangbang:
+
+> **ESTE REPOSITÓRIO FOI MOVIDO PARA O ENDEREÇO ABAIXO:**
+
+> [https://codigo.petrobras.com.br/equipamentos-dinamicos/ccp](https://codigo.petrobras.com.br/equipamentos-dinamicos/ccp)
+
+
 # <img src="https://ccp-centrifugal-compressor-performance.readthedocs.io/en/latest/_static/ccp.png" alt="drawing" width="40"/> Centrifugal Compressor Performance
 
 [![PyPI Version](https://img.shields.io/pypi/v/ccp-performance.svg)](https://pypi.org/project/ccp-performance/)
