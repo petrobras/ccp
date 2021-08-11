@@ -410,6 +410,7 @@ class Impeller:
             Flow units used when extracting data with engauge.
         head_units : str
             Head units used when extracting data with engauge.
+            If the curve head units are in meter you can use: head_units="m*g0".
         speed_units : str
             Speed units used when extracting data with engauge.
         """
