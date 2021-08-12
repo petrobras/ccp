@@ -11,6 +11,7 @@ import numpy as np
 import plotly.graph_objects as go
 from openpyxl import Workbook
 from scipy.interpolate import interp1d
+from scipy.optimize import brentq
 
 from ccp import Q_, State, Point, Curve
 from ccp.config.units import check_units
@@ -190,11 +191,33 @@ class Impeller:
                     curves[0].flow_v.magnitude[-1],
                     curves[1].flow_v.magnitude[-1],
                 )
+                min_head = get_interpolated_value(
+                    factor, curves[0].head.magnitude[-1], curves[1].head.magnitude[-1]
+                )
                 number_of_points = len(curves[0])
                 flow_v_range = np.linspace(min_flow, max_flow, number_of_points)
-                current_curve = Curve(
-                    [self.point(flow_v=f, speed=speed) for f in flow_v_range]
-                )
+
+                current_curve = []
+                for f in flow_v_range:
+                    try:
+                        p = self.point(flow_v=f, speed=speed)
+                        if p.head.m > min_head:
+                            current_curve.append(p)
+                    except ValueError:
+                        continue
+                # add min_head point
+                try:
+                    flow_choke = brentq(
+                        calc_min_head_point,
+                        a=flow_v_range[0],
+                        b=flow_v_range[-1],
+                        args=(speed, self, min_head),
+                    )
+                    current_curve.append(self.point(flow_v=flow_choke, speed=speed))
+                except ValueError:
+                    pass
+
+                current_curve = Curve(current_curve)
                 current_point = self.point(flow_v=flow_v, speed=speed)
 
                 fig = r_getattr(current_curve, attr + "_plot")(
@@ -631,3 +654,14 @@ def create_points_flow_m(x):
         b=b,
         D=D,
     )
+
+
+def calc_min_head_point(x, speed, imp, min_head):
+    """Helper function to calculate min_head point."""
+    try:
+        p = imp.point(flow_v=x, speed=speed)
+        head = p.head.m
+    # if state does not converge, force head value just to keep the iterations going
+    except ValueError:
+        head = -x + min_head
+    return head - min_head
