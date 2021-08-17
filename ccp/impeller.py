@@ -320,14 +320,11 @@ class Impeller:
                 speed_mean = np.mean([p.speed.magnitude for p in converted_points])
 
                 converted_points = [
-                    Point(
+                    Point.convert_from(
+                        p,
                         suc=p.suc,
-                        eff=p.eff,
-                        phi=p.phi,
-                        psi=p.psi,
+                        find="volume_ratio",
                         speed=speed_mean,
-                        b=p.b,
-                        D=p.D,
                     )
                     for p in converted_points
                 ]
