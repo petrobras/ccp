@@ -182,6 +182,25 @@ def test_impeller_disch_state(imp2):
     )
 
 
+def test_impeller2_new_suction(imp2):
+    new_suc = State.define(
+        p=Q_(0.2, "MPa"), T=301.58, fluid={"n2": 1 - 1e-15, "co2": 1e-15}
+    )
+    imp2_new = Impeller.convert_from(imp2, suc=new_suc, find="speed")
+    p0 = imp2[0]
+    new_p0 = imp2_new[0]
+
+    assert_allclose(new_p0.eff, p0.eff, rtol=1e-4)
+    assert_allclose(new_p0.phi, p0.phi, rtol=1e-2)
+    assert_allclose(new_p0.psi, p0.psi, rtol=1e-2)
+    assert_allclose(new_p0.head, 151889.637082, rtol=1e-2)
+    assert_allclose(new_p0.power, 483519.884306, rtol=1e-2)
+    assert_allclose(new_p0.speed, 1281.074036, rtol=1e-3)
+    assert_allclose(new_p0.mach_diff, -7.12032e-05, rtol=1e-3)
+    assert_allclose(new_p0.reynolds_ratio, 0.999879, rtol=1e-3)
+    assert_allclose(new_p0.volume_ratio_ratio, 0.999815, rtol=1e-5)
+
+
 def test_impeller_point():
     imp = impeller_example()
     p0 = imp.point(flow_v=5, speed=900)
