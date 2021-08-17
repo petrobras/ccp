@@ -421,6 +421,62 @@ class Point:
 
         return cls(**cls._dict_from_load(parameters))
 
+    def plot_mach(self, fig=None, **kwargs):
+        """Plot allowable Mach range and point.
+
+        This will plot the allowable Mach range and the point according to the
+        PTC criteria.
+
+        Parameters
+        ----------
+        fig : plotly.Figure
+            Plotly figure.
+
+        Returns
+        -------
+        fig : plotly.Figure
+            Plotly figure.
+        """
+        if fig is None:
+            fig = go.Figure()
+
+        # build acceptable region
+        upper_limit = []
+        lower_limit = []
+        mmsp_range = np.linspace(0, 1.6, 300)
+        for mmsp in mmsp_range:
+            if 0 <= mmsp < 0.214:
+                lower_limit.append(-mmsp)
+                upper_limit.append(-0.25 * mmsp + 0.286)
+            elif 0.214 <= mmsp < 0.86:
+                lower_limit.append(0.266 * mmsp - 0.271)
+                upper_limit.append(-0.25 * mmsp + 0.286)
+            elif mmsp >= 0.86:
+                lower_limit.append(-0.042)
+                upper_limit.append(0.07)
+
+        fig.add_trace(
+            go.Scatter(x=mmsp_range, y=lower_limit, marker=dict(color="black"))
+        )
+        fig.add_trace(
+            go.Scatter(x=mmsp_range, y=upper_limit, marker=dict(color="black"))
+        )
+
+        # add point
+        fig.add_trace(
+            go.Scatter(x=[self.mach.m], y=[self.mach_diff], marker=dict(color="red"))
+        )
+
+        fig.update_xaxes(
+            title=r"$\text{Machine Mach No. Specified} - Mm_{sp}$",
+        )
+        fig.update_yaxes(
+            title=r"$Mm_t / Mm_{sp}$",
+        )
+        fig.update_layout(showlegend=False)
+
+        return fig
+
 
 def plot_func(self, attr):
     def inner(*args, plot_kws=None, **kwargs):
