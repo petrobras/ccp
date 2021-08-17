@@ -413,6 +413,22 @@ def test_converted_from_find_volume_ratio_mach_plot(point_eff_flow_v_head_speed_
     assert_allclose(fig.data[2]["y"], 0.010087427961824047)
 
 
+def test_converted_from_find_volume_ratio_reynolds_plot(
+    point_eff_flow_v_head_speed_suc_1,
+):
+    suc_2 = State.define(
+        p=Q_(0.2, "MPa"), T=301.58, fluid={"n2": 1 - 1e-15, "co2": 1e-15}
+    )
+    point_converted_from_find_volume_ratio = Point.convert_from(
+        original_point=point_eff_flow_v_head_speed_suc_1, suc=suc_2, find="volume_ratio"
+    )
+
+    fig = point_converted_from_find_volume_ratio.plot_reynolds()
+
+    assert_allclose(fig.data[2]["x"], 754805.237322)
+    assert_allclose(fig.data[2]["y"], 0.091114, rtol=1e-5)
+
+
 def test_save_load(point_disch_flow_v_speed_suc):
     file = Path(tempdir) / "suc_0.toml"
     point_disch_flow_v_speed_suc.save(file)

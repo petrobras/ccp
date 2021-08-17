@@ -477,6 +477,71 @@ class Point:
 
         return fig
 
+    def plot_reynolds(self, fig=None, **kwargs):
+        """Plot allowable Reynolds range and point.
+
+        This will plot the allowable Mach range and the point according to the
+        PTC criteria.
+
+        Parameters
+        ----------
+        fig : plotly.Figure
+            Plotly figure.
+
+        Returns
+        -------
+        fig : plotly.Figure
+            Plotly figure.
+        """
+        # build acceptable region
+        upper_limit = []
+        lower_limit = []
+        remsp_range = np.geomspace(9e4, 1e9, 300)
+        for remsp in remsp_range:
+            x = (remsp / 1e7) ** 0.3
+            if 9e4 <= remsp < 1e7:
+                upper_limit.append(100 ** x)
+            elif 1e7 <= remsp:
+                upper_limit.append(100)
+
+            if 9e4 <= remsp < 1e6:
+                lower_limit.append(0.01 ** x)
+            elif 1e6 <= remsp:
+                lower_limit.append(0.1)
+
+        fig = go.Figure()
+        fig.add_trace(
+            go.Scatter(x=remsp_range, y=lower_limit, marker=dict(color="black"))
+        )
+        fig.add_trace(
+            go.Scatter(x=remsp_range, y=upper_limit, marker=dict(color="black"))
+        )
+
+        # add point
+        fig.add_trace(
+            go.Scatter(
+                x=[self.reynolds.m], y=[self.reynolds_ratio], marker=dict(color="red")
+            )
+        )
+
+        fig.update_xaxes(
+            type="log",
+            tickformat=".1e",
+            tickmode="array",
+            tickvals=[10 ** i for i in range(4, 9)],
+            title=r"$\text{Machine Reynolds No. Specified} - Rem_{sp}$",
+        )
+        fig.update_yaxes(
+            type="log",
+            tickformat=".1e",
+            tickmode="array",
+            tickvals=[10 ** i for i in range(-3, 3)],
+            title=r"$Rem_t / Rem_{sp}$",
+        )
+        fig.update_layout(showlegend=False)
+
+        return fig
+
 
 def plot_func(self, attr):
     def inner(*args, plot_kws=None, **kwargs):
