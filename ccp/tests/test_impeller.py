@@ -209,6 +209,15 @@ def test_impeller_point():
     assert_allclose(p0.power, 3310198.015505, rtol=1e-4)
 
 
+def test_impeller_curve():
+    imp = impeller_example()
+    c0 = imp.curve(speed=900)
+    p0 = c0[0]
+    assert_allclose(p0.eff, 0.819344, rtol=1e-4)
+    assert_allclose(p0.head, 138229.8066, rtol=1e-4)
+    assert_allclose(p0.power, 2959665.959049, rtol=1e-4)
+
+
 def test_impeller_plot():
     imp = impeller_example()
     fig = imp.eff_plot(flow_v=5, speed=900)
