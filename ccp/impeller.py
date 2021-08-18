@@ -123,9 +123,9 @@ class Impeller:
 
             Parameters
             ----------
-            flow_v : pint.Quantity, float
+            flow_v : pint.Quantity, float, optional
                 Volumetric flow (m³/s) for a specific point in the plot.
-            speed : pint.Quantity, float
+            speed : pint.Quantity, float, optional
                 Speed (rad/s) for a specific point in the plot.
             flow_v_units : str, optional
                 Flow units used for the plot. Default is m³/s.
@@ -169,63 +169,16 @@ class Impeller:
                     fig=fig, plot_kws=plot_kws, **kwargs
                 )
 
-            if flow_v and speed:
-                # plot defined point and curve
-                speeds = np.array([curve.speed.magnitude for curve in self.curves])
-
-                closest_curves_idxs = find_closest_speeds(speeds, speed.magnitude)
-                curves = [
-                    self.curves[closest_curves_idxs[0]],
-                    self.curves[closest_curves_idxs[1]],
-                ]
-
-                # calculate factor
-                speed_range = curves[1].speed.magnitude - curves[0].speed.magnitude
-                factor = (speed.magnitude - curves[0].speed.magnitude) / speed_range
-
-                min_flow = get_interpolated_value(
-                    factor, curves[0].flow_v.magnitude[0], curves[1].flow_v.magnitude[0]
-                )
-                max_flow = get_interpolated_value(
-                    factor,
-                    curves[0].flow_v.magnitude[-1],
-                    curves[1].flow_v.magnitude[-1],
-                )
-                min_head = get_interpolated_value(
-                    factor, curves[0].head.magnitude[-1], curves[1].head.magnitude[-1]
-                )
-                number_of_points = len(curves[0])
-                flow_v_range = np.linspace(min_flow, max_flow, number_of_points)
-
-                current_curve = []
-                for f in flow_v_range:
-                    try:
-                        p = self.point(flow_v=f, speed=speed)
-                        if p.head.m > min_head:
-                            current_curve.append(p)
-                    except ValueError:
-                        continue
-                # add min_head point
-                try:
-                    flow_choke = brentq(
-                        calc_min_head_point,
-                        a=flow_v_range[0],
-                        b=flow_v_range[-1],
-                        args=(speed, self, min_head),
-                    )
-                    current_curve.append(self.point(flow_v=flow_choke, speed=speed))
-                except ValueError:
-                    pass
-
-                current_curve = Curve(current_curve)
-                current_point = self.point(flow_v=flow_v, speed=speed)
-
+            if speed:
+                current_curve = self.curve(speed=speed)
                 fig = r_getattr(current_curve, attr + "_plot")(
                     fig=fig, plot_kws=plot_kws, **kwargs
                 )
-                fig = r_getattr(current_point, attr + "_plot")(
-                    fig=fig, plot_kws=plot_kws, **kwargs
-                )
+                if flow_v:
+                    current_point = self.point(flow_v=flow_v, speed=speed)
+                    fig = r_getattr(current_point, attr + "_plot")(
+                        fig=fig, plot_kws=plot_kws, **kwargs
+                    )
 
             # extra x range
             flow_values = [p.flow_v.to(flow_v_units) for p in self.points]
@@ -288,6 +241,72 @@ class Impeller:
         )
 
         return point
+
+    @check_units
+    def curve(self, speed=None):
+        """Calculate specific point in the performance map.
+
+        Given a speed this method will calculate a curve in the
+        impeller map according to these arguments.
+
+        Parameters
+        ----------
+        speed : pint.Quantity, float
+            Speed (rad/s).
+
+        Returns
+        -------
+        curve : ccp.Curve
+            Point in the performance map.
+        """
+        speeds = np.array([curve.speed.magnitude for curve in self.curves])
+
+        closest_curves_idxs = find_closest_speeds(speeds, speed.magnitude)
+        curves = [
+            self.curves[closest_curves_idxs[0]],
+            self.curves[closest_curves_idxs[1]],
+        ]
+
+        # calculate factor
+        speed_range = curves[1].speed.magnitude - curves[0].speed.magnitude
+        factor = (speed.magnitude - curves[0].speed.magnitude) / speed_range
+
+        min_flow = get_interpolated_value(
+            factor, curves[0].flow_v.magnitude[0], curves[1].flow_v.magnitude[0]
+        )
+        max_flow = get_interpolated_value(
+            factor,
+            curves[0].flow_v.magnitude[-1],
+            curves[1].flow_v.magnitude[-1],
+        )
+        min_head = get_interpolated_value(
+            factor, curves[0].head.magnitude[-1], curves[1].head.magnitude[-1]
+        )
+        number_of_points = len(curves[0])
+        flow_v_range = np.linspace(min_flow, max_flow, number_of_points)
+
+        current_curve = []
+        for f in flow_v_range:
+            try:
+                p = self.point(flow_v=f, speed=speed)
+                if p.head.m > min_head:
+                    current_curve.append(p)
+            except ValueError:
+                continue
+        # add min_head point
+        try:
+            flow_choke = brentq(
+                calc_min_head_point,
+                a=flow_v_range[0],
+                b=flow_v_range[-1],
+                args=(speed, self, min_head),
+            )
+            current_curve.append(self.point(flow_v=flow_choke, speed=speed))
+        except ValueError:
+            pass
+        current_curve = Curve(current_curve)
+
+        return current_curve
 
     @classmethod
     def convert_from(cls, original_impeller, suc=None, find="speed"):
