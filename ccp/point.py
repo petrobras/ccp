@@ -3,6 +3,7 @@ from copy import copy
 import numpy as np
 import toml
 import plotly.graph_objects as go
+from plotly.subplots import make_subplots
 from scipy.optimize import newton
 
 import ccp.config
@@ -741,6 +742,55 @@ class Point:
                 )
             ]
         )
+
+        return fig
+
+    def plot_similarity(self, fig=None, **kwargs):
+        """Plot similarity results.
+
+        Plots the similarity results showing the Mach and Reynolds plots with
+        their respective limits and also a table summarizing the results comparing
+        the current (converted) point to the original point.
+
+        Parameters
+        ----------
+        fig : plotly.Figure
+            Plotly figure.
+
+        Returns
+        -------
+        fig : plotly.Figure
+            Plotly figure.
+        """
+        if fig is None:
+            fig = make_subplots(
+                rows=2,
+                cols=2,
+                specs=[
+                    [{"type": "xy"}, {"type": "xy"}],
+                    [{"type": "table", "colspan": 2}, None],
+                ],
+            )
+
+        stable = self.similarity_table()
+        mach = self.plot_mach()
+        reynolds = self.plot_reynolds()
+
+        for data in mach.data:
+            data.showlegend = False
+            fig.append_trace(data, row=1, col=1)
+
+        for data in reynolds.data:
+            data.showlegend = False
+            fig.append_trace(data, row=1, col=2)
+
+        for data in stable.data:
+            fig.append_trace(data, row=2, col=1)
+
+        fig.update_xaxes(mach.layout.xaxis, row=1, col=1)
+        fig.update_xaxes(reynolds.layout.xaxis, row=1, col=2)
+        fig.update_yaxes(mach.layout.yaxis, row=1, col=1)
+        fig.update_yaxes(reynolds.layout.yaxis, row=1, col=2)
 
         return fig
 
