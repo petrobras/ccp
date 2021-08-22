@@ -609,6 +609,141 @@ class Point:
 
         return fig
 
+    def similarity_table(self, fig=None, **kwargs):
+        """Plot similarity table.
+
+        This table show the values for the non dimensional numbers (Mach, Reynolds
+        and Volume ratio) and their calculated relations with respect to the
+        original points used in the conversion (in the formulas, 'c' means converted
+        points and 'o' means original point).
+
+        If values are within limits, relation cells are colored in green, otherwise
+        they are colored in red.
+
+        """
+        if fig is None:
+            fig = go.Figure()
+
+        quantity = ["Ratio of Specific Volume", "Mach Number", "Reynolds Number"]
+        abbrev = ["$v_i / v_d$", "Mm", "Rem"]
+        point_value = [
+            f"{self.volume_ratio.m:.3f}",
+            f"{self.mach.m:.3f}",
+            f"{self.reynolds.m:.3e}",
+        ]
+        formula = [
+            "$(v_i / v_d)_c / (v_i / v_d)_o = $",
+            "$Mm_c - Mm_o = $",
+            "$Rem_c / Rem_o = $",
+        ]
+        relation = [
+            f"{self.volume_ratio_ratio.m:.3f}",
+            f"{self.mach_diff.m:.3f}",
+            f"{self.reynolds_ratio.m:.3e}",
+        ]
+        mach_limits = self.mach_limits()
+        reynolds_limits = self.reynolds_limits()
+        lower_limit = [
+            0.95,
+            f'{mach_limits["lower"]:.3f}',
+            f'{reynolds_limits["lower"]:.3e}',
+        ]
+        upper_limit = [
+            1.05,
+            f'{mach_limits["upper"]:.3f}',
+            f'{reynolds_limits["upper"]:.3e}',
+        ]
+
+        if 0.95 < self.volume_ratio_ratio < 1.05:
+            volume_ratio_within_limits = True
+        else:
+            volume_ratio_within_limits = False
+
+        light_green = "#D8F3DC"
+        dark_green = "#2D6A4F"
+        light_red = "#FFB3C1"
+        dark_red = "#A4133C"
+
+        rel_fill_color = []
+        rel_font_color = []
+        for status in [
+            volume_ratio_within_limits,
+            mach_limits["within_limits"],
+            reynolds_limits["within_limits"],
+        ]:
+            if status is True:
+                rel_fill_color.append(light_green)
+                rel_font_color.append(dark_green)
+            else:
+                rel_fill_color.append(light_red)
+                rel_font_color.append(dark_red)
+
+        fig = go.Figure(
+            data=[
+                go.Table(
+                    header=dict(
+                        values=[
+                            "<b>Quantity</b>",
+                            "<b></b>",
+                            "<b>Point Value</b>",
+                            "<b></b>",
+                            "<b>Relation</b>",
+                            "<b>Lower Limit</b>",
+                            "<b>Upper Limit</b>",
+                        ],
+                        line_color="white",
+                        fill_color="white",
+                        align="center",
+                        font=dict(color="black", size=12),
+                    ),
+                    cells=dict(
+                        values=[
+                            quantity,
+                            abbrev,
+                            point_value,
+                            formula,
+                            relation,
+                            lower_limit,
+                            upper_limit,
+                        ],
+                        line_color=[
+                            "white",
+                            "white",
+                            "white",
+                            "white",
+                            "white",
+                            "white",
+                            "white",
+                        ],
+                        fill_color=[
+                            "white",
+                            "white",
+                            "white",
+                            "white",
+                            rel_fill_color,
+                            "white",
+                            "white",
+                        ],
+                        align="center",
+                        font=dict(
+                            color=[
+                                "black",
+                                "black",
+                                "black",
+                                "black",
+                                rel_font_color,
+                                "black",
+                                "black",
+                            ],
+                            size=[12],
+                        ),
+                    ),
+                )
+            ]
+        )
+
+        return fig
+
 
 def plot_func(self, attr):
     def inner(*args, plot_kws=None, **kwargs):
