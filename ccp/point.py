@@ -471,7 +471,7 @@ class Point:
             title=r"$\text{Machine Mach No. Specified} - Mm_{sp}$",
         )
         fig.update_yaxes(
-            title=r"$Mm_t / Mm_{sp}$",
+            title=r"$Mm_t - Mm_{sp}$",
         )
         fig.update_layout(showlegend=False)
 
