@@ -421,6 +421,44 @@ class Point:
 
         return cls(**cls._dict_from_load(parameters))
 
+    def mach_limits(self, mmsp=None):
+        """Calculate Mach lower and upper limits.
+
+        Parameters
+        ----------
+        mmsp : float, optional
+            Mach number specified. Default value is the point Mach number.
+
+        Returns
+        -------
+        limits : dict
+            Dict with keys: 'lower', 'upper' and 'within_limits'.
+        """
+        if mmsp is None:
+            mmsp = self.mach
+        if 0 <= mmsp < 0.214:
+            lower_limit = -mmsp
+            upper_limit = -0.25 * mmsp + 0.286
+        elif 0.214 <= mmsp < 0.86:
+            lower_limit = 0.266 * mmsp - 0.271
+            upper_limit = -0.25 * mmsp + 0.286
+        elif mmsp >= 0.86:
+            lower_limit = -0.042
+            upper_limit = 0.07
+        else:
+            raise ValueError("Mach number out of specified range.")
+
+        if lower_limit < self.mach_diff < upper_limit:
+            within_limits = True
+        else:
+            within_limits = False
+
+        return {
+            "lower": lower_limit,
+            "upper": upper_limit,
+            "within_limits": within_limits,
+        }
+
     def plot_mach(self, fig=None, **kwargs):
         """Plot allowable Mach range and point.
 
@@ -445,15 +483,9 @@ class Point:
         lower_limit = []
         mmsp_range = np.linspace(0, 1.6, 300)
         for mmsp in mmsp_range:
-            if 0 <= mmsp < 0.214:
-                lower_limit.append(-mmsp)
-                upper_limit.append(-0.25 * mmsp + 0.286)
-            elif 0.214 <= mmsp < 0.86:
-                lower_limit.append(0.266 * mmsp - 0.271)
-                upper_limit.append(-0.25 * mmsp + 0.286)
-            elif mmsp >= 0.86:
-                lower_limit.append(-0.042)
-                upper_limit.append(0.07)
+            mach_limits = self.mach_limits(mmsp)
+            lower_limit.append(mach_limits["lower"])
+            upper_limit.append(mach_limits["upper"])
 
         fig.add_trace(
             go.Scatter(x=mmsp_range, y=lower_limit, marker=dict(color="black"))
@@ -477,6 +509,48 @@ class Point:
 
         return fig
 
+    def reynolds_limits(self, remsp=None):
+        """Calculate Reynolds lower and upper limits.
+
+        Parameters
+        ----------
+        remsp : float, optional
+            Reynolds number specified. Default value is the point reynolds number.
+
+        Returns
+        -------
+        limits : dict
+            Dict with keys: 'lower', 'upper' and 'within_range'.
+        """
+        if remsp is None:
+            remsp = self.reynolds
+
+        x = (remsp / 1e7) ** 0.3
+        if 9e4 <= remsp < 1e7:
+            upper_limit = 100 ** x
+        elif 1e7 <= remsp:
+            upper_limit = 100
+        else:
+            raise ValueError("Reynolds number out of specified range.")
+
+        if 9e4 <= remsp < 1e6:
+            lower_limit = 0.01 ** x
+        elif 1e6 <= remsp:
+            lower_limit = 0.1
+        else:
+            raise ValueError("Reynolds number out of specified range.")
+
+        if lower_limit < self.reynolds_ratio < upper_limit:
+            within_limits = True
+        else:
+            within_limits = False
+
+        return {
+            "lower": lower_limit,
+            "upper": upper_limit,
+            "within_limits": within_limits,
+        }
+
     def plot_reynolds(self, fig=None, **kwargs):
         """Plot allowable Reynolds range and point.
 
@@ -498,16 +572,9 @@ class Point:
         lower_limit = []
         remsp_range = np.geomspace(9e4, 1e9, 300)
         for remsp in remsp_range:
-            x = (remsp / 1e7) ** 0.3
-            if 9e4 <= remsp < 1e7:
-                upper_limit.append(100 ** x)
-            elif 1e7 <= remsp:
-                upper_limit.append(100)
-
-            if 9e4 <= remsp < 1e6:
-                lower_limit.append(0.01 ** x)
-            elif 1e6 <= remsp:
-                lower_limit.append(0.1)
+            reynolds_limits = self.reynolds_limits(remsp)
+            lower_limit.append(reynolds_limits["lower"])
+            upper_limit.append(reynolds_limits["upper"])
 
         fig = go.Figure()
         fig.add_trace(
