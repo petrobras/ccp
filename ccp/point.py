@@ -455,8 +455,8 @@ class Point:
             within_limits = False
 
         return {
-            "lower": lower_limit,
-            "upper": upper_limit,
+            "lower": lower_limit.m,
+            "upper": upper_limit.m,
             "within_limits": within_limits,
         }
 
