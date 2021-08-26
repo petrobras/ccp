@@ -182,6 +182,25 @@ def test_impeller_disch_state(imp2):
     )
 
 
+def test_impeller2_new_suction(imp2):
+    new_suc = State.define(
+        p=Q_(0.2, "MPa"), T=301.58, fluid={"n2": 1 - 1e-15, "co2": 1e-15}
+    )
+    imp2_new = Impeller.convert_from(imp2, suc=new_suc, find="speed")
+    p0 = imp2[0]
+    new_p0 = imp2_new[0]
+
+    assert_allclose(new_p0.eff, p0.eff, rtol=1e-4)
+    assert_allclose(new_p0.phi, p0.phi, rtol=1e-2)
+    assert_allclose(new_p0.psi, p0.psi, rtol=1e-2)
+    assert_allclose(new_p0.head, 151889.637082, rtol=1e-2)
+    assert_allclose(new_p0.power, 483519.884306, rtol=1e-2)
+    assert_allclose(new_p0.speed, 1281.074036, rtol=1e-3)
+    assert_allclose(new_p0.mach_diff, -7.12032e-05, rtol=1e-3)
+    assert_allclose(new_p0.reynolds_ratio, 0.999879, rtol=1e-3)
+    assert_allclose(new_p0.volume_ratio_ratio, 0.999815, rtol=1e-5)
+
+
 def test_impeller_point():
     imp = impeller_example()
     p0 = imp.point(flow_v=5, speed=900)
@@ -190,41 +209,50 @@ def test_impeller_point():
     assert_allclose(p0.power, 3310198.015505, rtol=1e-4)
 
 
+def test_impeller_curve():
+    imp = impeller_example()
+    c0 = imp.curve(speed=900)
+    p0 = c0[0]
+    assert_allclose(p0.eff, 0.819344, rtol=1e-4)
+    assert_allclose(p0.head, 138229.8066, rtol=1e-4)
+    assert_allclose(p0.power, 2959665.959049, rtol=1e-4)
+
+
 def test_impeller_plot():
     imp = impeller_example()
     fig = imp.eff_plot(flow_v=5, speed=900)
     expected_eff_curve = np.array(
         [
             0.81934403,
-            0.82078268,
-            0.82198745,
-            0.82297089,
-            0.82374556,
-            0.82432402,
-            0.82471883,
-            0.82494253,
-            0.82500769,
-            0.82492687,
-            0.82471187,
-            0.82432943,
-            0.82367642,
-            0.82264374,
-            0.82112223,
-            0.81900472,
-            0.81622824,
-            0.81277414,
-            0.80862564,
-            0.80376599,
-            0.79815285,
-            0.79144644,
-            0.78311508,
-            0.77262388,
-            0.75943797,
-            0.74302246,
-            0.72284247,
-            0.69836312,
-            0.66904954,
-            0.63436684,
+            0.82067954,
+            0.82181834,
+            0.82276904,
+            0.82354026,
+            0.82414063,
+            0.82457877,
+            0.82486331,
+            0.82500286,
+            0.82500604,
+            0.8248815,
+            0.82463461,
+            0.82422282,
+            0.82356673,
+            0.82258599,
+            0.82120027,
+            0.81932964,
+            0.81691044,
+            0.81389999,
+            0.81025702,
+            0.80594028,
+            0.8009081,
+            0.79503801,
+            0.78802838,
+            0.77955346,
+            0.76928752,
+            0.75690483,
+            0.74207966,
+            0.72448627,
+            0.70379892,
         ]
     )
     assert_allclose(fig.data[5]["y"], expected_eff_curve, rtol=1e-4)
@@ -243,35 +271,35 @@ def test_impeller_plot_units():
     expected_rho_curve = np.array(
         [
             0.01110513,
-            0.01105899,
-            0.01101538,
-            0.01097349,
-            0.01093254,
-            0.01089172,
-            0.01085023,
-            0.01080728,
-            0.01076205,
-            0.01071377,
-            0.01066161,
-            0.01060454,
-            0.01054117,
-            0.01047004,
-            0.01038972,
-            0.01029881,
-            0.01019658,
-            0.01008298,
-            0.00995798,
-            0.00982157,
-            0.00967354,
-            0.00951139,
-            0.00933119,
-            0.00912894,
-            0.00890069,
-            0.00864246,
-            0.00835027,
-            0.00802016,
-            0.00764814,
-            0.00723025,
+            0.01106211,
+            0.01102135,
+            0.0109822,
+            0.01094401,
+            0.01090614,
+            0.01086793,
+            0.01082874,
+            0.01078792,
+            0.01074483,
+            0.01069882,
+            0.01064922,
+            0.01059512,
+            0.01053538,
+            0.01046888,
+            0.0103945,
+            0.01031111,
+            0.01021801,
+            0.01011507,
+            0.01000216,
+            0.00987917,
+            0.00974597,
+            0.00960169,
+            0.00944373,
+            0.00926927,
+            0.00907549,
+            0.00885957,
+            0.00861869,
+            0.00835002,
+            0.00805075,
         ]
     )
     assert_allclose(fig.data[5]["y"], expected_rho_curve, rtol=1e-4)
