@@ -3,6 +3,7 @@ from copy import copy
 import numpy as np
 import toml
 import plotly.graph_objects as go
+from plotly.subplots import make_subplots
 from scipy.optimize import newton
 
 import ccp.config
@@ -420,6 +421,378 @@ class Point:
             parameters = toml.load(f)
 
         return cls(**cls._dict_from_load(parameters))
+
+    def mach_limits(self, mmsp=None):
+        """Calculate Mach lower and upper limits.
+
+        Parameters
+        ----------
+        mmsp : float, optional
+            Mach number specified. Default value is the point Mach number.
+
+        Returns
+        -------
+        limits : dict
+            Dict with keys: 'lower', 'upper' and 'within_limits'.
+        """
+        if mmsp is None:
+            mmsp = self.mach
+        if 0 <= mmsp < 0.214:
+            lower_limit = -mmsp
+            upper_limit = -0.25 * mmsp + 0.286
+        elif 0.214 <= mmsp < 0.86:
+            lower_limit = 0.266 * mmsp - 0.271
+            upper_limit = -0.25 * mmsp + 0.286
+        elif mmsp >= 0.86:
+            lower_limit = -0.042
+            upper_limit = 0.07
+        else:
+            raise ValueError("Mach number out of specified range.")
+
+        if lower_limit < self.mach_diff < upper_limit:
+            within_limits = True
+        else:
+            within_limits = False
+
+        return {
+            "lower": lower_limit.m,
+            "upper": upper_limit.m,
+            "within_limits": within_limits,
+        }
+
+    def plot_mach(self, fig=None, **kwargs):
+        """Plot allowable Mach range and point.
+
+        This will plot the allowable Mach range and the point according to the
+        PTC criteria.
+
+        Parameters
+        ----------
+        fig : plotly.Figure
+            Plotly figure.
+
+        Returns
+        -------
+        fig : plotly.Figure
+            Plotly figure.
+        """
+        if fig is None:
+            fig = go.Figure()
+
+        # build acceptable region
+        upper_limit = []
+        lower_limit = []
+        mmsp_range = np.linspace(0, 1.6, 300)
+        for mmsp in mmsp_range:
+            mach_limits = self.mach_limits(mmsp)
+            lower_limit.append(mach_limits["lower"])
+            upper_limit.append(mach_limits["upper"])
+
+        fig.add_trace(
+            go.Scatter(x=mmsp_range, y=lower_limit, marker=dict(color="black"))
+        )
+        fig.add_trace(
+            go.Scatter(x=mmsp_range, y=upper_limit, marker=dict(color="black"))
+        )
+
+        # add point
+        fig.add_trace(
+            go.Scatter(x=[self.mach.m], y=[self.mach_diff], marker=dict(color="red"))
+        )
+
+        fig.update_xaxes(
+            title=r"$\text{Machine Mach No. Specified} - Mm_{sp}$",
+        )
+        fig.update_yaxes(
+            title=r"$Mm_t - Mm_{sp}$",
+        )
+        fig.update_layout(showlegend=False)
+
+        return fig
+
+    def reynolds_limits(self, remsp=None):
+        """Calculate Reynolds lower and upper limits.
+
+        Parameters
+        ----------
+        remsp : float, optional
+            Reynolds number specified. Default value is the point reynolds number.
+
+        Returns
+        -------
+        limits : dict
+            Dict with keys: 'lower', 'upper' and 'within_range'.
+        """
+        if remsp is None:
+            remsp = self.reynolds
+
+        x = (remsp / 1e7) ** 0.3
+        if 9e4 <= remsp < 1e7:
+            upper_limit = 100 ** x
+        elif 1e7 <= remsp:
+            upper_limit = 100
+        else:
+            raise ValueError("Reynolds number out of specified range.")
+
+        if 9e4 <= remsp < 1e6:
+            lower_limit = 0.01 ** x
+        elif 1e6 <= remsp:
+            lower_limit = 0.1
+        else:
+            raise ValueError("Reynolds number out of specified range.")
+
+        if lower_limit < self.reynolds_ratio < upper_limit:
+            within_limits = True
+        else:
+            within_limits = False
+
+        return {
+            "lower": lower_limit,
+            "upper": upper_limit,
+            "within_limits": within_limits,
+        }
+
+    def plot_reynolds(self, fig=None, **kwargs):
+        """Plot allowable Reynolds range and point.
+
+        This will plot the allowable Mach range and the point according to the
+        PTC criteria.
+
+        Parameters
+        ----------
+        fig : plotly.Figure
+            Plotly figure.
+
+        Returns
+        -------
+        fig : plotly.Figure
+            Plotly figure.
+        """
+        # build acceptable region
+        upper_limit = []
+        lower_limit = []
+        remsp_range = np.geomspace(9e4, 1e9, 300)
+        for remsp in remsp_range:
+            reynolds_limits = self.reynolds_limits(remsp)
+            lower_limit.append(reynolds_limits["lower"])
+            upper_limit.append(reynolds_limits["upper"])
+
+        fig = go.Figure()
+        fig.add_trace(
+            go.Scatter(x=remsp_range, y=lower_limit, marker=dict(color="black"))
+        )
+        fig.add_trace(
+            go.Scatter(x=remsp_range, y=upper_limit, marker=dict(color="black"))
+        )
+
+        # add point
+        fig.add_trace(
+            go.Scatter(
+                x=[self.reynolds.m], y=[self.reynolds_ratio], marker=dict(color="red")
+            )
+        )
+
+        fig.update_xaxes(
+            type="log",
+            tickformat=".1e",
+            tickmode="array",
+            tickvals=[10 ** i for i in range(4, 9)],
+            title=r"$\text{Machine Reynolds No. Specified} - Rem_{sp}$",
+        )
+        fig.update_yaxes(
+            type="log",
+            tickformat=".1e",
+            tickmode="array",
+            tickvals=[10 ** i for i in range(-3, 3)],
+            title=r"$Rem_t / Rem_{sp}$",
+        )
+        fig.update_layout(showlegend=False)
+
+        return fig
+
+    def similarity_table(self, fig=None, **kwargs):
+        """Plot similarity table.
+
+        This table show the values for the non dimensional numbers (Mach, Reynolds
+        and Volume ratio) and their calculated relations with respect to the
+        original points used in the conversion (in the formulas, 'c' means converted
+        points and 'o' means original point).
+
+        If values are within limits, relation cells are colored in green, otherwise
+        they are colored in red.
+
+        """
+        if fig is None:
+            fig = go.Figure()
+
+        quantity = ["Ratio of Specific Volume", "Mach Number", "Reynolds Number"]
+        abbrev = ["$v_i / v_d$", "Mm", "Rem"]
+        point_value = [
+            f"{self.volume_ratio.m:.3f}",
+            f"{self.mach.m:.3f}",
+            f"{self.reynolds.m:.3e}",
+        ]
+        formula = [
+            "$(v_i / v_d)_c / (v_i / v_d)_o = $",
+            "$Mm_c - Mm_o = $",
+            "$Rem_c / Rem_o = $",
+        ]
+        relation = [
+            f"{self.volume_ratio_ratio.m:.3f}",
+            f"{self.mach_diff.m:.3f}",
+            f"{self.reynolds_ratio.m:.3e}",
+        ]
+        mach_limits = self.mach_limits()
+        reynolds_limits = self.reynolds_limits()
+        lower_limit = [
+            0.95,
+            f'{mach_limits["lower"]:.3f}',
+            f'{reynolds_limits["lower"]:.3e}',
+        ]
+        upper_limit = [
+            1.05,
+            f'{mach_limits["upper"]:.3f}',
+            f'{reynolds_limits["upper"]:.3e}',
+        ]
+
+        if 0.95 < self.volume_ratio_ratio < 1.05:
+            volume_ratio_within_limits = True
+        else:
+            volume_ratio_within_limits = False
+
+        light_green = "#D8F3DC"
+        dark_green = "#2D6A4F"
+        light_red = "#FFB3C1"
+        dark_red = "#A4133C"
+
+        rel_fill_color = []
+        rel_font_color = []
+        for status in [
+            volume_ratio_within_limits,
+            mach_limits["within_limits"],
+            reynolds_limits["within_limits"],
+        ]:
+            if status is True:
+                rel_fill_color.append(light_green)
+                rel_font_color.append(dark_green)
+            else:
+                rel_fill_color.append(light_red)
+                rel_font_color.append(dark_red)
+
+        fig = go.Figure(
+            data=[
+                go.Table(
+                    header=dict(
+                        values=[
+                            "<b>Quantity</b>",
+                            "<b></b>",
+                            "<b>Point Value</b>",
+                            "<b></b>",
+                            "<b>Relation</b>",
+                            "<b>Lower Limit</b>",
+                            "<b>Upper Limit</b>",
+                        ],
+                        line_color="white",
+                        fill_color="white",
+                        align="center",
+                        font=dict(color="black", size=12),
+                    ),
+                    cells=dict(
+                        values=[
+                            quantity,
+                            abbrev,
+                            point_value,
+                            formula,
+                            relation,
+                            lower_limit,
+                            upper_limit,
+                        ],
+                        line_color=[
+                            "white",
+                            "white",
+                            "white",
+                            "white",
+                            "white",
+                            "white",
+                            "white",
+                        ],
+                        fill_color=[
+                            "white",
+                            "white",
+                            "white",
+                            "white",
+                            rel_fill_color,
+                            "white",
+                            "white",
+                        ],
+                        align="center",
+                        font=dict(
+                            color=[
+                                "black",
+                                "black",
+                                "black",
+                                "black",
+                                rel_font_color,
+                                "black",
+                                "black",
+                            ],
+                            size=[12],
+                        ),
+                    ),
+                )
+            ]
+        )
+
+        return fig
+
+    def plot_similarity(self, fig=None, **kwargs):
+        """Plot similarity results.
+
+        Plots the similarity results showing the Mach and Reynolds plots with
+        their respective limits and also a table summarizing the results comparing
+        the current (converted) point to the original point.
+
+        Parameters
+        ----------
+        fig : plotly.Figure
+            Plotly figure.
+
+        Returns
+        -------
+        fig : plotly.Figure
+            Plotly figure.
+        """
+        if fig is None:
+            fig = make_subplots(
+                rows=2,
+                cols=2,
+                specs=[
+                    [{"type": "xy"}, {"type": "xy"}],
+                    [{"type": "table", "colspan": 2}, None],
+                ],
+            )
+
+        stable = self.similarity_table()
+        mach = self.plot_mach()
+        reynolds = self.plot_reynolds()
+
+        for data in mach.data:
+            data.showlegend = False
+            fig.append_trace(data, row=1, col=1)
+
+        for data in reynolds.data:
+            data.showlegend = False
+            fig.append_trace(data, row=1, col=2)
+
+        for data in stable.data:
+            fig.append_trace(data, row=2, col=1)
+
+        fig.update_xaxes(mach.layout.xaxis, row=1, col=1)
+        fig.update_xaxes(reynolds.layout.xaxis, row=1, col=2)
+        fig.update_yaxes(mach.layout.yaxis, row=1, col=1)
+        fig.update_yaxes(reynolds.layout.yaxis, row=1, col=2)
+
+        return fig
 
 
 def plot_func(self, attr):
