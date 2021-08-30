@@ -203,9 +203,9 @@ def test_impeller2_new_suction(imp2):
 def test_impeller_point():
     imp = impeller_example()
     p0 = imp.point(flow_v=5, speed=900)
-    assert_allclose(p0.eff, 0.815333, rtol=1e-4)
-    assert_allclose(p0.head, 123609.404849, rtol=1e-4)
-    assert_allclose(p0.power, 3310198.015505, rtol=1e-4)
+    assert_allclose(p0.eff, 0.816019, rtol=1e-4)
+    assert_allclose(p0.head, 124190.645648, rtol=1e-4)
+    assert_allclose(p0.power, 3322967.194381, rtol=1e-4)
 
 
 def test_impeller_curve():
@@ -255,7 +255,7 @@ def test_impeller_plot():
         ]
     )
     assert_allclose(fig.data[5]["y"], expected_eff_curve, rtol=1e-4)
-    assert_allclose(fig.data[6]["y"], 0.8153328087147266, rtol=1e-4)
+    assert_allclose(fig.data[6]["y"], 0.8160188823236803, rtol=1e-4)
 
 
 def test_impeller_plot_units():
@@ -302,7 +302,7 @@ def test_impeller_plot_units():
         ]
     )
     assert_allclose(fig.data[5]["y"], expected_rho_curve, rtol=1e-4)
-    assert_allclose(fig.data[6]["y"], 0.00845738254224696, rtol=1e-4)
+    assert_allclose(fig.data[6]["y"], 0.00897190561409387, rtol=1e-4)
 
 
 def test_save_load():
