@@ -579,10 +579,6 @@ def find_closest_speeds(array, value):
     return np.array(idx)
 
 
-def get_interpolated_value(fac, val_0, val_1):
-    return (1 - fac) * val_0 + fac * val_1
-
-
 def get_interpolated_values(fac, flow_0, val_0, flow_1, val_1):
     x0 = [flow_0, val_0]
     if fac > 0.5:
