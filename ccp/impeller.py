@@ -463,8 +463,9 @@ class Impeller:
                 eff_curve["x"], eff_curve["y"], kind=3, fill_value="extrapolate",
             )
 
-            min_x = min(head_curve["x"] + eff_curve["x"])
-            max_x = max(head_curve["x"] + eff_curve["x"])
+            # avoid too much extrapolation
+            min_x = max(head_curve["x"][0], eff_curve["x"][0])
+            max_x = min(head_curve["x"][-1], eff_curve["x"][-1])
 
             points_x = np.linspace(min_x, max_x, number_of_points)
             points_head = head_interpolated(points_x)
