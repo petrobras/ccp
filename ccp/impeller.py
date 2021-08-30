@@ -11,7 +11,7 @@ import numpy as np
 import plotly.graph_objects as go
 from openpyxl import Workbook
 from scipy.interpolate import interp1d
-from scipy.optimize import brentq
+from scipy.optimize import fsolve
 
 from ccp import Q_, State, Point, Curve
 from ccp.config.units import check_units
@@ -212,26 +212,14 @@ class Impeller:
         point : ccp.Point
             Point in the performance map.
         """
-        speeds = np.array([curve.speed.magnitude for curve in self.curves])
 
-        closest_curves_idxs = find_closest_speeds(speeds, speed.magnitude)
-        curves = [
-            self.curves[closest_curves_idxs[0]],
-            self.curves[closest_curves_idxs[1]],
-        ]
+        current_curve = self.curve(speed)
 
-        # calculate factor
-        speed_range = curves[1].speed.magnitude - curves[0].speed.magnitude
-        factor = (speed.magnitude - curves[0].speed.magnitude) / speed_range
+        func_T = interp1d(current_curve.flow_v.m, current_curve.disch.T().m)
+        func_p = interp1d(current_curve.flow_v.m, current_curve.disch.p().m)
 
-        # get disch p and T by interpolating between closest speeds
-        disch_T_0 = curves[0].disch.T_interpolated(flow_v).magnitude
-        disch_T_1 = curves[1].disch.T_interpolated(flow_v).magnitude
-        disch_p_0 = curves[0].disch.p_interpolated(flow_v).magnitude
-        disch_p_1 = curves[1].disch.p_interpolated(flow_v).magnitude
-
-        disch_T = get_interpolated_value(factor, disch_T_0, disch_T_1)
-        disch_p = get_interpolated_value(factor, disch_p_0, disch_p_1)
+        disch_T = func_T(flow_v)
+        disch_p = func_p(flow_v)
 
         p0 = self.points[0]
         disch = State.define(p=disch_p, T=disch_T, fluid=p0.suc.fluid)
@@ -271,39 +259,39 @@ class Impeller:
         speed_range = curves[1].speed.magnitude - curves[0].speed.magnitude
         factor = (speed.magnitude - curves[0].speed.magnitude) / speed_range
 
-        min_flow = get_interpolated_value(
-            factor, curves[0].flow_v.magnitude[0], curves[1].flow_v.magnitude[0]
-        )
-        max_flow = get_interpolated_value(
-            factor,
-            curves[0].flow_v.magnitude[-1],
-            curves[1].flow_v.magnitude[-1],
-        )
-        min_head = get_interpolated_value(
-            factor, curves[0].head.magnitude[-1], curves[1].head.magnitude[-1]
-        )
-        number_of_points = len(curves[0])
-        flow_v_range = np.linspace(min_flow, max_flow, number_of_points)
-
         current_curve = []
-        for f in flow_v_range:
-            try:
-                p = self.point(flow_v=f, speed=speed)
-                if p.head.m > min_head:
-                    current_curve.append(p)
-            except ValueError:
-                continue
-        # add min_head point
-        try:
-            flow_choke = brentq(
-                calc_min_head_point,
-                a=flow_v_range[0],
-                b=flow_v_range[-1],
-                args=(speed, self, min_head),
+        p0 = self.points[0]
+        number_of_points = len(curves[0])
+
+        for i in range(number_of_points):
+            flow_T, disch_T = get_interpolated_values(
+                factor,
+                curves[0].flow_v.magnitude[i],
+                curves[0][i].disch.T().m,
+                curves[1].flow_v.magnitude[i],
+                curves[1][i].disch.T().m,
             )
-            current_curve.append(self.point(flow_v=flow_choke, speed=speed))
-        except ValueError:
-            pass
+            flow_p, disch_p = get_interpolated_values(
+                factor,
+                curves[0].flow_v.magnitude[i],
+                curves[0][i].disch.p().m,
+                curves[1].flow_v.magnitude[i],
+                curves[1][i].disch.p().m,
+            )
+
+            disch = State.define(p=disch_p, T=disch_T, fluid=p0.suc.fluid)
+
+            p = Point(
+                suc=p0.suc,
+                disch=disch,
+                flow_v=(flow_T + flow_p) / 2,
+                speed=speed,
+                b=p0.b,
+                D=p0.D,
+            )
+
+            current_curve.append(p)
+
         current_curve = Curve(current_curve)
 
         return current_curve
@@ -340,10 +328,7 @@ class Impeller:
 
                 converted_points = [
                     Point.convert_from(
-                        p,
-                        suc=p.suc,
-                        find="volume_ratio",
-                        speed=speed_mean,
+                        p, suc=p.suc, find="volume_ratio", speed=speed_mean,
                     )
                     for p in converted_points
                 ]
@@ -468,20 +453,14 @@ class Impeller:
 
         for speed, head_curve in head_curves.items():
             head_interpolated = interp1d(
-                head_curve["x"],
-                head_curve["y"],
-                kind=3,
-                fill_value="extrapolate",
+                head_curve["x"], head_curve["y"], kind=3, fill_value="extrapolate",
             )
             eff_curve = eff_curves[speed]
             # check eff scale
             if max(eff_curve["y"]) > 1:
                 eff_curve["y"] = [i / 100 for i in eff_curve["y"]]
             eff_interpolated = interp1d(
-                eff_curve["x"],
-                eff_curve["y"],
-                kind=3,
-                fill_value="extrapolate",
+                eff_curve["x"], eff_curve["y"], kind=3, fill_value="extrapolate",
             )
 
             min_x = min(head_curve["x"] + eff_curve["x"])
@@ -600,8 +579,25 @@ def find_closest_speeds(array, value):
     return np.array(idx)
 
 
-def get_interpolated_value(fac, val_0, val_1):
-    return (1 - fac) * val_0 + fac * val_1
+def get_interpolated_values(fac, flow_0, val_0, flow_1, val_1):
+    x0 = [flow_0, val_0]
+    if fac > 0.5:
+        x0 = [flow_1, val_1]
+
+    result = fsolve(system_to_interpolate, x0, args=(fac, flow_0, val_0, flow_1, val_1))
+
+    flow_x = result[0]
+    val_x = result[1]
+
+    return flow_x, val_x
+
+
+def system_to_interpolate(x, *args):
+    fac, flow_0, val_0, flow_1, val_1 = args
+    eq_1 = -x[1] + val_0 + (x[0] - flow_0) * (val_1 - val_0) / (flow_1 - flow_0)
+    eq_2 = -fac * (flow_1 - flow_0) + x[0] - flow_0
+
+    return [eq_1, eq_2]
 
 
 def impeller_example():
@@ -647,29 +643,13 @@ def converter(x):
 def create_points_flow_v(x):
     """Helper function used to parallelize creation of points."""
     suc, speed, flow, head, eff, b, D = x
-    return Point(
-        suc=suc,
-        speed=speed,
-        flow_v=flow,
-        head=head,
-        eff=eff,
-        b=b,
-        D=D,
-    )
+    return Point(suc=suc, speed=speed, flow_v=flow, head=head, eff=eff, b=b, D=D,)
 
 
 def create_points_flow_m(x):
     """Helper function used to parallelize creation of points."""
     suc, speed, flow, head, eff, b, D = x
-    return Point(
-        suc=suc,
-        speed=speed,
-        flow_m=flow,
-        head=head,
-        eff=eff,
-        b=b,
-        D=D,
-    )
+    return Point(suc=suc, speed=speed, flow_m=flow, head=head, eff=eff, b=b, D=D,)
 
 
 def calc_min_head_point(x, speed, imp, min_head):

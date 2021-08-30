@@ -436,7 +436,7 @@ class Point:
             Dict with keys: 'lower', 'upper' and 'within_limits'.
         """
         if mmsp is None:
-            mmsp = self.mach
+            mmsp = self.mach.m
         if 0 <= mmsp < 0.214:
             lower_limit = -mmsp
             upper_limit = -0.25 * mmsp + 0.286
@@ -455,8 +455,8 @@ class Point:
             within_limits = False
 
         return {
-            "lower": lower_limit.m,
-            "upper": upper_limit.m,
+            "lower": lower_limit,
+            "upper": upper_limit,
             "within_limits": within_limits,
         }
 
