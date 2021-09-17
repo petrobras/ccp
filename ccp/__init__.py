@@ -93,16 +93,16 @@ __version__full = (
 ###############################################################################
 # pint
 ###############################################################################
-
-from pint import (
-    UnitRegistry as _UnitRegistry,
-    set_application_registry as _set_application_registry,
-)
+import pint as _pint
 
 _new_units = _Path(__file__).parent / "config/new_units.txt"
-ureg = _UnitRegistry()
-ureg.load_definitions(str(_new_units))
-_set_application_registry(ureg)
+ureg = _pint.get_application_registry()
+if isinstance(ureg, _pint.registry.LazyRegistry):
+    ureg = _pint.UnitRegistry()
+    ureg.load_definitions(str(_new_units))
+    # set ureg to make pickle possible
+    _pint.set_application_registry(ureg)
+
 Q_ = ureg.Quantity
 _warnings.filterwarnings("ignore", message="The unit of the quantity is stripped")
 
