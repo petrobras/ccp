@@ -5,7 +5,9 @@ from numpy.testing import assert_allclose
 
 def test_new_units_loaded():
     speed = Q_(1, "RPM")
-    assert speed.magnitude == 1
+    assert speed.m == 1
+    v = Q_(3600, "m³/h")
+    assert v.to("m³/s").m == 1
 
 
 @pytest.fixture

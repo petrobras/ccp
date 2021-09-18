@@ -44,9 +44,9 @@ def impeller_lp_sec1_from_csv():
 
 def test_impeller_lp_sec1_from_csv(impeller_lp_sec1_from_csv):
     p0 = impeller_lp_sec1_from_csv[0]
-    assert_allclose(p0.flow_v.to("m³/h"), 11218.7)
+    assert_allclose(p0.flow_v.to("m³/h"), 11250)
     assert_allclose(p0.speed.to("RPM"), 6882.0)
-    assert_allclose(p0.disch.p().to("bar"), 9.039631560903004)
-    assert_allclose(p0.head.to("kJ/kg"), 83.0088)
-    assert_allclose(p0.eff, 0.789377, rtol=1e-5)
-    assert_allclose(p0.power.to("kW"), 1431.024873304792)
+    assert_allclose(p0.disch.p().to("bar"), 9.02198284)
+    assert_allclose(p0.head.to("kJ/kg"), 82.7824137)
+    assert_allclose(p0.eff, 0.789412, rtol=1e-5)
+    assert_allclose(p0.power.to("kW"), 1431.03994)
