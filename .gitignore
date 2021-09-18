@@ -89,6 +89,7 @@ ENV/
 # Rope project settings
 .ropeproject
 .idea/
+.vscode/
 *.prof
 /ccp/debug.py
 /ccp/.pytest_cache/
