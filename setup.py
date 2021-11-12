@@ -71,7 +71,7 @@ setup(
             "pytest-cov",
             "coverage",
             "codecov",
-            "sphinx",
+            "sphinx<4.3",
             "nbsphinx",
             "numpydoc",
             "sphinxcontrib-bibtex",
