@@ -145,7 +145,10 @@ mathjax2_config = {
         "processEscapes": True,
         "ignoreClass": "document",
         "processClass": "math|output_area",
-    }
+    },
+}
+mathjax_options = {
+    "async": "async",
 }
 
 try:
