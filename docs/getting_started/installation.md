@@ -1,5 +1,7 @@
 # Installation
 
+To use ccp you will need python >= 3.6 and < 3.9.
+
 You can install `ccp` with:
 
 ```{code-block}
