@@ -293,9 +293,23 @@ class State(CP.AbstractState):
         speed_sound : pint.Quantity
             Speed of sound (m/s).
         """
-        speed_sound = Q_(
-            np.sqrt(self.first_partial_deriv(CP.iP, CP.iDmass, CP.iSmass)), "m/s"
-        )
+        try:
+            speed_sound = Q_(
+                np.sqrt(self.first_partial_deriv(CP.iP, CP.iDmass, CP.iSmass)), "m/s"
+            )
+        except ValueError:
+            # manually calculate the derivative for REFPROP 9.1
+            dummy_state = copy(self)
+            p0 = self.p()
+            p1 = p0 + Q_(1e-6, "Pa")
+
+            dummy_state.update(p=p1, s=self.s())
+            rho0 = self.rho()
+            rho1 = dummy_state.rho()
+            delta_p = p1 - p0
+            delta_rho = rho1 - rho0
+            speed_sound = Q_(np.sqrt(delta_p / delta_rho), "m/s")
+
         if units:
             speed_sound = speed_sound.to(units)
         return speed_sound
@@ -423,15 +437,7 @@ class State(CP.AbstractState):
     @classmethod
     @check_units
     def define(
-        cls,
-        p=None,
-        T=None,
-        h=None,
-        s=None,
-        rho=None,
-        fluid=None,
-        EOS=None,
-        **kwargs,
+        cls, p=None, T=None, h=None, s=None, rho=None, fluid=None, EOS=None, **kwargs,
     ):
         """Constructor for state.
 
@@ -512,13 +518,7 @@ class State(CP.AbstractState):
 
     @check_units
     def update(
-        self,
-        p=None,
-        T=None,
-        rho=None,
-        h=None,
-        s=None,
-        **kwargs,
+        self, p=None, T=None, rho=None, h=None, s=None, **kwargs,
     ):
         """Update the state.
 
