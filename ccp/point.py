@@ -157,7 +157,7 @@ class Point:
             "psi",
             "volume_ratio",
         ]:
-            if getattr(self, k):
+            if getattr(self, k) is not None:
                 kwargs_list.append(k)
 
         kwargs_str = "_".join(sorted(kwargs_list))
