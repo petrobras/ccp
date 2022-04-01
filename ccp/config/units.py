@@ -122,6 +122,9 @@ def check_units(func):
 
         for arg_name, arg_value in zip(args_names, args):
             names = arg_name.split("_")
+            if "units" in names:
+                base_unit_args.append(arg_value)
+                continue
             if arg_name not in names:
                 names.append(arg_name)
             for name in names:
@@ -144,6 +147,9 @@ def check_units(func):
         base_unit_kwargs = {}
         for k, v in kwargs.items():
             names = k.split("_")
+            if "units" in names:
+                base_unit_kwargs[k] = v
+                continue
             if k not in names:
                 names.append(k)
             for name in names:
@@ -154,7 +160,7 @@ def check_units(func):
                         try:
                             base_unit_kwargs[k] = Q_(v, units[name])
                         except TypeError:
-                            # Handle erros that we get with bool for example
+                            # Handle errors that we get with bool for example
                             base_unit_kwargs[k] = v
                     break
             else:
