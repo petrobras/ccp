@@ -235,14 +235,14 @@ def imp3():
 
 
 def test_impeller_point(imp3):
-    p0 = imp3.point(flow_v=5, speed=900)
-    assert_allclose(p0.eff, 0.816019, rtol=1e-4)
-    assert_allclose(p0.head, 124190.645648, rtol=1e-4)
-    assert_allclose(p0.power, 3322967.194381, rtol=1e-4)
+    p0 = imp3.point(flow_m=Q_(90184, "kg/h"), speed=Q_(9300, "RPM"))
+    assert_allclose(p0.eff, 0.782169, rtol=1e-4)
+    assert_allclose(p0.head, 97729.49349, rtol=1e-4)
+    assert_allclose(p0.power, 3130330.074989, rtol=1e-4)
 
     # test interpolation warning
     with pytest.warns(UserWarning) as record:
-        p0 = imp3.point(flow_v=0, speed=900)
+        p0 = imp3.point(flow_m=Q_(70000, "kg/h"), speed=Q_(9300, "RPM"))
         assert "Expected point is being extrapolated" in record[0].message.args[0]
 
 
