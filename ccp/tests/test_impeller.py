@@ -177,8 +177,7 @@ def test_impeller_disch_state(imp2):
         [[482.850310, 477.243856, 471.29533], [506.668177, 500.418404, 493.30993]]
     )
     assert_allclose(
-        imp2.disch.T().magnitude,
-        T_magnitude,
+        imp2.disch.T().magnitude, T_magnitude,
     )
 
 
@@ -201,12 +200,50 @@ def test_impeller2_new_suction(imp2):
     assert_allclose(new_p0.volume_ratio_ratio, 0.999815, rtol=1e-5)
 
 
-def test_impeller_point():
-    imp = impeller_example()
-    p0 = imp.point(flow_v=5, speed=900)
+@pytest.fixture
+def imp3():
+    # faster to load than impeller_example
+    composition_fd = dict(
+        n2=0.4,
+        co2=0.22,
+        methane=92.11,
+        ethane=4.94,
+        propane=1.71,
+        ibutane=0.24,
+        butane=0.3,
+        ipentane=0.04,
+        pentane=0.03,
+        hexane=0.01,
+    )
+    suc_fd = State.define(p=Q_(3876, "kPa"), T=Q_(11, "degC"), fluid=composition_fd)
+
+    test_dir = Path(__file__).parent
+    curve_path = test_dir / "data"
+    curve_name = "normal"
+
+    imp3 = Impeller.load_from_engauge_csv(
+        suc=suc_fd,
+        curve_name=curve_name,
+        curve_path=curve_path,
+        b=Q_(10.6, "mm"),
+        D=Q_(390, "mm"),
+        number_of_points=6,
+        flow_units="kg/h",
+        head_units="kJ/kg",
+    )
+    return imp3
+
+
+def test_impeller_point(imp3):
+    p0 = imp3.point(flow_v=5, speed=900)
     assert_allclose(p0.eff, 0.816019, rtol=1e-4)
     assert_allclose(p0.head, 124190.645648, rtol=1e-4)
     assert_allclose(p0.power, 3322967.194381, rtol=1e-4)
+
+    # test interpolation warning
+    with pytest.warns(UserWarning) as record:
+        p0 = imp3.point(flow_v=0, speed=900)
+        assert "Expected point is being extrapolated" in record[0].message.args[0]
 
 
 def test_impeller_curve():
