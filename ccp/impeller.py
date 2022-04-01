@@ -1,6 +1,7 @@
 """Module to define impeller class."""
 import csv
 import multiprocessing
+import warnings
 
 import toml
 from copy import deepcopy
@@ -215,9 +216,21 @@ class Impeller:
 
         current_curve = self.curve(speed)
 
-        func_T = interp1d(current_curve.flow_v.m, current_curve.disch.T().m)
-        func_p = interp1d(current_curve.flow_v.m, current_curve.disch.p().m)
+        func_T = interp1d(
+            current_curve.flow_v.m, current_curve.disch.T().m, fill_value="extrapolate"
+        )
+        func_p = interp1d(
+            current_curve.flow_v.m, current_curve.disch.p().m, fill_value="extrapolate"
+        )
 
+        min_flow_v = min(current_curve.flow_v)
+        max_flow_v = max(current_curve.flow_v)
+        if flow_v < min_flow_v or max_flow_v < flow_v:
+            warnings.warn(
+                f"Expected point is being extrapolated.\n"
+                f"Interpolation limits: {min_flow_v:.3~P} ~ {max_flow_v:.3~P}\n"
+                f"Expected point flow: {flow_v:.3~P}"
+            )
         disch_T = func_T(flow_v)
         disch_p = func_p(flow_v)
 
