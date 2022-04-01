@@ -195,7 +195,7 @@ class Impeller:
         return inner
 
     @check_units
-    def point(self, flow_v=None, speed=None):
+    def point(self, flow_v=None, flow_m=None, speed=None):
         """Calculate specific point in the performance map.
 
         Given a volumetric flow and a speed this method will calculate a point in the
@@ -205,6 +205,8 @@ class Impeller:
         ----------
         flow_v : pint.Quantity, float
             Volumetric flow (m³/s).
+        flow_m : pint.Quantity, float
+            Mass flow (kg/s).
         speed : pint.Quantity, float
             Speed (rad/s).
 
@@ -215,6 +217,8 @@ class Impeller:
         """
 
         current_curve = self.curve(speed)
+        if flow_m:
+            flow_v = current_curve.points[0].suc.v() * flow_m
 
         func_T = interp1d(
             current_curve.flow_v.m, current_curve.disch.T().m, fill_value="extrapolate"
@@ -228,8 +232,8 @@ class Impeller:
         if flow_v < min_flow_v or max_flow_v < flow_v:
             warnings.warn(
                 f"Expected point is being extrapolated.\n"
-                f"Interpolation limits: {min_flow_v:.3~P} ~ {max_flow_v:.3~P}\n"
-                f"Expected point flow: {flow_v:.3~P}"
+                f"Interpolation limits: {min_flow_v:.3f~P} ~ {max_flow_v:.3f~P}\n"
+                f"Expected point flow: {flow_v:.3f~P}"
             )
         disch_T = func_T(flow_v)
         disch_p = func_p(flow_v)
