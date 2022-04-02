@@ -2,8 +2,8 @@
 
 ccp is a python library for calculation of centrifugal compressor performance.
 The code uses 
-[CoolProp](http://www.coolprop.org/)
-[REFPROP](https://www.nist.gov/srd/refprop)
+[CoolProp](http://www.coolprop.org/) :cite:`coolprop` and
+[REFPROP](https://www.nist.gov/srd/refprop) :cite:`refprop`
 for the gas properties calculations.
 
 
@@ -42,4 +42,7 @@ point1...
 # Create an impeller with those points:
 
 imp = Impeller([point0, point1, ...])
+
+.. bibliography::
+    :filter: docname in docnames
 ```
