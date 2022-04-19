@@ -406,6 +406,43 @@ class Impeller:
         wb.save(str(path_name))
 
     @classmethod
+    def load_from_dict(
+        cls,
+        suc,
+        head_curve,
+        eff_curve,
+        b=None,
+        D=None,
+        number_of_points=10,
+        flow_units="m**3/s",
+        head_units="J/kg",
+        speed_units="RPM",
+    ):
+        """Create points from dict object available in the ISIS platform.
+
+        suc : ccp.State
+            Suction state.
+        head_curve : dict
+            Dict with head/flow values.
+        eff_curve : dict
+            Dict with head/flow values.
+        b : float, pint.Quantity
+            Impeller width (m).
+        D : float, pint.Quantity
+            Impeller diameter (m).
+        number_of_points : int
+            Number of points that will be interpolated.
+        flow_units : str
+            Flow units used in the dict.
+        head_units : str
+            Head units used in the dict.
+            If the curve head units are in meter you can use: head_units="m*g0".
+        speed_units : str
+            Speed units used in the dict.
+        """
+        pass
+
+    @classmethod
     def load_from_engauge_csv(
         cls,
         suc,
