@@ -345,7 +345,10 @@ class Impeller:
 
                 converted_points = [
                     Point.convert_from(
-                        p, suc=p.suc, find="volume_ratio", speed=speed_mean,
+                        p,
+                        suc=p.suc,
+                        find="volume_ratio",
+                        speed=speed_mean,
                     )
                     for p in converted_points
                 ]
@@ -407,6 +410,105 @@ class Impeller:
 
     @classmethod
     def load_from_dict(
+        cls,
+        suc,
+        head_curves,
+        eff_curves,
+        b=None,
+        D=None,
+        number_of_points=10,
+        flow_units="m**3/s",
+        head_units="J/kg",
+        speed_units="RPM",
+    ):
+        """Create points from dict object.
+
+        In this case the dict is in the following format:
+
+        curve = {
+            '10000': {
+                'x': [list with flow values],
+                'y': [list with head or eff values]
+                },
+            ...}
+        Where 10000 is the speed for that curve.
+
+        suc : ccp.State
+            Suction state.
+        head_curve : dict
+            Dict with head/flow values.
+        eff_curve : dict
+            Dict with head/flow values.
+        b : float, pint.Quantity
+            Impeller width (m).
+        D : float, pint.Quantity
+            Impeller diameter (m).
+        number_of_points : int
+            Number of points that will be interpolated.
+        flow_units : str
+            Flow units used in the dict.
+        head_units : str
+            Head units used in the dict.
+            If the curve head units are in meter you can use: head_units="m*g0".
+        speed_units : str
+            Speed units used in the dict.
+        """
+        # define if we have volume or mass flow
+        flow_type = "volumetric"
+        if list(Q_(1, flow_units).dimensionality.keys())[0] == "[mass]":
+            flow_type = "mass"
+
+        points = []
+
+        for speed, head_curve in head_curves.items():
+            head_interpolated = interp1d(
+                head_curve["x"],
+                head_curve["y"],
+                kind=3,
+                fill_value="extrapolate",
+            )
+            eff_curve = eff_curves[speed]
+            # check eff scale
+            if max(eff_curve["y"]) > 1:
+                eff_curve["y"] = [i / 100 for i in eff_curve["y"]]
+            eff_interpolated = interp1d(
+                eff_curve["x"],
+                eff_curve["y"],
+                kind=3,
+                fill_value="extrapolate",
+            )
+
+            # avoid too much extrapolation
+            min_x = max(head_curve["x"][0], eff_curve["x"][0])
+            max_x = min(head_curve["x"][-1], eff_curve["x"][-1])
+
+            points_x = np.linspace(min_x, max_x, number_of_points)
+            points_head = head_interpolated(points_x)
+            points_eff = eff_interpolated(points_x)
+
+            args_list = [
+                (
+                    suc,
+                    Q_(float(speed), speed_units),
+                    Q_(flow, flow_units),
+                    Q_(head, head_units),
+                    eff,
+                    b,
+                    D,
+                )
+                for flow, head, eff in zip(points_x, points_head, points_eff)
+            ]
+
+            with multiprocessing.Pool() as pool:
+                if flow_type == "volumetric":
+                    points += pool.map(create_points_flow_v, args_list)
+                else:
+                    points += pool.map(create_points_flow_m, args_list)
+
+        return cls(points)
+
+    @classmethod
+    def load_from_dict_isis(
         cls,
         suc,
         head_curve,
@@ -498,53 +600,17 @@ class Impeller:
         head_curves = read_data_from_engauge_csv(head_path)
         eff_curves = read_data_from_engauge_csv(eff_path)
 
-        # define if we have volume or mass flow
-        flow_type = "volumetric"
-        if list(Q_(1, flow_units).dimensionality.keys())[0] == "[mass]":
-            flow_type = "mass"
-
-        points = []
-
-        for speed, head_curve in head_curves.items():
-            head_interpolated = interp1d(
-                head_curve["x"], head_curve["y"], kind=3, fill_value="extrapolate",
-            )
-            eff_curve = eff_curves[speed]
-            # check eff scale
-            if max(eff_curve["y"]) > 1:
-                eff_curve["y"] = [i / 100 for i in eff_curve["y"]]
-            eff_interpolated = interp1d(
-                eff_curve["x"], eff_curve["y"], kind=3, fill_value="extrapolate",
-            )
-
-            # avoid too much extrapolation
-            min_x = max(head_curve["x"][0], eff_curve["x"][0])
-            max_x = min(head_curve["x"][-1], eff_curve["x"][-1])
-
-            points_x = np.linspace(min_x, max_x, number_of_points)
-            points_head = head_interpolated(points_x)
-            points_eff = eff_interpolated(points_x)
-
-            args_list = [
-                (
-                    suc,
-                    Q_(float(speed), speed_units),
-                    Q_(flow, flow_units),
-                    Q_(head, head_units),
-                    eff,
-                    b,
-                    D,
-                )
-                for flow, head, eff in zip(points_x, points_head, points_eff)
-            ]
-
-            with multiprocessing.Pool() as pool:
-                if flow_type == "volumetric":
-                    points += pool.map(create_points_flow_v, args_list)
-                else:
-                    points += pool.map(create_points_flow_m, args_list)
-
-        return cls(points)
+        return cls.load_from_dict(
+            suc=suc,
+            b=b,
+            D=D,
+            head_curves=head_curves,
+            eff_curves=eff_curves,
+            number_of_points=number_of_points,
+            flow_units=flow_units,
+            head_units=head_units,
+            speed_units=speed_units,
+        )
 
     def save(self, file):
         """Save impeller to a toml file.
@@ -698,13 +764,29 @@ def converter(x):
 def create_points_flow_v(x):
     """Helper function used to parallelize creation of points."""
     suc, speed, flow, head, eff, b, D = x
-    return Point(suc=suc, speed=speed, flow_v=flow, head=head, eff=eff, b=b, D=D,)
+    return Point(
+        suc=suc,
+        speed=speed,
+        flow_v=flow,
+        head=head,
+        eff=eff,
+        b=b,
+        D=D,
+    )
 
 
 def create_points_flow_m(x):
     """Helper function used to parallelize creation of points."""
     suc, speed, flow, head, eff, b, D = x
-    return Point(suc=suc, speed=speed, flow_m=flow, head=head, eff=eff, b=b, D=D,)
+    return Point(
+        suc=suc,
+        speed=speed,
+        flow_m=flow,
+        head=head,
+        eff=eff,
+        b=b,
+        D=D,
+    )
 
 
 def calc_min_head_point(x, speed, imp, min_head):
