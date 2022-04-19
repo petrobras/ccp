@@ -511,8 +511,8 @@ class Impeller:
     def load_from_dict_isis(
         cls,
         suc,
-        head_curve,
-        eff_curve,
+        head_curves,
+        eff_curves,
         b=None,
         D=None,
         number_of_points=10,
@@ -521,6 +521,22 @@ class Impeller:
         speed_units="RPM",
     ):
         """Create points from dict object available in the ISIS platform.
+
+        The dict is in the following format:
+           head_curves_dict = [
+        {
+            "z": 11373,
+            "points": [
+                {"x": 94529, "y": 148.586},
+                {"x": 98641, "y": 148.211},
+                {"x": 101554, "y": 147.837},
+            ...]
+        ...,
+        },
+        ]
+
+        Where z is the speed and each point is described as a dict with x and y
+        pair where x is the flow and y is the head or eff.
 
         suc : ccp.State
             Suction state.
@@ -541,8 +557,73 @@ class Impeller:
             If the curve head units are in meter you can use: head_units="m*g0".
         speed_units : str
             Speed units used in the dict.
+
+        Examples
+        --------
+        >>> import ccp
+        >>> composition_fd = dict(
+        ...    n2=0.4,
+        ...    co2=0.22,
+        ...    methane=92.11,
+        ...    ethane=4.94,
+        ...    propane=1.71,
+        ...    ibutane=0.24,
+        ...    butane=0.3,
+        ...    ipentane=0.04,
+        ...    pentane=0.03,
+        ...    hexane=0.01,
+        ... )
+        >>> suc_fd = State.define(p=Q_(3876, "kPa"), T=Q_(11, "degC"), fluid=composition_fd)
+        >>> imp = ccp.Impeller.load_from_dict_isis(
+        ...    suc=suc_fd,
+        ...    head_curves=head_curves_dict,
+        ...    eff_curves=eff_curves_dict,
+        ...    b=Q_(10.6, "mm"),
+        ...    D=Q_(390, "mm"),
+        ...    number_of_points=6,
+        ...    flow_units="kg/h",
+        ...    head_units="kJ/kg",
+        ... )
         """
-        pass
+        # change dict format from isis to that handled by the ccp method.
+
+        head_curve_ccp = {}
+        for head_curve in head_curves:
+            speed = str(head_curve["z"])
+            x = []
+            y = []
+            for point in head_curve["points"]:
+                x.append(point["x"])
+                y.append(point["y"])
+
+            head_curve_ccp[speed] = {}
+            head_curve_ccp[speed]["x"] = x
+            head_curve_ccp[speed]["y"] = y
+
+        eff_curve_ccp = {}
+        for eff_curve in eff_curves:
+            speed = str(eff_curve["z"])
+            x = []
+            y = []
+            for point in eff_curve["points"]:
+                x.append(point["x"])
+                y.append(point["y"])
+
+            eff_curve_ccp[speed] = {}
+            eff_curve_ccp[speed]["x"] = x
+            eff_curve_ccp[speed]["y"] = y
+
+        return cls.load_from_dict(
+            suc=suc,
+            b=b,
+            D=D,
+            head_curves=head_curve_ccp,
+            eff_curves=eff_curve_ccp,
+            number_of_points=number_of_points,
+            flow_units=flow_units,
+            head_units=head_units,
+            speed_units=speed_units,
+        )
 
     @classmethod
     def load_from_engauge_csv(

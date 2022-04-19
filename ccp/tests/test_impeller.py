@@ -179,7 +179,8 @@ def test_impeller_disch_state(imp2):
         [[482.850310, 477.243856, 471.29533], [506.668177, 500.418404, 493.30993]]
     )
     assert_allclose(
-        imp2.disch.T().magnitude, T_magnitude,
+        imp2.disch.T().magnitude,
+        T_magnitude,
     )
 
 
@@ -382,7 +383,7 @@ def test_save_load():
     assert imp_fd == imp_fd_loaded
 
 
-def test_load_from_dict():
+def test_load_from_dict_isis():
     head_curves_dict = [
         {
             "z": 11373,
@@ -564,17 +565,17 @@ def test_load_from_dict():
     )
     suc_fd = State.define(p=Q_(3876, "kPa"), T=Q_(11, "degC"), fluid=composition_fd)
 
-    imp = ccp.Impeller.load_from_dict(
+    imp = ccp.Impeller.load_from_dict_isis(
         suc=suc_fd,
-        head_curve=head_curves_dict,
-        eff_curve=eff_curves_dict,
+        head_curves=head_curves_dict,
+        eff_curves=eff_curves_dict,
         b=Q_(10.6, "mm"),
         D=Q_(390, "mm"),
         number_of_points=6,
         flow_units="kg/h",
         head_units="kJ/kg",
     )
-    p0 = imp3.point(flow_m=Q_(90184, "kg/h"), speed=Q_(9300, "RPM"))
+    p0 = imp.point(flow_m=Q_(90184, "kg/h"), speed=Q_(9300, "RPM"))
     assert_allclose(p0.eff, 0.782169, rtol=1e-4)
     assert_allclose(p0.head, 97729.49349, rtol=1e-4)
     assert_allclose(p0.power, 3130330.074989, rtol=1e-4)
