@@ -588,7 +588,7 @@ class Impeller:
         # change dict format from isis to that handled by the ccp method.
 
         head_curve_ccp = {}
-        for head_curve in head_curves:
+        for head_curve in head_curves["CURVES"]:
             speed = str(head_curve["z"])
             x = []
             y = []
@@ -601,7 +601,7 @@ class Impeller:
             head_curve_ccp[speed]["y"] = y
 
         eff_curve_ccp = {}
-        for eff_curve in eff_curves:
+        for eff_curve in eff_curves["CURVES"]:
             speed = str(eff_curve["z"])
             x = []
             y = []
