@@ -51,7 +51,7 @@ setup(
     long_description_content_type="text/markdown",
     author="Raphael Timbó",
     author_email="raphaelts@gmail.com",
-    package_data={"ccp.config": ["new_units.txt"]},
+    package_data={"ccp.config": ["new_units.txt"], "ccp.tests.data": ["*"]},
     python_requires=">=3.6",
     install_requires=[
         "numpy",
