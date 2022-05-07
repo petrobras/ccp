@@ -53,7 +53,7 @@ setup(
     author_email="raphaelts@gmail.com",
     packages=find_packages(exclude=("tests",)),
     package_data={"ccp.config": ["new_units.txt"]},
-    python_requires=">=3.6, <3.9",
+    python_requires=">=3.6",
     install_requires=[
         "numpy",
         "scipy",
