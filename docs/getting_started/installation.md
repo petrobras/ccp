@@ -1,6 +1,14 @@
 # Installation
 
-To use ccp you will need python >= 3.6 and < 3.9.
+To use ccp you will need python >= 3.6.
+
+```{warning}
+If you have python >= 3.9, before installing `ccp`, you will need to install `CoolProp` dev version with:
+
+  `pip install -i https://test.pypi.org/simple/ CoolProp==6.4.2.dev0`
+
+This is related to [this issue](https://github.com/CoolProp/CoolProp/issues/2119).
+```
 
 You can install `ccp` with:
 
