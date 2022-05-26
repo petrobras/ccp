@@ -57,7 +57,7 @@ setup(
         "numpy",
         "scipy",
         "CoolProp",
-        "pint",
+        "pint>=0.18",
         "plotly",
         "toml",
         "openpyxl",
