@@ -1,5 +1,6 @@
 import pytest
 import numpy as np
+import pickle
 from pathlib import Path
 from tempfile import tempdir
 from numpy.testing import assert_allclose
@@ -583,3 +584,10 @@ def test_load_from_dict_isis():
     assert_allclose(p0.eff, 0.782169, rtol=1e-4)
     assert_allclose(p0.head, 97729.49349, rtol=1e-4)
     assert_allclose(p0.power, 3130330.074989, rtol=1e-4)
+
+
+def test_pickle(imp0):
+    pickled_imp0 = pickle.loads(pickle.dumps(imp0))
+    assert pickled_imp0 == imp0
+    assert hasattr(imp0, "head_plot") is True
+    assert hasattr(pickled_imp0, "head_plot") is True
