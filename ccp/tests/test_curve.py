@@ -1,5 +1,6 @@
 import pytest
 import numpy as np
+import pickle
 from numpy.testing import assert_allclose
 from ccp import ureg, Q_
 from ccp.state import State
@@ -74,3 +75,10 @@ def curve1():
     p2 = Point(suc=suc, disch=disch2, flow_v=3, speed=1, b=1, D=1)
     p3 = Point(suc=suc, disch=disch3, flow_v=4, speed=1, b=1, D=1)
     return Curve([p0, p1, p2, p3])
+
+
+def test_pickle(curve0):
+    pickled_curve0 = pickle.loads(pickle.dumps(curve0))
+    assert pickled_curve0 == curve0
+    assert hasattr(curve0, "head_plot") is True
+    assert hasattr(pickled_curve0, "head_plot") is True

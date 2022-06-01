@@ -8,13 +8,39 @@ import plotly.graph_objects as go
 from ccp import Q_, ureg, Point
 
 
-def plot_func(self, attr):
-    def inner(*args, plot_kws=None, **kwargs):
+class StateParameter:
+    def __init__(self, curve_state_object, attr):
+        self.curve_state_object = curve_state_object
+        self.attr = attr
+
+    def __call__(self, *args, **kwargs):
+        values = []
+
+        for point in self.curve_state_object:
+            values.append(getattr(getattr(point, self.attr)(), "magnitude"))
+
+        units = getattr(getattr(point, self.attr)(), "units")
+
+        return Q_(values, units)
+
+
+def state_parameter(curve_state_object, attr):
+    return StateParameter(curve_state_object, attr)
+
+
+class PlotFunction:
+    def __init__(self, curve_state_object, attr):
+        self.curve_state_object = curve_state_object
+        self.attr = attr
+
+    def __call__(self, *args, plot_kws=None, **kwargs):
         """Plot parameter versus volumetric flow.
 
         You can choose units with the arguments flow_v_units='...' and
         {attr}_units='...'. For the speed you can use speed_units='...'.
         """
+        curve_state_object = self.curve_state_object
+        attr = self.attr
         fig = kwargs.pop("fig", None)
 
         if fig is None:
@@ -23,20 +49,24 @@ def plot_func(self, attr):
         if plot_kws is None:
             plot_kws = {}
 
-        x_units = kwargs.get("flow_v_units", self.flow_v.units)
+        x_units = kwargs.get("flow_v_units", curve_state_object.flow_v.units)
         x_units = ureg.Unit(x_units)
         try:
-            y_units = kwargs.get(f"{attr}_units", getattr(self, attr).units)
+            y_units = kwargs.get(
+                f"{attr}_units", getattr(curve_state_object, attr).units
+            )
         except AttributeError:
-            y_units = kwargs.get(f"{attr}_units", getattr(self, attr)().units)
+            y_units = kwargs.get(
+                f"{attr}_units", getattr(curve_state_object, attr)().units
+            )
         y_units = ureg.Unit(y_units)
-        speed_units = kwargs.get("speed_units", self.speed.units)
+        speed_units = kwargs.get("speed_units", curve_state_object.speed.units)
         speed_units = ureg.Unit(speed_units)
-        name = kwargs.get("name", str(round(self.speed.to(speed_units))))
+        name = kwargs.get("name", str(round(curve_state_object.speed.to(speed_units))))
 
-        flow_v = self.flow_v
+        flow_v = curve_state_object.flow_v
 
-        interpolated_curve = getattr(self, attr + "_interpolated")
+        interpolated_curve = getattr(curve_state_object, attr + "_interpolated")
 
         flow_v_range = np.linspace(min(flow_v), max(flow_v), 30)
 
@@ -45,13 +75,21 @@ def plot_func(self, attr):
         values_range = values_range.magnitude
 
         if x_units is not None:
-            flow_v_range = Q_(flow_v_range, self.flow_v.units).to(x_units).m
+            flow_v_range = (
+                Q_(flow_v_range, curve_state_object.flow_v.units).to(x_units).m
+            )
         if y_units is not None:
             try:
-                values_range = Q_(values_range, getattr(self, attr).units).to(y_units).m
+                values_range = (
+                    Q_(values_range, getattr(curve_state_object, attr).units)
+                    .to(y_units)
+                    .m
+                )
             except AttributeError:
                 values_range = (
-                    Q_(values_range, getattr(self, attr)().units).to(y_units).m
+                    Q_(values_range, getattr(curve_state_object, attr)().units)
+                    .to(y_units)
+                    .m
                 )
 
         fig.add_trace(go.Scatter(x=flow_v_range, y=values_range, name=name), **plot_kws)
@@ -63,12 +101,20 @@ def plot_func(self, attr):
 
         return fig
 
-    return inner
+
+def plot_func(curve_state_object, attr):
+    return PlotFunction(curve_state_object, attr)
 
 
-def interpolated_function(obj, attr):
-    def inner(*args, **kwargs):
-        values = getattr(obj, attr)
+class InterpolatedFunction:
+    def __init__(self, curve_state_object, attr):
+        self.curve_state_object = curve_state_object
+        self.attr = attr
+
+    def __call__(self, *args, **kwargs):
+        curve_state_object = self.curve_state_object
+        attr = self.attr
+        values = getattr(curve_state_object, attr)
         if callable(values):
             values = values()
 
@@ -80,7 +126,7 @@ def interpolated_function(obj, attr):
             interpolation_degree = 3
 
         interpol_function = interp1d(
-            obj.flow_v.magnitude,
+            curve_state_object.flow_v.magnitude,
             values.magnitude,
             kind=interpolation_degree,
             fill_value="extrapolate",
@@ -97,7 +143,9 @@ def interpolated_function(obj, attr):
 
         return result
 
-    return inner
+
+def interpolated_function(curve_state_object, attr):
+    return InterpolatedFunction(curve_state_object, attr)
 
 
 class _CurveState:
@@ -116,7 +164,7 @@ class _CurveState:
 
         # set a method for each suction attribute in the list
         for attr in ["p", "T", "h", "s", "rho"]:
-            func = self.state_parameter(attr)
+            func = state_parameter(self, attr)
             setattr(self, attr, func)
 
             interpol_func = interpolated_function(self, attr)
@@ -127,19 +175,6 @@ class _CurveState:
 
     def __getitem__(self, item):
         return self.points.__getitem__(item)
-
-    def state_parameter(self, attr):
-        def inner(*args, **kwargs):
-            values = []
-
-            for point in self:
-                values.append(getattr(getattr(point, attr)(), "magnitude"))
-
-            units = getattr(getattr(point, attr)(), "units")
-
-            return Q_(values, units)
-
-        return inner
 
 
 class Curve:
@@ -203,6 +238,14 @@ class Curve:
 
     def __len__(self):
         return len(self.points)
+
+    def __eq__(self, other):
+        if isinstance(other, self.__class__):
+            for point_self, point_other in zip(self.points, other.points):
+                if point_self != point_other:
+                    return False
+            else:
+                return True
 
     def _dict_to_save(self):
         return {f"point{i}": point._dict_to_save() for i, point in enumerate(self)}
