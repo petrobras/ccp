@@ -71,8 +71,8 @@ sidebar = html.Div(
 content = html.Div(id="page-content", style=CONTENT_STYLE)
 interval = dcc.Interval(
     id="interval-component",
-    interval=900 * 1000,  # in milliseconds
-    n_intervals=0,
+    interval=900 * 1000,
+    n_intervals=0,  # in milliseconds
 )
 store = dcc.Store(id="store")
 store_int = dcc.Store(id="store-int")
