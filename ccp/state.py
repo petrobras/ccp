@@ -361,7 +361,7 @@ class State(CP.AbstractState):
         return dpdv_s
 
     def _X(self):
-        """ Coeficiente de compressibilidade X de Schultz """
+        """Coeficiente de compressibilidade X de Schultz"""
         T = self.T().to("K").magnitude
         V = self.v().to("m³/kg").magnitude
 
@@ -371,7 +371,7 @@ class State(CP.AbstractState):
         )
 
     def _Y(self):
-        """ Coeficiente de compressibilidade X de Schultz """
+        """Coeficiente de compressibilidade X de Schultz"""
         P = self.p().to("Pa").magnitude
         V = self.v().to("m³/kg").magnitude
 
@@ -437,7 +437,15 @@ class State(CP.AbstractState):
     @classmethod
     @check_units
     def define(
-        cls, p=None, T=None, h=None, s=None, rho=None, fluid=None, EOS=None, **kwargs,
+        cls,
+        p=None,
+        T=None,
+        h=None,
+        s=None,
+        rho=None,
+        fluid=None,
+        EOS=None,
+        **kwargs,
     ):
         """Constructor for state.
 
@@ -518,7 +526,13 @@ class State(CP.AbstractState):
 
     @check_units
     def update(
-        self, p=None, T=None, rho=None, h=None, s=None, **kwargs,
+        self,
+        p=None,
+        T=None,
+        rho=None,
+        h=None,
+        s=None,
+        **kwargs,
     ):
         """Update the state.
 
