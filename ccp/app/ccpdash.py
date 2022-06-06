@@ -1,8 +1,8 @@
 import ccp
 import dash
+from dash import dcc
+from dash import html
 import dash_bootstrap_components as dbc
-import dash_core_components as dcc
-import dash_html_components as html
 import numpy as np
 import plotly.graph_objs as go
 import plotly.io as pio
@@ -306,4 +306,4 @@ def generate_interval_fig(n_clicks, start_date, pathname, data):
 
 if __name__ == "__main__":
     imp_fd = get_imp_fd()
-    app.run_server(debug=True, port=8881)
+    app.run_server(host="0.0.0.0", port=8080, debug=False)
