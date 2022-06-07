@@ -21,7 +21,7 @@ def test_state_define():
     assert state.T().units == "kelvin"
     assert state.p().magnitude == 100000
     assert state.T().magnitude == 300
-    assert state.rhomass() == 0.6442542612980722
+    assert_allclose(state.rhomass(), 0.6442542612980722, rtol=1e-7)
 
 
 def test_eos():
@@ -31,7 +31,7 @@ def test_eos():
     assert state.T().units == "kelvin"
     assert state.p().magnitude == 100000
     assert state.T().magnitude == 300
-    assert state.rhomass() == 0.6442542612980722
+    assert_allclose(state.rhomass(), 0.6442542612980722, rtol=1e-7)
 
     ccp.config.EOS = "PR"
     state = State.define(p=100000, T=300, fluid={"Methane": 1 - 1e-15, "Ethane": 1e-15})
@@ -39,7 +39,7 @@ def test_eos():
     assert state.T().units == "kelvin"
     assert state.p().magnitude == 100000
     assert state.T().magnitude == 300
-    assert state.rhomass() == 0.6445687063978816
+    assert_allclose(state.rhomass(), 0.6445687063978816, rtol=1e-7)
 
     ccp.config.EOS = "SRK"
     state = State.define(p=100000, T=300, fluid={"Methane": 1 - 1e-15, "Ethane": 1e-15})
@@ -47,7 +47,7 @@ def test_eos():
     assert state.T().units == "kelvin"
     assert state.p().magnitude == 100000
     assert state.T().magnitude == 300
-    assert state.rhomass() == 0.6442384800595821
+    assert_allclose(state.rhomass(), 0.6442384800595821, rtol=1e-7)
 
     ccp.config.EOS = "HEOS"
     state = State.define(p=100000, T=300, fluid={"Methane": 1 - 1e-15, "Ethane": 1e-15})
@@ -56,6 +56,7 @@ def test_eos():
     assert_allclose(state.p().magnitude, 100000)
     assert state.T().magnitude == 300
     assert state.rhomass() == 0.6442581578304425
+    assert_allclose(state.rhomass(), 0.6442581578304425, rtol=1e-7)
 
     ccp.config.EOS = "REFPROP"
 
@@ -72,7 +73,7 @@ def test_state_define_units():
     assert state.rho().units == "kilogram/meter**3"
     assert state.p().magnitude == 100000
     assert state.T().magnitude == 300
-    assert state.rho().magnitude == 0.6442542612980722
+    assert_allclose(state.rhomass(), 0.6442542612980722, rtol=1e-7)
 
 
 def test_state_define_units_mix():
@@ -157,7 +158,7 @@ def test_h_s_inputs():
     )
     assert_allclose(state.h().magnitude, 755784.43407392, rtol=1e-5)
     assert_allclose(state.s().magnitude, 4805.332018156618, rtol=1e-5)
-    assert_allclose(state.rho().magnitude, 0.9280595769591103)
+    assert_allclose(state.rho().magnitude, 0.9280595769591103, rtol=1e-5)
 
 
 def test_h_p_inputs():
@@ -175,7 +176,7 @@ def test_T_s_inputs():
     )
     assert_allclose(state.h().magnitude, 755784.43407392, rtol=1e-5)
     assert_allclose(state.s().magnitude, 4805.332018156618, rtol=1e-5)
-    assert_allclose(state.rho().magnitude, 0.9280595769591103)
+    assert_allclose(state.rho().magnitude, 0.9280595769591103, rtol=1e-5)
 
 
 def test_equality():
