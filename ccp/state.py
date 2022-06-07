@@ -351,11 +351,25 @@ class State(CP.AbstractState):
         """
         Partial derivative of pressure to spec. volume with const. entropy.
         """
-        dpdv_s = Q_(
-            -self.rho().magnitude ** 2
-            * (self.first_partial_deriv(CP.iP, CP.iDmass, CP.iSmass)),
-            "pascal * kg / m**3",
-        )
+        try:
+            # dp/dv calculated from dp/drho needs to be multiplied by -rho**2
+            dpdv_s = Q_(
+                -self.rho().magnitude ** 2
+                * (self.first_partial_deriv(CP.iP, CP.iDmass, CP.iSmass)),
+                "pascal * kg / m**3",
+            )
+        except ValueError:
+            # manually calculate the derivative for REFPROP 9.1
+            dummy_state = copy(self)
+            p0 = self.p()
+            p1 = p0 + Q_(1e-1, "Pa")
+
+            dummy_state.update(p=p1, s=self.s())
+            v0 = self.v()
+            v1 = dummy_state.v()
+            dp = p1 - p0
+            dv = v1 - v0
+            dpdv_s = dp / dv
         if units:
             dpdv_s = dpdv_s.to(units)
         return dpdv_s
@@ -395,9 +409,23 @@ class State(CP.AbstractState):
 
         First partial derivative of temperature related to pressure with
         constant entropy."""
-        dTdp_s = Q_(
-            super().first_partial_deriv(CP.iT, CP.iP, CP.iSmass), "kelvin / pascal"
-        )
+        try:
+            dTdp_s = Q_(
+                super().first_partial_deriv(CP.iT, CP.iP, CP.iSmass), "kelvin / pascal"
+            )
+        except ValueError:
+            # manually calculate the derivative for REFPROP 9.1
+            dummy_state = copy(self)
+            p0 = self.p()
+            p1 = p0 + Q_(1e-1, "Pa")
+
+            dummy_state.update(p=p1, s=self.s())
+            T0 = self.T()
+            T1 = dummy_state.T()
+            dp = p1 - p0
+            dT = T1 - T0
+            dTdp_s = dT / dp
+
         if units:
             dTdp_s = dTdp_s.to(units)
 
@@ -437,15 +465,7 @@ class State(CP.AbstractState):
     @classmethod
     @check_units
     def define(
-        cls,
-        p=None,
-        T=None,
-        h=None,
-        s=None,
-        rho=None,
-        fluid=None,
-        EOS=None,
-        **kwargs,
+        cls, p=None, T=None, h=None, s=None, rho=None, fluid=None, EOS=None, **kwargs,
     ):
         """Constructor for state.
 
@@ -526,13 +546,7 @@ class State(CP.AbstractState):
 
     @check_units
     def update(
-        self,
-        p=None,
-        T=None,
-        rho=None,
-        h=None,
-        s=None,
-        **kwargs,
+        self, p=None, T=None, rho=None, h=None, s=None, **kwargs,
     ):
         """Update the state.
 
