@@ -47,7 +47,7 @@ def calc(x, state=None, delta_p=None, qm=None, D=None, tappings="flange"):
     p1 = state.p()
     p2 = p1 + delta_p
     rho = state.rho()
-    A = np.pi * D ** 2 / 4
+    A = np.pi * D**2 / 4
     u = qm / (rho * A)
     reyn = (rho * u * D / state.viscosity()).to("dimensionless")
 
@@ -66,33 +66,33 @@ def calc(x, state=None, delta_p=None, qm=None, D=None, tappings="flange"):
     # calc C
     C = (
         0.5961
-        + 0.0261 * beta ** 2
-        - 0.216 * beta ** 8
+        + 0.0261 * beta**2
+        - 0.216 * beta**8
         + 0.000521 * (1e6 * beta / reyn) ** 0.7
         + (0.0188 + 0.0063 * (19000 * beta / reyn) ** 0.8)
-        * beta ** 3.5
+        * beta**3.5
         * (1e6 / reyn) ** 0.3
         + (0.043 + 0.080 * np.e ** (-10 * L1) - 0.123 * np.e ** (-7 * L1))
         * (1 - 0.11 * (19000 * beta / reyn) ** 0.8)
-        * (beta ** 4 / (1 - beta ** 4))
-        - 0.031 * (M2 - 0.8 * M2 ** 1.1) * beta ** 1.3
+        * (beta**4 / (1 - beta**4))
+        - 0.031 * (M2 - 0.8 * M2**1.1) * beta**1.3
     )
 
     if D < Q_(71.12, "mm"):
         C += 0.011 * (0.75 - beta) * (2.8 - D / 0.0254)
 
     # calc e
-    e = 1 - (0.351 + 0.256 * beta ** 4 + 0.93 * beta ** 8) * (
+    e = 1 - (0.351 + 0.256 * beta**4 + 0.93 * beta**8) * (
         1 - (p2 / p1) ** (1 / state.kT())
     )
 
     # calc qm
     qm_calc = (
         C
-        / (np.sqrt(1 - beta ** 4))
+        / (np.sqrt(1 - beta**4))
         * e
         * (np.pi / 4)
-        * d ** 2
+        * d**2
         * np.sqrt(2 * delta_p * rho)
     )
 
