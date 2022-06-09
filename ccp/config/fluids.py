@@ -18,36 +18,35 @@ fluid_list = {name: Fluid(name) for name in _fluid_list}
 
 # define possible names
 fluid_list["IsoButane"].possible_names.extend(
-    ["isobutane", "i-butane", "ibutane", "isobutan", "I-BUTANE"]
+    ["isobutane", "i-butane", "ibutane", "isobutan", "iso-butane"]
 )
 fluid_list["n-Butane"].possible_names.extend(["butane", "n-butane", "nbutane"])
+fluid_list["trans-2-Butene"].possible_names.extend(["trans-butene", "trans-butene-2"])
+fluid_list["IsoButene"].possible_names.extend(["i-butene", "ibutene", "iso-butene"])
+fluid_list["cis-2-Butene"].possible_names.extend(["cis-butene", "cis-butene-2"])
 fluid_list["n-Pentane"].possible_names.extend(["pentane", "n-pentane", "npentane"])
-fluid_list["Isopentane"].possible_names.extend(
-    ["isopentane", "i-pentane", "ipentane", "I-PENTANE"]
-)
+fluid_list["Isopentane"].possible_names.extend(["i-pentane", "ipentane", "iso-pentane"])
 fluid_list["n-Hexane"].possible_names.extend(["hexane", "n-hexane", "nhexane"])
-fluid_list["Isohexane"].possible_names.extend(["isohexane", "i-hexane"])
+fluid_list["Isohexane"].possible_names.extend(["isohexane", "i-hexane", "iso-hexane"])
 fluid_list["n-Heptane"].possible_names.extend(["heptane", "n-heptane"])
 fluid_list["n-Octane"].possible_names.extend(["octane", "n-octane"])
 fluid_list["n-Undecane"].possible_names.extend(["undecane", "n-undecane"])
 fluid_list["n-Dodecane"].possible_names.extend(["dodecane", "n-dodecane"])
-fluid_list["HydrogenSulfide"].possible_names.extend(
-    ["hydrogen sulfide", "HYDROGEN SULFIDE", "h2s"]
-)
-fluid_list["CarbonMonoxide"].possible_names.extend(
-    ["carbon monoxide", "CARBON MONOXIDE", "co"]
-)
-fluid_list["CarbonDioxide"].possible_names.extend(["carbon dioxide", "CARBON DIOXIDE"])
-fluid_list["Nitrogen"].possible_names.extend(["N2", "n2"])
-fluid_list["Oxygen"].possible_names.extend(["O2", "o2"])
-fluid_list["Hydrogen"].possible_names.extend(["H2", "h2"])
+fluid_list["HydrogenSulfide"].possible_names.extend(["hydrogen sulfide", "h2s"])
+fluid_list["CarbonMonoxide"].possible_names.extend(["carbon monoxide", "co"])
+fluid_list["CarbonDioxide"].possible_names.extend(["carbon dioxide"])
+fluid_list["Nitrogen"].possible_names.extend(["n2"])
+fluid_list["Oxygen"].possible_names.extend(["o2"])
+fluid_list["Hydrogen"].possible_names.extend(["h2"])
+fluid_list["Propylene"].possible_names.extend(["propene"])
+fluid_list["Ethylene"].possible_names.extend(["ethene"])
 
 
 def get_name(name):
     """Seach for compatible fluid name."""
 
     for k, v in fluid_list.items():
-        if name in v.possible_names:
+        if name.lower() in v.possible_names:
             name = k
 
     fluid_name = CP.get_REFPROPname(name)
