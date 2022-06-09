@@ -32,14 +32,14 @@ def check_similarity(point_sp, point_t):
 
     x = (point_sp.reynolds / 1e7) ** 0.3
     if 9e4 < point_sp.reynolds < 1e7:
-        upper = 100 ** x
+        upper = 100**x
     elif 1e7 < point_sp.reynolds:
         upper = 100
     else:
         upper = "Reynolds outside PTC10 limits."
 
     if 9e4 < point_sp.reynolds < 1e6:
-        lower = 0.01 ** x
+        lower = 0.01**x
     elif 1e6 < point_sp.reynolds:
         lower = 0.1
     else:
