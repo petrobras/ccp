@@ -82,7 +82,7 @@ _library_path = _path / _shared_library
 if not _library_path.is_file():
     _warnings.warn(f"{_library_path}.\nREFPROP not configured.")
 
-__version__ = "0.1.17"
+__version__ = "0.1.18rc1"
 
 __version__full = (
     f"ccp: {__version__} | "
