@@ -591,3 +591,147 @@ def test_pickle(imp0):
     assert pickled_imp0 == imp0
     assert hasattr(imp0, "head_plot") is True
     assert hasattr(pickled_imp0, "head_plot") is True
+
+
+def test_interpolation_warning():
+    eff_curve = {
+        1000: {
+            "x": [
+                9.1937,
+                9.5582,
+                10.4576,
+                11.4588,
+                12.7945,
+                13.9998,
+                14.8382,
+                15.3756,
+                15.4093,
+                15.712,
+                15.9811,
+                16.2507,
+                16.5203,
+                16.7565,
+                16.8578,
+                17.0605,
+                17.2634,
+            ],
+            "y": [
+                0.662945,
+                0.673879,
+                0.684813,
+                0.690723,
+                0.696042,
+                0.690427,
+                0.681562,
+                0.673288,
+                0.672401,
+                0.666491,
+                0.660876,
+                0.653784,
+                0.646396,
+                0.639303,
+                0.635757,
+                0.628665,
+                0.620982,
+            ],
+        }
+    }
+
+    head_curve = {
+        1000: {
+            "x": [
+                9.1623,
+                9.9946,
+                9.9948,
+                10.7943,
+                11.5938,
+                12.3933,
+                12.4933,
+                13.293,
+                14.0929,
+                14.8597,
+                14.993,
+                15.7599,
+                16.4936,
+                17.2278,
+            ],
+            "y": [
+                70.896,
+                70.513,
+                70.115,
+                68.537,
+                66.96,
+                65.383,
+                64.987,
+                63.011,
+                60.638,
+                57.867,
+                57.471,
+                54.302,
+                51.132,
+                46.768,
+            ],
+        }
+    }
+
+    fluid = dict(
+        n2=1,
+    )
+    suc = State.define(p=Q_(62.7, "bar"), T=Q_(31.2, "degC"), fluid=fluid)
+
+    with pytest.warns(UserWarning) as record:
+        ccp.Impeller.load_from_dict(
+            suc=suc, head_curves=head_curve, eff_curves=eff_curve, b=1, D=1
+        )
+        assert "Head interpolation error in speed 1000 RPM" in record[0].message.args[0]
+
+    # faster to load than impeller_example
+    composition_fd = dict(
+        n2=0.4,
+        co2=0.22,
+        methane=92.11,
+        ethane=4.94,
+        propane=1.71,
+        ibutane=0.24,
+        butane=0.3,
+        ipentane=0.04,
+        pentane=0.03,
+        hexane=0.01,
+    )
+    suc_fd = State.define(p=Q_(3876, "kPa"), T=Q_(11, "degC"), fluid=composition_fd)
+
+
+def test_univariate_spline():
+    test_dir = Path(__file__).parent
+    curve_path = test_dir / "data"
+    curve_name = "normal"
+
+    composition_fd = dict(
+        n2=0.4,
+        co2=0.22,
+        methane=92.11,
+        ethane=4.94,
+        propane=1.71,
+        ibutane=0.24,
+        butane=0.3,
+        ipentane=0.04,
+        pentane=0.03,
+        hexane=0.01,
+    )
+    suc_fd = State.define(p=Q_(3876, "kPa"), T=Q_(11, "degC"), fluid=composition_fd)
+    imp3 = Impeller.load_from_engauge_csv(
+        suc=suc_fd,
+        curve_name=curve_name,
+        curve_path=curve_path,
+        b=Q_(10.6, "mm"),
+        D=Q_(390, "mm"),
+        number_of_points=6,
+        flow_units="kg/h",
+        head_units="kJ/kg",
+        interpolation_method="UnivariateSpline",
+    )
+
+    p0 = imp3.point(flow_m=Q_(90184, "kg/h"), speed=Q_(9300, "RPM"))
+    assert_allclose(p0.eff, 0.782169, rtol=1e-2)
+    assert_allclose(p0.head, 97729.49349, rtol=1e-2)
+    assert_allclose(p0.power, 3130330.074989, rtol=1e-2)
