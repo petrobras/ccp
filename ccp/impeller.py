@@ -519,11 +519,11 @@ class Impeller:
             )
             eff_max_error = max(1 - (eff_interpolated(points_x) / eff_spline(points_x)))
 
-            if head_max_error > 0.01:
+            if head_max_error > 0.05:
                 warnings.warn(
                     f"Head interpolation error in speed {speed} {speed_units}.\n"
                 )
-            if eff_max_error > 0.01:
+            if eff_max_error > 0.05:
                 warnings.warn(
                     f"Efficiency interpolation error in speed {speed} {speed_units}.\n"
                 )
@@ -862,7 +862,7 @@ def system_to_interpolate(x, *args):
     return [eq_1, eq_2]
 
 
-def impeller_example(interpolation_method="interp1d"):
+def impeller_example():
     test_dir = Path(__file__).parent / "tests"
     data_dir = test_dir / "data"
 
@@ -891,7 +891,6 @@ def impeller_example(interpolation_method="interp1d"):
         head_units="kJ/kg",
         flow_units="m³/h",
         number_of_points=7,
-        interpolation_method=interpolation_method,
     )
 
     return imp
