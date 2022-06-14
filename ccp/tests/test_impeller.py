@@ -728,7 +728,8 @@ def test_univariate_spline():
         number_of_points=6,
         flow_units="kg/h",
         head_units="kJ/kg",
-        interpolation_method="UnivariateSpline",
+        head_interpolation_method="UnivariateSpline",
+        eff_interpolation_method="UnivariateSpline",
     )
 
     p0 = imp3.point(flow_m=Q_(90184, "kg/h"), speed=Q_(9300, "RPM"))
