@@ -328,7 +328,7 @@ class Impeller:
         return current_curve
 
     @classmethod
-    def convert_from(cls, original_impeller, suc=None, find="speed"):
+    def convert_from(cls, original_impeller, suc=None, find="speed", speed=None):
         """Convert performance map from an impeller.
 
         Parameters
@@ -342,6 +342,8 @@ class Impeller:
             For now only 'speed' is implemented, which means that, based on volume ratio,
             we calculate new values of speed for each curve and the respective discharge
             condition.
+        speed : float, pint.Quantity, optional
+            Desired speed. If find="speed", this should be None.
 
         Returns
         -------
@@ -355,14 +357,15 @@ class Impeller:
                 converter_args = [(p, suc, find) for p in curve]
                 converted_points = pool.map(converter, converter_args)
 
-                speed_mean = np.mean([p.speed.magnitude for p in converted_points])
+                if speed is None:
+                    speed = np.mean([p.speed.magnitude for p in converted_points])
 
                 converted_points = [
                     Point.convert_from(
                         p,
                         suc=p.suc,
                         find="volume_ratio",
-                        speed=speed_mean,
+                        speed=speed,
                     )
                     for p in converted_points
                 ]
