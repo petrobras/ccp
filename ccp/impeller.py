@@ -184,6 +184,8 @@ class Impeller:
             "head",
             "eff",
             "power",
+            "psi",
+            "phi",
         ]:
             values = []
             # for disch.p etc values are defined in _Impeller_State
