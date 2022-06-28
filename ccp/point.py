@@ -539,14 +539,14 @@ class Point:
 
         x = (remsp / 1e7) ** 0.3
         if 9e4 <= remsp < 1e7:
-            upper_limit = 100**x
+            upper_limit = 100 ** x
         elif 1e7 <= remsp:
             upper_limit = 100
         else:
             raise ValueError("Reynolds number out of specified range.")
 
         if 9e4 <= remsp < 1e6:
-            lower_limit = 0.01**x
+            lower_limit = 0.01 ** x
         elif 1e6 <= remsp:
             lower_limit = 0.1
         else:
@@ -607,14 +607,14 @@ class Point:
             type="log",
             tickformat=".1e",
             tickmode="array",
-            tickvals=[10**i for i in range(4, 9)],
+            tickvals=[10 ** i for i in range(4, 9)],
             title=r"$\text{Machine Reynolds No. Specified} - Rem_{sp}$",
         )
         fig.update_yaxes(
             type="log",
             tickformat=".1e",
             tickmode="array",
-            tickvals=[10**i for i in range(-3, 3)],
+            tickvals=[10 ** i for i in range(-3, 3)],
             title=r"$Rem_t / Rem_{sp}$",
         )
         fig.update_layout(showlegend=False)
@@ -1569,7 +1569,7 @@ def psi(head, speed, D):
         Polytropic head coefficient (dimensionless).
     """
     u = u_calc(D, speed)
-    psi = head / (u**2 / 2)
+    psi = head / (u ** 2 / 2)
     return psi.to("dimensionless")
 
 
@@ -1624,7 +1624,25 @@ def phi(flow_v, speed, D):
     """Flow coefficient."""
     u = u_calc(D, speed)
 
-    phi = flow_v * 4 / (np.pi * D**2 * u)
+    phi = flow_v * 4 / (np.pi * D ** 2 * u)
+
+    return phi.to("dimensionless")
+
+
+@check_units
+def phi3(flow_v, speed, D, b):
+    """Discharge flow coefficient.
+
+    Eq. 5.13 from :cite:`ludtke2004process`
+
+    Parameters
+    ----------
+    flow_v : float, pint.Quantity
+        Impeller exit flow (m³/s).
+    """
+    u = u_calc(D, speed)
+
+    phi = flow_v / (np.pi * D * b * u)
 
     return phi.to("dimensionless")
 
@@ -1649,7 +1667,7 @@ def flow_from_phi(D, phi, speed):
     """
     u = speed * D / 2
 
-    flow_v = phi * (np.pi * D**2 * u) / 4
+    flow_v = phi * (np.pi * D ** 2 * u) / 4
 
     return flow_v.to("m**3/s")
 
@@ -1672,7 +1690,7 @@ def head_from_psi(D, psi, speed):
         Impeller tip speed.
     """
     u = speed * D / 2
-    head = psi * (u**2 / 2)
+    head = psi * (u ** 2 / 2)
 
     return head.to("J/kg")
 
