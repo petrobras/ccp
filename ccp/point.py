@@ -330,6 +330,28 @@ class Point:
         self.psi = psi(self.head, self.speed, self.D)
         self.volume_ratio = self.suc.v() / self.disch.v()
 
+    def _calc_from_flow_v_head_power_speed_suc(self):
+        suc = self.suc
+        head = self.head
+        power = self.power
+        self.flow_m = self.flow_v * self.suc.rho()
+        self.eff = (self.flow_m * head / power).to("dimensionless")
+        self.disch = disch_from_suc_head_eff(suc, head, self.eff)
+        self.phi = phi(self.flow_v, self.speed, self.D)
+        self.psi = psi(self.head, self.speed, self.D)
+        self.volume_ratio = self.suc.v() / self.disch.v()
+
+    def _calc_from_flow_m_head_power_speed_suc(self):
+        suc = self.suc
+        head = self.head
+        power = self.power
+        self.flow_v = self.flow_m / self.suc.rho()
+        self.eff = (self.flow_m * head / power).to("dimensionless")
+        self.disch = disch_from_suc_head_eff(suc, head, self.eff)
+        self.phi = phi(self.flow_v, self.speed, self.D)
+        self.psi = psi(self.head, self.speed, self.D)
+        self.volume_ratio = self.suc.v() / self.disch.v()
+
     @classmethod
     @check_units
     def convert_from(cls, original_point, suc=None, find="speed", speed=None):
@@ -539,14 +561,14 @@ class Point:
 
         x = (remsp / 1e7) ** 0.3
         if 9e4 <= remsp < 1e7:
-            upper_limit = 100 ** x
+            upper_limit = 100**x
         elif 1e7 <= remsp:
             upper_limit = 100
         else:
             raise ValueError("Reynolds number out of specified range.")
 
         if 9e4 <= remsp < 1e6:
-            lower_limit = 0.01 ** x
+            lower_limit = 0.01**x
         elif 1e6 <= remsp:
             lower_limit = 0.1
         else:
@@ -607,14 +629,14 @@ class Point:
             type="log",
             tickformat=".1e",
             tickmode="array",
-            tickvals=[10 ** i for i in range(4, 9)],
+            tickvals=[10**i for i in range(4, 9)],
             title=r"$\text{Machine Reynolds No. Specified} - Rem_{sp}$",
         )
         fig.update_yaxes(
             type="log",
             tickformat=".1e",
             tickmode="array",
-            tickvals=[10 ** i for i in range(-3, 3)],
+            tickvals=[10**i for i in range(-3, 3)],
             title=r"$Rem_t / Rem_{sp}$",
         )
         fig.update_layout(showlegend=False)
@@ -1569,7 +1591,7 @@ def psi(head, speed, D):
         Polytropic head coefficient (dimensionless).
     """
     u = u_calc(D, speed)
-    psi = head / (u ** 2 / 2)
+    psi = head / (u**2 / 2)
     return psi.to("dimensionless")
 
 
@@ -1624,7 +1646,7 @@ def phi(flow_v, speed, D):
     """Flow coefficient."""
     u = u_calc(D, speed)
 
-    phi = flow_v * 4 / (np.pi * D ** 2 * u)
+    phi = flow_v * 4 / (np.pi * D**2 * u)
 
     return phi.to("dimensionless")
 
@@ -1667,7 +1689,7 @@ def flow_from_phi(D, phi, speed):
     """
     u = speed * D / 2
 
-    flow_v = phi * (np.pi * D ** 2 * u) / 4
+    flow_v = phi * (np.pi * D**2 * u) / 4
 
     return flow_v.to("m**3/s")
 
@@ -1690,7 +1712,7 @@ def head_from_psi(D, psi, speed):
         Impeller tip speed.
     """
     u = speed * D / 2
-    head = psi * (u ** 2 / 2)
+    head = psi * (u**2 / 2)
 
     return head.to("J/kg")
 
