@@ -330,6 +330,28 @@ class Point:
         self.psi = psi(self.head, self.speed, self.D)
         self.volume_ratio = self.suc.v() / self.disch.v()
 
+    def _calc_from_flow_v_head_power_speed_suc(self):
+        suc = self.suc
+        head = self.head
+        power = self.power
+        self.flow_m = self.flow_v * self.suc.rho()
+        self.eff = (self.flow_m * head / power).to("dimensionless")
+        self.disch = disch_from_suc_head_eff(suc, head, self.eff)
+        self.phi = phi(self.flow_v, self.speed, self.D)
+        self.psi = psi(self.head, self.speed, self.D)
+        self.volume_ratio = self.suc.v() / self.disch.v()
+
+    def _calc_from_flow_m_head_power_speed_suc(self):
+        suc = self.suc
+        head = self.head
+        power = self.power
+        self.flow_v = self.flow_m / self.suc.rho()
+        self.eff = (self.flow_m * head / power).to("dimensionless")
+        self.disch = disch_from_suc_head_eff(suc, head, self.eff)
+        self.phi = phi(self.flow_v, self.speed, self.D)
+        self.psi = psi(self.head, self.speed, self.D)
+        self.volume_ratio = self.suc.v() / self.disch.v()
+
     @classmethod
     @check_units
     def convert_from(cls, original_point, suc=None, find="speed", speed=None):
@@ -1625,6 +1647,24 @@ def phi(flow_v, speed, D):
     u = u_calc(D, speed)
 
     phi = flow_v * 4 / (np.pi * D**2 * u)
+
+    return phi.to("dimensionless")
+
+
+@check_units
+def phi3(flow_v, speed, D, b):
+    """Discharge flow coefficient.
+
+    Eq. 5.13 from :cite:`ludtke2004process`
+
+    Parameters
+    ----------
+    flow_v : float, pint.Quantity
+        Impeller exit flow (m³/s).
+    """
+    u = u_calc(D, speed)
+
+    phi = flow_v / (np.pi * D * b * u)
 
     return phi.to("dimensionless")
 

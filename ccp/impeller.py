@@ -184,6 +184,8 @@ class Impeller:
             "head",
             "eff",
             "power",
+            "psi",
+            "phi",
         ]:
             values = []
             # for disch.p etc values are defined in _Impeller_State
@@ -429,16 +431,19 @@ class Impeller:
     def load_from_dict(
         cls,
         suc,
-        head_curves,
-        eff_curves,
+        head_curves=None,
+        eff_curves=None,
+        power_curves=None,
         b=None,
         D=None,
         number_of_points=10,
         flow_units="m**3/s",
         head_units="J/kg",
+        power_units="W",
         speed_units="RPM",
         head_interpolation_method="interp1d",
         eff_interpolation_method="interp1d",
+        power_interpolation_method="interp1d",
     ):
         """Create points from dict object.
 
@@ -477,6 +482,9 @@ class Impeller:
         eff_interpolation_method : str, optional
             Interpolation method from scipy. Can be interp1d or UnivariateSpline.
             Default is interp1d.
+        power_interpolation_method : str, optional
+            Interpolation method from scipy. Can be interp1d or UnivariateSpline.
+            Default is interp1d.
         """
         # define if we have volume or mass flow
         flow_type = "volumetric"
@@ -496,67 +504,123 @@ class Impeller:
                 head_curve["x"],
                 head_curve["y"],
             )
-            eff_curve = eff_curves[speed]
-            # check eff scale
-            if max(eff_curve["y"]) > 1:
-                eff_curve["y"] = [i / 100 for i in eff_curve["y"]]
-            eff_interpolated = interp1d(
-                eff_curve["x"],
-                eff_curve["y"],
-                kind=3,
-                fill_value="extrapolate",
-            )
-            eff_spline = UnivariateSpline(
-                eff_curve["x"],
-                eff_curve["y"],
-            )
+            if eff_curves:
+                eff_curve = eff_curves[speed]
+                # check eff scale
+                if max(eff_curve["y"]) > 1:
+                    eff_curve["y"] = [i / 100 for i in eff_curve["y"]]
+                eff_interpolated = interp1d(
+                    eff_curve["x"],
+                    eff_curve["y"],
+                    kind=3,
+                    fill_value="extrapolate",
+                )
+                eff_spline = UnivariateSpline(
+                    eff_curve["x"],
+                    eff_curve["y"],
+                )
+            if power_curves:
+                power_curve = power_curves[speed]
+                power_interpolated = interp1d(
+                    power_curve["x"],
+                    power_curve["y"],
+                    kind=3,
+                    fill_value="extrapolate",
+                )
+                power_spline = UnivariateSpline(
+                    power_curve["x"],
+                    power_curve["y"],
+                )
 
             # check for possible interpolation error by comparing interp1d and spline
             # avoid too much extrapolation
-            min_x = max(head_curve["x"][0], eff_curve["x"][0])
-            max_x = min(head_curve["x"][-1], eff_curve["x"][-1])
-            points_x = np.linspace(min_x, max_x, number_of_points)
+            if eff_curves:
+                min_x = max(head_curve["x"][0], eff_curve["x"][0])
+                max_x = min(head_curve["x"][-1], eff_curve["x"][-1])
+                points_x = np.linspace(min_x, max_x, number_of_points)
+            if power_curves:
+                min_x = max(head_curve["x"][0], power_curve["x"][0])
+                max_x = min(head_curve["x"][-1], power_curve["x"][-1])
+                points_x = np.linspace(min_x, max_x, number_of_points)
 
             head_max_error = max(
                 1 - (head_interpolated(points_x) / head_spline(points_x))
             )
-            eff_max_error = max(1 - (eff_interpolated(points_x) / eff_spline(points_x)))
 
-            if head_max_error > 0.05:
+            if eff_curves:
+                eff_max_error = max(
+                    1 - (eff_interpolated(points_x) / eff_spline(points_x))
+                )
+            if power_curves:
+                power_max_error = max(
+                    1 - (power_interpolated(points_x) / power_spline(points_x))
+                )
+
+            if head_max_error > 0.1:
                 warnings.warn(
                     f"Head interpolation error in speed {speed} {speed_units}.\n"
                 )
-            if eff_max_error > 0.05:
-                warnings.warn(
-                    f"Efficiency interpolation error in speed {speed} {speed_units}.\n"
-                )
+            if eff_curves:
+                if eff_max_error > 0.1:
+                    warnings.warn(
+                        f"Efficiency interpolation error in speed {speed} {speed_units}.\n"
+                    )
+            if power_curves:
+                if power_max_error > 0.1:
+                    warnings.warn(
+                        f"Power interpolation error in speed {speed} {speed_units}.\n"
+                    )
 
             if head_interpolation_method == "UnivariateSpline":
                 head_interpolated = head_spline
-            if eff_interpolation_method == "UnivariateSpline":
-                eff_interpolated = eff_spline
+            if eff_curves:
+                if eff_interpolation_method == "UnivariateSpline":
+                    eff_interpolated = eff_spline
+            if power_curves:
+                if power_interpolation_method == "UnivariateSpline":
+                    power_interpolated = power_spline
 
             points_head = head_interpolated(points_x)
-            points_eff = eff_interpolated(points_x)
 
-            args_list = [
-                (
-                    suc,
-                    Q_(float(speed), speed_units),
-                    Q_(flow, flow_units),
-                    Q_(head, head_units),
-                    eff,
-                    b,
-                    D,
-                )
-                for flow, head, eff in zip(points_x, points_head, points_eff)
-            ]
+            if eff_curves:
+                points_eff = eff_interpolated(points_x)
+                args_list = [
+                    (
+                        suc,
+                        Q_(float(speed), speed_units),
+                        Q_(flow, flow_units),
+                        Q_(head, head_units),
+                        eff,
+                        b,
+                        D,
+                    )
+                    for flow, head, eff in zip(points_x, points_head, points_eff)
+                ]
+                with multiprocessing.Pool() as pool:
+                    if flow_type == "volumetric":
+                        points += pool.map(create_points_flow_v, args_list)
+                    else:
+                        points += pool.map(create_points_flow_m, args_list)
 
-            with multiprocessing.Pool() as pool:
-                if flow_type == "volumetric":
-                    points += pool.map(create_points_flow_v, args_list)
-                else:
-                    points += pool.map(create_points_flow_m, args_list)
+            if power_curves:
+                points_power = power_interpolated(points_x)
+                args_list = [
+                    (
+                        suc,
+                        Q_(float(speed), speed_units),
+                        Q_(flow, flow_units),
+                        Q_(head, head_units),
+                        Q_(power, power_units),
+                        b,
+                        D,
+                    )
+                    for flow, head, power in zip(points_x, points_head, points_power)
+                ]
+                with multiprocessing.Pool() as pool:
+                    if flow_type == "volumetric":
+                        points += pool.map(create_points_flow_v_power, args_list)
+                    else:
+                        points += pool.map(create_points_flow_m_power, args_list)
 
         return cls(points)
 
@@ -928,6 +992,34 @@ def create_points_flow_m(x):
         flow_m=flow,
         head=head,
         eff=eff,
+        b=b,
+        D=D,
+    )
+
+
+def create_points_flow_v_power(x):
+    """Helper function used to parallelize creation of points."""
+    suc, speed, flow, head, power, b, D = x
+    return Point(
+        suc=suc,
+        speed=speed,
+        flow_v=flow,
+        head=head,
+        power=power,
+        b=b,
+        D=D,
+    )
+
+
+def create_points_flow_m_power(x):
+    """Helper function used to parallelize creation of points."""
+    suc, speed, flow, head, power, b, D = x
+    return Point(
+        suc=suc,
+        speed=speed,
+        flow_m=flow,
+        head=head,
+        power=power,
         b=b,
         D=D,
     )
