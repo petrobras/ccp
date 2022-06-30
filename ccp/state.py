@@ -6,6 +6,7 @@ import numpy as np
 import ccp.config
 from scipy.optimize import newton
 from plotly import graph_objects as go
+from itertools import combinations
 from . import _RP
 
 from . import Q_
@@ -532,7 +533,18 @@ class State(CP.AbstractState):
             # create an adequate fluid string to cp.AbstractState
         _fluid = "&".join(constituents)
 
-        state = cls(EOS, _fluid)
+        try:
+            state = cls(EOS, _fluid)
+        except ValueError:
+            error_msg = ""
+            for fluid1, fluid2 in combinations(constituents, 2):
+                try:
+                    fluid_pair = f"{fluid1}&{fluid2}"
+                    state = cls(EOS, fluid_pair)
+                except ValueError:
+                    error_msg += f"\nCould not create state with {fluid1} + {fluid2}"
+
+            raise ValueError(error_msg)
 
         normalize_mix(molar_fractions)
         state.set_mole_fractions(molar_fractions)
