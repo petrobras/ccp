@@ -1,5 +1,6 @@
 """Flow orifice."""
 import numpy as np
+from pint.errors import DimensionalityError
 from scipy.optimize import newton
 
 from . import Q_
@@ -39,7 +40,10 @@ class FlowOrifice:
 
 
 def calc(x, state=None, delta_p=None, qm=None, D=None, tappings="flange"):
-    d = Q_(x, "m")
+    try:
+        d = Q_(x, "m")
+    except DimensionalityError:
+        d = Q_(x.m, "m")
 
     # calc beta
     beta = d / D
