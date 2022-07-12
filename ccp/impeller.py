@@ -360,14 +360,14 @@ class Impeller:
                 converted_points = pool.map(converter, converter_args)
 
                 if speed is None:
-                    speed = np.mean([p.speed.magnitude for p in converted_points])
+                    speed_mean = np.mean([p.speed.magnitude for p in converted_points])
 
                 converted_points = [
                     Point.convert_from(
                         p,
                         suc=p.suc,
                         find="volume_ratio",
-                        speed=speed,
+                        speed=speed_mean,
                     )
                     for p in converted_points
                 ]
