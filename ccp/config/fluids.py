@@ -25,7 +25,9 @@ fluid_list["trans-2-Butene"].possible_names.extend(["trans-butene", "trans-buten
 fluid_list["IsoButene"].possible_names.extend(["i-butene", "ibutene", "iso-butene"])
 fluid_list["cis-2-Butene"].possible_names.extend(["cis-butene", "cis-butene-2"])
 fluid_list["n-Pentane"].possible_names.extend(["pentane", "n-pentane", "npentane"])
-fluid_list["Isopentane"].possible_names.extend(["i-pentane", "ipentane", "iso-pentane"])
+fluid_list["Isopentane"].possible_names.extend(
+    ["i-pentane", "ipentane", "iso-pentane", "isopentane"]
+)
 fluid_list["n-Hexane"].possible_names.extend(["hexane", "n-hexane", "nhexane"])
 fluid_list["Isohexane"].possible_names.extend(["isohexane", "i-hexane", "iso-hexane"])
 fluid_list["n-Heptane"].possible_names.extend(["heptane", "n-heptane"])
