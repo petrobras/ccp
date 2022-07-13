@@ -807,42 +807,27 @@ class Impeller:
             Interpolation method from scipy. Can be interp1d or UnivariateSpline.
             Default is interp1d.
         """
-        head_path = curve_path / (curve_name + "-head.csv")
-        eff_path = curve_path / (curve_name + "-eff.csv")
-        power_path = curve_path / (curve_name + "-power.csv")
+        curves_path_dict = {}
+        for param in ["head", "eff", "power"]:
+            param_path = curve_path / (curve_name + f"-{param}.csv")
+            if param_path.is_file():
+                curves_path_dict[f"{param}_curves"] = read_data_from_engauge_csv(
+                    param_path
+                )
 
-        head_curves = read_data_from_engauge_csv(head_path)
-        if eff_path.is_file():
-            eff_curves = read_data_from_engauge_csv(eff_path)
-            return cls.load_from_dict(
-                suc=suc,
-                b=b,
-                D=D,
-                head_curves=head_curves,
-                eff_curves=eff_curves,
-                number_of_points=number_of_points,
-                flow_units=flow_units,
-                head_units=head_units,
-                speed_units=speed_units,
-                head_interpolation_method=head_interpolation_method,
-                eff_interpolation_method=eff_interpolation_method,
-            )
-        if power_path.is_file():
-            power_curves = read_data_from_engauge_csv(power_path)
-            return cls.load_from_dict(
-                suc=suc,
-                b=b,
-                D=D,
-                head_curves=head_curves,
-                power_curves=power_curves,
-                number_of_points=number_of_points,
-                flow_units=flow_units,
-                head_units=head_units,
-                power_units=power_units,
-                speed_units=speed_units,
-                head_interpolation_method=head_interpolation_method,
-                power_interpolation_method=power_interpolation_method,
-            )
+        return cls.load_from_dict(
+            suc=suc,
+            b=b,
+            D=D,
+            number_of_points=number_of_points,
+            flow_units=flow_units,
+            head_units=head_units,
+            speed_units=speed_units,
+            head_interpolation_method=head_interpolation_method,
+            eff_interpolation_method=eff_interpolation_method,
+            power_interpolation_method=power_interpolation_method,
+            **curves_path_dict,
+        )
 
     def save(self, file):
         """Save impeller to a toml file.
