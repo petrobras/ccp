@@ -459,10 +459,12 @@ class Impeller:
 
         suc : ccp.State
             Suction state.
-        head_curve : dict
+        head_curves : dict
             Dict with head/flow values.
-        eff_curve : dict
-            Dict with head/flow values.
+        eff_curves : dict
+            Dict with eff/flow values.
+        power_curves : dict
+            Dict with power/flow values.
         b : float, pint.Quantity
             Impeller width (m).
         D : float, pint.Quantity
