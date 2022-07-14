@@ -55,6 +55,7 @@ units = {
     "unbalance_magnitude": "kg*m",
     "unbalance_phase": "rad",
     "pressure": "pascal",
+    "pressure_ratio": "dimensionless",
     "p": "pascal",
     "temperature": "degK",
     "T": "degK",
@@ -126,7 +127,8 @@ def check_units(func):
                 base_unit_args.append(arg_value)
                 continue
             if arg_name not in names:
-                names.append(arg_name)
+                # check first for arg_name in units
+                names.insert(0, arg_name)
             for name in names:
                 if name in units and arg_value is not None:
                     # For now, we only return the magnitude for the converted Quantity
@@ -151,7 +153,8 @@ def check_units(func):
                 base_unit_kwargs[k] = v
                 continue
             if k not in names:
-                names.append(k)
+                # check first for arg_name in units
+                names.insert(0, k)
             for name in names:
                 if name in units and v is not None:
                     try:
