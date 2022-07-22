@@ -438,6 +438,9 @@ class Impeller:
         D=None,
         number_of_points=10,
         flow_units="m**3/s",
+        flow_units_head = None,
+        flow_units_power = None,
+        flow_units_eff = None,
         head_units="J/kg",
         power_units="W",
         speed_units="RPM",
@@ -471,6 +474,15 @@ class Impeller:
             Number of points that will be interpolated.
         flow_units : str
             Flow units used in the dict.
+        flow_units_head: str
+            Flow units used in the dict for head curve.
+            Only needed when flow units for head curve differs from other curves.
+        flow_units_power: str
+            Flow units used  in the dict for power curve.
+            Only needed when flow units for power curve differs from other curves.
+        flow_units_eff: str
+            Flow units used  in the dict for efficiency curve.
+            Only needed when flow units for efficiency curve differs from other curves.
         head_units : str
             Head units used in the dict.
             If the curve head units are in meter you can use: head_units="m*g0".
@@ -491,9 +503,21 @@ class Impeller:
         if list(Q_(1, flow_units).dimensionality.keys())[0] == "[mass]":
             flow_type = "mass"
 
+        flow_type_head = "volumetric"
+        if list(Q_(1, flow_units_head).dimensionality.keys())[0] == "[mass]":
+            flow_type_head = "mass"
+
         points = []
 
         for speed, head_curve in head_curves.items():
+            if flow_type_head != flow_type:
+                if flow_type_head == "mass":
+                    flow_head = [Q_(flow,flow_units_head)/suc.rho() for flow in head_curve["x"]]
+                    head_curve["x"] = [flow.to(flow_units).m for flow in flow_head]
+                else:
+                    flow_head = [Q_(flow,flow_units_head) * suc.rho() for flow in head_curve["x"]]
+                    head_curve["x"] = [flow.to(flow_units).m for flow in flow_head]
+
             head_interpolated = interp1d(
                 head_curve["x"],
                 head_curve["y"],
@@ -505,10 +529,21 @@ class Impeller:
                 head_curve["y"],
             )
             if eff_curves:
+                flow_type_eff = "volumetric"
+                if list(Q_(1, flow_units_eff).dimensionality.keys())[0] == "[mass]":
+                    flow_type_eff = "mass"
                 eff_curve = eff_curves[speed]
                 # check eff scale
                 if max(eff_curve["y"]) > 1:
                     eff_curve["y"] = [i / 100 for i in eff_curve["y"]]
+
+                if flow_type_eff != flow_type:
+                    if flow_type_eff == "mass":
+                        flow_eff = [Q_(flow, flow_units_eff) / suc.rho() for flow in eff_curve["x"]]
+                        eff_curve["x"] = [flow.to(flow_units).m for flow in flow_eff]
+                    else:
+                        flow_eff = [Q_(flow, flow_units_eff) * suc.rho() for flow in eff_curve["x"]]
+                        eff_curve["x"] = [flow.to(flow_units).m for flow in flow_eff]
                 eff_interpolated = interp1d(
                     eff_curve["x"],
                     eff_curve["y"],
@@ -520,7 +555,19 @@ class Impeller:
                     eff_curve["y"],
                 )
             if power_curves:
+                flow_type_power = "volumetric"
+                if list(Q_(1, flow_units_power).dimensionality.keys())[0] == "[mass]":
+                    flow_type_power = "mass"
                 power_curve = power_curves[speed]
+
+                if flow_type_power != flow_type:
+                    if flow_type_power == "mass":
+                        flow_power = [Q_(flow, flow_units_power) / suc.rho() for flow in power_curve["x"]]
+                        power_curve["x"] = [flow.to(flow_units).m for flow in flow_power]
+                    else:
+                        flow_power = [Q_(flow, flow_units_power) * suc.rho() for flow in power_curve["x"]]
+                        power_curve["x"] = [flow.to(flow_units).m for flow in flow_power]
+
                 power_interpolated = interp1d(
                     power_curve["x"],
                     power_curve["y"],
@@ -604,6 +651,7 @@ class Impeller:
 
             if power_curves:
                 points_power = power_interpolated(points_x)
+
                 args_list = [
                     (
                         suc,
@@ -752,6 +800,9 @@ class Impeller:
         D=None,
         number_of_points=10,
         flow_units="m**3/s",
+        flow_units_head = None,
+        flow_units_power = None,
+        flow_units_eff = None,
         head_units="J/kg",
         power_units="W",
         speed_units="RPM",
@@ -790,6 +841,15 @@ class Impeller:
             Number of points that will be interpolated.
         flow_units : str
             Flow units used when extracting data with engauge.
+        flow_units_head: str
+            Flow units used when extracting data with engauge for head curve.
+            Only needed when flow units for head curve differs from other curves.
+        flow_units_power: str
+            Flow units used when extracting data with engauge for power curve.
+            Only needed when flow units for power curve differs from other curves.
+        flow_units_eff: str
+            Flow units used when extracting data with engauge for efficiency curve.
+            Only needed when flow units for efficiency curve differs from other curves.
         head_units : str
             Head units used when extracting data with engauge.
             If the curve head units are in meter you can use: head_units="m*g0".
@@ -810,10 +870,13 @@ class Impeller:
         head_path = curve_path / (curve_name + "-head.csv")
         eff_path = curve_path / (curve_name + "-eff.csv")
         power_path = curve_path / (curve_name + "-power.csv")
-
+        if not flow_units_head:
+            flow_units_head = flow_units
         head_curves = read_data_from_engauge_csv(head_path)
         if eff_path.is_file():
             eff_curves = read_data_from_engauge_csv(eff_path)
+            if not flow_units_eff:
+                flow_units_eff = flow_units
             return cls.load_from_dict(
                 suc=suc,
                 b=b,
@@ -822,6 +885,8 @@ class Impeller:
                 eff_curves=eff_curves,
                 number_of_points=number_of_points,
                 flow_units=flow_units,
+                flow_units_head=flow_units_head,
+                flow_units_eff=flow_units_eff,
                 head_units=head_units,
                 speed_units=speed_units,
                 head_interpolation_method=head_interpolation_method,
@@ -829,6 +894,8 @@ class Impeller:
             )
         if power_path.is_file():
             power_curves = read_data_from_engauge_csv(power_path)
+            if not flow_units_power:
+                flow_units_power= flow_units
             return cls.load_from_dict(
                 suc=suc,
                 b=b,
@@ -837,6 +904,8 @@ class Impeller:
                 power_curves=power_curves,
                 number_of_points=number_of_points,
                 flow_units=flow_units,
+                flow_units_head=flow_units_head,
+                flow_units_power=flow_units_power,
                 head_units=head_units,
                 power_units=power_units,
                 speed_units=speed_units,
