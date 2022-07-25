@@ -360,14 +360,14 @@ class Impeller:
                 converted_points = pool.map(converter, converter_args)
 
                 if speed is None:
-                    speed = np.mean([p.speed.magnitude for p in converted_points])
+                    speed_mean = np.mean([p.speed.magnitude for p in converted_points])
 
                 converted_points = [
                     Point.convert_from(
                         p,
                         suc=p.suc,
                         find="volume_ratio",
-                        speed=speed,
+                        speed=speed_mean,
                     )
                     for p in converted_points
                 ]
@@ -438,15 +438,21 @@ class Impeller:
         D=None,
         number_of_points=10,
         flow_units="m**3/s",
-        flow_units_head = None,
-        flow_units_power = None,
-        flow_units_eff = None,
+        flow_units_head=None,
+        flow_units_eff=None,
+        flow_units_power=None,
+        flow_units_pressure_ratio=None,
         head_units="J/kg",
+        eff_units="dimensionless",
+        pressure_ratio_units="dimensionless",
+        disch_T_units="degK",
         power_units="W",
         speed_units="RPM",
         head_interpolation_method="interp1d",
         eff_interpolation_method="interp1d",
         power_interpolation_method="interp1d",
+        pressure_ratio_interpolation_method="interp1d",
+        disch_T_interpolation_method="interp1d",
     ):
         """Create points from dict object.
 
@@ -462,10 +468,12 @@ class Impeller:
 
         suc : ccp.State
             Suction state.
-        head_curve : dict
+        head_curves : dict
             Dict with head/flow values.
-        eff_curve : dict
-            Dict with head/flow values.
+        eff_curves : dict
+            Dict with eff/flow values.
+        power_curves : dict
+            Dict with power/flow values.
         b : float, pint.Quantity
             Impeller width (m).
         D : float, pint.Quantity
@@ -475,17 +483,25 @@ class Impeller:
         flow_units : str
             Flow units used in the dict.
         flow_units_head: str
-            Flow units used in the dict for head curve.
+            Flow units used in the dict for head curves.
             Only needed when flow units for head curve differs from other curves.
-        flow_units_power: str
-            Flow units used  in the dict for power curve.
-            Only needed when flow units for power curve differs from other curves.
         flow_units_eff: str
-            Flow units used  in the dict for efficiency curve.
+            Flow units used  in the dict for efficiency curves.
+            Only needed when flow units for efficiency curve differs from other curves.
+        flow_units_power: str
+            Flow units used  in the dict for power curves.
+            Only needed when flow units for power curve differs from other curves.
+        flow_units_pressure_ratio: str
+            Flow units used  in the dict for pressure ratio curves.
+            Only needed when flow units for efficiency curve differs from other curves.
+        flow_units_disch_T: str
+            Flow units used  in the dict for discharge Temperature curves.
             Only needed when flow units for efficiency curve differs from other curves.
         head_units : str
             Head units used in the dict.
             If the curve head units are in meter you can use: head_units="m*g0".
+        eff_units : str
+            Dimensionless.
         speed_units : str
             Speed units used in the dict.
         head_interpolation_method : str, optional
@@ -503,172 +519,114 @@ class Impeller:
         if list(Q_(1, flow_units).dimensionality.keys())[0] == "[mass]":
             flow_type = "mass"
 
-        flow_type_head = "volumetric"
-        if list(Q_(1, flow_units_head).dimensionality.keys())[0] == "[mass]":
-            flow_type_head = "mass"
+        # flow_type_head = "volumetric"
+        # if list(Q_(1, flow_units_head).dimensionality.keys())[0] == "[mass]":
+        #     flow_type_head = "mass"
+        # if flow_type_head != flow_type:
+        #     if flow_type_head == "mass":
+        #         flow_head = [Q_(flow, flow_units_head) / suc.rho() for flow in head_curve["x"]]
+        #         head_curve["x"] = [flow.to(flow_units).m for flow in flow_head]
+        #     else:
+        #         flow_head = [Q_(flow, flow_units_head) * suc.rho() for flow in head_curve["x"]]
+        #         head_curve["x"] = [flow.to(flow_units).m for flow in flow_head]
 
         points = []
 
-        for speed, head_curve in head_curves.items():
-            if flow_type_head != flow_type:
-                if flow_type_head == "mass":
-                    flow_head = [Q_(flow,flow_units_head)/suc.rho() for flow in head_curve["x"]]
-                    head_curve["x"] = [flow.to(flow_units).m for flow in flow_head]
-                else:
-                    flow_head = [Q_(flow,flow_units_head) * suc.rho() for flow in head_curve["x"]]
-                    head_curve["x"] = [flow.to(flow_units).m for flow in flow_head]
+        curves = {
+            k.split("_")[0]: v
+            for k, v in locals().items()
+            if "curves" in k and v is not None
+        }
 
-            head_interpolated = interp1d(
-                head_curve["x"],
-                head_curve["y"],
-                kind=3,
-                fill_value="extrapolate",
-            )
-            head_spline = UnivariateSpline(
-                head_curve["x"],
-                head_curve["y"],
-            )
-            if eff_curves:
-                flow_type_eff = "volumetric"
-                if list(Q_(1, flow_units_eff).dimensionality.keys())[0] == "[mass]":
-                    flow_type_eff = "mass"
-                eff_curve = eff_curves[speed]
-                # check eff scale
-                if max(eff_curve["y"]) > 1:
-                    eff_curve["y"] = [i / 100 for i in eff_curve["y"]]
+        parameters = list(curves)
+        args = locals().copy()
+        interpolation_methods = [
+            args[f"{param}_interpolation_method"] for param in parameters
+        ]
+        speeds = list(curves[parameters[0]])
 
-                if flow_type_eff != flow_type:
-                    if flow_type_eff == "mass":
-                        flow_eff = [Q_(flow, flow_units_eff) / suc.rho() for flow in eff_curve["x"]]
-                        eff_curve["x"] = [flow.to(flow_units).m for flow in flow_eff]
-                    else:
-                        flow_eff = [Q_(flow, flow_units_eff) * suc.rho() for flow in eff_curve["x"]]
-                        eff_curve["x"] = [flow.to(flow_units).m for flow in flow_eff]
-                eff_interpolated = interp1d(
-                    eff_curve["x"],
-                    eff_curve["y"],
+        if "eff" in curves:
+            if max(curves["eff"][speeds[0]]["y"]) > 1:
+                curves["eff"]["y"] = [i / 100 for i in curves["eff"]["y"]]
+
+        # create interpolated curves
+        curves_interpolated = {"interp1d": {}, "UnivariateSpline": {}}
+        # dict to hold interpolated values for specific x values
+        points_interpolated = {"interp1d": {}, "UnivariateSpline": {}}
+
+        for speed in speeds:
+            min_x = 0
+            max_x = 1e20
+            # get min and max flow
+            for curve in curves:
+                if curves[curve][speed]["x"][0] > min_x:
+                    min_x = curves[curve][speed]["x"][0]
+                if curves[curve][speed]["x"][-1] < max_x:
+                    max_x = curves[curve][speed]["x"][-1]
+
+            points_x = np.linspace(min_x, max_x, number_of_points)
+
+            for curve in curves:
+                curves_interpolated["interp1d"][curve] = {}
+                points_interpolated["interp1d"][curve] = {}
+
+                curves_interpolated["interp1d"][curve][speed] = interp1d(
+                    curves[curve][speed]["x"],
+                    curves[curve][speed]["y"],
                     kind=3,
                     fill_value="extrapolate",
                 )
-                eff_spline = UnivariateSpline(
-                    eff_curve["x"],
-                    eff_curve["y"],
-                )
-            if power_curves:
-                flow_type_power = "volumetric"
-                if list(Q_(1, flow_units_power).dimensionality.keys())[0] == "[mass]":
-                    flow_type_power = "mass"
-                power_curve = power_curves[speed]
+                points_interpolated["interp1d"][curve][speed] = curves_interpolated[
+                    "interp1d"
+                ][curve][speed](points_x)
 
-                if flow_type_power != flow_type:
-                    if flow_type_power == "mass":
-                        flow_power = [Q_(flow, flow_units_power) / suc.rho() for flow in power_curve["x"]]
-                        power_curve["x"] = [flow.to(flow_units).m for flow in flow_power]
-                    else:
-                        flow_power = [Q_(flow, flow_units_power) * suc.rho() for flow in power_curve["x"]]
-                        power_curve["x"] = [flow.to(flow_units).m for flow in flow_power]
-
-                power_interpolated = interp1d(
-                    power_curve["x"],
-                    power_curve["y"],
-                    kind=3,
-                    fill_value="extrapolate",
+                curves_interpolated["UnivariateSpline"][curve] = {}
+                points_interpolated["UnivariateSpline"][curve] = {}
+                curves_interpolated["UnivariateSpline"][curve][
+                    speed
+                ] = UnivariateSpline(
+                    curves[curve][speed]["x"],
+                    curves[curve][speed]["y"],
                 )
-                power_spline = UnivariateSpline(
-                    power_curve["x"],
-                    power_curve["y"],
-                )
+                points_interpolated["UnivariateSpline"][curve][
+                    speed
+                ] = curves_interpolated["UnivariateSpline"][curve][speed](points_x)
 
-            # check for possible interpolation error by comparing interp1d and spline
-            # avoid too much extrapolation
-            if eff_curves:
-                min_x = max(head_curve["x"][0], eff_curve["x"][0])
-                max_x = min(head_curve["x"][-1], eff_curve["x"][-1])
-                points_x = np.linspace(min_x, max_x, number_of_points)
-            if power_curves:
-                min_x = max(head_curve["x"][0], power_curve["x"][0])
-                max_x = min(head_curve["x"][-1], power_curve["x"][-1])
-                points_x = np.linspace(min_x, max_x, number_of_points)
-
-            head_max_error = max(
-                1 - (head_interpolated(points_x) / head_spline(points_x))
-            )
-
-            if eff_curves:
-                eff_max_error = max(
-                    1 - (eff_interpolated(points_x) / eff_spline(points_x))
+                error = max(
+                    1
+                    - (
+                        points_interpolated["interp1d"][curve][speed]
+                        / points_interpolated["UnivariateSpline"][curve][speed]
+                    )
                 )
-            if power_curves:
-                power_max_error = max(
-                    1 - (power_interpolated(points_x) / power_spline(points_x))
-                )
-
-            if head_max_error > 0.1:
-                warnings.warn(
-                    f"Head interpolation error in speed {speed} {speed_units}.\n"
-                )
-            if eff_curves:
-                if eff_max_error > 0.1:
+                if error > 0.1:
                     warnings.warn(
-                        f"Efficiency interpolation error in speed {speed} {speed_units}.\n"
-                    )
-            if power_curves:
-                if power_max_error > 0.1:
-                    warnings.warn(
-                        f"Power interpolation error in speed {speed} {speed_units}.\n"
+                        f"{curve.capitalize()} interpolation error in speed {speed} {speed_units}.\n"
                     )
 
-            if head_interpolation_method == "UnivariateSpline":
-                head_interpolated = head_spline
-            if eff_curves:
-                if eff_interpolation_method == "UnivariateSpline":
-                    eff_interpolated = eff_spline
-            if power_curves:
-                if power_interpolation_method == "UnivariateSpline":
-                    power_interpolated = power_spline
+            args_list = []
 
-            points_head = head_interpolated(points_x)
+            for flow, param0, param1 in zip(
+                points_x,
+                points_interpolated[interpolation_methods[0]][parameters[0]][speed],
+                points_interpolated[interpolation_methods[1]][parameters[1]][speed],
+            ):
+                arg_dict = {
+                    "suc": suc,
+                    "speed": Q_(float(speed), speed_units),
+                    parameters[0]: Q_(param0, args[f"{parameters[0]}_units"]),
+                    parameters[1]: Q_(param1, args[f"{parameters[1]}_units"]),
+                    "b": b,
+                    "D": D,
+                }
+                if flow_type == "volumetric":
+                    arg_dict["flow_v"] = Q_(flow, flow_units)
+                elif flow_type == "mass":
+                    arg_dict["flow_m"] = Q_(flow, flow_units)
+                args_list.append(arg_dict)
 
-            if eff_curves:
-                points_eff = eff_interpolated(points_x)
-                args_list = [
-                    (
-                        suc,
-                        Q_(float(speed), speed_units),
-                        Q_(flow, flow_units),
-                        Q_(head, head_units),
-                        eff,
-                        b,
-                        D,
-                    )
-                    for flow, head, eff in zip(points_x, points_head, points_eff)
-                ]
-                with multiprocessing.Pool() as pool:
-                    if flow_type == "volumetric":
-                        points += pool.map(create_points_flow_v, args_list)
-                    else:
-                        points += pool.map(create_points_flow_m, args_list)
-
-            if power_curves:
-                points_power = power_interpolated(points_x)
-
-                args_list = [
-                    (
-                        suc,
-                        Q_(float(speed), speed_units),
-                        Q_(flow, flow_units),
-                        Q_(head, head_units),
-                        Q_(power, power_units),
-                        b,
-                        D,
-                    )
-                    for flow, head, power in zip(points_x, points_head, points_power)
-                ]
-                with multiprocessing.Pool() as pool:
-                    if flow_type == "volumetric":
-                        points += pool.map(create_points_flow_v_power, args_list)
-                    else:
-                        points += pool.map(create_points_flow_m_power, args_list)
+            with multiprocessing.Pool() as pool:
+                points += pool.map(create_points_parallel, args_list)
 
         return cls(points)
 
@@ -800,15 +758,21 @@ class Impeller:
         D=None,
         number_of_points=10,
         flow_units="m**3/s",
-        flow_units_head = None,
-        flow_units_power = None,
-        flow_units_eff = None,
+        flow_units_head=None,
+        flow_units_eff=None,
+        flow_units_power=None,
+        flow_units_pressure_ratio=None,
+        flow_units_disch_T=None,
         head_units="J/kg",
         power_units="W",
+        pressure_ratio_units="dimensionless",
+        disch_T_units="degK",
         speed_units="RPM",
         head_interpolation_method="interp1d",
         eff_interpolation_method="interp1d",
         power_interpolation_method="interp1d",
+        pressure_ratio_interpolation_method="interp1d",
+        disch_T_interpolation_method="interp1d",
     ):
         """Convert points from csv generated by engauge to csv with 6 points at same flow for use on hysys.
 
@@ -842,19 +806,29 @@ class Impeller:
         flow_units : str
             Flow units used when extracting data with engauge.
         flow_units_head: str
-            Flow units used when extracting data with engauge for head curve.
+            Flow units used when extracting data with engauge for head curves.
             Only needed when flow units for head curve differs from other curves.
+       flow_units_eff: str
+            Flow units used when extracting data with engauge for efficiency curves.
+            Only needed when flow units for efficiency curve differs from other curves.
         flow_units_power: str
-            Flow units used when extracting data with engauge for power curve.
+            Flow units used when extracting data with engauge for power curves.
             Only needed when flow units for power curve differs from other curves.
-        flow_units_eff: str
-            Flow units used when extracting data with engauge for efficiency curve.
+        flow_units_pressure_ratio: str
+            Flow units used when extracting data with engauge for pressure ratio curves.
+            Only needed when flow units for power curve differs from other curves.
+        flow_units_disch_T: str
+            Flow units used when extracting data with engauge for discharge temperature curves.
             Only needed when flow units for efficiency curve differs from other curves.
         head_units : str
             Head units used when extracting data with engauge.
             If the curve head units are in meter you can use: head_units="m*g0".
         power_units : str
             Power units used when extracting data with engauge.
+        pressure_ratio_units : str
+            Pressure ratio units used when extracting data with engauge.
+        disch_T_units : str
+            Discharge temperature units used when extracting data with engauge.
         speed_units : str
             Speed units used when extracting data with engauge.
         head_interpolation_method : str, optional
@@ -867,51 +841,37 @@ class Impeller:
             Interpolation method from scipy. Can be interp1d or UnivariateSpline.
             Default is interp1d.
         """
-        head_path = curve_path / (curve_name + "-head.csv")
-        eff_path = curve_path / (curve_name + "-eff.csv")
-        power_path = curve_path / (curve_name + "-power.csv")
-        if not flow_units_head:
-            flow_units_head = flow_units
-        head_curves = read_data_from_engauge_csv(head_path)
-        if eff_path.is_file():
-            eff_curves = read_data_from_engauge_csv(eff_path)
-            if not flow_units_eff:
-                flow_units_eff = flow_units
-            return cls.load_from_dict(
-                suc=suc,
-                b=b,
-                D=D,
-                head_curves=head_curves,
-                eff_curves=eff_curves,
-                number_of_points=number_of_points,
-                flow_units=flow_units,
-                flow_units_head=flow_units_head,
-                flow_units_eff=flow_units_eff,
-                head_units=head_units,
-                speed_units=speed_units,
-                head_interpolation_method=head_interpolation_method,
-                eff_interpolation_method=eff_interpolation_method,
-            )
-        if power_path.is_file():
-            power_curves = read_data_from_engauge_csv(power_path)
-            if not flow_units_power:
-                flow_units_power= flow_units
-            return cls.load_from_dict(
-                suc=suc,
-                b=b,
-                D=D,
-                head_curves=head_curves,
-                power_curves=power_curves,
-                number_of_points=number_of_points,
-                flow_units=flow_units,
-                flow_units_head=flow_units_head,
-                flow_units_power=flow_units_power,
-                head_units=head_units,
-                power_units=power_units,
-                speed_units=speed_units,
-                head_interpolation_method=head_interpolation_method,
-                power_interpolation_method=power_interpolation_method,
-            )
+        curves_path_dict = {}
+        for param in ["head", "eff", "power", "pressure_ratio", "disch_T"]:
+            param_path = curve_path / (curve_name + f"-{param}.csv")
+            if param_path.is_file():
+                if not locals()[f"flow_units_{param}"]:
+                    f"flow_units_{param}" = flow_units
+                curves_path_dict[f"{param}_curves"] = read_data_from_engauge_csv(
+                    param_path
+                )
+
+        return cls.load_from_dict(
+            suc=suc,
+            b=b,
+            D=D,
+            number_of_points=number_of_points,
+            flow_units=flow_units,
+            head_units=head_units,
+            flow_units_eff=flow_units_eff,
+            flow_units_power=flow_units_power,
+            flow_units_pressure_ratio=flow_units_pressure_ratio,
+            flow_units_disch_T=flow_units_disch_T,
+            speed_units=speed_units,
+            pressure_ratio_units=pressure_ratio_units,
+            disch_T_units=disch_T_units,
+            head_interpolation_method=head_interpolation_method,
+            eff_interpolation_method=eff_interpolation_method,
+            power_interpolation_method=power_interpolation_method,
+            pressure_ratio_interpolation_method=pressure_ratio_interpolation_method,
+            disch_T_interpolation_method=disch_T_interpolation_method,
+            **curves_path_dict,
+        )
 
     def save(self, file):
         """Save impeller to a toml file.
@@ -1062,60 +1022,9 @@ def converter(x):
     return Point.convert_from(point, suc=suc, find=find)
 
 
-def create_points_flow_v(x):
+def create_points_parallel(x):
     """Helper function used to parallelize creation of points."""
-    suc, speed, flow, head, eff, b, D = x
-    return Point(
-        suc=suc,
-        speed=speed,
-        flow_v=flow,
-        head=head,
-        eff=eff,
-        b=b,
-        D=D,
-    )
-
-
-def create_points_flow_m(x):
-    """Helper function used to parallelize creation of points."""
-    suc, speed, flow, head, eff, b, D = x
-    return Point(
-        suc=suc,
-        speed=speed,
-        flow_m=flow,
-        head=head,
-        eff=eff,
-        b=b,
-        D=D,
-    )
-
-
-def create_points_flow_v_power(x):
-    """Helper function used to parallelize creation of points."""
-    suc, speed, flow, head, power, b, D = x
-    return Point(
-        suc=suc,
-        speed=speed,
-        flow_v=flow,
-        head=head,
-        power=power,
-        b=b,
-        D=D,
-    )
-
-
-def create_points_flow_m_power(x):
-    """Helper function used to parallelize creation of points."""
-    suc, speed, flow, head, power, b, D = x
-    return Point(
-        suc=suc,
-        speed=speed,
-        flow_m=flow,
-        head=head,
-        power=power,
-        b=b,
-        D=D,
-    )
+    return Point(**x)
 
 
 def calc_min_head_point(x, speed, imp, min_head):
