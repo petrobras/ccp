@@ -32,6 +32,7 @@ class Point:
         Suction state, polytropic head (J/kg) and gas power (Watt).
     suc, eff, volume_ratio : ccp.State, float, float
         Suction state, polytropic efficiency and volume ratio.
+    suc, pres_ratio, disch_T : ccp.State, float, pint.Quantity or float
     b, D : pint.Quantity, float
         Impeller width and diameter.
 
@@ -109,6 +110,8 @@ class Point:
         phi=None,
         psi=None,
         volume_ratio=None,
+        pressure_ratio=None,
+        disch_T=None,
         b=None,
         D=None,
         polytropic_method=None,
@@ -134,6 +137,8 @@ class Point:
         self.phi = phi
         self.psi = psi
         self.volume_ratio = volume_ratio
+        self.pressure_ratio = pressure_ratio
+        self.disch_T = disch_T
 
         self.b = b
         self.D = D
@@ -156,6 +161,8 @@ class Point:
             "phi",
             "psi",
             "volume_ratio",
+            "pressure_ratio",
+            "disch_T",
         ]:
             if getattr(self, k) is not None:
                 kwargs_list.append(k)
@@ -351,6 +358,22 @@ class Point:
         self.phi = phi(self.flow_v, self.speed, self.D)
         self.psi = psi(self.head, self.speed, self.D)
         self.volume_ratio = self.suc.v() / self.disch.v()
+
+    def _calc_from_disch_T_flow_v_pressure_ratio_speed_suc(self):
+        suc = self.suc
+        disch_T = self.disch_T
+        pressure_ratio = self.pressure_ratio
+        disch_p = suc.p() * pressure_ratio
+        self.disch = State.define(p=disch_p, T=disch_T, fluid=suc.fluid)
+        self._calc_from_disch_flow_v_speed_suc()
+
+    def _calc_from_disch_T_flow_m_pressure_ratio_speed_suc(self):
+        suc = self.suc
+        disch_T = self.disch_T
+        pressure_ratio = self.pressure_ratio
+        disch_p = suc.p() * pressure_ratio
+        self.disch = State.define(p=disch_p, T=disch_T, fluid=suc.fluid)
+        self._calc_from_disch_flow_m_speed_suc()
 
     @classmethod
     @check_units
