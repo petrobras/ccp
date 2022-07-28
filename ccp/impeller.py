@@ -524,7 +524,10 @@ class Impeller:
 
         if "eff" in curves:
             if max(curves["eff"][speeds[0]]["y"]) > 1:
-                curves["eff"]["y"] = [i / 100 for i in curves["eff"]["y"]]
+                for speed in speeds:
+                    curves["eff"][speed]["y"] = [
+                        i / 100 for i in curves["eff"][speed]["y"]
+                    ]
 
         # create interpolated curves
         curves_interpolated = {"interp1d": {}, "UnivariateSpline": {}}
