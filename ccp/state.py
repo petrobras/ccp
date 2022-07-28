@@ -592,60 +592,65 @@ class State(CP.AbstractState):
         s : float, pint.Quantity
             Entropy (J/(kg*degK)).
         """
-        if p is not None and T is not None:
-            super().update(CP.PT_INPUTS, p.magnitude, T.magnitude)
-        elif p is not None and rho is not None:
-            super().update(CP.DmassP_INPUTS, rho.magnitude, p.magnitude)
-        elif p is not None and h is not None:
-            super().update(CP.HmassP_INPUTS, h.magnitude, p.magnitude)
-        elif p is not None and s is not None:
-            if ccp.config.EOS == "REFPROP":
-                super().update(CP.PSmass_INPUTS, p.magnitude, s.magnitude)
-            else:
-                # ps update not available for some EOS, this is a workaround based on:
-                # https://github.com/CoolProp/CoolProp/issues/2000
-                def objective(T):
-                    super(State, self).update(CP.PT_INPUTS, p.magnitude, T)
-                    return self.smass() - s.magnitude
+        args = locals().copy()
+        for item in ["kwargs", "self", "__class__"]:
+            args.pop(item)
+        args = [k for k, v in args.items() if v is not None]
+        try:
+            if p is not None and T is not None:
+                super().update(CP.PT_INPUTS, p.magnitude, T.magnitude)
+            elif p is not None and rho is not None:
+                super().update(CP.DmassP_INPUTS, rho.magnitude, p.magnitude)
+            elif p is not None and h is not None:
+                super().update(CP.HmassP_INPUTS, h.magnitude, p.magnitude)
+            elif p is not None and s is not None:
+                if ccp.config.EOS == "REFPROP":
+                    super().update(CP.PSmass_INPUTS, p.magnitude, s.magnitude)
+                else:
+                    # ps update not available for some EOS, this is a workaround based on:
+                    # https://github.com/CoolProp/CoolProp/issues/2000
+                    def objective(T):
+                        super(State, self).update(CP.PT_INPUTS, p.magnitude, T)
+                        return self.smass() - s.magnitude
 
-                T0 = self.T().m
-                if T0 == float("-inf"):
-                    T0 = 300
-                newton(objective, x0=T0)
-        elif rho is not None and s is not None:
-            try:
-                super().update(CP.DmassSmass_INPUTS, rho.magnitude, s.magnitude)
-            except ValueError:
-                # handle convergence error by forcing gas state directly with REFPROP
-                # calculate with p and T and update with their values
-                fluids = self._fluid.replace("&", "*")
-                r = _RP.REFPROPdll(
-                    fluids,
-                    "DSV",
-                    "P,T",
-                    _RP.MASS_BASE_SI,
-                    0,
-                    0,
-                    rho.magnitude,
-                    s.magnitude,
-                    self.get_mole_fractions(),
-                )
-                super().update(CP.PT_INPUTS, r.Output[0], r.Output[1])
-        elif rho is not None and T is not None:
-            super().update(CP.DmassT_INPUTS, rho.magnitude, T.magnitude)
-        elif h is not None and s is not None:
-            super().update(CP.HmassSmass_INPUTS, h.magnitude, s.magnitude)
-        elif T is not None and s is not None:
-            super().update(CP.SmassT_INPUTS, s.magnitude, T.magnitude)
-        else:
-            locs = locals()
-            for item in ["kwargs", "self", "__class__"]:
-                locs.pop(item)
-            raise KeyError(
-                f"Update key "
-                f"{[k for k, v in locs.items() if v is not None]}"
-                f" not implemented"
-            )
+                    T0 = self.T().m
+                    if T0 == float("-inf"):
+                        T0 = 300
+                    newton(objective, x0=T0)
+            elif rho is not None and s is not None:
+                try:
+                    super().update(CP.DmassSmass_INPUTS, rho.magnitude, s.magnitude)
+                except ValueError:
+                    # handle convergence error by forcing gas state directly with REFPROP
+                    # calculate with p and T and update with their values
+                    fluids = self._fluid.replace("&", "*")
+                    r = _RP.REFPROPdll(
+                        fluids,
+                        "DSV",
+                        "P,T",
+                        _RP.MASS_BASE_SI,
+                        0,
+                        0,
+                        rho.magnitude,
+                        s.magnitude,
+                        self.get_mole_fractions(),
+                    )
+                    super().update(CP.PT_INPUTS, r.Output[0], r.Output[1])
+            elif rho is not None and T is not None:
+                super().update(CP.DmassT_INPUTS, rho.magnitude, T.magnitude)
+            elif h is not None and s is not None:
+                super().update(CP.HmassSmass_INPUTS, h.magnitude, s.magnitude)
+            elif T is not None and s is not None:
+                super().update(CP.SmassT_INPUTS, s.magnitude, T.magnitude)
+            else:
+                raise KeyError(f"Update key " f"{args}" f" not implemented")
+        except ValueError as e:
+            args_dict = {}
+            for k in args:
+                args_dict[k] = locals()[k]
+            raise ValueError(
+                f"Could not define state with {args_dict} and {self.fluid}"
+            ) from e
 
     def plot_envelope(
         self, T_units="degK", p_units="Pa", dew_point_margin=20, fig=None, **kwargs
