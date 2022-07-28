@@ -229,3 +229,13 @@ def test_mix_composition():
 def test_pickle():
     state = State.define(p=100000, T=300, fluid={"Methane": 1 - 1e-15, "Ethane": 1e-15})
     assert pickle.loads(pickle.dumps(state)) == state
+
+
+def test_improved_error_message():
+    with pytest.raises(ValueError) as exc:
+        ccp.State.define(p=100000, T=20, fluid={"methane": 1 - 1e-15, "ethane": 1e-15})
+
+    assert (
+        "Could not define state with {'T': <Quantity(20, 'kelvin')>, 'p': <Quantity(100000, 'pascal')>} and {'METHANE': 0.999999999999999, 'ETHANE': 1e-15}"
+        in str(exc.value)
+    )
