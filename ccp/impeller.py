@@ -816,6 +816,7 @@ class Impeller:
             number_of_points=number_of_points,
             flow_units=flow_units,
             head_units=head_units,
+            power_units=power_units,
             speed_units=speed_units,
             pressure_ratio_units=pressure_ratio_units,
             disch_T_units=disch_T_units,
