@@ -442,6 +442,7 @@ class Impeller:
         flow_units_eff=None,
         flow_units_power=None,
         flow_units_pressure_ratio=None,
+        flow_units_disch_T=None,
         head_units="J/kg",
         eff_units="dimensionless",
         pressure_ratio_units="dimensionless",
@@ -502,6 +503,12 @@ class Impeller:
             If the curve head units are in meter you can use: head_units="m*g0".
         eff_units : str
             Dimensionless.
+        power_units : str
+            Power units used in the dict.
+        pressure_ratio_units : str
+            Pressure ratio units used in the dict.
+        disch_T_units : str
+            Discharge temperature units used in the dict.
         speed_units : str
             Speed units used in the dict.
         head_interpolation_method : str, optional
@@ -519,17 +526,6 @@ class Impeller:
         if list(Q_(1, flow_units).dimensionality.keys())[0] == "[mass]":
             flow_type = "mass"
 
-        # flow_type_head = "volumetric"
-        # if list(Q_(1, flow_units_head).dimensionality.keys())[0] == "[mass]":
-        #     flow_type_head = "mass"
-        # if flow_type_head != flow_type:
-        #     if flow_type_head == "mass":
-        #         flow_head = [Q_(flow, flow_units_head) / suc.rho() for flow in head_curve["x"]]
-        #         head_curve["x"] = [flow.to(flow_units).m for flow in flow_head]
-        #     else:
-        #         flow_head = [Q_(flow, flow_units_head) * suc.rho() for flow in head_curve["x"]]
-        #         head_curve["x"] = [flow.to(flow_units).m for flow in flow_head]
-
         points = []
 
         curves = {
@@ -545,6 +541,11 @@ class Impeller:
         ]
         speeds = list(curves[parameters[0]])
 
+        flow_units_list = { f"flow_units_{param}" :
+                               ("mass" if list(Q_(1,args[f"flow_units_{param}"]).dimensionality.keys())[0] == "[mass]"
+                           else "volumetric")
+                           for param in parameters}
+
         if "eff" in curves:
             if max(curves["eff"][speeds[0]]["y"]) > 1:
                 curves["eff"]["y"] = [i / 100 for i in curves["eff"]["y"]]
@@ -559,6 +560,19 @@ class Impeller:
             max_x = 1e20
             # get min and max flow
             for curve in curves:
+                print(curve)
+                print(flow_units_list[f"flow_units_{curve}"])
+                print(curves[curve][speed]["x"])
+
+                if flow_units_list[f"flow_units_{curve}"] != flow_type:
+                     if flow_units_list[f"flow_units_{curve}"] == "mass":
+                         flow_curve = [Q_(flow, args[f"flow_units_{curve}"]) / suc.rho() for flow in curves[curve][speed]["x"]]
+                         curves[curve][speed]["x"] = [flow.to(flow_units).m for flow in flow_curve]
+                     else:
+                         flow_curve = [Q_(flow, args[f"flow_units_{curve}"]) * suc.rho() for flow in curves[curve][speed]["x"]]
+                         curves[curve][speed]["x"] = [flow.to(flow_units).m for flow in flow_curve]
+                print(flow_units)
+                print(curves[curve][speed]["x"])
                 if curves[curve][speed]["x"][0] > min_x:
                     min_x = curves[curve][speed]["x"][0]
                 if curves[curve][speed]["x"][-1] < max_x:
@@ -764,6 +778,7 @@ class Impeller:
         flow_units_pressure_ratio=None,
         flow_units_disch_T=None,
         head_units="J/kg",
+        eff_units="dimensionless",
         power_units="W",
         pressure_ratio_units="dimensionless",
         disch_T_units="degK",
@@ -823,6 +838,8 @@ class Impeller:
         head_units : str
             Head units used when extracting data with engauge.
             If the curve head units are in meter you can use: head_units="m*g0".
+        eff_units : str
+            Dimensionless.
         power_units : str
             Power units used when extracting data with engauge.
         pressure_ratio_units : str
@@ -842,11 +859,12 @@ class Impeller:
             Default is interp1d.
         """
         curves_path_dict = {}
+        args = locals()
         for param in ["head", "eff", "power", "pressure_ratio", "disch_T"]:
             param_path = curve_path / (curve_name + f"-{param}.csv")
             if param_path.is_file():
-                if not locals()[f"flow_units_{param}"]:
-                    f"flow_units_{param}" = flow_units
+                if not args[f"flow_units_{param}"]:
+                    args[f"flow_units_{param}"] = flow_units
                 curves_path_dict[f"{param}_curves"] = read_data_from_engauge_csv(
                     param_path
                 )
@@ -858,10 +876,13 @@ class Impeller:
             number_of_points=number_of_points,
             flow_units=flow_units,
             head_units=head_units,
+            flow_units_head = flow_units_head,
             flow_units_eff=flow_units_eff,
             flow_units_power=flow_units_power,
             flow_units_pressure_ratio=flow_units_pressure_ratio,
             flow_units_disch_T=flow_units_disch_T,
+            eff_units=eff_units,
+            power_units=power_units,
             speed_units=speed_units,
             pressure_ratio_units=pressure_ratio_units,
             disch_T_units=disch_T_units,
