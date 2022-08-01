@@ -174,13 +174,13 @@ class Point:
         self.reynolds = reynolds(self.suc, self.speed, self.b, self.D)
         self.mach = mach(self.suc, self.speed, self.D)
 
-        self.phi_ratio = 1.0
-        self.psi_ratio = 1.0
-        self.reynolds_ratio = 1.0
+        self.phi_ratio = Q_(1.0, "dimensionless")
+        self.psi_ratio = Q_(1.0, "dimensionless")
+        self.reynolds_ratio = Q_(1.0, "dimensionless")
         # mach in the ptc 10 is compared with Mmt - Mmsp
-        self.mach_diff = 0.0
+        self.mach_diff = Q_(0.0, "dimensionless")
         # ratio between specific volume ratios in original and converted conditions
-        self.volume_ratio_ratio = 1.0
+        self.volume_ratio_ratio = Q_(1.0, "dimensionless")
 
         self._add_point_plot()
 

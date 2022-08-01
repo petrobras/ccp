@@ -434,6 +434,8 @@ class Impeller:
         head_curves=None,
         eff_curves=None,
         power_curves=None,
+        pressure_ratio_curves=None,
+        disch_T_curves=None,
         b=None,
         D=None,
         number_of_points=10,
@@ -522,20 +524,25 @@ class Impeller:
             Default is interp1d.
         """
         # define if we have volume or mass flow
+        args = locals().copy()
+
         flow_type = "volumetric"
         if list(Q_(1, flow_units).dimensionality.keys())[0] == "[mass]":
             flow_type = "mass"
 
         points = []
 
-        curves = {
-            k.split("_")[0]: v
-            for k, v in locals().items()
-            if "curves" in k and v is not None
-        }
+        curves = {}
+        for k, v in args.items():
+            if "curves" in k and v is not None:
+                name_split = k.split("_")
+                try:
+                    curve_name = "_".join(name_split[:-1])
+                except TypeError:
+                    curve_name = name_split[0]
+                curves[curve_name] = v
 
         parameters = list(curves)
-        args = locals().copy()
         interpolation_methods = [
             args[f"{param}_interpolation_method"] for param in parameters
         ]
@@ -548,7 +555,10 @@ class Impeller:
 
         if "eff" in curves:
             if max(curves["eff"][speeds[0]]["y"]) > 1:
-                curves["eff"]["y"] = [i / 100 for i in curves["eff"]["y"]]
+                for speed in speeds:
+                    curves["eff"][speed]["y"] = [
+                        i / 100 for i in curves["eff"][speed]["y"]
+                    ]
 
         # create interpolated curves
         curves_interpolated = {"interp1d": {}, "UnivariateSpline": {}}
