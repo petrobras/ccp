@@ -147,6 +147,7 @@ class Point:
         self._dummy_state = copy(self.suc)
 
         kwargs_list = []
+        kwargs_dict = {}
 
         for k in [
             "suc",
@@ -166,10 +167,14 @@ class Point:
         ]:
             if getattr(self, k) is not None:
                 kwargs_list.append(k)
+                kwargs_dict[k] = getattr(self, k)
 
         kwargs_str = "_".join(sorted(kwargs_list))
 
-        getattr(self, "_calc_from_" + kwargs_str)()
+        try:
+            getattr(self, "_calc_from_" + kwargs_str)()
+        except ValueError as e:
+            raise ValueError(f"Could not calculate point with {kwargs_dict}.")
 
         self.reynolds = reynolds(self.suc, self.speed, self.b, self.D)
         self.mach = mach(self.suc, self.speed, self.D)
