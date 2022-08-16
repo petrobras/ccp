@@ -1,6 +1,5 @@
 """Module to organize fluids."""
 from warnings import warn
-
 import CoolProp.CoolProp as CP
 
 
@@ -78,19 +77,29 @@ def normalize_mix(molar_fractions):
     molar_fractions: list
         Molar fractions list will be modified in place.
     """
-    total = sum(molar_fractions)
+    total = sum(sorted(list(molar_fractions)))
+
     if not ((0.95 < total < 1.05) or (95 < total < 105)):
         warn(f"Molar fraction far from 1 or 100% -> Total: {total}")
 
-    for i, comp in enumerate(molar_fractions):
-        molar_fractions[i] = comp / total
+    molar_fractions_dict = {k: v for k, v in enumerate(molar_fractions)}
+    molar_fractions_dict = dict(
+        sorted(molar_fractions_dict.items(), key=lambda item: -item[1])
+    )
 
-    try:
-        # try to sum to exactly 1.
-        molar_fractions_back = molar_fractions.copy()
-        while sum(molar_fractions) != 1.0:
-            diff = sum(molar_fractions) - 1.0
-            molar_fractions[i] = molar_fractions[i] - diff
-            i += 1
-    except IndexError:
-        molar_fractions = molar_fractions_back
+    # skip component with highest fraction
+    molar_fractions_dict_iter = iter(molar_fractions_dict.items())
+    next(molar_fractions_dict_iter)
+
+    normalized_total = 0
+    for k, v in molar_fractions_dict_iter:
+        if v != 0:
+            new_fraction = 1.0 - (1.0 - v / total)
+            molar_fractions_dict[k] = new_fraction
+            normalized_total += new_fraction
+
+    # adjust component with highest fraction so that sum == 1.0
+    molar_fractions_dict[next(iter(molar_fractions_dict))] = 1.0 - normalized_total
+
+    for k, v in molar_fractions_dict.items():
+        molar_fractions[k] = molar_fractions_dict[k]
