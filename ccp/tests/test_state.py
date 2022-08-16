@@ -236,6 +236,63 @@ def test_improved_error_message():
         ccp.State.define(p=100000, T=20, fluid={"methane": 1 - 1e-15, "ethane": 1e-15})
 
     assert (
-        "Could not define state with {'T': <Quantity(20, 'kelvin')>, 'p': <Quantity(100000, 'pascal')>} and {'METHANE': 0.999999999999999, 'ETHANE': 1e-15}"
+        "Could not define state with {'T': <Quantity(20, 'kelvin')>, 'p': <Quantity(100000, 'pascal')>} and {'METHANE': 0.999999999999999, 'ETHANE': 9.992007221626409e-16}"
         in str(exc.value)
     )
+
+
+def test_normalization():
+    suc0 = ccp.State.define(
+        p=Q_("5338000 Pa"),
+        T=Q_("313.15 K"),
+        fluid={
+            "METHANE": 0.48732,
+            "CO2": 0.40163,
+            "ETHANE": 0.05469,
+            "PROPANE": 0.03069,
+            "BUTANE": 0.00970,
+            "PENTANE": 0.00500,
+            "ISOBUTAN": 0.00430,
+            "NITROGEN": 0.00390,
+            "IPENTANE": 0.00190,
+            "HEPTANE": 0.00040,
+            "HEXANE": 0.00020,
+            "NONANE": 0.0,
+            "H2S": 0.00017,
+            "OCTANE": 0.00010,
+            "WATER": 0.00000,
+        },
+    )
+    # same state with different order for fluid names
+    suc1 = ccp.State.define(
+        p=Q_("5338000 Pa"),
+        T=Q_("313.15 K"),
+        fluid={
+            "BUTANE": 0.0097,
+            "CO2": 0.40163,
+            "ETHANE": 0.05469,
+            "H2S": 0.00017,
+            "HEPTANE": 0.0004,
+            "HEXANE": 0.0002,
+            "IPENTANE": 0.0019,
+            "ISOBUTAN": 0.0043,
+            "METHANE": 0.48732,
+            "NITROGEN": 0.0039,
+            "OCTANE": 0.0001,
+            "NONANE": 0.0,
+            "PENTANE": 0.005,
+            "PROPANE": 0.03069,
+            "WATER": 0.0,
+        },
+    )
+
+    assert sum(suc0.fluid.values()) == 1.0
+    assert sum(suc1.fluid.values()) == 1.0
+
+    for k in suc0.fluid.keys():
+        # values won't be equal, since the float sum:  sum(molar_fractions)
+        # is dependent on the list order and will impact in last digits
+        assert suc0.fluid[k] == suc1.fluid[k]
+
+        # no negativa values
+        assert suc0.fluid[k] >= 0.0
