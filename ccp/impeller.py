@@ -882,7 +882,7 @@ class Impeller:
              Default is interp1d.
         """
         curves_path_dict = {}
-        args = locals()
+
         for param in ["head", "eff", "power", "pressure_ratio", "disch_T"]:
             param_path = curve_path / (curve_name + f"-{param}.csv")
             if param_path.is_file():
