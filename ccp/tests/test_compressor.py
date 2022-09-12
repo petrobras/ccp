@@ -54,8 +54,8 @@ def straight_through():
                 },
             ),
             balance_line_flow=Q_(0.1484, "kg/s"),
-            buffer_gas_flow=Q_(0.07932, "kg/s"),
-            buffer_temperature=Q_(308, "degK"),
+            seal_gas_flow=Q_(0.07932, "kg/s"),
+            seal_gas_temperature=Q_(308, "degK"),
             oil_flow_journal_bearing_de=Q_(23.945, "l/min"),
             oil_flow_journal_bearing_nde=Q_(36.102, "l/min"),
             oil_flow_thrust_bearing_nde=Q_(27.872, "l/min"),
@@ -89,8 +89,8 @@ def straight_through():
                 },
             ),
             balance_line_flow=Q_(0.1545, "kg/s"),
-            buffer_gas_flow=Q_(0.0813, "kg/s"),
-            buffer_temperature=Q_(309.5, "degK"),
+            seal_gas_flow=Q_(0.0813, "kg/s"),
+            seal_gas_temperature=Q_(309.5, "degK"),
             oil_flow_journal_bearing_de=Q_(23.945, "l/min"),
             oil_flow_journal_bearing_nde=Q_(36.102, "l/min"),
             oil_flow_thrust_bearing_nde=Q_(27.872, "l/min"),
@@ -124,8 +124,8 @@ def straight_through():
                 },
             ),
             balance_line_flow=Q_(0.1266, "kg/s"),
-            buffer_gas_flow=Q_(0.03048, "kg/s"),
-            buffer_temperature=Q_(304.8, "degK"),
+            seal_gas_flow=Q_(0.03048, "kg/s"),
+            seal_gas_temperature=Q_(304.8, "degK"),
             oil_flow_journal_bearing_de=Q_(23.945, "l/min"),
             oil_flow_journal_bearing_nde=Q_(36.102, "l/min"),
             oil_flow_thrust_bearing_nde=Q_(27.872, "l/min"),
@@ -159,8 +159,8 @@ def straight_through():
                 },
             ),
             balance_line_flow=Q_(0.124, "kg/s"),
-            buffer_gas_flow=Q_(0.02966, "kg/s"),
-            buffer_temperature=Q_(304.6, "degK"),
+            seal_gas_flow=Q_(0.02966, "kg/s"),
+            seal_gas_temperature=Q_(304.6, "degK"),
             oil_flow_journal_bearing_de=Q_(23.945, "l/min"),
             oil_flow_journal_bearing_nde=Q_(36.102, "l/min"),
             oil_flow_thrust_bearing_nde=Q_(27.872, "l/min"),
@@ -194,8 +194,8 @@ def straight_through():
                 },
             ),
             balance_line_flow=Q_(0.1289, "kg/s"),
-            buffer_gas_flow=Q_(0.03095, "kg/s"),
-            buffer_temperature=Q_(303.9, "degK"),
+            seal_gas_flow=Q_(0.03095, "kg/s"),
+            seal_gas_temperature=Q_(303.9, "degK"),
             oil_flow_journal_bearing_de=Q_(23.945, "l/min"),
             oil_flow_journal_bearing_nde=Q_(36.102, "l/min"),
             oil_flow_thrust_bearing_nde=Q_(27.872, "l/min"),
@@ -204,6 +204,8 @@ def straight_through():
             oil_outlet_temperature_nde=Q_(50.512, "degC"),
         ),
     ]
-    comp = StraightThrough(guarantee_point=guarantee_point, test_points=test_points)
+    compressor = StraightThrough(
+        guarantee_point=guarantee_point, test_points=test_points
+    )
 
-    return comp
+    return compressor

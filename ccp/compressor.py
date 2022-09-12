@@ -26,8 +26,8 @@ class Point1Sec(Point):
         D=None,
         polytropic_method=None,
         balance_line_flow=None,
-        buffer_gas_flow=None,
-        buffer_temperature=None,
+        seal_gas_flow=None,
+        seal_gas_temperature=None,
         oil_flow_journal_bearing_de=None,
         oil_flow_journal_bearing_nde=None,
         oil_flow_thrust_bearing_nde=None,
@@ -55,8 +55,8 @@ class Point1Sec(Point):
             polytropic_method=polytropic_method,
         )
         self.balance_line_flow = balance_line_flow
-        self.buffer_gas_flow = buffer_gas_flow
-        self.buffer_temperature = buffer_temperature
+        self.seal_gas_flow = seal_gas_flow
+        self.seal_gas_temperature = seal_gas_temperature
         self.oil_flow_journal_bearing_de = oil_flow_journal_bearing_de
         self.oil_flow_journal_bearing_nde = oil_flow_journal_bearing_nde
         self.oil_flow_thrust_bearing_nde = oil_flow_thrust_bearing_nde
@@ -71,3 +71,14 @@ class StraightThrough:
     def __init__(self, guarantee_point, test_points):
         self.guarantee_point = guarantee_point
         self.test_points = test_points
+
+        # impeller for test flange conditions
+        self.imp_flange_t = Impeller(test_points)
+
+        # calculate rotor condition
+        test_points_rotor = []
+
+        for point in test_points:
+            ms1f = point.flow_m
+            mbal = point.balance_line_flow
+            mbuf = point.seal_gas_flow
