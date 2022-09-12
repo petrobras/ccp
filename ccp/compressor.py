@@ -1,6 +1,8 @@
 """Module to define compressors with 1 or 2 sections."""
+from copy import copy
 from ccp.impeller import Impeller
 from ccp.point import Point
+from ccp.state import State
 
 
 class Point1Sec(Point):
@@ -81,4 +83,25 @@ class StraightThrough:
         for point in test_points:
             ms1f = point.flow_m
             mbal = point.balance_line_flow
-            mbuf = point.seal_gas_flow
+            mseal = point.seal_gas_flow
+
+            mend = mbal - (0.95 * mseal) / 2
+            ms1r = ms1f + mbal + (0.95 * mseal) / 2
+
+            Ts1f = point.suc.T()
+            # dummy state to calculate Tend
+            dummy_state = copy(point.disch)
+            Tend = dummy_state.update(p=point.suc.p(), h=dummy_state.h()).T()
+            Tseal = point.seal_gas_temperature
+            Ts1r = (ms1f * Ts1f + mend * Tend + 0.95 * mseal * Tseal) / (
+                ms1f + mend + 0.95 * mseal
+            )
+
+            suc_rotor = State.define(p=point.suc.p(), T=Ts1r)
+            test_points_rotor.append(
+                Point(
+                    suc=suc_rotor, disch=point.disch, flow_m=ms1r, b=point.b, D=point.D
+                )
+            )
+
+        self.imp_rotor_t = Impeller(test_points_rotor)
