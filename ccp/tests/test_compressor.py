@@ -1,12 +1,55 @@
 import pytest
+from numpy.testing import assert_allclose
 from ccp.compressor import StraightThrough, Point1Sec
 from ccp.point import Point
 from ccp.state import State
 from ccp import Q_
 
 
+def test_point1sec():
+    p = Point1Sec(
+        flow_m=Q_(28638, "kg/h"),
+        speed=Q_(7993, "RPM"),
+        b=Q_(28.5, "mm"),
+        D=Q_(365, "mm"),
+        suc=State.define(
+            p=Q_(1.914, "bar"),
+            T=Q_(301, "degK"),
+            fluid={
+                "carbon dioxide": 0.77634,
+                "R134a": 0.17626,
+                "nitrogen": 0.0373,
+                "oxygen": 0.0101,
+            },
+        ),
+        disch=State.define(
+            p=Q_(6.06, "bar"),
+            T=Q_(396.5, "degK"),
+            fluid={
+                "carbon dioxide": 0.77634,
+                "R134a": 0.17626,
+                "nitrogen": 0.0373,
+                "oxygen": 0.0101,
+            },
+        ),
+        balance_line_flow=Q_(0.1484, "kg/s"),
+        seal_gas_flow=Q_(0.07932, "kg/s"),
+        seal_gas_temperature=Q_(308, "degK"),
+        oil_flow_journal_bearing_de=Q_(23.945, "l/min"),
+        oil_flow_journal_bearing_nde=Q_(36.102, "l/min"),
+        oil_flow_thrust_bearing_nde=Q_(27.872, "l/min"),
+        oil_inlet_temperature=Q_(45.885, "degC"),
+        oil_outlet_temperature_de=Q_(44.244, "degC"),
+        oil_outlet_temperature_nde=Q_(50.512, "degC"),
+    )
+
+    assert_allclose(p.eff, 0.720852, rtol=1e-6)
+    assert_allclose(p.suc.fluid["CO2"], 0.77634)
+
+
 @pytest.fixture
 def straight_through():
+    """P77 main b - spare"""
     fluid_sp = {
         "methane": 69.945,
         "ethane": 9.729,
@@ -24,7 +67,12 @@ def straight_through():
     suc_sp = State.define(p=Q_(16.99, "bar"), T=Q_(38.4, "degC"), fluid=fluid_sp)
     disch_sp = State.define(p=Q_(80.39, "bar"), T=Q_(164.6, "degC"), fluid=fluid_sp)
     guarantee_point = Point(
-        suc=suc_sp, disch=disch_sp, flow_v=Q_(8765, "m³/h"), speed=Q_(12361, "RPM")
+        suc=suc_sp,
+        disch=disch_sp,
+        flow_v=Q_(8765, "m³/h"),
+        speed=Q_(12361, "RPM"),
+        b=Q_(28.5, "mm"),
+        D=Q_(365, "mm"),
     )
 
     test_points = [
@@ -39,7 +87,7 @@ def straight_through():
                 fluid={
                     "carbon dioxide": 0.77634,
                     "R134a": 0.17626,
-                    "nitrogen": 0.373,
+                    "nitrogen": 0.0373,
                     "oxygen": 0.0101,
                 },
             ),
@@ -49,7 +97,7 @@ def straight_through():
                 fluid={
                     "carbon dioxide": 0.77634,
                     "R134a": 0.17626,
-                    "nitrogen": 0.373,
+                    "nitrogen": 0.0373,
                     "oxygen": 0.0101,
                 },
             ),
@@ -74,7 +122,7 @@ def straight_through():
                 fluid={
                     "carbon dioxide": 0.77634,
                     "R134a": 0.17626,
-                    "nitrogen": 0.373,
+                    "nitrogen": 0.0373,
                     "oxygen": 0.0101,
                 },
             ),
@@ -84,7 +132,7 @@ def straight_through():
                 fluid={
                     "carbon dioxide": 0.77634,
                     "R134a": 0.17626,
-                    "nitrogen": 0.373,
+                    "nitrogen": 0.0373,
                     "oxygen": 0.0101,
                 },
             ),
@@ -209,3 +257,10 @@ def straight_through():
     )
 
     return compressor
+
+
+def test_straight_through(straight_through):
+    p0r = straight_through.imp_rotor_t[0]
+    p0f = straight_through.imp_flange_t[0]
+
+    assert_allclose(p0f.eff, 0.8)
