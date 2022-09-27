@@ -260,7 +260,7 @@ def straight_through():
 
 
 def test_straight_through(straight_through):
-    p0r = straight_through.imp_rotor_t[0]
-    p0f = straight_through.imp_flange_t[0]
+    p0r = straight_through.points_rotor_t[0]
+    p0f = straight_through.points_flange_t[0]
 
     assert_allclose(p0f.eff, 0.8)
