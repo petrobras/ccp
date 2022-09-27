@@ -74,8 +74,8 @@ class StraightThrough:
         self.guarantee_point = guarantee_point
         self.test_points = test_points
 
-        # impeller for test flange conditions
-        self.imp_flange_t = Impeller(test_points)
+        # points for test flange conditions
+        self.points_flange_t = test_points
 
         # calculate rotor condition
         test_points_rotor = []
@@ -91,17 +91,23 @@ class StraightThrough:
             Ts1f = point.suc.T()
             # dummy state to calculate Tend
             dummy_state = copy(point.disch)
-            Tend = dummy_state.update(p=point.suc.p(), h=dummy_state.h()).T()
+            dummy_state.update(p=point.suc.p(), h=dummy_state.h())
+            Tend = dummy_state.T()
             Tseal = point.seal_gas_temperature
             Ts1r = (ms1f * Ts1f + mend * Tend + 0.95 * mseal * Tseal) / (
                 ms1f + mend + 0.95 * mseal
             )
 
-            suc_rotor = State.define(p=point.suc.p(), T=Ts1r)
+            suc_rotor = State.define(p=point.suc.p(), T=Ts1r, fluid=point.suc.fluid)
             test_points_rotor.append(
                 Point(
-                    suc=suc_rotor, disch=point.disch, flow_m=ms1r, b=point.b, D=point.D
+                    suc=suc_rotor,
+                    disch=point.disch,
+                    flow_m=ms1r,
+                    speed=point.speed,
+                    b=point.b,
+                    D=point.D,
                 )
             )
 
-        self.imp_rotor_t = Impeller(test_points_rotor)
+        self.points_rotor_t = test_points_rotor
