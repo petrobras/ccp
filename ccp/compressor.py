@@ -3,6 +3,7 @@ from copy import copy
 from ccp.impeller import Impeller
 from ccp.point import Point
 from ccp.state import State
+from ccp import Q_
 
 
 class Point1Sec(Point):
@@ -36,6 +37,10 @@ class Point1Sec(Point):
         oil_inlet_temperature=None,
         oil_outlet_temperature_de=None,
         oil_outlet_temperature_nde=None,
+        casing_area=None,
+        casing_temperature=None,
+        ambient_temperature=None,
+        convection_constant=Q_(13.6, "W/(m²*degK)"),
     ):
         super().__init__(
             suc=suc,
@@ -54,6 +59,10 @@ class Point1Sec(Point):
             disch_T=disch_T,
             b=b,
             D=D,
+            casing_area=casing_area,
+            casing_temperature=casing_temperature,
+            ambient_temperature=ambient_temperature,
+            convection_constant=convection_constant,
             polytropic_method=polytropic_method,
         )
         self.balance_line_flow = balance_line_flow
