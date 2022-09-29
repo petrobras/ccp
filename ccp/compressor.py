@@ -96,7 +96,7 @@ class Point1Sec(Point):
         zd1f = self.disch.z()
         Td1f = self.disch.T()
         MW1f = self.disch.molar_mass()
-        ps1f = self.disch.p()
+        ps1f = self.suc.p()
         pd1f = self.disch.p()
         self.k_end = (
             mend
@@ -131,6 +131,9 @@ class StraightThrough:
                     speed=point.speed,
                     b=point.b,
                     D=point.D,
+                    casing_area=point.casing_area,
+                    casing_temperature=point.casing_temperature,
+                    ambient_temperature=point.ambient_temperature,
                 )
             )
 
