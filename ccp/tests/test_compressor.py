@@ -282,6 +282,7 @@ def test_straight_through(straight_through):
     p0r = straight_through.points_rotor_t[0]
     p0f = straight_through.points_flange_t[0]
 
+    # flange
     assert_allclose(p0f.suc.fluid["CO2"], 0.80218)
     assert_allclose(p0f.volume_ratio, 2.554283752)
     assert_allclose(p0f.mach, 0.648614697, rtol=1e-6)
@@ -290,3 +291,13 @@ def test_straight_through(straight_through):
     assert_allclose(p0f.casing_heat_loss, 3193.518)
     assert_allclose(p0f.eff, 0.735723, rtol=1e-6)
     assert_allclose(p0f.power, 654187.626)
+    assert_allclose(p0f.k_end, 1.201149e-05)
+    assert_allclose(p0f.mend, Q_(302.1678, "kg/h").to("kg/s"))
+    # rotor
+    assert_allclose(p0r.flow_m, Q_(28155.3678, "kg/h").to("kg/s"))
+    assert_allclose(p0r.suc.T(), 297.696929680625)
+    assert_allclose(p0r.suc.p(), 182600)
+    assert_allclose(p0r.head, 62311.048952, rtol=1e-6)
+    assert_allclose(p0r.casing_heat_loss, 3193.518)
+    assert_allclose(p0r.eff, 0.744487, rtol=1e-6)
+    assert_allclose(p0r.power, 654586.0882)
