@@ -263,9 +263,13 @@ class Point:
                 self.convection_constant
                 * self.casing_area
                 * (self.casing_temperature - self.ambient_temperature)
-            ) / self.flow_m
+            )
             self.eff = self.eff / (
-                1 + (self.casing_heat_loss / (self.disch.h() - self.suc.h()))
+                1
+                + (
+                    self.casing_heat_loss
+                    / ((self.disch.h() - self.suc.h()) * self.flow_m)
+                )
             )
         self.power = power_calc(self.flow_m, self.head, self.eff)
 
@@ -280,9 +284,13 @@ class Point:
                 self.convection_constant
                 * self.casing_area
                 * (self.casing_temperature - self.ambient_temperature)
-            ) / self.flow_m
+            )
             self.eff = self.eff / (
-                1 + (self.casing_heat_loss / (self.disch.h() - self.suc.h()))
+                1
+                + (
+                    self.casing_heat_loss
+                    / ((self.disch.h() - self.suc.h()) * self.flow_m)
+                )
             )
         self.power = power_calc(self.flow_m, self.head, self.eff)
         self.phi = phi(self.flow_v, self.speed, self.D)
