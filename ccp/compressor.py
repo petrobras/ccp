@@ -81,7 +81,7 @@ class Point1Sec(Point):
         mseal = self.seal_gas_flow
 
         mend = mbal - (0.95 * mseal) / 2
-        self.ms1r = ms1f + mbal + (0.95 * mseal) / 2
+        self.ms1r = ms1f + mbal
 
         Ts1f = self.suc.T()
         # dummy state to calculate Tend
