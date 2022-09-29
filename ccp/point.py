@@ -281,12 +281,9 @@ class Point:
                 * self.casing_area
                 * (self.casing_temperature - self.ambient_temperature)
             ) / self.flow_m
-            print(self.eff)
             self.eff = self.eff / (
                 1 + (self.casing_heat_loss / (self.disch.h() - self.suc.h()))
             )
-            print(self.casing_heat_loss)
-            print(self.eff)
         self.power = power_calc(self.flow_m, self.head, self.eff)
         self.phi = phi(self.flow_v, self.speed, self.D)
         self.psi = psi(self.head, self.speed, self.D)
