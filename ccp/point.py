@@ -429,7 +429,7 @@ class Point:
 
     @classmethod
     @check_units
-    def convert_from(cls, original_point, suc=None, find="speed", speed=None):
+    def convert_from(cls, original_point, suc=None, find="speed", speed=None, **kwargs):
         """Convert point from an original point.
 
         Parameters
@@ -457,6 +457,7 @@ class Point:
                 volume_ratio=original_point.volume_ratio,
                 b=original_point.b,
                 D=original_point.D,
+                **kwargs,
             ),
             "volume_ratio": dict(
                 suc=suc,
@@ -466,6 +467,7 @@ class Point:
                 speed=speed,
                 b=original_point.b,
                 D=original_point.D,
+                **kwargs,
             ),
         }
 
