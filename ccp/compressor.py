@@ -38,35 +38,6 @@ class Point1Sec(Point):
         self.oil_outlet_temperature_de = oil_outlet_temperature_de
         self.oil_outlet_temperature_nde = oil_outlet_temperature_nde
 
-        ms1f = self.flow_m
-        mbal = self.balance_line_flow
-        mseal = self.seal_gas_flow
-
-        mend = mbal - (0.95 * mseal) / 2
-        self.mend = mend
-        self.ms1r = ms1f + mend
-
-        Ts1f = self.suc.T()
-        # dummy state to calculate Tend
-        dummy_state = copy(self.disch)
-        dummy_state.update(p=self.suc.p(), h=dummy_state.h())
-        Tend = dummy_state.T()
-        Tseal = self.seal_gas_temperature
-        Ts1r = (ms1f * Ts1f + mend * Tend + 0.95 * mseal * Tseal) / (
-            ms1f + mend + 0.95 * mseal
-        )
-        self.Ts1r = Ts1r
-        zd1f = self.disch.z()
-        Td1f = self.disch.T()
-        MW1f = self.disch.molar_mass()
-        ps1f = self.suc.p()
-        pd1f = self.disch.p()
-        self.k_end = (
-            mend
-            * np.sqrt(zd1f * Td1f / MW1f)
-            / (pd1f * np.sqrt(1 - (ps1f / pd1f) ** 2))
-        )
-
 
 class StraightThrough:
     """Straight Through compressor"""
@@ -80,9 +51,37 @@ class StraightThrough:
 
         # calculate rotor condition
         test_points_rotor = []
-        k_seal = []  # list with seal constants
-
+        self.k_seal = []  # list with seal constants
         for point in test_points:
+            ms1f = point.flow_m
+            mbal = point.balance_line_flow
+            mseal = point.seal_gas_flow
+
+            mend = mbal - (0.95 * mseal) / 2
+            point.mend = mend
+            point.ms1r = ms1f + mend
+
+            Ts1f = point.suc.T()
+            # dummy state to calculate Tend
+            dummy_state = copy(point.disch)
+            dummy_state.update(p=point.suc.p(), h=dummy_state.h())
+            Tend = dummy_state.T()
+            Tseal = point.seal_gas_temperature
+            Ts1r = (ms1f * Ts1f + mend * Tend + 0.95 * mseal * Tseal) / (
+                ms1f + mend + 0.95 * mseal
+            )
+            point.Ts1r = Ts1r
+            zd1f = point.disch.z()
+            Td1f = point.disch.T()
+            MW1f = point.disch.molar_mass()
+            ps1f = point.suc.p()
+            pd1f = point.disch.p()
+            k_end = (
+                mend
+                * np.sqrt(zd1f * Td1f / MW1f)
+                / (pd1f * np.sqrt(1 - (ps1f / pd1f) ** 2))
+            )
+            self.k_seal.append(k_end)
             suc_rotor = State.define(
                 p=point.suc.p(), T=point.Ts1r, fluid=point.suc.fluid
             )
@@ -101,3 +100,14 @@ class StraightThrough:
             )
 
         self.points_rotor_t = test_points_rotor
+
+        # convert points_rotor_t to points_rotor_sp
+        self.points_rotor_sp = [
+            Point.convert_from(
+                point,
+                suc=guarantee_point.suc,
+                speed=guarantee_point.speed,
+                find="volume_ratio",
+            )
+            for point in self.points_rotor_t
+        ]
