@@ -98,10 +98,40 @@ class StraightThrough:
         # convert points_rotor_t to points_rotor_sp
         self.points_rotor_sp = []
         # calculate ms1r for the guarantee point
-        for point in self.points_rotor_t:
-            qs1r_sp = flow_from_phi(
-                D=guarantee_point.D, speed=guarantee_point.speed, phi=point.phi
-            )
+        for point, k in zip(self.points_rotor_t, self.k_seal):
+            error = 1
+            # initial estimate of Ts1r_sp with Ts1f_sp
+            Ts1r_sp = guarantee_point.suc.T()
+            initial_suc = copy(guarantee_point.suc)
+            i = 0
+            while abs(error) > 0.01 and i < 4:
+                initial_suc.update(p=initial_suc.p(), T=Ts1r_sp)
+                initial_point_rotor_sp = Point.convert_from(
+                    original_point=point,
+                    suc=initial_suc,
+                    speed=guarantee_point.speed,
+                    find="volume_ratio",
+                )
+                qs1r_sp = initial_point_rotor_sp.flow_v
+                vs1r_sp = initial_suc.v()
+                ms1r_sp = qs1r_sp / vs1r_sp
+                mend_sp = flow_m_seal(
+                    k,
+                    state_up=initial_point_rotor_sp.disch,
+                    state_down=initial_point_rotor_sp.suc,
+                )
+                ms1f_sp = ms1r_sp - mend_sp
+                Ts1f_sp = guarantee_point.suc.T()
+                # dummy state to calculate Tend
+                dummy_state = copy(guarantee_point.disch)
+                dummy_state.update(p=guarantee_point.suc.p(), h=dummy_state.h())
+                Tend_sp = dummy_state.T()
+                Ts1r_sp_new = (ms1f_sp * Ts1f_sp + mend_sp * Tend_sp) / (
+                    ms1f_sp + mend_sp
+                )
+                i += 1
+                error = Ts1r_sp_new.m - Ts1r_sp.m
+                Ts1r_sp = Ts1r_sp_new
 
 
 @check_units
