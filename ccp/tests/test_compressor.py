@@ -69,7 +69,7 @@ def straight_through():
         "water": 0.200,
     }
     suc_sp = State.define(p=Q_(16.99, "bar"), T=Q_(38.4, "degC"), fluid=fluid_sp)
-    disch_sp = State.define(p=Q_(80.39, "bar"), T=Q_(164.6, "degC"), fluid=fluid_sp)
+    disch_sp = State.define(p=Q_(80.38, "bar"), T=Q_(164.6, "degC"), fluid=fluid_sp)
     guarantee_point = Point(
         suc=suc_sp,
         disch=disch_sp,
@@ -272,17 +272,18 @@ def straight_through():
         ),
     ]
     compressor = StraightThrough(
-        guarantee_point=guarantee_point, test_points=test_points
+        guarantee_point=guarantee_point,
+        test_points=test_points,
+        speed=Q_(12193.63898, "RPM"),
     )
 
     return compressor
 
 
 def test_straight_through(straight_through):
-    p0r = straight_through.points_rotor_t[0]
-    p0f = straight_through.points_flange_t[0]
 
-    # flange
+    # flange test
+    p0f = straight_through.points_flange_t[0]
     assert_allclose(p0f.suc.fluid["CO2"], 0.80218)
     assert_allclose(p0f.volume_ratio, 2.554283752)
     assert_allclose(p0f.mach, 0.648614697, rtol=1e-6)
@@ -291,9 +292,11 @@ def test_straight_through(straight_through):
     assert_allclose(p0f.casing_heat_loss, 3193.518)
     assert_allclose(p0f.eff, 0.735723, rtol=1e-6)
     assert_allclose(p0f.power, 654187.626)
-    assert_allclose(p0f.k_end, 1.201149e-05)
+    k_seal = straight_through.k_seal[0]
+    assert_allclose(k_seal, 1.201149e-05)
     assert_allclose(p0f.mend, Q_(302.1678, "kg/h").to("kg/s"))
-    # rotor
+    # rotor test
+    p0r = straight_through.points_rotor_t[0]
     assert_allclose(p0r.flow_m, Q_(28155.3678, "kg/h").to("kg/s"))
     assert_allclose(p0r.suc.T(), 297.696929680625)
     assert_allclose(p0r.suc.p(), 182600)
@@ -301,3 +304,13 @@ def test_straight_through(straight_through):
     assert_allclose(p0r.casing_heat_loss, 3193.518)
     assert_allclose(p0r.eff, 0.744487, rtol=1e-6)
     assert_allclose(p0r.power, 654586.0882)
+
+    # rotor specified
+    p0r_sp = straight_through.points_rotor_sp[0]
+    print(p0r_sp.flow_m.to("kg/h"))
+    assert_allclose(p0r_sp.flow_m, Q_(171207.7077, "kg/h").to("kg/s"), rtol=1e-4)
+    assert_allclose(p0r_sp.suc.T(), 312.646427, rtol=1e-3)
+    assert_allclose(p0r_sp.suc.p(), 1699000)
+    assert_allclose(p0r_sp.head, 148674.8794, rtol=1e-6)
+    assert_allclose(p0r_sp.eff, 0.7444869804, rtol=1e-6)
+    assert_allclose(p0r_sp.power, 9496380.24586)
