@@ -45,9 +45,13 @@ class Point1Sec(Point):
 class StraightThrough:
     """Straight Through compressor"""
 
-    def __init__(self, guarantee_point, test_points):
+    @check_units
+    def __init__(self, guarantee_point, test_points, speed=None):
         self.guarantee_point = guarantee_point
         self.test_points = test_points
+        if speed is None:
+            speed = guarantee_point.speed
+        self.speed = speed
 
         # points for test flange conditions
         self.points_flange_t = test_points
@@ -109,7 +113,7 @@ class StraightThrough:
                 initial_point_rotor_sp = Point.convert_from(
                     original_point=point,
                     suc=initial_suc,
-                    speed=guarantee_point.speed,
+                    speed=self.speed,
                     find="volume_ratio",
                 )
                 qs1r_sp = initial_point_rotor_sp.flow_v
@@ -132,6 +136,7 @@ class StraightThrough:
                 i += 1
                 error = Ts1r_sp_new.m - Ts1r_sp.m
                 Ts1r_sp = Ts1r_sp_new
+            self.points_rotor_sp.append(initial_point_rotor_sp)
 
 
 @check_units
