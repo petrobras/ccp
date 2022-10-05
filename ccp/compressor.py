@@ -1,8 +1,11 @@
 """Module to define compressors with 1 or 2 sections."""
 from copy import copy
+
+import ccp
 from ccp.impeller import Impeller
-from ccp.point import Point
+from ccp.point import Point, flow_from_phi
 from ccp.state import State
+from ccp.config.units import check_units
 from ccp import Q_
 import numpy as np
 
@@ -71,16 +74,7 @@ class StraightThrough:
                 ms1f + mend + 0.95 * mseal
             )
             point.Ts1r = Ts1r
-            zd1f = point.disch.z()
-            Td1f = point.disch.T()
-            MW1f = point.disch.molar_mass()
-            ps1f = point.suc.p()
-            pd1f = point.disch.p()
-            k_end = (
-                mend
-                * np.sqrt(zd1f * Td1f / MW1f)
-                / (pd1f * np.sqrt(1 - (ps1f / pd1f) ** 2))
-            )
+            k_end = k_seal(flow_m=mend, state_up=point.disch, state_down=point.suc)
             self.k_seal.append(k_end)
             suc_rotor = State.define(
                 p=point.suc.p(), T=point.Ts1r, fluid=point.suc.fluid
@@ -102,12 +96,38 @@ class StraightThrough:
         self.points_rotor_t = test_points_rotor
 
         # convert points_rotor_t to points_rotor_sp
-        self.points_rotor_sp = [
-            Point.convert_from(
-                point,
-                suc=guarantee_point.suc,
-                speed=guarantee_point.speed,
-                find="volume_ratio",
+        self.points_rotor_sp = []
+        # calculate ms1r for the guarantee point
+        for point in self.points_rotor_t:
+            qs1r_sp = flow_from_phi(
+                D=guarantee_point.D, speed=guarantee_point.speed, phi=point.phi
             )
-            for point in self.points_rotor_t
-        ]
+
+
+@check_units
+def k_seal(flow_m, state_up, state_down):
+    """Function to calculate the seal constant k.
+
+    This seal constant is used to estimate the seal leakage in different conditions.
+
+    Parameters
+    ----------
+    flow_m : float, pint.Quantity
+        Mass flow through the seal (kg/s).
+    state_up : ccp.State
+        State upstream of the seal.
+    state_down : ccp.State
+        State downstream of the seal.
+
+    """
+    p_up = state_up.p()
+    z_up = state_up.z()
+    T_up = state_up.T()
+    MW = state_up.molar_mass()
+    p_down = state_down.p()
+
+    k = (flow_m * np.sqrt(z_up * T_up / MW)) / (
+        p_up * np.sqrt(1 - (p_down / p_up) ** 2)
+    )
+
+    return k
