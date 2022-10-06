@@ -212,16 +212,3 @@ def flow_m_seal(k_seal, state_up, state_down):
     )
 
     return flow_m_seal
-
-
-def calc_flange_flow(Tsr1,):
-    """Function used to calculate the flange flow.
-
-    For the specified conditions, rotor volumetric flow is calculated by means
-    of the test volumetric flow and conversion with the flow coefficient.
-    The rotor mass flow is not directly calculated, since we do not know the
-    specified rotor suction temperature (we only know the temperature at the
-    flange).
-    To calculate the rotor mass flow first we take a guess using the flange
-    temperature
-    """
