@@ -308,9 +308,20 @@ def test_straight_through(straight_through):
     # rotor specified
     p0r_sp = straight_through.points_rotor_sp[0]
     print(p0r_sp.flow_m.to("kg/h"))
-    assert_allclose(p0r_sp.flow_m, Q_(171207.7077, "kg/h").to("kg/s"), rtol=1e-4)
+    assert_allclose(p0r_sp.flow_m, Q_(171207.7077, "kg/h").to("kg/s"), rtol=1e-3)
     assert_allclose(p0r_sp.suc.T(), 312.646427, rtol=1e-3)
     assert_allclose(p0r_sp.suc.p(), 1699000)
     assert_allclose(p0r_sp.head, 148674.8794, rtol=1e-6)
     assert_allclose(p0r_sp.eff, 0.7444869804, rtol=1e-6)
-    assert_allclose(p0r_sp.power, 9496380.24586)
+    assert_allclose(p0r_sp.power, 9501324.55769, rtol=1e-7)
+
+    # flange specified
+    p0f_sp = straight_through.points_flange_sp[0]
+    assert_allclose(p0f_sp.flow_m, Q_(169296.4746, "kg/h").to("kg/s"), rtol=1e-2)
+    assert_allclose(p0f_sp.suc.T(), 311.55, rtol=1e-3)
+    assert_allclose(p0f_sp.suc.p(), 1699000)
+    assert_allclose(p0f_sp.head, 148399.758541, rtol=1e-6)
+    assert_allclose(p0f_sp.eff, 0.7357389512832868, rtol=1e-6)
+    assert_allclose(p0f_sp.power, 9501324.55769, rtol=1e-3)
+
+
