@@ -73,6 +73,15 @@ class Point:
         Impeller width (m).
     D : pint.Quantity
         Impeller diameter (m).
+    casing_area : pint.Quantity, optional
+        Compressor case area used to calculate case heat loss (m²).
+    casing_temperature : pint.Quantity, optional
+        Compressor case temperature used to calculate case heat loss (degK).
+    ambient_temperature : pint.Quantity, optional
+        Ambient temperature used to calculate case heat loss (degK).
+    convection_constant : pint.Quantity, optional
+        Heat transfer (convection) constant (W / m²degK).
+        Default value is 13.6.
     reynolds : pint.Quantity
         Reynolds number (dimensionless).
     mach : pint.Quantity
@@ -114,6 +123,10 @@ class Point:
         disch_T=None,
         b=None,
         D=None,
+        casing_area=None,
+        casing_temperature=None,
+        ambient_temperature=None,
+        convection_constant=Q_(13.6, "W/(m²*degK)"),
         polytropic_method=None,
     ):
         if b is None or D is None:
@@ -142,6 +155,12 @@ class Point:
 
         self.b = b
         self.D = D
+
+        self.casing_area = casing_area
+        self.casing_temperature = casing_temperature
+        self.ambient_temperature = ambient_temperature
+        self.convection_constant = convection_constant
+        self.casing_heat_loss = None
 
         # dummy state used to avoid copying states
         self._dummy_state = copy(self.suc)
@@ -236,15 +255,43 @@ class Point:
         self.eff = self.eff_calc_func(self.suc, self.disch)
         self.volume_ratio = self.suc.v() / self.disch.v()
         self.flow_m = self.suc.rho() * self.flow_v
-        self.power = power_calc(self.flow_m, self.head, self.eff)
         self.phi = phi(self.flow_v, self.speed, self.D)
         self.psi = psi(self.head, self.speed, self.D)
+        if self.casing_temperature is not None:
+            # correct efficiency with casing heat loss
+            self.casing_heat_loss = (
+                self.convection_constant
+                * self.casing_area
+                * (self.casing_temperature - self.ambient_temperature)
+            )
+            self.eff = self.eff / (
+                1
+                + (
+                    self.casing_heat_loss
+                    / ((self.disch.h() - self.suc.h()) * self.flow_m)
+                )
+            )
+        self.power = power_calc(self.flow_m, self.head, self.eff)
 
     def _calc_from_disch_flow_m_speed_suc(self):
         self.head = self.head_calc_func(self.suc, self.disch)
         self.eff = self.eff_calc_func(self.suc, self.disch)
         self.volume_ratio = self.suc.v() / self.disch.v()
         self.flow_v = self.flow_m / self.suc.rho()
+        if self.casing_temperature is not None:
+            # correct efficiency with casing heat loss
+            self.casing_heat_loss = (
+                self.convection_constant
+                * self.casing_area
+                * (self.casing_temperature - self.ambient_temperature)
+            )
+            self.eff = self.eff / (
+                1
+                + (
+                    self.casing_heat_loss
+                    / ((self.disch.h() - self.suc.h()) * self.flow_m)
+                )
+            )
         self.power = power_calc(self.flow_m, self.head, self.eff)
         self.phi = phi(self.flow_v, self.speed, self.D)
         self.psi = psi(self.head, self.speed, self.D)
@@ -382,7 +429,7 @@ class Point:
 
     @classmethod
     @check_units
-    def convert_from(cls, original_point, suc=None, find="speed", speed=None):
+    def convert_from(cls, original_point, suc=None, find="speed", speed=None, **kwargs):
         """Convert point from an original point.
 
         Parameters
@@ -410,6 +457,7 @@ class Point:
                 volume_ratio=original_point.volume_ratio,
                 b=original_point.b,
                 D=original_point.D,
+                **kwargs,
             ),
             "volume_ratio": dict(
                 suc=suc,
@@ -419,6 +467,7 @@ class Point:
                 speed=speed,
                 b=original_point.b,
                 D=original_point.D,
+                **kwargs,
             ),
         }
 

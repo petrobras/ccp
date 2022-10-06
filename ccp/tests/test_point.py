@@ -494,6 +494,8 @@ def test_global_polytropic_method(suc_0, disch_0):
     p0 = Point(suc=suc_0, disch=disch_0, flow_v=1, speed=1, b=1, D=1)
     assert p0.head.units == "joule/kilogram"
     assert_allclose(p0.head, 82951.470027, rtol=1e-6)
+    # go back to schultz for other tests
+    ccp.config.POLYTROPIC_METHOD = "schultz"
 
 
 def test_case_sc_at():
@@ -504,3 +506,39 @@ def test_case_sc_at():
         p=Q_("16547000 Pa"), T=Q_("416 K"), fluid={"CO2": 0.70000, "METHANE": 0.30000}
     )
     assert_allclose(eff_pol_huntington(suc, disch), 0.818206, rtol=1e-6)
+
+
+def test_point_casing_heat_loss():
+    """P76 MAIN B - CASE A - point 0"""
+    p = Point(
+        flow_m=Q_(7.737, "kg/s"),
+        speed=Q_(7894, "RPM"),
+        b=Q_(28.5, "mm"),
+        D=Q_(365, "mm"),
+        suc=State.define(
+            p=Q_(1.826, "bar"),
+            T=Q_(296.7, "degK"),
+            fluid={
+                "carbon dioxide": 0.80218,
+                "R134a": 0.18842,
+                "nitrogen": 0.0091,
+                "oxygen": 0.0003,
+            },
+        ),
+        disch=State.define(
+            p=Q_(6.142, "bar"),
+            T=Q_(392.1, "degK"),
+            fluid={
+                "carbon dioxide": 0.80218,
+                "R134a": 0.18842,
+                "nitrogen": 0.0091,
+                "oxygen": 0.0003,
+            },
+        ),
+        casing_area=7.5,
+        casing_temperature=Q_(31.309, "degC"),
+        ambient_temperature=Q_(0, "degC"),
+    )
+
+    assert_allclose(p.eff, 0.735723, rtol=1e-6)
+    assert_allclose(p.suc.fluid["CO2"], 0.80218)
