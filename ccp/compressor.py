@@ -28,8 +28,7 @@ class Point1Sec(Point):
         **kwargs,
     ):
         super().__init__(
-            *args,
-            **kwargs,
+            *args, **kwargs,
         )
         self.balance_line_flow = balance_line_flow
         self.seal_gas_flow = seal_gas_flow
@@ -42,7 +41,7 @@ class Point1Sec(Point):
         self.oil_outlet_temperature_nde = oil_outlet_temperature_nde
 
 
-class StraightThrough:
+class StraightThrough(Impeller):
     """Straight Through compressor"""
 
     @check_units
@@ -101,6 +100,7 @@ class StraightThrough:
 
         # convert points_rotor_t to points_rotor_sp
         self.points_rotor_sp = []
+        self.points_flange_sp = []
         # calculate ms1r for the guarantee point
         for point, k in zip(self.points_rotor_t, self.k_seal):
             error = 1
@@ -108,7 +108,7 @@ class StraightThrough:
             Ts1r_sp = guarantee_point.suc.T()
             initial_suc = copy(guarantee_point.suc)
             i = 0
-            while abs(error) > 0.01 and i < 4:
+            while error > 1e-5 and i < 5:
                 initial_suc.update(p=initial_suc.p(), T=Ts1r_sp)
                 initial_point_rotor_sp = Point.convert_from(
                     original_point=point,
@@ -116,9 +116,7 @@ class StraightThrough:
                     speed=self.speed,
                     find="volume_ratio",
                 )
-                qs1r_sp = initial_point_rotor_sp.flow_v
-                vs1r_sp = initial_suc.v()
-                ms1r_sp = qs1r_sp / vs1r_sp
+                ms1r_sp = initial_point_rotor_sp.flow_m
                 mend_sp = flow_m_seal(
                     k,
                     state_up=initial_point_rotor_sp.disch,
@@ -127,16 +125,28 @@ class StraightThrough:
                 ms1f_sp = ms1r_sp - mend_sp
                 Ts1f_sp = guarantee_point.suc.T()
                 # dummy state to calculate Tend
-                dummy_state = copy(guarantee_point.disch)
-                dummy_state.update(p=guarantee_point.suc.p(), h=dummy_state.h())
+                dummy_state = copy(initial_point_rotor_sp.disch)
+                dummy_state.update(p=initial_point_rotor_sp.suc.p(), h=dummy_state.h())
                 Tend_sp = dummy_state.T()
                 Ts1r_sp_new = (ms1f_sp * Ts1f_sp + mend_sp * Tend_sp) / (
                     ms1f_sp + mend_sp
                 )
                 i += 1
-                error = Ts1r_sp_new.m - Ts1r_sp.m
+                error = abs(Ts1r_sp_new.m - Ts1r_sp.m)
                 Ts1r_sp = Ts1r_sp_new
             self.points_rotor_sp.append(initial_point_rotor_sp)
+            self.points_flange_sp.append(
+                Point(
+                    suc=guarantee_point.suc,
+                    disch=initial_point_rotor_sp.disch,
+                    flow_m=ms1f_sp,
+                    speed=speed,
+                    b=guarantee_point.b,
+                    D=guarantee_point.D,
+                )
+            )
+
+            super().__init__(self.points_flange_sp)
 
 
 @check_units
@@ -202,3 +212,16 @@ def flow_m_seal(k_seal, state_up, state_down):
     )
 
     return flow_m_seal
+
+
+def calc_flange_flow(Tsr1,):
+    """Function used to calculate the flange flow.
+
+    For the specified conditions, rotor volumetric flow is calculated by means
+    of the test volumetric flow and conversion with the flow coefficient.
+    The rotor mass flow is not directly calculated, since we do not know the
+    specified rotor suction temperature (we only know the temperature at the
+    flange).
+    To calculate the rotor mass flow first we take a guess using the flange
+    temperature
+    """
