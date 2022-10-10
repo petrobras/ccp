@@ -28,7 +28,8 @@ class Point1Sec(Point):
         **kwargs,
     ):
         super().__init__(
-            *args, **kwargs,
+            *args,
+            **kwargs,
         )
         self.balance_line_flow = balance_line_flow
         self.seal_gas_flow = seal_gas_flow
@@ -146,7 +147,7 @@ class StraightThrough(Impeller):
                 )
             )
 
-            super().__init__(self.points_flange_sp)
+        super().__init__(self.points_flange_sp)
 
 
 @check_units
