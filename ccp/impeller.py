@@ -282,6 +282,15 @@ class Impeller:
         """
         speeds = np.array([curve.speed.magnitude for curve in self.curves])
 
+        # handle case where we only have one curve and can't interpolate
+        if len(speeds) == 1:
+            current_curve = self.curves[0]
+            if speed is not None and speed != current_curve.speed:
+                raise ValueError(
+                    f"Can only interpolate for speed={current_curve.speed}"
+                )
+            return current_curve
+
         closest_curves_idxs = find_closest_speeds(speeds, speed.magnitude)
         curves = [
             self.curves[closest_curves_idxs[0]],
