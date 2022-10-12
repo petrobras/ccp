@@ -49,7 +49,12 @@ point1 = ccp.Point(
 # Create an impeller with those points:
 
 imp = ccp.Impeller([point0, point1])
+
+# Get results from the Impeller with methods such as
+imp.head_plot()
+imp.disch.T.plot()
 ```
+You can get more details by reading the {ref}`Tutorial`.
 
 ```{bibliography}
 :filter: docname in docnames
