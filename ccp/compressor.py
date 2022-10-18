@@ -194,6 +194,37 @@ class Point2Sec(Point):
         self.oil_outlet_temperature_nde = oil_outlet_temperature_nde
 
 
+class BackToBack(Impeller):
+    """Back to Back compressor"""
+
+    @check_units
+    def __init__(
+        self,
+        guarantee_point_sec1,
+        test_points_sec1,
+        guarantee_point_sec2,
+        test_points_sec2,
+        speed=None,
+    ):
+        self.guarantee_point_sec1 = guarantee_point_sec1
+        self.guarantee_point_sec2 = guarantee_point_sec2
+        self.test_points_sec1 = test_points_sec1
+        self.test_points_sec2 = test_points_sec2
+        if speed is None:
+            speed = guarantee_point_sec1.speed
+        self.speed = speed
+
+        # points for test flange conditions
+        self.points_flange_t_sec1 = test_points_sec1
+
+        # calculate rotor condition
+        test_points_rotor = []
+        self.k_seal = []  # list with seal constants
+        for point in test_points_sec1:
+            # TODO calculate points sec 1
+            pass
+
+
 @check_units
 def k_seal(flow_m, state_up, state_down):
     """Function to calculate the seal constant k.
