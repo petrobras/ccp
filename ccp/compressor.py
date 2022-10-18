@@ -16,8 +16,8 @@ class Point1Sec(Point):
     def __init__(
         self,
         *args,
-        balance_line_flow=None,
-        seal_gas_flow=None,
+        balance_line_flow_m=None,
+        seal_gas_flow_m=None,
         seal_gas_temperature=None,
         oil_flow_journal_bearing_de=None,
         oil_flow_journal_bearing_nde=None,
@@ -31,8 +31,8 @@ class Point1Sec(Point):
             *args,
             **kwargs,
         )
-        self.balance_line_flow = balance_line_flow
-        self.seal_gas_flow = seal_gas_flow
+        self.balance_line_flow_m = balance_line_flow_m
+        self.seal_gas_flow_m = seal_gas_flow_m
         self.seal_gas_temperature = seal_gas_temperature
         self.oil_flow_journal_bearing_de = oil_flow_journal_bearing_de
         self.oil_flow_journal_bearing_nde = oil_flow_journal_bearing_nde
@@ -61,8 +61,8 @@ class StraightThrough(Impeller):
         self.k_seal = []  # list with seal constants
         for point in test_points:
             ms1f = point.flow_m
-            mbal = point.balance_line_flow
-            mseal = point.seal_gas_flow
+            mbal = point.balance_line_flow_m
+            mseal = point.seal_gas_flow_m
 
             mend = mbal - (0.95 * mseal) / 2
             point.mend = mend
