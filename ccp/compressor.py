@@ -150,6 +150,50 @@ class StraightThrough(Impeller):
         super().__init__(self.points_flange_sp)
 
 
+class Point2Sec(Point):
+    """Point class for a compressor with 2 sections."""
+
+    def __init__(
+        self,
+        *args,
+        balance_line_flow_m=None,
+        seal_gas_flow_m=None,
+        seal_gas_temperature=None,
+        first_section_discharge_flow_m=None,
+        division_wall_flow_m=None,
+        end_seal_upstream_temperature=None,
+        end_seal_downstream_temperature=None,
+        end_seal_upstream_pressure=None,
+        end_seal_downstream_pressure=None,
+        oil_flow_journal_bearing_de=None,
+        oil_flow_journal_bearing_nde=None,
+        oil_flow_thrust_bearing_nde=None,
+        oil_inlet_temperature=None,
+        oil_outlet_temperature_de=None,
+        oil_outlet_temperature_nde=None,
+        **kwargs,
+    ):
+        super().__init__(
+            *args,
+            **kwargs,
+        )
+        self.balance_line_flow_m = balance_line_flow_m
+        self.seal_gas_flow_m = seal_gas_flow_m
+        self.seal_gas_temperature = seal_gas_temperature
+        self.first_section_discharge_flow_m = first_section_discharge_flow_m
+        self.division_wall_flow_m = division_wall_flow_m
+        self.end_seal_upstream_temperature = end_seal_upstream_temperature
+        self.end_seal_downstream_temperature = end_seal_downstream_temperature
+        self.end_seal_upstream_pressure = end_seal_upstream_pressure
+        self.end_seal_downstream_pressure = end_seal_downstream_pressure
+        self.oil_flow_journal_bearing_de = oil_flow_journal_bearing_de
+        self.oil_flow_journal_bearing_nde = oil_flow_journal_bearing_nde
+        self.oil_flow_thrust_bearing_nde = oil_flow_thrust_bearing_nde
+        self.oil_inlet_temperature = oil_inlet_temperature
+        self.oil_outlet_temperature_de = oil_outlet_temperature_de
+        self.oil_outlet_temperature_nde = oil_outlet_temperature_nde
+
+
 @check_units
 def k_seal(flow_m, state_up, state_down):
     """Function to calculate the seal constant k.
