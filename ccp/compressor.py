@@ -162,9 +162,9 @@ class Point2Sec(Point):
         first_section_discharge_flow_m=None,
         division_wall_flow_m=None,
         end_seal_upstream_temperature=None,
-        end_seal_downstream_temperature=None,
         end_seal_upstream_pressure=None,
-        end_seal_downstream_pressure=None,
+        div_wall_upstream_temperature=None,
+        div_wall_upstream_pressure=None,
         oil_flow_journal_bearing_de=None,
         oil_flow_journal_bearing_nde=None,
         oil_flow_thrust_bearing_nde=None,
@@ -183,9 +183,9 @@ class Point2Sec(Point):
         self.first_section_discharge_flow_m = first_section_discharge_flow_m
         self.division_wall_flow_m = division_wall_flow_m
         self.end_seal_upstream_temperature = end_seal_upstream_temperature
-        self.end_seal_downstream_temperature = end_seal_downstream_temperature
         self.end_seal_upstream_pressure = end_seal_upstream_pressure
-        self.end_seal_downstream_pressure = end_seal_downstream_pressure
+        self.div_wall_upstream_temperature = div_wall_upstream_temperature
+        self.div_wall_upstream_pressure = div_wall_upstream_pressure
         self.oil_flow_journal_bearing_de = oil_flow_journal_bearing_de
         self.oil_flow_journal_bearing_nde = oil_flow_journal_bearing_nde
         self.oil_flow_thrust_bearing_nde = oil_flow_thrust_bearing_nde
