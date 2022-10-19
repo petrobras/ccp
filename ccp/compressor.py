@@ -221,8 +221,29 @@ class BackToBack(Impeller):
         test_points_rotor = []
         self.k_seal = []  # list with seal constants
         for point in test_points_sec1:
-            # TODO calculate points sec 1
-            pass
+            if point.first_section_discharge_flow_m:
+                md1f_t = point.first_section_discharge_flow_m
+                ms1f_t = point.flow_m
+                mbal_t = point.balance_line_flow_m
+                mbuf_t = point.seal_gas_flow_m
+                mend_t = mbal_t - (0.95 * mbuf_t) / 2
+                mdiv_t = md1f_t - ms1f_t - mend_t - 0.95 * mbuf_t
+                ms1r_t = ms1f_t + mend_t + 0.95 * mbuf_t
+
+                ps1f_t = point.suc.p()
+                Ts1f_t = point.suc.T()
+                ps2f_t = point.end_seal_upstream_pressure
+                Ts2f_t = point.end_seal_upstream_temperature
+                Tbuf_t = point.seal_gas_temperature
+                # dummy state to calculate Tend
+                end_seal_state = State.define(p=ps2f_t, T=Ts2f_t, fluid=point.suc.fluid)
+                end_seal_state.update(p=ps1f_t.suc.p(), h=end_seal_state.h())
+                Tend_sp = end_seal_state.T()
+                Ts1r_t = (
+                    ms1f_t * Ts1f_t + mend_t * Tend_sp + 0.95 * mbuf_t * Tbuf_t
+                ) / (ms1f_t + mend_t + 0.95 * mbuf_t)
+
+            # TODO create rotor test points
 
 
 @check_units
