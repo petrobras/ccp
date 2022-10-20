@@ -295,7 +295,6 @@ def test_straight_through(straight_through):
     assert_allclose(p0f.power, 654187.626)
     k_seal = straight_through.k_seal[0]
     assert_allclose(k_seal, 1.201149e-05)
-    assert_allclose(p0f.mend, Q_(302.1678, "kg/h").to("kg/s"))
 
     # rotor test
     p0r = straight_through.points_rotor_t[0]
