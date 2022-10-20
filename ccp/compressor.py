@@ -65,8 +65,7 @@ class StraightThrough(Impeller):
             mseal = point.seal_gas_flow_m
 
             mend = mbal - (0.95 * mseal) / 2
-            point.mend = mend
-            point.ms1r = ms1f + mend
+            ms1r = ms1f + mend
 
             Ts1f = point.suc.T()
             # dummy state to calculate Tend
@@ -87,7 +86,7 @@ class StraightThrough(Impeller):
                 Point(
                     suc=suc_rotor,
                     disch=point.disch,
-                    flow_m=point.ms1r,
+                    flow_m=ms1r,
                     speed=point.speed,
                     b=point.b,
                     D=point.D,
@@ -218,8 +217,9 @@ class BackToBack(Impeller):
         self.points_flange_t_sec1 = test_points_sec1
 
         # calculate rotor condition
-        test_points_rotor = []
+        test_points_sec1_rotor = []
         self.k_seal = []  # list with seal constants
+        self.k_div_wall = []  # list with div wall seal constants
         for point in test_points_sec1:
             if point.first_section_discharge_flow_m:
                 md1f_t = point.first_section_discharge_flow_m
@@ -234,16 +234,45 @@ class BackToBack(Impeller):
                 Ts1f_t = point.suc.T()
                 ps2f_t = point.end_seal_upstream_pressure
                 Ts2f_t = point.end_seal_upstream_temperature
+                pd1f_t = point.disch.p()
+                Td1f_t = point.disch.T()
+                pd2f_t = point.div_wall_upstream_temperature
+                Td2f_t = point.div_wall_upstream_pressure
                 Tbuf_t = point.seal_gas_temperature
+
                 # dummy state to calculate Tend
                 end_seal_state = State.define(p=ps2f_t, T=Ts2f_t, fluid=point.suc.fluid)
                 end_seal_state.update(p=ps1f_t.suc.p(), h=end_seal_state.h())
-                Tend_sp = end_seal_state.T()
-                Ts1r_t = (
-                    ms1f_t * Ts1f_t + mend_t * Tend_sp + 0.95 * mbuf_t * Tbuf_t
-                ) / (ms1f_t + mend_t + 0.95 * mbuf_t)
+                Tend_t = end_seal_state.T()
 
-            # TODO create rotor test points
+                # dummy state to calculate Tdiv
+                div_seal_state = State.define(p=pd2f_t, T=Td2f_t, fluid=point.suc.fluid)
+                div_seal_state.update(p=pd1f_t.suc.p(), h=div_seal_state.h())
+                Tdiv_t = div_seal_state.T()
+                Ts1r_t = (
+                    ms1f_t * Ts1f_t + mend_t * Tend_t + 0.95 * mbuf_t * Tbuf_t
+                ) / (ms1f_t + mend_t + 0.95 * mbuf_t)
+                Td1r_t = (md1f_t * Td1f_t - mdiv_t * Tdiv_t) / (md1f_t - mdiv_t)
+                suc_sec1_rotor_t = State.define(
+                    p=ps1f_t, T=Ts1r_t, fluid=point.suc.fluid
+                )
+                disch_sec1_rotor_t = State.define(
+                    p=pd1f_t, T=Td1r_t, fluid=point.suc.fluid
+                )
+
+                test_points_sec1_rotor.append(
+                    Point(
+                        suc=suc_sec1_rotor_t,
+                        disch=disch_sec1_rotor_t,
+                        flow_m=ms1r_t,
+                        speed=point.speed,
+                        b=point.b,
+                        D=point.D,
+                        casing_area=point.casing_area,
+                        casing_temperature=point.casing_temperature,
+                        ambient_temperature=point.ambient_temperature,
+                    )
+                )
 
 
 @check_units
