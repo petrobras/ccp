@@ -146,7 +146,7 @@ class StraightThrough(Impeller):
                 )
             )
 
-            super().__init__(self.points_flange_sp)
+        super().__init__(self.points_flange_sp)
 
 
 @check_units
