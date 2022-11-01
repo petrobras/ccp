@@ -1,4 +1,5 @@
 import pytest
+import numpy as np
 from numpy.testing import assert_allclose
 from ccp.compressor import StraightThrough, Point1Sec
 from ccp.point import Point
@@ -295,6 +296,7 @@ def test_straight_through(straight_through):
     k_seal = straight_through.k_seal[0]
     assert_allclose(k_seal, 1.201149e-05)
     assert_allclose(p0f.mend, Q_(302.1678, "kg/h").to("kg/s"))
+
     # rotor test
     p0r = straight_through.points_rotor_t[0]
     assert_allclose(p0r.flow_m, Q_(28155.3678, "kg/h").to("kg/s"))
@@ -307,13 +309,12 @@ def test_straight_through(straight_through):
 
     # rotor specified
     p0r_sp = straight_through.points_rotor_sp[0]
-    print(p0r_sp.flow_m.to("kg/h"))
     assert_allclose(p0r_sp.flow_m, Q_(171207.7077, "kg/h").to("kg/s"), rtol=1e-3)
     assert_allclose(p0r_sp.suc.T(), 312.646427, rtol=1e-3)
     assert_allclose(p0r_sp.suc.p(), 1699000)
     assert_allclose(p0r_sp.head, 148674.8794, rtol=1e-6)
     assert_allclose(p0r_sp.eff, 0.7444869804, rtol=1e-6)
-    assert_allclose(p0r_sp.power, 9501324.55769, rtol=1e-7)
+    assert_allclose(p0r_sp.power, 9501324.55769, rtol=1e-4)
 
     # flange specified
     p0f_sp = straight_through.points_flange_sp[0]
@@ -324,4 +325,22 @@ def test_straight_through(straight_through):
     assert_allclose(p0f_sp.eff, 0.7357389512832868, rtol=1e-6)
     assert_allclose(p0f_sp.power, 9501324.55769, rtol=1e-3)
 
-
+    # imp specified
+    assert_allclose(
+        straight_through.head,
+        np.array(
+            [
+                [
+                    211610.343979,
+                    205136.724749,
+                    173289.555545,
+                    148399.758034,
+                    193804.346837,
+                ]
+            ]
+        ),
+    )
+    point_sp = straight_through.point(
+        speed=straight_through.speed, flow_m=Q_(142000, "kg/h")
+    )
+    assert_allclose(point_sp.eff, 0.820459, rtol=1e-5)
