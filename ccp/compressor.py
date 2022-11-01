@@ -28,7 +28,8 @@ class Point1Sec(Point):
         **kwargs,
     ):
         super().__init__(
-            *args, **kwargs,
+            *args,
+            **kwargs,
         )
         self.balance_line_flow = balance_line_flow
         self.seal_gas_flow = seal_gas_flow
