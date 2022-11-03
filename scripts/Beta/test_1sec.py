@@ -1,7 +1,6 @@
 import os
 
 FileName = os.path.basename(__file__)[:-3]
-# FileName = "Beta_1section.xlsm"
 
 from xlwings import Book
 
