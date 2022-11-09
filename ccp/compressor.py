@@ -11,8 +11,79 @@ import numpy as np
 
 
 class Point1Sec(Point):
-    """Point class for a compressor with 1 section."""
+    """Point class for a compressor with 1 section.
 
+    Parameters
+    ----------
+    balance_line_flow_m : float, pint.Quantity
+        Balance line mass flow (kg/s).
+    seal_gas_flow_m : float, pint.Quantity
+        Seal gas mass flow (kg/s).
+    seal_gas_temperature : float, pint.Quantity
+        Seal gas injection temperature (degK).
+    oil_flow_journal_bearing_de : float, pint.Quantity
+        Oil flow journal bearing drive end side (m³/s).
+    oil_flow_journal_bearing_nde : float, pint.Quantity
+        Oil flow journal bearing non-drive end side (m³/s).
+    oil_flow_thrust_bearing_nde : float, pint.Quantity
+         Oil flow journal bearing thrust bearing (m³/s).
+    oil_inlet_temperature : float, pint.Quantity
+        Oil inlet temperature (degK).
+    oil_outlet_temperature_de : float, pint.Quantity
+        Oil outlet temperature journal bearing drive end side (degK).
+    oil_outlet_temperature_nde : float, pint.Quantity
+        Oil outlet temperature bearing non-drive end side (degK).
+
+    Returns
+    -------
+    point1sec : ccp.Point1Sec
+        A point for a straight through compressor (inherited from ccp.Point).
+
+    Examples
+    --------
+    >>> import ccp
+    >>> p = Point1Sec(
+    ...     flow_m=Q_(7.737, "kg/s"),
+    ...     speed=Q_(7894, "RPM"),
+    ...     b=Q_(28.5, "mm"),
+    ...     D=Q_(365, "mm"),
+    ...     suc=State.define(
+    ...         p=Q_(1.826, "bar"),
+    ...         T=Q_(296.7, "degK"),
+    ...         fluid={
+    ...             "carbon dioxide": 0.80218,
+    ...             "R134a": 0.18842,
+    ...             "nitrogen": 0.0091,
+    ...             "oxygen": 0.0003,
+    ...         },
+    ...     ),
+    ...     disch=State.define(
+    ...         p=Q_(6.142, "bar"),
+    ...         T=Q_(392.1, "degK"),
+    ...         fluid={
+    ...             "carbon dioxide": 0.80218,
+    ...             "R134a": 0.18842,
+    ...             "nitrogen": 0.0091,
+    ...             "oxygen": 0.0003,
+    ...         },
+    ...     ),
+    ...     balance_line_flow_m=Q_(0.1076, "kg/s"),
+    ...     seal_gas_flow_m=Q_(0.04982, "kg/s"),
+    ...     seal_gas_temperature=Q_(297.7, "degK"),
+    ...     oil_flow_journal_bearing_de=Q_(27.084, "l/min"),
+    ...     oil_flow_journal_bearing_nde=Q_(47.984, "l/min"),
+    ...     oil_flow_thrust_bearing_nde=Q_(33.52, "l/min"),
+    ...     oil_inlet_temperature=Q_(42.184, "degC"),
+    ...     oil_outlet_temperature_de=Q_(48.111, "degC"),
+    ...     oil_outlet_temperature_nde=Q_(46.879, "degC"),
+    ...     casing_area=7.5,
+    ...     casing_temperature=Q_(31.309, "degC"),
+    ...     ambient_temperature=Q_(0, "degC"),
+    ...     )
+
+    """
+
+    @check_units
     def __init__(
         self,
         *args,
