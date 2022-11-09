@@ -221,8 +221,90 @@ class StraightThrough(Impeller):
 
 
 class Point2Sec(Point):
-    """Point class for a compressor with 2 sections."""
+    """Point class for a compressor with 2 sections in a back-to-back configuration.
 
+    Parameters
+    ----------
+    balance_line_flow_m : float, pint.Quantity
+        Balance line mass flow (kg/s).
+    seal_gas_flow_m : float, pint.Quantity
+        Seal gas mass flow (kg/s).
+    seal_gas_temperature : float, pint.Quantity
+        Seal gas injection temperature (degK).
+    first_section_discharge_flow_m : float, pint.Quantity
+        First section discharge mass flow (kg/s).
+    division_wall_flow_m : float, pint.Quantity
+        Division wall mass flow (kg/s).
+    end_seal_upstream_temperature : float, pint.Quantity
+        Temperature upstream the end seal (degK).
+    end_seal_upstream_pressure : float, pint.Quantity
+        Pressure upstream the end seal (Pa).
+    div_wall_upstream_temperature : float, pint.Quantity
+        Temperature upstream the division wall (degK).
+    div_wall_upstream_pressure : float, pint.Quantity
+         Pressure upstream the division wall (Pa).
+    oil_flow_journal_bearing_de : float, pint.Quantity
+        Oil flow journal bearing drive end side (m³/s).
+    oil_flow_journal_bearing_nde : float, pint.Quantity
+        Oil flow journal bearing non-drive end side (m³/s).
+    oil_flow_thrust_bearing_nde : float, pint.Quantity
+         Oil flow journal bearing thrust bearing (m³/s).
+    oil_inlet_temperature : float, pint.Quantity
+        Oil inlet temperature (degK).
+    oil_outlet_temperature_de : float, pint.Quantity
+        Oil outlet temperature journal bearing drive end side (degK).
+    oil_outlet_temperature_nde : float, pint.Quantity
+        Oil outlet temperature bearing non-drive end side (degK).
+
+    Returns
+    -------
+    point1sec : ccp.Point1Sec
+        A point for a straight through compressor (inherited from ccp.Point).
+
+    Examples
+    --------
+    >>> import ccp
+    >>> p = Point2Sec(
+    ...     flow_m=Q_(4.325, "kg/s"),
+    ...     speed=Q_(9096, "RPM"),
+    ...     b=Q_(10.5, "mm"),
+    ...     D=Q_(365, "mm"),
+    ...     suc=State.define(
+    ...         p=Q_(5.182, "bar"),
+    ...         T=Q_(299.5, "degK"),
+    ...         fluid={
+    ...             "carbon dioxide": 1,
+    ...         },
+    ...     ),
+    ...     disch=State.define(
+    ...         p=Q_(14.95, "bar"),
+    ...         T=Q_(397.6, "degK"),
+    ...         fluid={
+    ...             "carbon dioxide": 1,
+    ...         },
+    ...     ),
+    ...     balance_line_flow_m=Q_(0.1625, "kg/s"),
+    ...     seal_gas_flow_m=Q_(0.0616, "kg/s"),
+    ...     seal_gas_temperature=299.7,
+    ...     first_section_discharge_flow_m=4.8059,
+    ...     division_wall_flow_m=None,
+    ...     end_seal_upstream_temperature=304.3,
+    ...     end_seal_upstream_pressure=14.59,
+    ...     div_wall_upstream_temperature=362.5,
+    ...     div_wall_upstream_pressure=26.15,
+    ...     oil_flow_journal_bearing_de=Q_(31.515, "l/min"),
+    ...     oil_flow_journal_bearing_nde=Q_(22.67, "l/min"),
+    ...     oil_flow_thrust_bearing_nde=Q_(126.729, "l/min"),
+    ...     oil_inlet_temperature=Q_(41.544, "degC"),
+    ...     oil_outlet_temperature_de=Q_(49.727, "degC"),
+    ...     oil_outlet_temperature_nde=Q_(50.621, "degC"),
+    ...     casing_area=5.5,
+    ...     casing_temperature=Q_(23.895, "degC"),
+    ...     ambient_temperature=Q_(0, "degC"),
+    ... )
+    """
+
+    @check_units
     def __init__(
         self,
         *args,
