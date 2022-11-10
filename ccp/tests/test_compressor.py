@@ -1,7 +1,7 @@
 import pytest
 import numpy as np
 from numpy.testing import assert_allclose
-from ccp.compressor import StraightThrough, Point1Sec
+from ccp.compressor import StraightThrough, Point1Sec, Point2Sec
 from ccp.point import Point
 from ccp.state import State
 from ccp import Q_
@@ -343,3 +343,76 @@ def test_straight_through(straight_through):
         speed=straight_through.speed, flow_m=Q_(142000, "kg/h")
     )
     assert_allclose(point_sp.eff, 0.820459, rtol=1e-5)
+
+
+def test_point2sec():
+    p = Point2Sec(
+        flow_m=Q_(4.325, "kg/s"),
+        speed=Q_(9096, "RPM"),
+        b=Q_(10.5, "mm"),
+        D=Q_(365, "mm"),
+        suc=State.define(
+            p=Q_(5.182, "bar"),
+            T=Q_(299.5, "degK"),
+            fluid={
+                "carbon dioxide": 1,
+            },
+        ),
+        disch=State.define(
+            p=Q_(14.95, "bar"),
+            T=Q_(397.6, "degK"),
+            fluid={
+                "carbon dioxide": 1,
+            },
+        ),
+        balance_line_flow_m=Q_(0.1625, "kg/s"),
+        seal_gas_flow_m=Q_(0.0616, "kg/s"),
+        seal_gas_temperature=299.7,
+        first_section_discharge_flow_m=4.8059,
+        division_wall_flow_m=None,
+        end_seal_upstream_temperature=304.3,
+        end_seal_upstream_pressure=14.59,
+        div_wall_upstream_temperature=362.5,
+        div_wall_upstream_pressure=26.15,
+        oil_flow_journal_bearing_de=Q_(31.515, "l/min"),
+        oil_flow_journal_bearing_nde=Q_(22.67, "l/min"),
+        oil_flow_thrust_bearing_nde=Q_(126.729, "l/min"),
+        oil_inlet_temperature=Q_(41.544, "degC"),
+        oil_outlet_temperature_de=Q_(49.727, "degC"),
+        oil_outlet_temperature_nde=Q_(50.621, "degC"),
+        casing_area=5.5,
+        casing_temperature=Q_(23.895, "degC"),
+        ambient_temperature=Q_(0, "degC"),
+    )
+
+    assert_allclose(p.eff, 0.793154028573233, rtol=1e-6)
+    assert_allclose(p.suc.fluid["CO2"], 1.0)
+
+
+@pytest.fixture
+def back_to_back():
+    fluid_sp = {
+        "methane": 73.66,
+        "ethane": 11.53,
+        "propane": 7.38,
+        "butane": 1.87,
+        "isobutane": 1.1,
+        "pentane": 0.33,
+        "isopentane": 0.3,
+        "hexane": 0.06,
+        "nitrogen": 0.76,
+        "hydrogen sulfide": 0.02,
+        "carbon dioxide": 3,
+        "water": 0,
+    }
+
+    suc_sp = State.define(p=Q_(47.39, "bar"), T=Q_(40, "degC"), fluid=fluid_sp)
+    disch_sp = State.define(p=Q_(136.27, "bar"), T=Q_(123.7, "degC"), fluid=fluid_sp)
+    guarantee_point = Point(
+        suc=suc_sp,
+        disch=disch_sp,
+        flow_v=Q_(2283, "m³/h"),
+        speed=Q_(12360, "RPM"),
+        b=Q_(10.15, "mm"),
+        D=Q_(365, "mm"),
+    )
