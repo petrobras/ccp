@@ -70,7 +70,6 @@ units = {
     "load": "N",
     "force": "N",
     "torque": "N*m",
-    "flowv": "m³/s",
     "flow_v": "meter**3/second",
     "flow_m": "kilogram/second",
     "fit": "m",
@@ -126,6 +125,13 @@ def check_units(func):
             if "units" in names:
                 base_unit_args.append(arg_value)
                 continue
+
+            # treat flow_v and flow_m separately
+            if "flow_v" in arg_name:
+                names.insert(0, "flow_v")
+            if "flow_m" in arg_name:
+                names.insert(0, "flow_m")
+
             if arg_name not in names:
                 # check first for arg_name in units
                 names.insert(0, arg_name)
@@ -152,6 +158,13 @@ def check_units(func):
             if "units" in names:
                 base_unit_kwargs[k] = v
                 continue
+
+            # treat flow_v and flow_m separately
+            if "flow_v" in k:
+                names.insert(0, "flow_v")
+            if "flow_m" in k:
+                names.insert(0, "flow_m")
+
             if k not in names:
                 # check first for arg_name in units
                 names.insert(0, k)
