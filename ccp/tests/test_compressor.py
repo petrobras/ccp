@@ -1,7 +1,7 @@
 import pytest
 import numpy as np
 from numpy.testing import assert_allclose
-from ccp.compressor import StraightThrough, Point1Sec, Point2Sec
+from ccp.compressor import StraightThrough, Point1Sec, Point2Sec, BackToBack
 from ccp.point import Point
 from ccp.state import State
 from ccp import Q_
@@ -293,7 +293,7 @@ def test_straight_through(straight_through):
     assert_allclose(p0f.casing_heat_loss, 3193.518)
     assert_allclose(p0f.eff, 0.735723, rtol=1e-6)
     assert_allclose(p0f.power, 654187.626)
-    k_seal = straight_through.k_seal[0]
+    k_seal = straight_through.k_end_seal[0]
     assert_allclose(k_seal, 1.201149e-05)
 
     # rotor test
@@ -369,11 +369,11 @@ def test_point2sec():
         seal_gas_flow_m=Q_(0.0616, "kg/s"),
         seal_gas_temperature=299.7,
         first_section_discharge_flow_m=4.8059,
-        division_wall_flow_m=None,
+        div_wall_flow_m=None,
         end_seal_upstream_temperature=304.3,
-        end_seal_upstream_pressure=14.59,
+        end_seal_upstream_pressure=Q_(14.59, "bar"),
         div_wall_upstream_temperature=362.5,
-        div_wall_upstream_pressure=26.15,
+        div_wall_upstream_pressure=Q_(26.15, "bar"),
         oil_flow_journal_bearing_de=Q_(31.515, "l/min"),
         oil_flow_journal_bearing_nde=Q_(22.67, "l/min"),
         oil_flow_thrust_bearing_nde=Q_(126.729, "l/min"),
@@ -406,13 +406,296 @@ def back_to_back():
         "water": 0,
     }
 
-    suc_sp = State.define(p=Q_(47.39, "bar"), T=Q_(40, "degC"), fluid=fluid_sp)
-    disch_sp = State.define(p=Q_(136.27, "bar"), T=Q_(123.7, "degC"), fluid=fluid_sp)
-    guarantee_point = Point(
-        suc=suc_sp,
-        disch=disch_sp,
+    suc_sp_sec1 = State.define(p=Q_(47.39, "bar"), T=Q_(40, "degC"), fluid=fluid_sp)
+    disch_sp_sec1 = State.define(
+        p=Q_(136.27, "bar"), T=Q_(123.7, "degC"), fluid=fluid_sp
+    )
+    guarantee_point_sec1 = Point(
+        suc=suc_sp_sec1,
+        disch=disch_sp_sec1,
         flow_v=Q_(2283, "m³/h"),
         speed=Q_(12360, "RPM"),
         b=Q_(10.15, "mm"),
         D=Q_(365, "mm"),
     )
+    suc_sp_sec2 = State.define(p=Q_(135.38, "bar"), T=Q_(40, "degC"), fluid=fluid_sp)
+    disch_sp_sec2 = State.define(
+        p=Q_(250.44, "bar"), T=Q_(86.7, "degC"), fluid=fluid_sp
+    )
+    guarantee_point_sec2 = Point(
+        suc=suc_sp_sec2,
+        disch=disch_sp_sec2,
+        flow_v=Q_(726, "m³/h"),
+        speed=Q_(12360, "RPM"),
+        b=Q_(6.38, "mm"),
+        D=Q_(320, "mm"),
+    )
+
+    test_points_sec1 = [
+        Point2Sec(
+            flow_m=Q_(8.716, "kg/s"),
+            speed=Q_(9024, "RPM"),
+            b=Q_(10.5, "mm"),
+            D=Q_(365, "mm"),
+            suc=State.define(
+                p=Q_(7.083, "bar"),
+                T=Q_(298.9, "degK"),
+                fluid={
+                    "carbon dioxide": 1,
+                },
+            ),
+            disch=State.define(
+                p=Q_(14.16, "bar"),
+                T=Q_(377.1, "degK"),
+                fluid={
+                    "carbon dioxide": 1,
+                },
+            ),
+            balance_line_flow_m=None,
+            seal_gas_flow_m=0.06504,
+            seal_gas_temperature=299.5,
+            first_section_discharge_flow_m=None,
+            div_wall_flow_m=None,
+            end_seal_upstream_temperature=303.5,
+            end_seal_upstream_pressure=Q_(13.1, "bar"),
+            div_wall_upstream_temperature=361.8,
+            div_wall_upstream_pressure=Q_(23.13, "bar"),
+            oil_flow_journal_bearing_de=Q_(31.515, "l/min"),
+            oil_flow_journal_bearing_nde=Q_(22.67, "l/min"),
+            oil_flow_thrust_bearing_nde=Q_(126.729, "l/min"),
+            oil_inlet_temperature=Q_(41.544, "degC"),
+            oil_outlet_temperature_de=Q_(49.727, "degC"),
+            oil_outlet_temperature_nde=Q_(50.621, "degC"),
+            casing_area=5.5,
+            casing_temperature=Q_(23.895, "degC"),
+            ambient_temperature=Q_(0, "degC"),
+        ),
+        Point2Sec(
+            flow_m=Q_(5.724, "kg/s"),
+            speed=Q_(9057, "RPM"),
+            b=Q_(10.5, "mm"),
+            D=Q_(365, "mm"),
+            suc=State.define(
+                p=Q_(5.592, "bar"),
+                T=Q_(298.7, "degK"),
+                fluid={
+                    "carbon dioxide": 1,
+                },
+            ),
+            disch=State.define(
+                p=Q_(14.78, "bar"),
+                T=Q_(389.8, "degK"),
+                fluid={
+                    "carbon dioxide": 1,
+                },
+            ),
+            balance_line_flow_m=None,
+            seal_gas_flow_m=Q_(0.05942, "kg/s"),
+            seal_gas_temperature=299.1,
+            first_section_discharge_flow_m=None,
+            div_wall_flow_m=None,
+            end_seal_upstream_temperature=304.1,
+            end_seal_upstream_pressure=Q_(14.27, "bar"),
+            div_wall_upstream_temperature=363.7,
+            div_wall_upstream_pressure=Q_(25.43, "bar"),
+            oil_flow_journal_bearing_de=Q_(31.515, "l/min"),
+            oil_flow_journal_bearing_nde=Q_(22.67, "l/min"),
+            oil_flow_thrust_bearing_nde=Q_(126.729, "l/min"),
+            oil_inlet_temperature=Q_(41.544, "degC"),
+            oil_outlet_temperature_de=Q_(49.727, "degC"),
+            oil_outlet_temperature_nde=Q_(50.621, "degC"),
+            casing_area=5.5,
+            casing_temperature=Q_(23.895, "degC"),
+            ambient_temperature=Q_(0, "degC"),
+        ),
+        Point2Sec(
+            flow_m=Q_(4.325, "kg/s"),
+            speed=Q_(9096, "RPM"),
+            b=Q_(10.5, "mm"),
+            D=Q_(365, "mm"),
+            suc=State.define(
+                p=Q_(5.182, "bar"),
+                T=Q_(299.5, "degK"),
+                fluid={
+                    "carbon dioxide": 1,
+                },
+            ),
+            disch=State.define(
+                p=Q_(14.95, "bar"),
+                T=Q_(397.6, "degK"),
+                fluid={
+                    "carbon dioxide": 1,
+                },
+            ),
+            balance_line_flow_m=Q_(0.1625, "kg/s"),
+            seal_gas_flow_m=Q_(0.0616, "kg/s"),
+            seal_gas_temperature=299.7,
+            first_section_discharge_flow_m=4.8059,
+            div_wall_flow_m=None,
+            end_seal_upstream_temperature=304.3,
+            end_seal_upstream_pressure=Q_(14.59, "bar"),
+            div_wall_upstream_temperature=362.5,
+            div_wall_upstream_pressure=Q_(26.15, "bar"),
+            oil_flow_journal_bearing_de=Q_(31.515, "l/min"),
+            oil_flow_journal_bearing_nde=Q_(22.67, "l/min"),
+            oil_flow_thrust_bearing_nde=Q_(126.729, "l/min"),
+            oil_inlet_temperature=Q_(41.544, "degC"),
+            oil_outlet_temperature_de=Q_(49.727, "degC"),
+            oil_outlet_temperature_nde=Q_(50.621, "degC"),
+            casing_area=5.5,
+            casing_temperature=Q_(23.895, "degC"),
+            ambient_temperature=Q_(0, "degC"),
+        ),
+        Point2Sec(
+            flow_m=Q_(3.888, "kg/s"),
+            speed=Q_(9071, "RPM"),
+            b=Q_(10.5, "mm"),
+            D=Q_(365, "mm"),
+            suc=State.define(
+                p=Q_(5.16, "bar"),
+                T=Q_(300.4, "degK"),
+                fluid={
+                    "carbon dioxide": 1,
+                },
+            ),
+            disch=State.define(
+                p=Q_(15.07, "bar"),
+                T=Q_(400.2, "degK"),
+                fluid={
+                    "carbon dioxide": 1,
+                },
+            ),
+            balance_line_flow_m=None,
+            seal_gas_flow_m=Q_(0.06099, "kg/s"),
+            seal_gas_temperature=300.6,
+            first_section_discharge_flow_m=None,
+            div_wall_flow_m=None,
+            end_seal_upstream_temperature=304.6,
+            end_seal_upstream_pressure=Q_(14.66, "bar"),
+            div_wall_upstream_temperature=361.8,
+            div_wall_upstream_pressure=Q_(25.99, "bar"),
+            oil_flow_journal_bearing_de=Q_(31.515, "l/min"),
+            oil_flow_journal_bearing_nde=Q_(22.67, "l/min"),
+            oil_flow_thrust_bearing_nde=Q_(126.729, "l/min"),
+            oil_inlet_temperature=Q_(41.544, "degC"),
+            oil_outlet_temperature_de=Q_(49.727, "degC"),
+            oil_outlet_temperature_nde=Q_(50.621, "degC"),
+            casing_area=5.5,
+            casing_temperature=Q_(23.895, "degC"),
+            ambient_temperature=Q_(0, "degC"),
+        ),
+        Point2Sec(
+            flow_m=Q_(3.277, "kg/s"),
+            speed=Q_(9123, "RPM"),
+            b=Q_(10.5, "mm"),
+            D=Q_(365, "mm"),
+            suc=State.define(
+                p=Q_(5.038, "bar"),
+                T=Q_(300.9, "degK"),
+                fluid={
+                    "carbon dioxide": 1,
+                },
+            ),
+            disch=State.define(
+                p=Q_(15.04, "bar"),
+                T=Q_(404.3, "degK"),
+                fluid={
+                    "carbon dioxide": 1,
+                },
+            ),
+            balance_line_flow_m=None,
+            seal_gas_flow_m=Q_(0.06143, "kg/s"),
+            seal_gas_temperature=301,
+            first_section_discharge_flow_m=None,
+            div_wall_flow_m=None,
+            end_seal_upstream_temperature=304.8,
+            end_seal_upstream_pressure=Q_(14.6, "bar"),
+            div_wall_upstream_temperature=363.7,
+            div_wall_upstream_pressure=Q_(26.27, "bar"),
+            oil_flow_journal_bearing_de=Q_(31.515, "l/min"),
+            oil_flow_journal_bearing_nde=Q_(22.67, "l/min"),
+            oil_flow_thrust_bearing_nde=Q_(126.729, "l/min"),
+            oil_inlet_temperature=Q_(41.544, "degC"),
+            oil_outlet_temperature_de=Q_(49.727, "degC"),
+            oil_outlet_temperature_nde=Q_(50.621, "degC"),
+            casing_area=5.5,
+            casing_temperature=Q_(23.895, "degC"),
+            ambient_temperature=Q_(0, "degC"),
+        ),
+    ]
+
+    compressor = BackToBack(
+        guarantee_point_sec1=guarantee_point_sec1,
+        guarantee_point_sec2=guarantee_point_sec2,
+        test_points_sec1=test_points_sec1,
+        test_points_sec2=None,
+        speed=Q_(12193.63898, "RPM"),
+    )
+
+    return compressor
+
+
+def test_back_to_back(back_to_back):
+    # check flows for first point
+    p0f = back_to_back.points_flange_t_sec1[0]
+    assert_allclose(p0f.end_seal_flow_m, Q_(386.62, "kg/h").to("kg/s"), rtol=1e-5)
+    # # flange test
+    # p0f = back_to_back.points_flange_t_sec1[0]
+    # assert_allclose(p0f.suc.fluid["CO2"], 0.80218)
+    # assert_allclose(p0f.volume_ratio, 2.554283752)
+    # assert_allclose(p0f.mach, 0.648614697, rtol=1e-6)
+    # assert_allclose(p0f.reynolds, 1225053.326175, rtol=1e-6)
+    # assert_allclose(p0f.head, 62207.67737, rtol=1e-6)
+    # assert_allclose(p0f.casing_heat_loss, 3193.518)
+    # assert_allclose(p0f.eff, 0.735723, rtol=1e-6)
+    # assert_allclose(p0f.power, 654187.626)
+    # k_seal = straight_through.k_end_seal[0]
+    # assert_allclose(k_seal, 1.201149e-05)
+    #
+    # # rotor test
+    # p0r = back_to_back.points_rotor_t_sec1[0]
+    # assert_allclose(p0r.flow_m, Q_(28155.3678, "kg/h").to("kg/s"))
+    # assert_allclose(p0r.suc.T(), 297.696929680625)
+    # assert_allclose(p0r.suc.p(), 182600)
+    # assert_allclose(p0r.head, 62311.048952, rtol=1e-6)
+    # assert_allclose(p0r.casing_heat_loss, 3193.518)
+    # assert_allclose(p0r.eff, 0.744487, rtol=1e-6)
+    # assert_allclose(p0r.power, 654586.0882)
+    #
+    # # rotor specified
+    # p0r_sp = back_to_back.points_rotor_sp_sec1[0]
+    # assert_allclose(p0r_sp.flow_m, Q_(171207.7077, "kg/h").to("kg/s"), rtol=1e-3)
+    # assert_allclose(p0r_sp.suc.T(), 312.646427, rtol=1e-3)
+    # assert_allclose(p0r_sp.suc.p(), 1699000)
+    # assert_allclose(p0r_sp.head, 148674.8794, rtol=1e-6)
+    # assert_allclose(p0r_sp.eff, 0.7444869804, rtol=1e-6)
+    # assert_allclose(p0r_sp.power, 9501324.55769, rtol=1e-4)
+    #
+    # # flange specified
+    # p0f_sp = back_to_back.points_flange_sp_sec1[0]
+    # assert_allclose(p0f_sp.flow_m, Q_(169296.4746, "kg/h").to("kg/s"), rtol=1e-2)
+    # assert_allclose(p0f_sp.suc.T(), 311.55, rtol=1e-3)
+    # assert_allclose(p0f_sp.suc.p(), 1699000)
+    # assert_allclose(p0f_sp.head, 148399.758541, rtol=1e-6)
+    # assert_allclose(p0f_sp.eff, 0.7357389512832868, rtol=1e-6)
+    # assert_allclose(p0f_sp.power, 9501324.55769, rtol=1e-3)
+    #
+    # # imp specified
+    # assert_allclose(
+    #     back_to_back.sec1.head,
+    #     np.array(
+    #         [
+    #             [
+    #                 211610.343979,
+    #                 205136.724749,
+    #                 173289.555545,
+    #                 148399.758034,
+    #                 193804.346837,
+    #             ]
+    #         ]
+    #     ),
+    # )
+    # point_sp = back_to_back.sec1.point(
+    #     speed=back_to_back.speed, flow_m=Q_(142000, "kg/h")
+    # )
+    # assert_allclose(point_sp.eff, 0.820459, rtol=1e-5)

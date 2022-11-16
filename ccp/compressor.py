@@ -129,7 +129,7 @@ class StraightThrough(Impeller):
 
         # calculate rotor condition
         test_points_rotor = []
-        self.k_seal = []  # list with seal constants
+        self.k_end_seal = []  # list with seal constants
         for point in test_points:
             ms1f = point.flow_m
             mbal = point.balance_line_flow_m
@@ -149,7 +149,7 @@ class StraightThrough(Impeller):
             )
             point.Ts1r = Ts1r
             k_end = k_seal(flow_m=mend, state_up=point.disch, state_down=point.suc)
-            self.k_seal.append(k_end)
+            self.k_end_seal.append(k_end)
             suc_rotor = State.define(
                 p=point.suc.p(), T=point.Ts1r, fluid=point.suc.fluid
             )
@@ -173,7 +173,7 @@ class StraightThrough(Impeller):
         self.points_rotor_sp = []
         self.points_flange_sp = []
         # calculate ms1r for the guarantee point
-        for point, k in zip(self.points_rotor_t, self.k_seal):
+        for point, k in zip(self.points_rotor_t, self.k_end_seal):
             error = 1
             # initial estimate of Ts1r_sp with Ts1f_sp
             Ts1r_sp = guarantee_point.suc.T()
@@ -233,7 +233,7 @@ class Point2Sec(Point):
         Seal gas injection temperature (degK).
     first_section_discharge_flow_m : float, pint.Quantity
         First section discharge mass flow (kg/s).
-    division_wall_flow_m : float, pint.Quantity
+    div_wall_flow_m : float, pint.Quantity
         Division wall mass flow (kg/s).
     end_seal_upstream_temperature : float, pint.Quantity
         Temperature upstream the end seal (degK).
@@ -287,7 +287,7 @@ class Point2Sec(Point):
     ...     seal_gas_flow_m=Q_(0.0616, "kg/s"),
     ...     seal_gas_temperature=299.7,
     ...     first_section_discharge_flow_m=4.8059,
-    ...     division_wall_flow_m=None,
+    ...     div_wall_flow_m=None,
     ...     end_seal_upstream_temperature=304.3,
     ...     end_seal_upstream_pressure=14.59,
     ...     div_wall_upstream_temperature=362.5,
@@ -312,7 +312,7 @@ class Point2Sec(Point):
         seal_gas_flow_m=None,
         seal_gas_temperature=None,
         first_section_discharge_flow_m=None,
-        division_wall_flow_m=None,
+        div_wall_flow_m=None,
         end_seal_upstream_temperature=None,
         end_seal_upstream_pressure=None,
         div_wall_upstream_temperature=None,
@@ -333,7 +333,7 @@ class Point2Sec(Point):
         self.seal_gas_flow_m = seal_gas_flow_m
         self.seal_gas_temperature = seal_gas_temperature
         self.first_section_discharge_flow_m = first_section_discharge_flow_m
-        self.division_wall_flow_m = division_wall_flow_m
+        self.div_wall_flow_m = div_wall_flow_m
         self.end_seal_upstream_temperature = end_seal_upstream_temperature
         self.end_seal_upstream_pressure = end_seal_upstream_pressure
         self.div_wall_upstream_temperature = div_wall_upstream_temperature
@@ -344,6 +344,26 @@ class Point2Sec(Point):
         self.oil_inlet_temperature = oil_inlet_temperature
         self.oil_outlet_temperature_de = oil_outlet_temperature_de
         self.oil_outlet_temperature_nde = oil_outlet_temperature_nde
+
+        self.end_seal_upstream_state = State.define(
+            p=self.end_seal_upstream_pressure,
+            T=self.end_seal_upstream_temperature,
+            fluid=self.suc.fluid,
+        )
+        self.end_seal_downstream_state = copy(self.suc)
+        self.end_seal_downstream_state.update(
+            p=self.end_seal_downstream_state.p(), h=self.end_seal_upstream_state.h()
+        )
+
+        self.div_wall_upstream_state = State.define(
+            p=self.div_wall_upstream_pressure,
+            T=self.div_wall_upstream_temperature,
+            fluid=self.suc.fluid,
+        )
+        self.div_wall_downstream_state = copy(self.disch)
+        self.div_wall_downstream_state.update(
+            p=self.div_wall_downstream_state.p(), h=self.end_seal_downstream_state.h()
+        )
 
 
 class BackToBack(Impeller):
@@ -370,41 +390,53 @@ class BackToBack(Impeller):
         self.points_flange_t_sec1 = test_points_sec1
 
         # calculate rotor condition
-        test_points_sec1_rotor = []
-        self.k_seal = []  # list with seal constants
-        self.k_div_wall = []  # list with div wall seal constants
-        for point in test_points_sec1:
+        test_points_sec1_rotor = np.full(len(test_points_sec1), np.nan, dtype=np.object)
+        self.k_end_seal = np.zeros(
+            len(test_points_sec1), dtype=np.object
+        )  # array with seal constants
+        self.k_div_wall = np.zeros(
+            len(test_points_sec1), dtype=np.object
+        )  # array with div wall seal constants
+        for i, point in enumerate(test_points_sec1):
             if point.first_section_discharge_flow_m:
                 md1f_t = point.first_section_discharge_flow_m
                 ms1f_t = point.flow_m
                 mbal_t = point.balance_line_flow_m
-                mbuf_t = point.seal_gas_flow_m
-                mend_t = mbal_t - (0.95 * mbuf_t) / 2
-                mdiv_t = md1f_t - ms1f_t - mend_t - 0.95 * mbuf_t
-                ms1r_t = ms1f_t + mend_t + 0.95 * mbuf_t
+                mseal_t = point.seal_gas_flow_m
+                mend_t = mbal_t - (0.95 * mseal_t) / 2
+                point.end_seal_flow_m = mend_t
+                mdiv_t = md1f_t - ms1f_t - mend_t - 0.95 * mseal_t
+                point.div_wall_flow_m = mdiv_t
+                ms1r_t = ms1f_t + mend_t + 0.95 * mseal_t
 
                 ps1f_t = point.suc.p()
                 Ts1f_t = point.suc.T()
-                ps2f_t = point.end_seal_upstream_pressure
-                Ts2f_t = point.end_seal_upstream_temperature
+
                 pd1f_t = point.disch.p()
                 Td1f_t = point.disch.T()
-                pd2f_t = point.div_wall_upstream_temperature
-                Td2f_t = point.div_wall_upstream_pressure
-                Tbuf_t = point.seal_gas_temperature
+                pd2f_t = point.div_wall_upstream_pressure
+                Td2f_t = point.div_wall_upstream_temperature
+                Tseal_t = point.seal_gas_temperature
 
-                # dummy state to calculate Tend
-                end_seal_state = State.define(p=ps2f_t, T=Ts2f_t, fluid=point.suc.fluid)
-                end_seal_state.update(p=ps1f_t.suc.p(), h=end_seal_state.h())
-                Tend_t = end_seal_state.T()
+                Tend_t = point.end_seal_downstream_state.T()
 
-                # dummy state to calculate Tdiv
-                div_seal_state = State.define(p=pd2f_t, T=Td2f_t, fluid=point.suc.fluid)
-                div_seal_state.update(p=pd1f_t.suc.p(), h=div_seal_state.h())
-                Tdiv_t = div_seal_state.T()
+                k_end = k_seal(
+                    flow_m=mend_t,
+                    state_up=point.end_seal_upstream_state,
+                    state_down=point.end_seal_downstream_state,
+                )
+                self.k_end_seal[i] = k_end
+
+                k_div_wall = k_seal(
+                    flow_m=mdiv_t,
+                    state_up=point.div_wall_upstream_state,
+                    state_down=point.div_wall_downstream_state,
+                )
+                self.k_div_wall[i] = k_div_wall
+                Tdiv_t = point.div_wall_downstream_state.T()
                 Ts1r_t = (
-                    ms1f_t * Ts1f_t + mend_t * Tend_t + 0.95 * mbuf_t * Tbuf_t
-                ) / (ms1f_t + mend_t + 0.95 * mbuf_t)
+                    ms1f_t * Ts1f_t + mend_t * Tend_t + 0.95 * mseal_t * Tseal_t
+                ) / (ms1f_t + mend_t + 0.95 * mseal_t)
                 Td1r_t = (md1f_t * Td1f_t - mdiv_t * Tdiv_t) / (md1f_t - mdiv_t)
                 suc_sec1_rotor_t = State.define(
                     p=ps1f_t, T=Ts1r_t, fluid=point.suc.fluid
@@ -413,19 +445,124 @@ class BackToBack(Impeller):
                     p=pd1f_t, T=Td1r_t, fluid=point.suc.fluid
                 )
 
-                test_points_sec1_rotor.append(
-                    Point(
-                        suc=suc_sec1_rotor_t,
-                        disch=disch_sec1_rotor_t,
-                        flow_m=ms1r_t,
-                        speed=point.speed,
-                        b=point.b,
-                        D=point.D,
-                        casing_area=point.casing_area,
-                        casing_temperature=point.casing_temperature,
-                        ambient_temperature=point.ambient_temperature,
-                    )
+                test_points_sec1_rotor[i] = Point(
+                    suc=suc_sec1_rotor_t,
+                    disch=disch_sec1_rotor_t,
+                    flow_m=ms1r_t,
+                    speed=point.speed,
+                    b=point.b,
+                    D=point.D,
+                    casing_area=point.casing_area,
+                    casing_temperature=point.casing_temperature,
+                    ambient_temperature=point.ambient_temperature,
                 )
+
+        for i, point in enumerate(test_points_sec1):
+            if not point.first_section_discharge_flow_m:
+                # use calculated k_end_seal and k_div_wall to calculate seal mass flow
+                # use manual mean, since np.mean removes the units
+                k_end_seal_mean = sum(self.k_end_seal[self.k_end_seal != 0]) / len(
+                    self.k_end_seal[self.k_end_seal != 0]
+                )
+                end_seal_flow_m = flow_m_seal(
+                    k_seal=k_end_seal_mean,
+                    state_up=point.end_seal_upstream_state,
+                    state_down=point.end_seal_downstream_state,
+                )
+                k_div_wall_mean = sum(self.k_div_wall[self.k_div_wall != 0]) / len(
+                    self.k_div_wall[self.k_div_wall != 0]
+                )
+                div_wall_flow_m = flow_m_seal(
+                    k_seal=k_div_wall_mean,
+                    state_up=point.div_wall_upstream_state,
+                    state_down=point.div_wall_downstream_state,
+                )
+
+                # calculate balance line and rotor suction flow
+                mseal_t = point.seal_gas_flow_m
+                mend_t = end_seal_flow_m
+                point.end_seal_flow_m = mend_t
+
+                mbal_t = mend_t + (0.95 * mseal_t) / 2
+                point.balance_line_flow_m = mbal_t
+
+                ms1f_t = point.flow_m
+                ms1r_t = ms1f_t + mend_t + 0.95 * mseal_t
+
+                # calculate discharge flow
+                mdiv_t = div_wall_flow_m
+                point.div_wall_flow_m = mdiv_t
+                md1f_t = mdiv_t + ms1f_t + mend_t + 0.95 * mseal_t
+                point.first_section_discharge_flow_m = md1f_t
+
+                Ts1f_t = point.suc.T()
+                Tend_t = point.end_seal_downstream_state.T()
+                Tdiv_t = point.div_wall_downstream_state.T()
+                Tseal_t = point.seal_gas_temperature
+                Td1f_t = point.disch.T()
+                ps1f_t = point.suc.p()
+                pd1f_t = point.disch.p()
+
+                Ts1r_t = (
+                    ms1f_t * Ts1f_t + mend_t * Tend_t + 0.95 * mseal_t * Tseal_t
+                ) / (ms1f_t + mend_t + 0.95 * mseal_t)
+                Td1r_t = (md1f_t * Td1f_t - mdiv_t * Tdiv_t) / (md1f_t - mdiv_t)
+
+                suc_sec1_rotor_t = State.define(
+                    p=ps1f_t, T=Ts1r_t, fluid=point.suc.fluid
+                )
+                disch_sec1_rotor_t = State.define(
+                    p=pd1f_t, T=Td1r_t, fluid=point.suc.fluid
+                )
+
+                test_points_sec1_rotor[i] = Point(
+                    suc=suc_sec1_rotor_t,
+                    disch=disch_sec1_rotor_t,
+                    flow_m=ms1r_t,
+                    speed=point.speed,
+                    b=point.b,
+                    D=point.D,
+                    casing_area=point.casing_area,
+                    casing_temperature=point.casing_temperature,
+                    ambient_temperature=point.ambient_temperature,
+                )
+
+        self.points_rotor_t_sec1 = test_points_sec1_rotor
+
+        # convert points_rotor_t to points_rotor_sp
+        # self.points_rotor_sp_sec1 = []
+        # self.points_flange_sp_sec1 = []
+        # # calculate ms1r for the guarantee point
+        # for point, k_end_seal, k_div_wall in zip(
+        #     self.points_rotor_t_sec1, self.k_end_seal, self.k_div_wall
+        # ):
+        #     # determine rotor specified suction state
+        #     end_seal_state_upstream_sp = guarantee_point_sec2.suc
+        #     end_seal_state_downstream_sp = copy(guarantee_point_sec2.suc)
+        #     end_seal_state_downstream_sp.update(
+        #         p=guarantee_point_sec1.suc.p(), h=end_seal_state_upstream_sp.h()
+        #     )
+        #     Tdiv_sp = end_seal_state_downstream_sp.T()
+        #     mdiv_sp = flow_m_seal(
+        #         k_seal=k_div_wall,
+        #         state_up=end_seal_state_upstream_sp,
+        #         state_down=end_seal_state_downstream_sp,
+        #     )
+        #     ms1f_sp = guarantee_point_sec1.flow_m
+        #     Ts1f_sp = guarantee_point_sec1.suc.T()
+        #     Ts1r_sp = (mdiv_sp * Tdiv_sp + ms1f_sp * Ts1f_sp) / (mdiv_sp + ms1f_sp)
+        #     rotor_sp_sec1_suc = ccp.State.define(
+        #         p=guarantee_point_sec1.suc.p(),
+        #         T=Ts1r_sp,
+        #         fluid=guarantee_point_sec1.suc.fluid,
+        #     )
+        #     initial_point = Point.convert_from(
+        #         original_point=point,
+        #         suc=rotor_sp_sec1_suc,
+        #         speed=self.speed,
+        #         find="volume_ratio",
+        #     )
+        #     self.points_rotor_sp_sec1.append(initial_point)
 
 
 @check_units
@@ -445,7 +582,7 @@ def k_seal(flow_m, state_up, state_down):
 
     Returns
     -------
-    k_seal : pint.Quantity
+    k_end_seal : pint.Quantity
         Seal constant (kelvin ** 0.5 * kilogram ** 0.5 * mole ** 0.5 / pascal / second).
     """
     p_up = state_up.p()
