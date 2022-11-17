@@ -624,11 +624,129 @@ def back_to_back():
         ),
     ]
 
+    test_points_sec2 = [
+        Point(
+            flow_m=Q_(4.927, "kg/s"),
+            speed=Q_(7739, "RPM"),
+            b=Q_(6.38, "mm"),
+            D=Q_(320, "mm"),
+            suc=State.define(
+                p=Q_(13.11, "bar"),
+                T=Q_(305.1, "degK"),
+                fluid={
+                    "carbon dioxide": 1,
+                },
+            ),
+            disch=State.define(
+                p=Q_(16.31, "bar"),
+                T=Q_(335.1, "degK"),
+                fluid={
+                    "carbon dioxide": 1,
+                },
+            ),
+            casing_area=5.5,
+            casing_temperature=Q_(17.97, "degC"),
+            ambient_temperature=Q_(0, "degC"),
+        ),
+        Point(
+            flow_m=Q_(4.105, "kg/s"),
+            speed=Q_(7330, "RPM"),
+            b=Q_(6.38, "mm"),
+            D=Q_(320, "mm"),
+            suc=State.define(
+                p=Q_(12.69, "bar"),
+                T=Q_(304.5, "degK"),
+                fluid={
+                    "carbon dioxide": 1,
+                },
+            ),
+            disch=State.define(
+                p=Q_(16.78, "bar"),
+                T=Q_(333.3, "degK"),
+                fluid={
+                    "carbon dioxide": 1,
+                },
+            ),
+            casing_area=5.5,
+            casing_temperature=Q_(17.97, "degC"),
+            ambient_temperature=Q_(0, "degC"),
+        ),
+        Point(
+            flow_m=Q_(3.36, "kg/s"),
+            speed=Q_(7412, "RPM"),
+            b=Q_(6.38, "mm"),
+            D=Q_(320, "mm"),
+            suc=State.define(
+                p=Q_(12.62, "bar"),
+                T=Q_(304.4, "degK"),
+                fluid={
+                    "carbon dioxide": 1,
+                },
+            ),
+            disch=State.define(
+                p=Q_(18.15, "bar"),
+                T=Q_(339.9, "degK"),
+                fluid={
+                    "carbon dioxide": 1,
+                },
+            ),
+            casing_area=5.5,
+            casing_temperature=Q_(17.97, "degC"),
+            ambient_temperature=Q_(0, "degC"),
+        ),
+        Point(
+            flow_m=Q_(2.587, "kg/s"),
+            speed=Q_(7449, "RPM"),
+            b=Q_(6.38, "mm"),
+            D=Q_(320, "mm"),
+            suc=State.define(
+                p=Q_(12.46, "bar"),
+                T=Q_(304.5, "degK"),
+                fluid={
+                    "carbon dioxide": 1,
+                },
+            ),
+            disch=State.define(
+                p=Q_(18.6, "bar"),
+                T=Q_(344.1, "degK"),
+                fluid={
+                    "carbon dioxide": 1,
+                },
+            ),
+            casing_area=5.5,
+            casing_temperature=Q_(17.97, "degC"),
+            ambient_temperature=Q_(0, "degC"),
+        ),
+        Point(
+            flow_m=Q_(2.075, "kg/s"),
+            speed=Q_(7399, "RPM"),
+            b=Q_(6.38, "mm"),
+            D=Q_(320, "mm"),
+            suc=State.define(
+                p=Q_(12.52, "bar"),
+                T=Q_(304.5, "degK"),
+                fluid={
+                    "carbon dioxide": 1,
+                },
+            ),
+            disch=State.define(
+                p=Q_(18.88, "bar"),
+                T=Q_(346.4, "degK"),
+                fluid={
+                    "carbon dioxide": 1,
+                },
+            ),
+            casing_area=5.5,
+            casing_temperature=Q_(17.97, "degC"),
+            ambient_temperature=Q_(0, "degC"),
+        ),
+    ]
+
     compressor = BackToBack(
         guarantee_point_sec1=guarantee_point_sec1,
         guarantee_point_sec2=guarantee_point_sec2,
         test_points_sec1=test_points_sec1,
-        test_points_sec2=None,
+        test_points_sec2=test_points_sec2,
         speed=Q_(12152.45187, "RPM"),
     )
 
