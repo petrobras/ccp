@@ -629,7 +629,7 @@ def back_to_back():
         guarantee_point_sec2=guarantee_point_sec2,
         test_points_sec1=test_points_sec1,
         test_points_sec2=None,
-        speed=Q_(12193.63898, "RPM"),
+        speed=Q_(12152.45187, "RPM"),
     )
 
     return compressor
@@ -670,12 +670,12 @@ def test_back_to_back(back_to_back):
 
     # rotor specified
     p0r_sp = back_to_back.points_rotor_sp_sec1[0]
-    # assert_allclose(p0r_sp.flow_m, Q_(156223.564, "kg/h").to("kg/s"), rtol=1e-3)
+    assert_allclose(p0r_sp.flow_m, Q_(156223.564, "kg/h").to("kg/s"), rtol=1e-3)
     assert_allclose(p0r_sp.suc.T(), 312.76555064737, rtol=1e-3)
-    assert_allclose(p0r_sp.suc.p(), 1699000)
-    assert_allclose(p0r_sp.head, 148674.8794, rtol=1e-6)
-    assert_allclose(p0r_sp.eff, 0.7444869804, rtol=1e-6)
-    assert_allclose(p0r_sp.power, 9501324.55769, rtol=1e-4)
+    assert_allclose(p0r_sp.suc.p(), 4739000)
+    assert_allclose(p0r_sp.head, 77283.0955755209, rtol=1e-6)
+    assert_allclose(p0r_sp.eff, 0.622869673032321, rtol=1e-6)
+    assert_allclose(p0r_sp.power, 5384326.21375024, rtol=1e-3)
 
     # # flange specified
     # p0f_sp = back_to_back.points_flange_sp_sec1[0]
