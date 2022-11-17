@@ -538,11 +538,20 @@ class BackToBack(Impeller):
         for point, k_end_seal, k_div_wall in zip(
             self.points_rotor_t_sec1, self.k_end_seal, self.k_div_wall
         ):
-            # TODO estimate converted point
-            # TODO from estimated point, use discharge conditions to calculate end seal flow
+            initial_point = Point.convert_from(
+                original_point=point,
+                suc=guarantee_point_sec1.suc,
+                speed=self.speed,
+                find="volume_ratio",
+            )
+
             # determine rotor specified suction state
-            end_seal_state_upstream_sp = guarantee_point_sec2.suc
-            end_seal_state_downstream_sp = copy(guarantee_point_sec2.suc)
+            end_seal_state_upstream_sp = State.define(
+                p=initial_point.disch.p(),
+                T=guarantee_point_sec2.suc.T(),
+                fluid=initial_point.suc.fluid,
+            )
+            end_seal_state_downstream_sp = copy(initial_point.disch)
             end_seal_state_downstream_sp.update(
                 p=guarantee_point_sec1.suc.p(), h=end_seal_state_upstream_sp.h()
             )
@@ -559,7 +568,6 @@ class BackToBack(Impeller):
             ps1r_sp = guarantee_point_sec1.suc.p()
             vs1f_sp = guarantee_point_sec1.suc.v()
             dummy_suc = copy(guarantee_point_sec1.suc)
-            print(end_seal_flow_m.to("kg/h"))
 
             error = 1
             dm = Q_(1, "kg/s")
@@ -587,13 +595,22 @@ class BackToBack(Impeller):
                 T=Ts1r_sp,
                 fluid=guarantee_point_sec1.suc.fluid,
             )
-            initial_point = Point.convert_from(
+            point_rotor = Point.convert_from(
                 original_point=point,
                 suc=rotor_sp_sec1_suc,
                 speed=self.speed,
                 find="volume_ratio",
             )
-            self.points_rotor_sp_sec1.append(initial_point)
+            self.points_rotor_sp_sec1.append(point_rotor)
+
+            # calculate div wall flow
+
+            # calculate flange disch
+            Td1r_sp = point_rotor.disch.T()
+            Td1f_sp = ms1r_sp * Td1r_sp
+            point_flange = Point(
+                suc=guarantee_point_sec1.suc,
+            )
 
 
 @check_units
