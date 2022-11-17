@@ -608,9 +608,9 @@ class BackToBack(Impeller):
             # calculate flange disch
             Td1r_sp = point_rotor.disch.T()
             Td1f_sp = ms1r_sp * Td1r_sp
-            point_flange = Point(
-                suc=guarantee_point_sec1.suc,
-            )
+            # point_flange = Point(
+            #     suc=guarantee_point_sec1.suc,
+            # )
 
 
 @check_units
