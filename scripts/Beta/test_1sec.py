@@ -1,6 +1,6 @@
 import os
-
 FileName = os.path.basename(__file__)[:-3]
+# FileName = "Beta_1section.xlsm"
 
 from xlwings import Book
 
@@ -53,7 +53,7 @@ if __name__ == "__main__":
         eff = 1 - (1 - P_AT.eff) * corr
 
         #####Results_AT[i, 21].value = eff.m
-        N_ratio = (P_AT.speed / P_FD.speed).to("dimensionless").m
+        N_ratio = (P_FD.speed / P_AT.speed).to("dimensionless").m
 
         P_ATconv_temp = ccp.Point(
             suc=P_FD.suc,
@@ -462,85 +462,44 @@ if __name__ == "__main__":
                             P_FD=imp_conv.points_rotor_sp[i],
                             rug=AT_sheet["D24"].value,
                         )
+                        # Results_AT[i, 16].value = P_AT_reyn.power.to("kW").magnitude
+                        # Results_AT[i, 17].value = (
+                        #     P_AT_reyn.power.to("kW").magnitude / min_Pow
+                        # )
+
                         Results_AT[i, 21].value = P_AT_reyn.eff.magnitude
 
                     else:
 
-                        rug = AT_sheet["D24"].value
-
-                        ReAT = P_AT[i].reynolds
-                        ReFD = P_exp_flow.reynolds
-
-                        RCAT = 0.988 / ReAT**0.243
-                        RCFD = 0.988 / ReFD**0.243
-
-                        RBAT = np.log(0.000125 + 13.67 / ReAT) / np.log(
-                            rug + 13.67 / ReAT
-                        )
-                        RBFD = np.log(0.000125 + 13.67 / ReFD) / np.log(
-                            rug + 13.67 / ReFD
+                        P_ATconv_corr = reynolds_corr(
+                            P_AT=P_AT[i],
+                            P_FD=P_exp_flow,
+                            rug=AT_sheet["D24"].value,
                         )
 
-                        RAAT = (
-                            0.066
-                            + 0.934 * (4.8e6 * b.to("ft").magnitude / ReAT) ** RCAT
-                        )
-                        RAFD = (
-                            0.066
-                            + 0.934 * (4.8e6 * b.to("ft").magnitude / ReFD) ** RCFD
-                        )
-
-                        corr = RAFD / RAAT * RBFD / RBAT
-                        # correct efficiency
-                        eff = 1 - (1 - P_AT[i].eff) * corr
-
-                        Results_AT[i, 21].value = eff.magnitude
-
-                        P_ATconv_temp = ccp.Point(
-                            suc=P_exp_flow.suc,
-                            eff=eff,
-                            speed=speed_FD,
-                            flow_v=P_AT[i].flow_v * N_ratio,
-                            head=P_AT[i].head * N_ratio**2,
-                            b=b,
-                            D=D,
-                        )
-
-                        # correct head coeficient
-                        def update_h(h):
-                            global P_ATconv_corr
-                            P_ATconv_corr = ccp.Point(
-                                suc=P_exp_flow.suc,
-                                eff=eff,
-                                speed=speed_FD,
-                                flow_v=P_AT[i].flow_v * N_ratio,
-                                head=h,
-                                b=b,
-                                D=D,
-                            )
-
-                            return (
-                                P_ATconv_corr.psi.m
-                                - P_AT[i].psi.m * eff.m / P_AT[i].eff.m
-                            )
-
-                        newton(update_h, P_ATconv_temp.psi.m, tol=1)
-
-                        P_ATconv.append(P_ATconv_corr)
+                        P_ATconv = P_ATconv_corr
+                        # Results_AT[i, 16].value = P_ATconv_corr.power.to("kW").magnitude
+                        # Results_AT[i, 17].value = (
+                        #     P_ATconv_corr.power.to("kW").magnitude / min_Pow
+                        # )
+                        Results_AT[i, 21].value = P_ATconv_corr.eff.m
 
                 else:
 
-                    P_ATconv.append(
-                        ccp.Point(
-                            suc=P_exp_flow.suc,
-                            eff=P_AT[i].eff,
-                            speed=speed_FD,
-                            flow_v=P_AT[i].flow_v * N_ratio,
-                            head=P_AT[i].head * N_ratio**2,
-                            b=b,
-                            D=D,
-                        )
+                    P_ATconv = ccp.Point(
+                        suc=P_exp_flow.suc,
+                        eff=P_AT[i].eff,
+                        speed=speed_FD,
+                        flow_v=P_AT[i].flow_v * N_ratio,
+                        head=P_AT[i].head * N_ratio**2,
+                        b=b,
+                        D=D,
                     )
+
+                    # Results_AT[i, 16].value = P_ATconv.power.to("kW").magnitude
+                    # Results_AT[i, 17].value = (
+                    #     P_ATconv.power.to("kW").magnitude / min_Pow
+                    # )
                     Results_AT[i, 21].value = ""
 
                 Results_AT[i, 0].value = P_AT[i].volume_ratio.magnitude
@@ -564,7 +523,7 @@ if __name__ == "__main__":
                 Results_AT[i, 16].value = P_AT[i].power.to("kW").magnitude
                 Results_AT[i, 17].value = (
                     P_AT[i].power.to("kW").magnitude / min_Pow
-                )  ############
+                )
                 Results_AT[i, 20].value = P_AT[i].eff.magnitude
 
                 if (BL_leak == "Yes") | (BF_leak == "Yes"):
@@ -589,6 +548,10 @@ if __name__ == "__main__":
                             imp_conv.points_flange_sp[i].flow_v.to("m³/h").magnitude
                             / P_exp_flow.flow_v.to("m³/h").magnitude
                         )
+                        # Results_AT[i, 16].value = P_AT[i].power.to("kW").magnitude
+                        # Results_AT[i, 17].value = (
+                        #         P_AT[i].power.to("kW").magnitude / min_Pow
+                        # )
 
                         Results_AT[i, 18].value = (
                             imp_conv.points_flange_sp[i].power.to("kW").magnitude
@@ -627,25 +590,26 @@ if __name__ == "__main__":
                             imp_conv.points_flange_sp[i].power.to("kW").magnitude
                             / min_Pow
                         )  #########
+                        Results_AT[i, 20].value = imp_conv.points_flange_sp[i].eff.magnitude ############
 
                 else:
-                    Results_AT[i, 8].value = P_ATconv[i].disch.p().to("bar").magnitude
+                    Results_AT[i, 8].value = P_ATconv.disch.p().to("bar").magnitude
                     Results_AT[i, 9].value = (
-                        P_ATconv[i].disch.p().to("bar").magnitude
+                        P_ATconv.disch.p().to("bar").magnitude
                         / P_exp_flow.disch.p().to("bar").magnitude
                     )
-                    Results_AT[i, 12].value = P_ATconv[i].head.to("kJ/kg").magnitude
+                    Results_AT[i, 12].value = P_ATconv.head.to("kJ/kg").magnitude
                     Results_AT[i, 13].value = (
-                        P_ATconv[i].head.to("kJ/kg").magnitude / max_H
+                        P_ATconv.head.to("kJ/kg").magnitude / max_H
                     )  ###########
-                    Results_AT[i, 14].value = P_ATconv[i].flow_v.to("m³/h").magnitude
+                    Results_AT[i, 14].value = P_ATconv.flow_v.to("m³/h").magnitude
                     Results_AT[i, 15].value = (
-                        P_ATconv[i].flow_v.to("m³/h").magnitude
+                        P_ATconv.flow_v.to("m³/h").magnitude
                         / P_exp_flow.flow_v.to("m³/h").magnitude
                     )
-                    Results_AT[i, 18].value = P_ATconv[i].power.to("kW").magnitude
+                    Results_AT[i, 18].value = P_ATconv.power.to("kW").magnitude
                     Results_AT[i, 19].value = (
-                        P_ATconv[i].power.to("kW").magnitude / min_Pow
+                        P_ATconv.power.to("kW").magnitude / min_Pow
                     )  ##########
 
             Phi = np.abs(1 - np.array(Results_AT[0:N, 7].value))
@@ -865,65 +829,14 @@ if __name__ == "__main__":
 
             N_ratio = speed_FD / speed_TP
             if TP_sheet["C23"].value == "Yes":
-                rug = TP_sheet["D24"].value
 
-                ReTP = P_TP.reynolds
-                ReFD = P_FD.reynolds
-
-                RCTP = 0.988 / ReTP**0.243
-                RCFD = 0.988 / ReFD**0.243
-
-                RBTP = np.log(0.000125 + 13.67 / ReTP) / np.log(rug + 13.67 / ReTP)
-                RBFD = np.log(0.000125 + 13.67 / ReFD) / np.log(rug + 13.67 / ReFD)
-
-                RATP = 0.066 + 0.934 * (4.8e6 * b.to("ft").magnitude / ReTP) ** RCTP
-                RAFD = 0.066 + 0.934 * (4.8e6 * b.to("ft").magnitude / ReFD) ** RCFD
-
-                corr = RAFD / RATP * RBFD / RBTP
-
-                # correct efficiency
-                eff = 1 - (1 - P_TP.eff) * corr
-
-                TP_sheet["H29"].value = eff.magnitude
-
-                P_TPconv = ccp.Point(
-                    suc=P_FD.suc,
-                    eff=eff,
-                    speed=speed_FD,
-                    flow_v=P_TP.flow_v * N_ratio,
-                    head=P_TP.head * N_ratio**2,
-                    b=b,
-                    D=D,
+                P_TPconv = reynolds_corr(
+                    P_AT=P_TP,
+                    P_FD=P_FD,
+                    rug=TP_sheet["D24"].value,
                 )
 
-                # correct head coeficient
-                P_TPconv_temp = ccp.Point(
-                    suc=P_FD.suc,
-                    eff=eff,
-                    speed=speed_FD,
-                    flow_v=P_TP.flow_v * N_ratio,
-                    head=P_TP.head * N_ratio**2,
-                    b=b,
-                    D=D,
-                )
-
-                def update_h(h):
-                    global P_TPconv_corr
-                    P_TPconv_corr = ccp.Point(
-                        suc=P_FD.suc,
-                        eff=eff,
-                        speed=speed_FD,
-                        flow_v=P_TP.flow_v * N_ratio,
-                        head=h,
-                        b=b,
-                        D=D,
-                    )
-
-                    return P_TPconv_corr.psi.m - P_TPconv.psi.m * eff.m / P_TPconv.eff.m
-
-                newton(update_h, P_TPconv_temp.psi.m, tol=1)
-
-                P_TP_conv = P_TPconv_corr
+                TP_sheet["H29"].value = P_TPconv.eff.m
 
             else:
 
@@ -958,31 +871,8 @@ if __name__ == "__main__":
             TP_sheet["G24"].value = P_TP.power.to("kW").magnitude
             TP_sheet["H25"].value = P_TP.power.to("kW").magnitude / min_Pow
 
-            if TP_sheet["C25"].value == "Yes":
-
-                HL_FD = Q_(
-                    ((sucFD.T() + dischFD.T()).to("degC").magnitude * 0.8 / 2 - 25)
-                    * 1.166
-                    * TP_sheet["D26"].value,
-                    "W",
-                )
-                HL_TP = Q_(
-                    ((sucTP.T() + dischTP.T()).to("degC").magnitude * 0.8 / 2 - 25)
-                    * 1.166
-                    * TP_sheet["D26"].value,
-                    "W",
-                )
-
-                TP_sheet["G26"].value = (
-                    (P_TPconv.power - HL_TP + HL_FD).to("kW").magnitude
-                )
-                TP_sheet["H27"].value = (P_TPconv.power - HL_TP + HL_FD).to(
-                    "kW"
-                ).magnitude / min_Pow
-
-            else:
-                TP_sheet["G26"].value = P_TPconv.power.to("kW").magnitude
-                TP_sheet["H27"].value = P_TPconv.power.to("kW").magnitude / min_Pow
+            TP_sheet["G26"].value = P_TPconv.power.to("kW").magnitude
+            TP_sheet["H27"].value = P_TPconv.power.to("kW").magnitude / min_Pow
 
             TP_sheet["G28"].value = P_TP.eff.magnitude
 
