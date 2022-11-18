@@ -625,7 +625,7 @@ def back_to_back():
     ]
 
     test_points_sec2 = [
-        Point(
+        Point1Sec(
             flow_m=Q_(4.927, "kg/s"),
             speed=Q_(7739, "RPM"),
             b=Q_(6.38, "mm"),
@@ -644,11 +644,13 @@ def back_to_back():
                     "carbon dioxide": 1,
                 },
             ),
+            balance_line_flow_m=0.1066,
+            seal_gas_flow_m=0.06367,
             casing_area=5.5,
             casing_temperature=Q_(17.97, "degC"),
             ambient_temperature=Q_(0, "degC"),
         ),
-        Point(
+        Point1Sec(
             flow_m=Q_(4.105, "kg/s"),
             speed=Q_(7330, "RPM"),
             b=Q_(6.38, "mm"),
@@ -667,11 +669,13 @@ def back_to_back():
                     "carbon dioxide": 1,
                 },
             ),
+            balance_line_flow_m=0.1079,
+            seal_gas_flow_m=0.06692,
             casing_area=5.5,
             casing_temperature=Q_(17.97, "degC"),
             ambient_temperature=Q_(0, "degC"),
         ),
-        Point(
+        Point1Sec(
             flow_m=Q_(3.36, "kg/s"),
             speed=Q_(7412, "RPM"),
             b=Q_(6.38, "mm"),
@@ -690,11 +694,13 @@ def back_to_back():
                     "carbon dioxide": 1,
                 },
             ),
+            balance_line_flow_m=0.1222,
+            seal_gas_flow_m=0.07412,
             casing_area=5.5,
             casing_temperature=Q_(17.97, "degC"),
             ambient_temperature=Q_(0, "degC"),
         ),
-        Point(
+        Point1Sec(
             flow_m=Q_(2.587, "kg/s"),
             speed=Q_(7449, "RPM"),
             b=Q_(6.38, "mm"),
@@ -713,11 +719,13 @@ def back_to_back():
                     "carbon dioxide": 1,
                 },
             ),
+            balance_line_flow_m=0.1171,
+            seal_gas_flow_m=0.05892,
             casing_area=5.5,
             casing_temperature=Q_(17.97, "degC"),
             ambient_temperature=Q_(0, "degC"),
         ),
-        Point(
+        Point1Sec(
             flow_m=Q_(2.075, "kg/s"),
             speed=Q_(7399, "RPM"),
             b=Q_(6.38, "mm"),
@@ -736,6 +744,8 @@ def back_to_back():
                     "carbon dioxide": 1,
                 },
             ),
+            balance_line_flow_m=0.1211,
+            seal_gas_flow_m=0.06033,
             casing_area=5.5,
             casing_temperature=Q_(17.97, "degC"),
             ambient_temperature=Q_(0, "degC"),
@@ -754,7 +764,7 @@ def back_to_back():
 
 
 def test_back_to_back(back_to_back):
-    # check flows for first point
+    # check flows for first point sec1
     p0f = back_to_back.points_flange_t_sec1[0]
     assert_allclose(p0f.end_seal_flow_m, Q_(386.62, "kg/h").to("kg/s"), rtol=1e-5)
     assert_allclose(p0f.end_seal_downstream_state.T(), 297.02, rtol=1e-4)
@@ -762,7 +772,7 @@ def test_back_to_back(back_to_back):
     assert_allclose(p0f.div_wall_downstream_state.p(), Q_(1.416, "MPa").to("Pa"))
     assert_allclose(p0f.div_wall_downstream_state.T(), 355.64, rtol=1e-4)
 
-    # flange test
+    # flange test sec1
     p0f = back_to_back.points_flange_t_sec1[0]
     assert_allclose(p0f.suc.fluid["CO2"], 1)
     assert_allclose(p0f.volume_ratio, 1.57845097)
@@ -776,7 +786,7 @@ def test_back_to_back(back_to_back):
     k_seal = back_to_back.k_end_seal[0]
     assert_allclose(k_seal, 7.829411e-06)
 
-    # rotor test
+    # rotor test sec1
     p0r = back_to_back.points_rotor_t_sec1[0]
     assert_allclose(p0r.flow_m, Q_(31986.6583, "kg/h").to("kg/s"))
     assert_allclose(p0r.suc.T(), 298.881396)
@@ -785,6 +795,28 @@ def test_back_to_back(back_to_back):
     assert_allclose(p0r.casing_heat_loss, 1787.346)
     assert_allclose(p0r.eff, 0.62286967, rtol=1e-6)
     assert_allclose(p0r.power, 607888.669)
+
+    # flange test sec2
+    p0f = back_to_back.points_flange_t_sec2[0]
+    assert_allclose(p0f.suc.fluid["CO2"], 1)
+    assert_allclose(p0f.volume_ratio, 1.125059893)
+    assert_allclose(p0f.mach, 0.49393364, rtol=1e-6)
+    assert_allclose(p0f.reynolds, 1303631.450003, rtol=1e-6)
+    assert_allclose(p0f.flow_m, Q_(17737.2, "kg/h").to("kg/s"))
+    assert_allclose(p0f.head, 12411.07461, rtol=1e-6)
+    assert_allclose(p0f.casing_heat_loss, 1344.156)
+    assert_allclose(p0f.eff, 0.474667774, rtol=1e-6)
+    assert_allclose(p0f.power, 128825.608)
+
+    # rotor test sec2
+    p0r = back_to_back.points_rotor_t_sec2[0]
+    assert_allclose(p0r.flow_m, 4.850643)
+    assert_allclose(p0r.suc.T(), 305.1)
+    assert_allclose(p0r.suc.p(), 1311000)
+    assert_allclose(p0r.head, 12411.07461, rtol=1e-6)
+    assert_allclose(p0r.casing_heat_loss, 1344.156)
+    assert_allclose(p0r.eff, 0.47459, rtol=1e-6)
+    assert_allclose(p0r.power, 126849.949491)
 
     # rotor specified
     p0r_sp = back_to_back.points_rotor_sp_sec1[0]

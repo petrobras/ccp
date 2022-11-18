@@ -388,8 +388,9 @@ class BackToBack(Impeller):
 
         # points for test flange conditions
         self.points_flange_t_sec1 = test_points_sec1
+        self.points_flange_t_sec2 = test_points_sec2
 
-        # calculate rotor condition
+        # calculate rotor condition for sec1
         test_points_sec1_rotor = np.full(len(test_points_sec1), np.nan, dtype=np.object)
         self.k_end_seal = np.zeros(
             len(test_points_sec1), dtype=np.object
@@ -531,7 +532,30 @@ class BackToBack(Impeller):
 
         self.points_rotor_t_sec1 = test_points_sec1_rotor
 
-        # convert points_rotor_t to points_rotor_sp
+        # calculate rotor condition for sec2
+        test_points_sec2_rotor = np.full(len(test_points_sec1), np.nan, dtype=np.object)
+        for i, point_f in enumerate(test_points_sec2):
+            ms2f_t = point_f.flow_m
+            mbal_t = point_f.balance_line_flow_m
+            mseal_t = point_f.seal_gas_flow_m
+            mend_t = mbal_t - 0.95 * mseal_t / 2
+            ms2r_t = ms2f_t - mend_t
+            point_r = Point(
+                suc=point_f.suc,
+                disch=point_f.disch,
+                flow_m=ms2r_t,
+                speed=point_f.speed,
+                b=point_f.b,
+                D=point_f.D,
+                casing_area=point_f.casing_area,
+                casing_temperature=point_f.casing_temperature,
+                ambient_temperature=point_f.ambient_temperature,
+            )
+            test_points_sec2_rotor[i] = point_r
+
+        self.points_rotor_t_sec2 = test_points_sec2_rotor
+
+        # convert sec1 points_rotor_t to points_rotor_sp
         self.points_rotor_sp_sec1 = []
         self.points_flange_sp_sec1 = []
         # calculate ms1r for the guarantee point
