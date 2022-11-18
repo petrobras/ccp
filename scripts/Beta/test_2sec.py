@@ -1,8 +1,8 @@
 import os
 import multiprocessing
 
-#FileName = os.path.basename(__file__)[:-3]
-FileName = "Beta_2section.xlsm" ############################
+# FileName = os.path.basename(__file__)[:-3]
+FileName = "Beta_2section.xlsm"
 
 from xlwings import Book
 
@@ -31,9 +31,60 @@ import numpy as np
 from scipy.optimize import newton
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
 
     global P_FD_eff, P2_FD_eff
+
+    def reynolds_corr(P_AT, P_FD, rug=None):
+
+        ReAT = P_AT.reynolds
+        ReFD = P_FD.reynolds
+
+        RCAT = 0.988 / ReAT**0.243
+        RCFD = 0.988 / ReFD**0.243
+
+        RBAT = np.log(0.000125 + 13.67 / ReAT) / np.log(rug + 13.67 / ReAT)
+        RBFD = np.log(0.000125 + 13.67 / ReFD) / np.log(rug + 13.67 / ReFD)
+
+        RAAT = 0.066 + 0.934 * (4.8e6 * b.to("ft").magnitude / ReAT) ** RCAT
+        RAFD = 0.066 + 0.934 * (4.8e6 * b.to("ft").magnitude / ReFD) ** RCFD
+
+        corr = RAFD / RAAT * RBFD / RBAT
+
+        # correct efficiency
+        eff = 1 - (1 - P_AT.eff) * corr
+
+        #####Results_AT[i, 21].value = eff.m
+        N_ratio = (P_AT.speed / P_FD.speed).to("dimensionless").m
+
+        P_ATconv_temp = ccp.Point(
+            suc=P_FD.suc,
+            eff=eff,
+            speed=P_FD.speed,
+            flow_v=P_AT.flow_v * N_ratio,
+            head=P_AT.head * N_ratio**2,
+            b=b,
+            D=D,
+        )
+
+        # correct head coeficient
+        def update_h(h):
+            global P_AT_reyn
+            P_AT_reyn = ccp.Point(
+                suc=P_FD.suc,
+                eff=eff,
+                speed=P_FD.speed,
+                flow_v=P_AT.flow_v * N_ratio,
+                head=h,
+                b=b,
+                D=D,
+            )
+
+            return P_AT_reyn.psi.m - P_AT.psi.m * eff.m / P_AT.eff.m
+
+        newton(update_h, P_ATconv_temp.psi.m, tol=1)
+
+        return P_AT_reyn
 
 
     AT_sheet["T7"].value = None
@@ -144,7 +195,9 @@ if __name__ == '__main__':
 
                 newton(
                     update_head,
-                    ccp.point.head_pol(suc=P_FD.suc, disch=P_FD.disch).to("J/kg").magnitude,
+                    ccp.point.head_pol(suc=P_FD.suc, disch=P_FD.disch)
+                    .to("J/kg")
+                    .magnitude,
                     tol=1,
                 )
 
@@ -206,7 +259,9 @@ if __name__ == '__main__':
                     GasesFD = FD_sheet.range("B69:B85").value
                     mol_fracSS_FD = FD_sheet.range("N69:N85").value
 
-                    fluidSS_FD = {GasesFD[i]: mol_fracSS_FD[i] for i in range(len(GasesFD))}
+                    fluidSS_FD = {
+                        GasesFD[i]: mol_fracSS_FD[i] for i in range(len(GasesFD))
+                    }
                 elif SS_config == "OUT":
                     fluidSS_FD = fluid_FD
                 else:
@@ -215,8 +270,9 @@ if __name__ == '__main__':
                     GasesFD = FD_sheet.range("B69:B85").value
                     mol_frac2_FD = FD_sheet.range("Q69:Q85").value
 
-                    fluid2_FD = {GasesFD[i]: mol_frac2_FD[i] for i in range(len(GasesFD))}
-
+                    fluid2_FD = {
+                        GasesFD[i]: mol_frac2_FD[i] for i in range(len(GasesFD))
+                    }
 
                 if SS_config != "NONE":
                     SS_FD = State.define(fluid=fluidSS_FD, p=Ps2_FD, T=TSS_FD)
@@ -253,7 +309,9 @@ if __name__ == '__main__':
                     flow2_m_FD = flow_m_FD - flowSS_m_FD
 
                     suc2FD = State.define(fluid=fluid2_FD, p=Ps2_FD, T=Td_FD)
-                    suc2FD_eff = P_FD_eff.disch # considers suction with first stage efficiency
+                    suc2FD_eff = (
+                        P_FD_eff.disch
+                    )  # considers suction with first stage efficiency
                     disch2FD = State.define(fluid=fluid2_FD, p=Pd2_FD, T=Td2_FD)
                     FD_sheet["AT35"].value = suc2FD.T().to("degC").magnitude
                 else:
@@ -347,7 +405,6 @@ if __name__ == '__main__':
                     FD_sheet["N90"].value = None
                     FD_sheet["Q90"].value = suc2FD.molar_mass().to("g/mol").magnitude
 
-
             Curva = FD_sheet["AP42:AS49"]
             Curva2 = FD_sheet["AP53:AS60"]
 
@@ -384,7 +441,6 @@ if __name__ == '__main__':
 
             QFD = np.array(Curva[0:Nc, 0].value)
 
-
             Id = list(np.argsort(QFD))
 
             if len(Id) > 1:
@@ -397,7 +453,10 @@ if __name__ == '__main__':
 
             QFD2 = Q_(np.array(Curva2[0:Nc2, 0].value), FD_sheet["AP52"].value)
 
-            if Nc2 > 0 and min(abs(QFD2.to("m³/h").m - P2_FD.flow_v.to("m³/h").magnitude)) == 0:
+            if (
+                Nc2 > 0
+                and min(abs(QFD2.to("m³/h").m - P2_FD.flow_v.to("m³/h").magnitude)) == 0
+            ):
                 Gar = [None, None, None, None]
                 Curva2[Nc2, :].value = Gar
 
@@ -432,39 +491,39 @@ if __name__ == '__main__':
                 P_exp = []
                 for i in range(Nc):
                     arg_dict = {
-                    "eff": Curva[i, 3].value,
-                    "flow_v": Q_(Curva[i,0].value,FD_sheet["AP41"].value),
-                    "suc": sucFD,
-                    "speed": speed_FD,
-                    "head": Q_(Curva[i,1].value,FD_sheet["AQ41"].value),
-                    "b": b,
-                    "D": D,
+                        "eff": Curva[i, 3].value,
+                        "flow_v": Q_(Curva[i, 0].value, FD_sheet["AP41"].value),
+                        "suc": sucFD,
+                        "speed": speed_FD,
+                        "head": Q_(Curva[i, 1].value, FD_sheet["AQ41"].value),
+                        "b": b,
+                        "D": D,
                     }
                     args_list.append(arg_dict)
 
                 with multiprocessing.Pool() as pool:
                     P_exp += pool.map(ccp.impeller.create_points_parallel, args_list)
 
-                imp_exp = (P_exp)
+                imp_exp = P_exp
 
                 args_list = []
                 P2_exp = []
                 for i in range(Nc2):
                     arg_dict2 = {
-                    "eff": Curva2[i, 3].value,
-                    "flow_v": Q_(Curva2[i,0].value,FD_sheet["AP52"].value),
-                    "suc": suc2FD,
-                    "speed": speed_FD,
-                    "head": Q_(Curva2[i,1].value,FD_sheet["AQ52"].value),
-                    "b": b2,
-                    "D": D2,
+                        "eff": Curva2[i, 3].value,
+                        "flow_v": Q_(Curva2[i, 0].value, FD_sheet["AP52"].value),
+                        "suc": suc2FD,
+                        "speed": speed_FD,
+                        "head": Q_(Curva2[i, 1].value, FD_sheet["AQ52"].value),
+                        "b": b2,
+                        "D": D2,
                     }
                     args_list.append(arg_dict2)
 
                 with multiprocessing.Pool() as pool:
                     P2_exp += pool.map(ccp.impeller.create_points_parallel, args_list)
 
-                imp2_exp = (P2_exp)
+                imp2_exp = P2_exp
 
             ### Reading and writing in the Actual Test Data Sheet
 
@@ -489,10 +548,16 @@ if __name__ == '__main__':
 
             for i in range(N):
 
-                gas = int(Dados_AT_LK[i,0].value)
+                gas = int(Dados_AT_LK[i, 0].value)
 
-                GasesT = TG_sheet.range(TG_sheet.cells(5,2 + 4*(gas-1)),TG_sheet.cells(21,2 + 4*(gas-1))).value
-                mol_fracT = TG_sheet.range(TG_sheet.cells(5,4 + 4*(gas-1)),TG_sheet.cells(21,4 + 4*(gas-1))).value
+                GasesT = TG_sheet.range(
+                    TG_sheet.cells(5, 2 + 4 * (gas - 1)),
+                    TG_sheet.cells(21, 2 + 4 * (gas - 1)),
+                ).value
+                mol_fracT = TG_sheet.range(
+                    TG_sheet.cells(5, 4 + 4 * (gas - 1)),
+                    TG_sheet.cells(21, 4 + 4 * (gas - 1)),
+                ).value
 
                 fluid_AT = {}
                 for count in range(len(GasesT)):
@@ -523,16 +588,29 @@ if __name__ == '__main__':
                     Dados_AT[i, 1].value = flow_v_AT.to(AT_sheet["H6"].value).magnitude
 
                 if BL_leak == "Yes":
-                    P_AT_Bal.append([Q_(Dados_AT_LK[i,0].value, Dados_AT_LK('X6').value),
-                                    Q_(Dados_AT_LK[i, 6].value, Dados_AT_LK('AC6').value)])
+                    P_AT_Bal.append(
+                        [
+                            Q_(Dados_AT_LK[i, 0].value, Dados_AT_LK("X6").value),
+                            Q_(Dados_AT_LK[i, 6].value, Dados_AT_LK("AC6").value),
+                        ]
+                    )
 
                 if BF_leak == "Yes":
-                    P_AT_Buf.append([Q_(Dados_AT_LK[i,1].value,Dados_AT_LK('Y6').value),
-                                    Q_(Dados_AT_LK[i, 5].value, Dados_AT_LK('AB6').value)])
+                    P_AT_Buf.append(
+                        [
+                            Q_(Dados_AT_LK[i, 1].value, Dados_AT_LK("Y6").value),
+                            Q_(Dados_AT_LK[i, 5].value, Dados_AT_LK("AB6").value),
+                        ]
+                    )
 
                 P_AT.append(
                     ccp.Point(
-                        speed=speed_AT, flow_m=flow_m_AT, suc=sucAT, disch=dischAT, b=b, D=D
+                        speed=speed_AT,
+                        flow_m=flow_m_AT,
+                        suc=sucAT,
+                        disch=dischAT,
+                        b=b,
+                        D=D,
                     )
                 )
 
@@ -556,10 +634,14 @@ if __name__ == '__main__':
                 if SS_config != "NONE":
                     if Dados_AT[i, 7].value != None:
                         V_test = True
-                        flowSS_v_AT = Q_(Dados_AT[i, 7].value, AT_sheet.range("N6").value)
+                        flowSS_v_AT = Q_(
+                            Dados_AT[i, 7].value, AT_sheet.range("N6").value
+                        )
                     else:
                         V_test = False
-                        flowSS_m_AT = Q_(Dados_AT[i, 6].value, AT_sheet.range("M6").value)
+                        flowSS_m_AT = Q_(
+                            Dados_AT[i, 6].value, AT_sheet.range("M6").value
+                        )
 
                     fluidSS_AT = fluid_AT
 
@@ -592,12 +674,13 @@ if __name__ == '__main__':
                     flow2_m_AT = flow_m_AT - flowSS_m_AT
 
                     suc2AT = State.define(fluid=fluid2_AT, p=Ps2_AT, T=Td_AT)
-                    disch2FD = State.define(fluid=fluid2_AT, p=Pd2_AT, T=Td2_AT)
+                    disch2AT = State.define(fluid=fluid2_AT, p=Pd2_AT, T=Td2_AT)
                 # else:
                 #     Done in another workbook
 
-
-                Dados_AT[i, 11].value = suc2AT.T().to(AT_sheet.range("R6").value).magnitude
+                Dados_AT[i, 11].value = (
+                    suc2AT.T().to(AT_sheet.range("R6").value).magnitude
+                )
 
                 Q1d_AT = flow_m_AT / dischAT.rho()
                 Dados_AT[i, 12].value = (
@@ -659,20 +742,28 @@ if __name__ == '__main__':
                     ReFD = P_FD.reynolds
                     Re2FD = P2_FD.reynolds
 
-                    RCAT = 0.988 / ReAT ** 0.243
-                    RC2AT = 0.988 / Re2AT ** 0.243
-                    RCFD = 0.988 / ReFD ** 0.243
-                    RC2FD = 0.988 / Re2FD ** 0.243
+                    RCAT = 0.988 / ReAT**0.243
+                    RC2AT = 0.988 / Re2AT**0.243
+                    RCFD = 0.988 / ReFD**0.243
+                    RC2FD = 0.988 / Re2FD**0.243
 
                     RBAT = np.log(0.000125 + 13.67 / ReAT) / np.log(rug + 13.67 / ReAT)
-                    RB2AT = np.log(0.000125 + 13.67 / Re2AT) / np.log(rug + 13.67 / Re2AT)
+                    RB2AT = np.log(0.000125 + 13.67 / Re2AT) / np.log(
+                        rug + 13.67 / Re2AT
+                    )
                     RBFD = np.log(0.000125 + 13.67 / ReFD) / np.log(rug + 13.67 / ReFD)
-                    RB2FD = np.log(0.000125 + 13.67 / Re2FD) / np.log(rug + 13.67 / Re2FD)
+                    RB2FD = np.log(0.000125 + 13.67 / Re2FD) / np.log(
+                        rug + 13.67 / Re2FD
+                    )
 
                     RAAT = 0.066 + 0.934 * (4.8e6 * b.to("ft").magnitude / ReAT) ** RCAT
-                    RA2AT = 0.066 + 0.934 * (4.8e6 * b2.to("ft").magnitude / Re2AT) ** RC2AT
+                    RA2AT = (
+                        0.066 + 0.934 * (4.8e6 * b2.to("ft").magnitude / Re2AT) ** RC2AT
+                    )
                     RAFD = 0.066 + 0.934 * (4.8e6 * b.to("ft").magnitude / ReFD) ** RCFD
-                    RA2FD = 0.066 + 0.934 * (4.8e6 * b2.to("ft").magnitude / Re2FD) ** RC2FD
+                    RA2FD = (
+                        0.066 + 0.934 * (4.8e6 * b2.to("ft").magnitude / Re2FD) ** RC2FD
+                    )
 
                     corr = RAFD / RAAT * RBFD / RBAT
                     corr2 = RA2FD / RA2AT * RB2FD / RB2AT
@@ -696,7 +787,7 @@ if __name__ == '__main__':
                             eff=eff,
                             speed=speed_FD,
                             flow_v=P_AT[i].flow_v * N_ratio,
-                            head=P_AT[i].head * N_ratio ** 2,
+                            head=P_AT[i].head * N_ratio**2,
                             b=b,
                             D=D,
                         )
@@ -731,7 +822,7 @@ if __name__ == '__main__':
                             eff=eff2,
                             speed=speed_FD,
                             flow_v=P2_AT[i].flow_v * N_ratio,
-                            head=P2_AT[i].head * N_ratio ** 2,
+                            head=P2_AT[i].head * N_ratio**2,
                             b=b2,
                             D=D2,
                         )
@@ -745,7 +836,7 @@ if __name__ == '__main__':
                             eff=P_AT[i].eff,
                             speed=speed_FD,
                             flow_v=P_AT[i].flow_v * N_ratio,
-                            head=P_AT[i].head * N_ratio ** 2,
+                            head=P_AT[i].head * N_ratio**2,
                             b=b,
                             D=D,
                         )
@@ -780,7 +871,7 @@ if __name__ == '__main__':
                             eff=P2_AT[i].eff,
                             speed=speed_FD,
                             flow_v=P2_AT[i].flow_v * N_ratio,
-                            head=P2_AT[i].head * N_ratio ** 2,
+                            head=P2_AT[i].head * N_ratio**2,
                             b=b2,
                             D=D2,
                         )
@@ -804,7 +895,8 @@ if __name__ == '__main__':
                 Results_AT[i, 7].value = P_AT[i].phi.magnitude / P_FD.phi.magnitude
                 Results_AT[i, 8].value = P_ATconv[i].disch.p().to("bar").magnitude
                 Results_AT[i, 9].value = (
-                    P_ATconv[i].disch.p().to("bar").magnitude / Pd_FD.to("bar").magnitude
+                    P_ATconv[i].disch.p().to("bar").magnitude
+                    / Pd_FD.to("bar").magnitude
                 )
                 Results_AT[i, 10].value = P_AT[i].head.to("kJ/kg").magnitude
                 Results_AT[i, 11].value = P_AT[i].head.to("kJ/kg").magnitude / max_H
@@ -847,7 +939,9 @@ if __name__ == '__main__':
 
                 else:
                     Results_AT[i, 18].value = P_ATconv[i].power.to("kW").magnitude
-                    Results_AT[i, 19].value = P_ATconv[i].power.to("kW").magnitude / min_Pow
+                    Results_AT[i, 19].value = (
+                        P_ATconv[i].power.to("kW").magnitude / min_Pow
+                    )
 
                 Results_AT[i, 20].value = P_AT[i].eff.magnitude
 
@@ -867,12 +961,15 @@ if __name__ == '__main__':
                 Results2_AT[i, 7].value = P2_AT[i].phi.magnitude / P2_FD.phi.magnitude
                 Results2_AT[i, 8].value = P2_ATconv[i].disch.p().to("bar").magnitude
                 Results2_AT[i, 9].value = (
-                    P2_ATconv[i].disch.p().to("bar").magnitude / Pd2_FD.to("bar").magnitude
+                    P2_ATconv[i].disch.p().to("bar").magnitude
+                    / Pd2_FD.to("bar").magnitude
                 )
                 Results2_AT[i, 10].value = P2_AT[i].head.to("kJ/kg").magnitude
                 Results2_AT[i, 11].value = P2_AT[i].head.to("kJ/kg").magnitude / max_H2
                 Results2_AT[i, 12].value = P2_ATconv[i].head.to("kJ/kg").magnitude
-                Results2_AT[i, 13].value = P2_ATconv[i].head.to("kJ/kg").magnitude / max_H2
+                Results2_AT[i, 13].value = (
+                    P2_ATconv[i].head.to("kJ/kg").magnitude / max_H2
+                )
                 Results2_AT[i, 14].value = P2_ATconv[i].flow_v.to("m³/h").magnitude
                 Results2_AT[i, 15].value = (
                     P2_ATconv[i].flow_v.to("m³/h").magnitude
@@ -884,7 +981,10 @@ if __name__ == '__main__':
                 if AT_sheet["C25"].value == "Yes":
 
                     HL2_FD = Q_(
-                        ((suc2FD.T() + disch2FD.T()).to("degC").magnitude * 0.8 / 2 - 25)
+                        (
+                            (suc2FD.T() + disch2FD.T()).to("degC").magnitude * 0.8 / 2
+                            - 25
+                        )
                         * 1.166
                         * AT_sheet["D28"].value,
                         "W",
@@ -904,9 +1004,9 @@ if __name__ == '__main__':
                     Results2_AT[i, 18].value = (
                         (P2_ATconv[i].power - HL2_AT + HL2_FD).to("kW").magnitude
                     )
-                    Results2_AT[i, 19].value = (P2_ATconv[i].power - HL2_AT + HL2_FD).to(
-                        "kW"
-                    ).magnitude / min_Pow2
+                    Results2_AT[i, 19].value = (
+                        P2_ATconv[i].power - HL2_AT + HL2_FD
+                    ).to("kW").magnitude / min_Pow2
 
                 else:
                     Results2_AT[i, 18].value = P2_ATconv[i].power.to("kW").magnitude
@@ -1049,7 +1149,9 @@ if __name__ == '__main__':
 
                 newton(
                     update_head,
-                    ccp.point.head_pol(suc=P_FD.suc, disch=P_FD.disch).to("J/kg").magnitude,
+                    ccp.point.head_pol(suc=P_FD.suc, disch=P_FD.disch)
+                    .to("J/kg")
+                    .magnitude,
                     tol=1,
                 )  ######used to be _head_pol()
 
@@ -1088,7 +1190,6 @@ if __name__ == '__main__':
                 elif SS_config == "OUT":
                     TSS_FD = Td_FD
 
-
                 Pd2_FD = Q_(FD_sheet.range("Z31").value, "bar")
                 Td2_FD = Q_(FD_sheet.range("Z32").value, "degC")
 
@@ -1111,7 +1212,9 @@ if __name__ == '__main__':
                     GasesFD = FD_sheet.range("B69:B85").value
                     mol_fracSS_FD = FD_sheet.range("N69:N85").value
 
-                    fluidSS_FD = {GasesFD[i]: mol_fracSS_FD[i] for i in range(len(GasesFD))}
+                    fluidSS_FD = {
+                        GasesFD[i]: mol_fracSS_FD[i] for i in range(len(GasesFD))
+                    }
                 elif SS_config == "OUT":
                     fluidSS_FD = fluid_FD
                 else:
@@ -1120,7 +1223,9 @@ if __name__ == '__main__':
                     GasesFD = FD_sheet.range("B69:B85").value
                     mol_frac2_FD = FD_sheet.range("Q69:Q85").value
 
-                    fluid2_FD = {GasesFD[i]: mol_frac2_FD[i] for i in range(len(GasesFD))}
+                    fluid2_FD = {
+                        GasesFD[i]: mol_frac2_FD[i] for i in range(len(GasesFD))
+                    }
 
                 if SS_config != "NONE":
                     SS_FD = State.define(fluid=fluidSS_FD, p=Ps2_FD, T=TSS_FD)
@@ -1157,7 +1262,9 @@ if __name__ == '__main__':
                     flow2_m_FD = flow_m_FD - flowSS_m_FD
 
                     suc2FD = State.define(fluid=fluid2_FD, p=Ps2_FD, T=Td_FD)
-                    suc2FD_eff = P_FD_eff.disch  # considers suction with first stage efficiency
+                    suc2FD_eff = (
+                        P_FD_eff.disch
+                    )  # considers suction with first stage efficiency
                     disch2FD = State.define(fluid=fluid2_FD, p=Pd2_FD, T=Td2_FD)
                     FD_sheet["AT35"].value = suc2FD.T().to("degC").magnitude
                 else:
@@ -1234,7 +1341,6 @@ if __name__ == '__main__':
                 else:
                     FD_sheet["AS37"].value = None
 
-
                 FD_sheet["AT25"].value = P2_FD.mach.magnitude
                 FD_sheet["AT26"].value = P2_FD.reynolds.magnitude
                 FD_sheet["AT27"].value = P2_FD.volume_ratio.magnitude
@@ -1297,8 +1403,8 @@ if __name__ == '__main__':
                 ReTP = P_TP.reynolds
                 ReFD = P_FD.reynolds
 
-                RCTP = 0.988 / ReTP ** 0.243
-                RCFD = 0.988 / ReFD ** 0.243
+                RCTP = 0.988 / ReTP**0.243
+                RCFD = 0.988 / ReFD**0.243
 
                 RBTP = np.log(0.000125 + 13.67 / ReTP) / np.log(rug + 13.67 / ReTP)
                 RBFD = np.log(0.000125 + 13.67 / ReFD) / np.log(rug + 13.67 / ReFD)
@@ -1317,7 +1423,7 @@ if __name__ == '__main__':
                     eff=eff,
                     speed=speed_FD,
                     flow_v=P_TP.flow_v * N_ratio,
-                    head=P_TP.head * N_ratio ** 2,
+                    head=P_TP.head * N_ratio**2,
                     b=b,
                     D=D,
                 )
@@ -1329,7 +1435,7 @@ if __name__ == '__main__':
                     eff=P_TP.eff,
                     speed=speed_FD,
                     flow_v=P_TP.flow_v * N_ratio,
-                    head=P_TP.head * N_ratio ** 2,
+                    head=P_TP.head * N_ratio**2,
                     b=b,
                     D=D,
                 )
@@ -1370,7 +1476,9 @@ if __name__ == '__main__':
                     "W",
                 )
 
-                TP_sheet["G34"].value = (P_TPconv.power - HL_TP + HL_FD).to("kW").magnitude
+                TP_sheet["G34"].value = (
+                    (P_TPconv.power - HL_TP + HL_FD).to("kW").magnitude
+                )
                 TP_sheet["H35"].value = (P_TPconv.power - HL_TP + HL_FD).to(
                     "kW"
                 ).magnitude / min_Pow
@@ -1407,15 +1515,21 @@ if __name__ == '__main__':
 
             if V_test:
                 flowSS_m_TP = flowSS_v_TP * SS_TP.rho()
-                TP_sheet["L9"].value = flowSS_m_TP.to(TP_sheet.range("M9").value).magnitude
+                TP_sheet["L9"].value = flowSS_m_TP.to(
+                    TP_sheet.range("M9").value
+                ).magnitude
             else:
                 flowSS_v_TP = flowSS_m_TP / SS_TP.rho()
-                TP_sheet["N9"].value = flowSS_v_TP.to(TP_sheet.range("O9").value).magnitude
+                TP_sheet["N9"].value = flowSS_v_TP.to(
+                    TP_sheet.range("O9").value
+                ).magnitude
 
             if SS_config == "IN":
                 flow2_m_TP = flow_m_TP + flowSS_m_TP
 
-                TP_sheet["F14"].value = flow2_m_TP.to(TP_sheet.range("G14").value).magnitude
+                TP_sheet["F14"].value = flow2_m_TP.to(
+                    TP_sheet.range("G14").value
+                ).magnitude
 
                 RSS = flowSS_m_TP / flow2_m_TP
                 R1 = flow_m_TP / flow2_m_TP
@@ -1426,33 +1540,50 @@ if __name__ == '__main__':
 
                 suc2TP = State.define(fluid=fluid2_TP, p=Ps2_TP, h=h2_TP)
                 flow2_v_TP = flow2_m_TP * suc2TP.v()
-                TP_sheet["H14"].value = flow2_v_TP.to(TP_sheet.range("I14").value).magnitude
+                TP_sheet["H14"].value = flow2_v_TP.to(
+                    TP_sheet.range("I14").value
+                ).magnitude
 
-                TP_sheet["N14"].value = suc2TP.T().to(TP_sheet.range("O14").value).magnitude
+                TP_sheet["N14"].value = (
+                    suc2TP.T().to(TP_sheet.range("O14").value).magnitude
+                )
 
             else:
                 fluid2_TP = fluid_TP
                 flow2_m_TP = flow_m_TP - flowSS_m_TP
-                TP_sheet["F14"].value = flow2_m_TP.to(TP_sheet.range("G14").value).magnitude
+                TP_sheet["F14"].value = flow2_m_TP.to(
+                    TP_sheet.range("G14").value
+                ).magnitude
 
                 suc2TP = State.define(fluid=fluid2_TP, p=Ps2_TP, T=Td_TP)
 
                 flow2_v_TP = flow2_m_TP * suc2TP.v()
-                TP_sheet["H14"].value = flow2_v_TP.to(TP_sheet.range("I14").value).magnitude
+                TP_sheet["H14"].value = flow2_v_TP.to(
+                    TP_sheet.range("I14").value
+                ).magnitude
 
-                TP_sheet["N14"].value = suc2FD.T().to(TP_sheet.range("O14").value).magnitude
+                TP_sheet["N14"].value = (
+                    suc2FD.T().to(TP_sheet.range("O14").value).magnitude
+                )
 
             disch2TPk = State.define(fluid=fluid2_TP, p=Pd2_TP, s=suc2TP.s())
 
-            hd2_TP = sucTP.h() + (disch2TPk.h() - suc2TP.h()) / ccp.point.eff_isentropic(
-                suc=P2_FD.suc, disch=P2_FD.disch
-            )
+            hd2_TP = sucTP.h() + (
+                disch2TPk.h() - suc2TP.h()
+            ) / ccp.point.eff_isentropic(suc=P2_FD.suc, disch=P2_FD.disch)
             disch2TP = State.define(fluid=fluid2_TP, p=Pd2_TP, h=hd2_TP)
 
-            TP_sheet["R14"].value = disch2TP.T().to(TP_sheet.range("S14").value).magnitude
+            TP_sheet["R14"].value = (
+                disch2TP.T().to(TP_sheet.range("S14").value).magnitude
+            )
 
             P2_TP = ccp.Point(
-                speed=speed2_TP, flow_m=flow2_m_TP, suc=suc2TP, disch=disch2TP, b=b2, D=D2
+                speed=speed2_TP,
+                flow_m=flow2_m_TP,
+                suc=suc2TP,
+                disch=disch2TP,
+                b=b2,
+                D=D2,
             )
 
             N2_ratio = speed_FD / speed2_TP
@@ -1462,8 +1593,8 @@ if __name__ == '__main__':
                 Re2TP = P2_TP.reynolds
                 Re2FD = P2_FD.reynolds
 
-                RCTP = 0.988 / Re2TP ** 0.243
-                RCFD = 0.988 / Re2FD ** 0.243
+                RCTP = 0.988 / Re2TP**0.243
+                RCFD = 0.988 / Re2FD**0.243
 
                 RBTP = np.log(0.000125 + 13.67 / Re2TP) / np.log(rug + 13.67 / Re2TP)
                 RBFD = np.log(0.000125 + 13.67 / Re2FD) / np.log(rug + 13.67 / Re2FD)
@@ -1482,7 +1613,7 @@ if __name__ == '__main__':
                     eff=eff,
                     speed=speed_FD,
                     flow_v=P2_TP.flow_v * N2_ratio,
-                    head=P2_TP.head * N2_ratio ** 2,
+                    head=P2_TP.head * N2_ratio**2,
                     b=b2,
                     D=D2,
                 )
@@ -1494,7 +1625,7 @@ if __name__ == '__main__':
                     eff=P2_TP.eff,
                     speed=speed_FD,
                     flow_v=P2_TP.flow_v * N2_ratio,
-                    head=P2_TP.head * N2_ratio ** 2,
+                    head=P2_TP.head * N2_ratio**2,
                     b=b2,
                     D=D2,
                 )
@@ -1510,7 +1641,9 @@ if __name__ == '__main__':
                 / (flowSS_v_FD.to("m³/h").magnitude / Q1d_FD.to("m³/h").magnitude)
             )
 
-            TP_sheet["R14"].value = disch2TP.T().to(TP_sheet.range("S14").value).magnitude
+            TP_sheet["R14"].value = (
+                disch2TP.T().to(TP_sheet.range("S14").value).magnitude
+            )
             TP_sheet["L19"].value = P2_TP.volume_ratio.magnitude
             TP_sheet["M19"].value = (
                 P2_TP.volume_ratio.magnitude / P2_FD.volume_ratio.magnitude
@@ -1545,7 +1678,9 @@ if __name__ == '__main__':
                     "W",
                 )
 
-                TP_sheet["L34"].value = (P2_TPconv.power - HL_TP + HL_FD).to("kW").magnitude
+                TP_sheet["L34"].value = (
+                    (P2_TPconv.power - HL_TP + HL_FD).to("kW").magnitude
+                )
                 TP_sheet["M35"].value = (P2_TPconv.power - HL_TP + HL_FD).to(
                     "kW"
                 ).magnitude / min_Pow2
@@ -1598,7 +1733,7 @@ if __name__ == '__main__':
                 rho = State_FO.rho()
                 k = State_FO.kv()
 
-                e = 1 - (0.351 + 0.256 * (beta ** 4) + 0.93 * (beta ** 8)) * (
+                e = 1 - (0.351 + 0.256 * (beta**4) + 0.93 * (beta**8)) * (
                     1 - (P2 / P1) ** (1 / k)
                 )
 
@@ -1619,16 +1754,20 @@ if __name__ == '__main__':
                     # calc C
                     C = (
                         0.5961
-                        + 0.0261 * beta ** 2
-                        - 0.216 * beta ** 8
+                        + 0.0261 * beta**2
+                        - 0.216 * beta**8
                         + 0.000521 * (1e6 * beta / Re) ** 0.7
                         + (0.0188 + 0.0063 * (19000 * beta / Re) ** 0.8)
-                        * beta ** 3.5
+                        * beta**3.5
                         * (1e6 / Re) ** 0.3
-                        + (0.043 + 0.080 * np.e ** (-10 * L1) - 0.123 * np.e ** (-7 * L1))
+                        + (
+                            0.043
+                            + 0.080 * np.e ** (-10 * L1)
+                            - 0.123 * np.e ** (-7 * L1)
+                        )
                         * (1 - 0.11 * (19000 * beta / Re) ** 0.8)
-                        * (beta ** 4 / (1 - beta ** 4))
-                        - 0.031 * (M2 - 0.8 * M2 ** 1.1) * beta ** 1.3
+                        * (beta**4 / (1 - beta**4))
+                        - 0.031 * (M2 - 0.8 * M2**1.1) * beta**1.3
                     )
 
                     if D < Q_(71.12, "mm"):
@@ -1636,10 +1775,10 @@ if __name__ == '__main__':
 
                     qm = (
                         C
-                        / (np.sqrt(1 - beta ** 4))
+                        / (np.sqrt(1 - beta**4))
                         * e
                         * (np.pi / 4)
-                        * d ** 2
+                        * d**2
                         * np.sqrt(2 * dP * rho)
                     )
 
@@ -1649,7 +1788,7 @@ if __name__ == '__main__':
 
                 newton(update_Re, 1e8, tol=1e-5)
 
-                Re = D / mu * qm / (np.pi * D ** 2 / 4)
+                Re = D / mu * qm / (np.pi * D**2 / 4)
 
                 CF_sheet[i, 8].value = qm.to(Units[-1]).magnitude
 
