@@ -4,9 +4,11 @@ FileName = os.path.basename(__file__)[:-3]
 
 import sys
 import logging
+from pathlib import Path
 
 logger = logging.getLogger(__name__)
-handler = logging.FileHandler("log.txt", mode="w")
+log_file = Path(__file__).parent / "log.txt"
+handler = logging.FileHandler(log_file, mode="w")
 logger.addHandler(handler)
 
 
