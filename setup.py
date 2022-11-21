@@ -1,6 +1,7 @@
 import io
 import os
 import re
+import sys
 
 from setuptools import setup, find_packages
 
@@ -42,6 +43,19 @@ try:
 except FileNotFoundError:
     long_description = DESCRIPTION
 
+REQUIRES = [
+        "numpy",
+        "scipy",
+        "CoolProp",
+        "pint>=0.18",
+        "plotly",
+        "toml",
+        "openpyxl",
+        "tqdm",
+        "ctREFPROP",
+    ]
+if sys.platform in ["win32", "cygwin", "msys"]:
+    REQUIRES.append("xlwings")
 
 setup(
     name="ccp-performance",
@@ -53,17 +67,7 @@ setup(
     author_email="raphaelts@gmail.com",
     package_data={"ccp.config": ["new_units.txt"], "ccp.tests.data": ["*"]},
     python_requires=">=3.6",
-    install_requires=[
-        "numpy",
-        "scipy",
-        "CoolProp",
-        "pint>=0.18",
-        "plotly",
-        "toml",
-        "openpyxl",
-        "tqdm",
-        "ctREFPROP",
-    ],
+    install_requires=REQUIRES,
     extras_require={
         "dev": [
             "pytest",
