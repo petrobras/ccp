@@ -212,7 +212,7 @@ class Curve:
             [p.disch for p in self], flow_v=self.flow_v, speed=self.speed
         )
 
-        for param in ["head", "eff", "power", "phi", "psi"]:
+        for param in ["head", "eff", "power", "phi", "psi", "flow_m"]:
             values = []
             for point in self:
                 try:
