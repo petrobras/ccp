@@ -186,6 +186,8 @@ class Impeller:
             "power",
             "psi",
             "phi",
+            "flow_v",
+            "flow_m",
         ]:
             values = []
             # for disch.p etc values are defined in _Impeller_State
@@ -370,6 +372,8 @@ class Impeller:
 
                 if speed is None:
                     speed_mean = np.mean([p.speed.magnitude for p in converted_points])
+                else:
+                    speed_mean = speed
 
                 converted_points = [
                     Point.convert_from(
