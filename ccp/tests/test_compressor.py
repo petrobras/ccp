@@ -818,6 +818,15 @@ def test_back_to_back(back_to_back):
     assert_allclose(p0r.eff, 0.47459, rtol=1e-6)
     assert_allclose(p0r.power, 126849.949491)
 
+    # rotor specified sec2
+    p0r = back_to_back.points_rotor_sp_sec2[0]
+    assert_allclose(p0r.flow_m, 52.885668)
+    assert_allclose(p0r.suc.T(), 313.15)
+    assert_allclose(p0r.suc.p(), 13538000)
+    assert_allclose(p0r.head, 30603.247711, rtol=1e-6)
+    assert_allclose(p0r.eff, 0.47459, rtol=1e-6)
+    assert_allclose(p0r.power, 3410256.828758)
+
     # rotor specified
     p0r_sp = back_to_back.points_rotor_sp_sec1[0]
     assert_allclose(p0r_sp.flow_m, Q_(156223.564, "kg/h").to("kg/s"), rtol=1e-3)
@@ -827,15 +836,16 @@ def test_back_to_back(back_to_back):
     assert_allclose(p0r_sp.eff, 0.622869673032321, rtol=1e-6)
     assert_allclose(p0r_sp.power, 5384326.21375024, rtol=1e-3)
 
-    # # flange specified
-    # p0f_sp = back_to_back.points_flange_sp_sec1[0]
-    # assert_allclose(p0f_sp.flow_m, Q_(169296.4746, "kg/h").to("kg/s"), rtol=1e-2)
-    # assert_allclose(p0f_sp.suc.T(), 311.55, rtol=1e-3)
-    # assert_allclose(p0f_sp.suc.p(), 1699000)
-    # assert_allclose(p0f_sp.head, 148399.758541, rtol=1e-6)
-    # assert_allclose(p0f_sp.eff, 0.7357389512832868, rtol=1e-6)
-    # assert_allclose(p0f_sp.power, 9501324.55769, rtol=1e-3)
-    #
+    # flange specified
+    p0f_sp = back_to_back.points_flange_sp_sec1[0]
+    assert_allclose(p0f_sp.flow_m, Q_(153951.321926329, "kg/h").to("kg/s"), rtol=1e-2)
+    assert_allclose(p0f_sp.suc.T(), 313.15, rtol=1e-3)
+    assert_allclose(p0f_sp.suc.p(), 4739000)
+    assert_allclose(p0f_sp.disch.T(), 379.291492)
+    assert_allclose(p0f_sp.head, 77143.718703, rtol=1e-6)
+    assert_allclose(p0f_sp.eff, 0.643342, rtol=1e-6)
+    assert_allclose(p0f_sp.power, 5131726.850038, rtol=1e-3)
+
     # # imp specified
     # assert_allclose(
     #     back_to_back.sec1.head,
