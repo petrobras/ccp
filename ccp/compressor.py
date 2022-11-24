@@ -559,47 +559,14 @@ class BackToBack(Impeller):
         self.points_rotor_sp_sec2 = []
         self.points_flange_sp_sec2 = []
 
-        # estimate rotor guarantee flow using fd conditions
-        end_seal_flow_m_sp = flow_m_seal(k_seal=k_end_seal_mean, state_up=guarantee_point_sec2.suc, state_down=guarantee_point_sec1.suc)
-        # calculate suction pressure for sec2
-        ms1r_sp = guarantee_point_sec1.flow_m + end_seal_flow_m_sp
-
-        disch_r_sp = self.imp_rotor_sp_sec1.point(flow_m=ms1r_sp, speed=self.speed).disch
-        ps2f_sp = disch_r_sp.p() - (guarantee_point_sec1.disch.p() - guarantee_point_sec2.suc.p())
-        suc2f_sp = State.define(p=ps2f_sp, T=guarantee_point_sec2.suc.T(), fluid=guarantee_point_sec2.suc.fluid)
-        for point_r_t in self.points_rotor_t_sec2:
-            point_r_sp = Point.convert_from(
-                original_point=point_r_t,
-                suc=suc2f_sp,
-                speed=self.speed,
-                find="volume_ratio",
-            )
-            self.points_rotor_sp_sec2.append(point_r_sp)
-            mend_sp = flow_m_seal(
-                k_seal=k_end_seal_mean,
-                state_up=guarantee_point_sec2.suc,
-                state_down=guarantee_point_sec1.suc,
-            )
-            ms2r_sp = point_r_sp.flow_m
-            ms2f_sp = ms2r_sp + mend_sp
-            point_sp = Point(
-                suc=point_r_sp.suc,
-                disch=point_r_sp.disch,
-                flow_m=ms2f_sp,
-                speed=point_r_sp.speed,
-                b=point_r_sp.b,
-                D=point_r_sp.D,
-            )
-            self.points_flange_sp_sec2.append(point_sp)
-
-        self.imp_flange_sp_sec2 = Impeller(self.points_flange_sp_sec2)
-
-        # convert sec1 points_rotor_t to points_rotor_sp
+        # calculate rotor specified conditions for sec1
         self.points_rotor_sp_sec1 = []
-        self.points_flange_sp_sec1 = []
-        # calculate ms1r for the guarantee point
-        for point, k_end_seal, k_div_wall in zip(
-            self.points_rotor_t_sec1, self.k_end_seal, self.k_div_wall
+        ms1f_sp_array = np.zeros(len(self.points_rotor_t_sec1), dtype=np.object)
+        for i, point, k_end_seal, k_div_wall in zip(
+            range(len(ms1f_sp_array)),
+            self.points_rotor_t_sec1,
+            self.k_end_seal,
+            self.k_div_wall,
         ):
             initial_point = Point.convert_from(
                 original_point=point,
@@ -652,6 +619,8 @@ class BackToBack(Impeller):
                 ms1f_sp = ms1f_sp - (fx / dfx)
                 error = ((fx**2) ** 0.5).m
 
+            ms1f_sp_array[i] = ms1f_sp
+
             rotor_sp_sec1_suc = ccp.State.define(
                 p=guarantee_point_sec1.suc.p(),
                 T=Ts1r_sp,
@@ -664,20 +633,74 @@ class BackToBack(Impeller):
                 find="volume_ratio",
             )
             self.points_rotor_sp_sec1.append(point_r_sp)
+        self.imp_rotor_sp_sec1 = Impeller(self.points_rotor_sp_sec1)
 
+        # estimate rotor guarantee flow using fd conditions
+        end_seal_flow_m_sp = flow_m_seal(
+            k_seal=k_end_seal_mean,
+            state_up=guarantee_point_sec2.suc,
+            state_down=guarantee_point_sec1.suc,
+        )
+        # calculate suction pressure for sec2
+        ms1r_sp = guarantee_point_sec1.flow_m + end_seal_flow_m_sp
+
+        disch_r_sp = self.imp_rotor_sp_sec1.point(
+            flow_m=ms1r_sp, speed=self.speed
+        ).disch
+        ps2f_sp = disch_r_sp.p() - (
+            guarantee_point_sec1.disch.p() - guarantee_point_sec2.suc.p()
+        )
+        suc2f_sp = State.define(
+            p=ps2f_sp,
+            T=guarantee_point_sec2.suc.T(),
+            fluid=guarantee_point_sec2.suc.fluid,
+        )
+        for point_r_t in self.points_rotor_t_sec2:
+            point_r_sp = Point.convert_from(
+                original_point=point_r_t,
+                suc=suc2f_sp,
+                speed=self.speed,
+                find="volume_ratio",
+            )
+            self.points_rotor_sp_sec2.append(point_r_sp)
+            mend_sp = flow_m_seal(
+                k_seal=k_end_seal_mean,
+                state_up=guarantee_point_sec2.suc,
+                state_down=guarantee_point_sec1.suc,
+            )
+            ms2r_sp = point_r_sp.flow_m
+            ms2f_sp = ms2r_sp + mend_sp
+            point_sp = Point(
+                suc=point_r_sp.suc,
+                disch=point_r_sp.disch,
+                flow_m=ms2f_sp,
+                speed=point_r_sp.speed,
+                b=point_r_sp.b,
+                D=point_r_sp.D,
+            )
+            self.points_flange_sp_sec2.append(point_sp)
+
+        self.imp_flange_sp_sec2 = Impeller(self.points_flange_sp_sec2)
+
+        # convert sec1 points_rotor_t to points_rotor_sp
+        self.points_flange_sp_sec1 = []
+        for point_r_sp, ms1f_sp, k_end_seal, k_div_wall in zip(
+            self.points_rotor_sp_sec1, ms1f_sp_array, self.k_end_seal, self.k_div_wall
+        ):
             # calculate div wall flow
             suc_sec2 = ccp.State.define(
                 p=point_r_sp.disch.p(),
                 T=guarantee_point_sec2.suc.T(),
                 fluid=guarantee_point_sec2.suc.fluid,
             )
-
             imp_sec2_conv = self.imp_flange_sp_sec2
             imp_sec2_flow_m = point_r_sp.flow_m
             if imp_sec2_flow_m > imp_sec2_conv.flow_m.max():
                 imp_sec2_flow_m = imp_sec2_conv.flow_m.max()
             sec2_point = imp_sec2_conv.point(flow_m=imp_sec2_flow_m, speed=self.speed)
-            sec2_disch = ccp.point.disch_from_suc_head_eff(suc=suc_sec2, head=sec2_point.head, eff=sec2_point.eff)
+            sec2_disch = ccp.point.disch_from_suc_head_eff(
+                suc=suc_sec2, head=sec2_point.head, eff=sec2_point.eff
+            )
             mdiv_sp = flow_m_seal(
                 k_seal=k_div_wall_mean,
                 state_up=sec2_disch,
