@@ -581,22 +581,22 @@ if __name__ == "__main__":
                     P_ATconv.power.to("kW").magnitude / min_Pow
                 )  ##########
 
-        Phi = np.abs(1 - np.array(Results_AT[0:N, 7].value))
+        Q_ratio = np.abs(1 - np.array(Results_AT[0:N, 15].value))
 
         if N == 1:
-            Phi = [Phi]
+            Q_ratio = [Q_ratio]
 
         IdG = []
 
         for i in range(N):
-            if Phi[i] < 0.04:
+            if Q_ratio[i] < 0.04:
                 IdG.append(i)
 
         if len(IdG) == 1:
             AT_sheet["G32:AB32"].value = Results_AT[IdG[0], :].value
         elif len(IdG) > 1:
 
-            IdG = [int(k) for k in np.argsort(Phi)[0:2]]
+            IdG = [int(k) for k in np.argsort(Q_ratio)[0:2]]
             IdG = sorted(IdG)
             if AT_sheet["C23"].value == "Yes":
                 aux1 = np.array(Results_AT[IdG[0], :].value)
@@ -605,7 +605,7 @@ if __name__ == "__main__":
                 aux1 = np.array(Results_AT[IdG[0], :-1].value)
                 aux2 = np.array(Results_AT[IdG[1], :-1].value)
 
-            f = (1 - aux1[7]) / (aux2[7] - aux1[7])
+            f = (1 - aux1[15]) / (aux2[15] - aux1[15])
             aux = aux1 + f * (aux2 - aux1)
             AT_sheet["G32:AB32"].value = aux
         else:
