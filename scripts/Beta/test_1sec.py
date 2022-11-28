@@ -23,6 +23,7 @@ def handle_exception(exc_type, exc_value, exc_traceback):
             "Exception occured:", exc_info=(exc_type, exc_value, exc_traceback)
         )
 
+
 sys.excepthook = handle_exception
 
 from xlwings import Book
@@ -41,6 +42,7 @@ elif TP_sheet["K19"].value != None:
 elif CF_sheet["L4"].value != None:
     CF_sheet["L8"].value = "Carregando bibliotecas..."
 
+# import xlwings as xw
 from scipy.optimize import newton
 
 
