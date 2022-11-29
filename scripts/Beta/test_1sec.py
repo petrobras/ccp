@@ -11,7 +11,6 @@ log_file = Path(__file__).parent / "log.txt"
 handler = logging.FileHandler(log_file, mode="w")
 logger.addHandler(handler)
 
-
 def handle_exception(exc_type, exc_value, exc_traceback):
     AT_sheet["F36"].value = "ERRO!"
     TP_sheet["J23"].value = "ERRO!"
@@ -52,6 +51,10 @@ import ccp
 from ccp import State, Q_
 from ccp import compressor
 import numpy as np
+
+logger.critical("System Information:")
+logger.critical(f"python: {sys.version}")
+logger.critical(f"ccp: {ccp.__version__full}")
 
 if __name__ == "__main__":
 
