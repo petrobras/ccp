@@ -387,8 +387,8 @@ if __name__ == "__main__":
                         convection_constant=heat_constant,
                         b=b,
                         D=D,
-                        balance_line_flow=balance_line_flow,
-                        seal_gas_flow=seal_gas_flow,
+                        balance_line_flow_m=balance_line_flow,
+                        seal_gas_flow_m=seal_gas_flow,
                         seal_gas_temperature=seal_gas_temperature,
                     )
                 )
