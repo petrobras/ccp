@@ -23,6 +23,7 @@ def handle_exception(exc_type, exc_value, exc_traceback):
             "Exception occured:", exc_info=(exc_type, exc_value, exc_traceback)
         )
 
+
 sys.excepthook = handle_exception
 
 from xlwings import Book
@@ -42,6 +43,7 @@ elif CF_sheet["L4"].value != None:
     CF_sheet["L8"].value = "Carregando bibliotecas..."
 
 import os
+
 try:
     aux = os.environ["RPprefix"]
 except:
@@ -53,8 +55,11 @@ import numpy as np
 from scipy.optimize import newton
 import multiprocessing
 
+logger.critical("System Information:")
+logger.critical(f"python: {sys.version}")
+logger.critical(f"ccp: {ccp.__version__full}")
 
-if __name__ == '__main__':
+if __name__ == "__main__":
 
     global P_FD_eff, P2_FD_eff
 
@@ -113,7 +118,6 @@ if __name__ == '__main__':
 
         AT_sheet["U6"].value = None
         AT_sheet["U11"].value = "Calculando..."
-
 
         FD_sheet = wb.sheets["DataSheet"]
         ### Reading and writing SECTION 1 from the FD sheet
@@ -222,7 +226,6 @@ if __name__ == '__main__':
         Pow2_FD = Q_(FD_sheet.range("Z35").value, "kW")
         H2_FD = Q_(FD_sheet.range("Z40").value, "J/kg")
 
-
         D2 = Q_(FD_sheet.range("AB133").value, "mm")
         b2 = Q_(FD_sheet.range("AQ133").value, "mm")
 
@@ -272,9 +275,7 @@ if __name__ == '__main__':
 
         newton(
             update_head2,
-            ccp.point.head_pol(suc=P2_FD.suc, disch=P2_FD.disch)
-            .to("J/kg")
-            .magnitude,
+            ccp.point.head_pol(suc=P2_FD.suc, disch=P2_FD.disch).to("J/kg").magnitude,
             tol=1,
         )
 
@@ -345,7 +346,6 @@ if __name__ == '__main__':
 
         QFD = np.array(Curva[0:Nc, 0].value)
 
-
         Id = list(np.argsort(QFD))
 
         if len(Id) > 1:
@@ -359,7 +359,10 @@ if __name__ == '__main__':
         head2_unit = FD_sheet["AQ52"].value
         QFD2 = Q_(np.array(Curva2[0:Nc2, 0].value), flow2_unit)
 
-        if Nc2 > 0 and min(abs(QFD2.to("m³/h").m - P2_FD.flow_v.to(flow2_unit).magnitude)) == 0:
+        if (
+            Nc2 > 0
+            and min(abs(QFD2.to("m³/h").m - P2_FD.flow_v.to(flow2_unit).magnitude)) == 0
+        ):
             Gar = [None, None, None, None]
             Curva2[Nc2, :].value = Gar
 
@@ -394,39 +397,39 @@ if __name__ == '__main__':
             P_exp = []
             for i in range(Nc):
                 arg_dict = {
-                "eff": Curva[i, 3].value,
-                "flow_v": Q_(Curva[i,0].value,flow1_unit),
-                "suc": sucFD,
-                "speed": speed_FD,
-                "head": Q_(Curva[i,1].value,head1_unit),
-                "b": b,
-                "D": D,
+                    "eff": Curva[i, 3].value,
+                    "flow_v": Q_(Curva[i, 0].value, flow1_unit),
+                    "suc": sucFD,
+                    "speed": speed_FD,
+                    "head": Q_(Curva[i, 1].value, head1_unit),
+                    "b": b,
+                    "D": D,
                 }
                 args_list.append(arg_dict)
 
             with multiprocessing.Pool() as pool:
                 P_exp += pool.map(ccp.impeller.create_points_parallel, args_list)
 
-            imp_exp = (P_exp)
+            imp_exp = P_exp
 
             args_list = []
             P2_exp = []
             for i in range(Nc2):
                 arg_dict2 = {
-                "eff": Curva2[i, 3].value,
-                "flow_v": Q_(Curva2[i,0].value,flow2_unit),
-                "suc": suc2FD,
-                "speed": speed_FD,
-                "head": Q_(Curva2[i,1].value,head2_unit),
-                "b": b2,
-                "D": D2,
+                    "eff": Curva2[i, 3].value,
+                    "flow_v": Q_(Curva2[i, 0].value, flow2_unit),
+                    "suc": suc2FD,
+                    "speed": speed_FD,
+                    "head": Q_(Curva2[i, 1].value, head2_unit),
+                    "b": b2,
+                    "D": D2,
                 }
                 args_list.append(arg_dict2)
 
             with multiprocessing.Pool() as pool:
                 P2_exp += pool.map(ccp.impeller.create_points_parallel, args_list)
 
-            imp2_exp = (P2_exp)
+            imp2_exp = P2_exp
         ################################################################################################################
         ###############################Check actual test procedure from this point######################################
         ################################################################################################################
@@ -453,10 +456,16 @@ if __name__ == '__main__':
 
         for i in range(N):
 
-            gas = int(Dados_AT[i,13].value)
+            gas = int(Dados_AT[i, 13].value)
 
-            GasesT = TG_sheet.range(TG_sheet.cells(5,2 + 4*(gas-1)),TG_sheet.cells(21,2 + 4*(gas-1))).value
-            mol_fracT = TG_sheet.range(TG_sheet.cells(5,4 + 4*(gas-1)),TG_sheet.cells(21,4 + 4*(gas-1))).value
+            GasesT = TG_sheet.range(
+                TG_sheet.cells(5, 2 + 4 * (gas - 1)),
+                TG_sheet.cells(21, 2 + 4 * (gas - 1)),
+            ).value
+            mol_fracT = TG_sheet.range(
+                TG_sheet.cells(5, 4 + 4 * (gas - 1)),
+                TG_sheet.cells(21, 4 + 4 * (gas - 1)),
+            ).value
 
             fluid_AT = {}
             for count in range(len(GasesT)):
@@ -487,18 +496,26 @@ if __name__ == '__main__':
                 Dados_AT[i, 1].value = flow_v_AT.to(AT_sheet["H6"].value).magnitude
 
             if BL_leak == "Yes":
-                P_AT_Bal.append([Q_(Dados_AT_LK[i,0].value, Dados_AT_LK('X6').value),
-                                Q_(Dados_AT_LK[i, 6].value, Dados_AT_LK('AC6').value)]) ###################
+                P_AT_Bal.append(
+                    [
+                        Q_(Dados_AT_LK[i, 0].value, Dados_AT_LK("X6").value),
+                        Q_(Dados_AT_LK[i, 6].value, Dados_AT_LK("AC6").value),
+                    ]
+                )  ###################
 
             if BF_leak == "Yes":
-                P_AT_Buf.append([Q_(Dados_AT_LK[i,1].value,Dados_AT_LK('Y6').value),
-                                Q_(Dados_AT_LK[i, 5].value, Dados_AT_LK('AB6').value)]) ###################
+                P_AT_Buf.append(
+                    [
+                        Q_(Dados_AT_LK[i, 1].value, Dados_AT_LK("Y6").value),
+                        Q_(Dados_AT_LK[i, 5].value, Dados_AT_LK("AB6").value),
+                    ]
+                )  ###################
 
             P_AT.append(
                 ccp.Point(
                     speed=speed_AT, flow_m=flow_m_AT, suc=sucAT, disch=dischAT, b=b, D=D
                 )
-            ) ###################
+            )  ###################
 
             ## Carregando dados da segunda seção
 
@@ -524,8 +541,12 @@ if __name__ == '__main__':
             Pd2_AT = Q_(Dados_AT[i, 11].value, AT_sheet.range("Q6").value)
             Td2_AT = Q_(Dados_AT[i, 12].value, AT_sheet.range("R6").value)
 
-            suc2F_AT = State.define(fluid=fluid2_AT, p=Ps2_AT, T=Ts2_AT)   ###################
-            disch2F_AT = State.define(fluid=fluid2_AT, p=Ps2_AT, T=Ts2_AT) ###################
+            suc2F_AT = State.define(
+                fluid=fluid2_AT, p=Ps2_AT, T=Ts2_AT
+            )  ###################
+            disch2F_AT = State.define(
+                fluid=fluid2_AT, p=Ps2_AT, T=Ts2_AT
+            )  ###################
 
             # if SS_config == "IN":
             #     flow2_m_AT = flow_m_AT + flowSS_m_AT
@@ -544,8 +565,6 @@ if __name__ == '__main__':
             #
             #     suc2AT = State.define(fluid=fluid2_AT, p=Ps2_AT, T=Td_AT)
             #     disch2FD = State.define(fluid=fluid2_AT, p=Pd2_AT, T=Td2_AT)
-
-
 
             # Dados_AT[i, 11].value = suc2AT.T().to(AT_sheet.range("R6").value).magnitude
 
@@ -575,20 +594,20 @@ if __name__ == '__main__':
         else:
             QQ = []
             for i in range(N):
-                QQ.append(P2_AT[i].flow_v.magnitude) ################# alterar
+                QQ.append(P2_AT[i].flow_v.magnitude)  ################# alterar
 
         Id = list(np.argsort(QQ))
 
         if len(Id) > 1:
             Daux = Dados_AT.value
             Paux = [P for P in P_AT]
-            P2aux = [P for P in P2_AT] ####alterar
+            P2aux = [P for P in P2_AT]  ####alterar
             for i in range(N):
                 Dados_AT[i, :].value = Daux[Id[i]][:]
                 P_AT[i] = Paux[Id[i]]
-                P2_AT[i] = P2aux[Id[i]] #####alterar
-##############################################################################
-###################continuar daqui ###########################################
+                P2_AT[i] = P2aux[Id[i]]  #####alterar
+        ##############################################################################
+        ###################continuar daqui ###########################################
         P_ATconv = []
         P2_ATconv = []
 
@@ -610,10 +629,10 @@ if __name__ == '__main__':
                 ReFD = P_FD.reynolds
                 Re2FD = P2_FD.reynolds
 
-                RCAT = 0.988 / ReAT ** 0.243
-                RC2AT = 0.988 / Re2AT ** 0.243
-                RCFD = 0.988 / ReFD ** 0.243
-                RC2FD = 0.988 / Re2FD ** 0.243
+                RCAT = 0.988 / ReAT**0.243
+                RC2AT = 0.988 / Re2AT**0.243
+                RCFD = 0.988 / ReFD**0.243
+                RC2FD = 0.988 / Re2FD**0.243
 
                 RBAT = np.log(0.000125 + 13.67 / ReAT) / np.log(rug + 13.67 / ReAT)
                 RB2AT = np.log(0.000125 + 13.67 / Re2AT) / np.log(rug + 13.67 / Re2AT)
@@ -647,7 +666,7 @@ if __name__ == '__main__':
                         eff=eff,
                         speed=speed_FD,
                         flow_v=P_AT[i].flow_v * N_ratio,
-                        head=P_AT[i].head * N_ratio ** 2,
+                        head=P_AT[i].head * N_ratio**2,
                         b=b,
                         D=D,
                     )
@@ -682,7 +701,7 @@ if __name__ == '__main__':
                         eff=eff2,
                         speed=speed_FD,
                         flow_v=P2_AT[i].flow_v * N_ratio,
-                        head=P2_AT[i].head * N_ratio ** 2,
+                        head=P2_AT[i].head * N_ratio**2,
                         b=b2,
                         D=D2,
                     )
@@ -696,7 +715,7 @@ if __name__ == '__main__':
                         eff=P_AT[i].eff,
                         speed=speed_FD,
                         flow_v=P_AT[i].flow_v * N_ratio,
-                        head=P_AT[i].head * N_ratio ** 2,
+                        head=P_AT[i].head * N_ratio**2,
                         b=b,
                         D=D,
                     )
@@ -731,7 +750,7 @@ if __name__ == '__main__':
                         eff=P2_AT[i].eff,
                         speed=speed_FD,
                         flow_v=P2_AT[i].flow_v * N_ratio,
-                        head=P2_AT[i].head * N_ratio ** 2,
+                        head=P2_AT[i].head * N_ratio**2,
                         b=b2,
                         D=D2,
                     )
@@ -918,8 +937,8 @@ if __name__ == '__main__':
             AT_sheet["G47:AB47"].value = [None] * len(Results2_AT[0, :].value)
 
         AT_sheet["T11"].value = "Calculado!"
-##############################################################################
-###################continuar daqui ###########################################
+    ##############################################################################
+    ###################continuar daqui ###########################################
 
     ###########################################
     ### INÍCIO DA ROTINA DE TEST PROCEDURE
@@ -928,8 +947,6 @@ if __name__ == '__main__':
     if TP_sheet["R19"].value != None:
         TP_sheet["R19"].value = None
         TP_sheet["R23"].value = "Calculando..."
-
-
 
         FD_sheet = wb.sheets["DataSheet"]
 
@@ -984,7 +1001,6 @@ if __name__ == '__main__':
             speed=speed_FD, flow_m=flow_m_FD, suc=sucFD, disch=dischFD, b=b, D=D
         )
 
-
         def update_head(H):
             global P_FD_eff
             P_FD_eff = ccp.Point(
@@ -1000,7 +1016,6 @@ if __name__ == '__main__':
             P = P_FD_eff.disch.p().to("Pa").magnitude
 
             return P - Pd_FD.to("Pa").magnitude
-
 
         newton(
             update_head,
@@ -1072,7 +1087,6 @@ if __name__ == '__main__':
             D=D2,
         )
 
-
         def update_head2(H):
             global P2_FD_eff
             P2_FD_eff = ccp.Point(
@@ -1089,12 +1103,9 @@ if __name__ == '__main__':
 
             return P2 - Pd2_FD.to("Pa").magnitude
 
-
         newton(
             update_head2,
-            ccp.point.head_pol(suc=P2_FD.suc, disch=P2_FD.disch)
-                .to("J/kg")
-                .magnitude,
+            ccp.point.head_pol(suc=P2_FD.suc, disch=P2_FD.disch).to("J/kg").magnitude,
             tol=1,
         )
 
@@ -1222,7 +1233,7 @@ if __name__ == '__main__':
                 eff=P_TP.eff,
                 speed=speed_FD,
                 flow_v=P_TP.flow_v * N_ratio,
-                head=P_TP.head * N_ratio ** 2,
+                head=P_TP.head * N_ratio**2,
                 b=b,
                 D=D,
             )
@@ -1339,12 +1350,11 @@ if __name__ == '__main__':
                 eff=P2_TP.eff,
                 speed=speed_FD,
                 flow_v=P2_TP.flow_v * N2_ratio,
-                head=P2_TP.head * N2_ratio ** 2,
+                head=P2_TP.head * N2_ratio**2,
                 b=b2,
                 D=D2,
             )
             TP_sheet["M37"].value = ""
-
 
         TP_sheet["R14"].value = disch2TP.T().to(TP_sheet.range("S14").value).magnitude
         TP_sheet["L19"].value = P2_TP.volume_ratio.magnitude
@@ -1412,7 +1422,7 @@ if __name__ == '__main__':
             rho = State_FO.rho()
             k = State_FO.kv()
 
-            e = 1 - (0.351 + 0.256 * (beta ** 4) + 0.93 * (beta ** 8)) * (
+            e = 1 - (0.351 + 0.256 * (beta**4) + 0.93 * (beta**8)) * (
                 1 - (P2 / P1) ** (1 / k)
             )
 
@@ -1433,16 +1443,16 @@ if __name__ == '__main__':
                 # calc C
                 C = (
                     0.5961
-                    + 0.0261 * beta ** 2
-                    - 0.216 * beta ** 8
+                    + 0.0261 * beta**2
+                    - 0.216 * beta**8
                     + 0.000521 * (1e6 * beta / Re) ** 0.7
                     + (0.0188 + 0.0063 * (19000 * beta / Re) ** 0.8)
-                    * beta ** 3.5
+                    * beta**3.5
                     * (1e6 / Re) ** 0.3
                     + (0.043 + 0.080 * np.e ** (-10 * L1) - 0.123 * np.e ** (-7 * L1))
                     * (1 - 0.11 * (19000 * beta / Re) ** 0.8)
-                    * (beta ** 4 / (1 - beta ** 4))
-                    - 0.031 * (M2 - 0.8 * M2 ** 1.1) * beta ** 1.3
+                    * (beta**4 / (1 - beta**4))
+                    - 0.031 * (M2 - 0.8 * M2**1.1) * beta**1.3
                 )
 
                 if D < Q_(71.12, "mm"):
@@ -1450,10 +1460,10 @@ if __name__ == '__main__':
 
                 qm = (
                     C
-                    / (np.sqrt(1 - beta ** 4))
+                    / (np.sqrt(1 - beta**4))
                     * e
                     * (np.pi / 4)
-                    * d ** 2
+                    * d**2
                     * np.sqrt(2 * dP * rho)
                 )
 
@@ -1463,7 +1473,7 @@ if __name__ == '__main__':
 
             newton(update_Re, 1e8, tol=1e-5)
 
-            Re = D / mu * qm / (np.pi * D ** 2 / 4)
+            Re = D / mu * qm / (np.pi * D**2 / 4)
 
             CF_sheet[i, 8].value = qm.to(Units[-1]).magnitude
 
@@ -1471,5 +1481,3 @@ if __name__ == '__main__':
             data = np.array(CF_sheet[i, 2:8].value)
 
         CF_sheet["A1"].value = "Calculado!"
-
-

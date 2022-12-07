@@ -11,6 +11,7 @@ log_file = Path(__file__).parent / "log.txt"
 handler = logging.FileHandler(log_file, mode="w")
 logger.addHandler(handler)
 
+
 def handle_exception(exc_type, exc_value, exc_traceback):
     AT_sheet["F36"].value = "ERRO!"
     TP_sheet["J23"].value = "ERRO!"
@@ -21,6 +22,7 @@ def handle_exception(exc_type, exc_value, exc_traceback):
         logger.critical(
             "Exception occured:", exc_info=(exc_type, exc_value, exc_traceback)
         )
+
 
 sys.excepthook = handle_exception
 
@@ -223,13 +225,22 @@ if __name__ == "__main__":
                 break
 
         Curva = Curva[0 : Nc + 1, :]
-
         QFD = Q_(np.array(Curva[0:Nc, 0].value), FD_sheet["AP38"].value)
 
-        if Nc > 0 and min(abs(QFD.to("m³/h").m - flow_v_FD.to("m³/h").magnitude)) == 0:
+        if Nc == 0:
+            Gar = [
+                flow_v_FD.to("m³/h").magnitude,
+                P_FD.head.to("kJ/kg").magnitude,
+                None,
+                P_FD.eff.magnitude,
+            ]
+            Curva[Nc, :].value = Gar
+            Nc = Nc + 1
+        elif (
+            Nc > 0 and min(abs(QFD.to("m³/h").m - flow_v_FD.to("m³/h").magnitude)) == 0
+        ):
             Gar = [None, None, None, None]
             Curva[Nc, :].value = Gar
-
         else:
             Gar = [
                 flow_v_FD.to("m³/h").magnitude,
