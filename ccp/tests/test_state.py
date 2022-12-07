@@ -61,6 +61,17 @@ def test_eos():
     ccp.config.EOS = "REFPROP"
 
 
+def test_new_binary_pairs():
+    state = State.define(
+        p=100000, T=300, fluid={"r134a": 0.6, "co2": 0.2, "n2": 0.1, "o2": 0.1}
+    )
+    assert_allclose(state.rho(), 3.076654, rtol=1e-6)
+    state = State.define(
+        p=100000, T=300, fluid={"r1234ze": 0.6, "co2": 0.2, "n2": 0.1, "o2": 0.1}
+    )
+    assert_allclose(state.rho(), 3.373371, rtol=1e-6)
+
+
 def test_state_define_units():
     state = State.define(
         p=Q_(1, "bar"),
