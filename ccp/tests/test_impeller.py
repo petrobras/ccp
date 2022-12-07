@@ -182,6 +182,7 @@ def test_impeller_disch_state(imp2):
     assert_allclose(
         imp2.disch.T().magnitude,
         T_magnitude,
+        rtol=1e-6,
     )
 
 
