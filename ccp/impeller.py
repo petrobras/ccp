@@ -511,7 +511,7 @@ class Impeller:
             Flow units used  in the dict for pressure ratio curves.
             Only needed when flow units for efficiency curve differs from other curves.
         flow_units_disch_T: str
-            Flow units used  in the dict for discharge Temperature curves.
+            Flow units used  in the dict for discharge Temp erature curves.
             Only needed when flow units for efficiency curve differs from other curves.
         head_units : str
             Head units used in the dict.
