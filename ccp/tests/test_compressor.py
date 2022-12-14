@@ -338,6 +338,7 @@ def test_straight_through(straight_through):
                 ]
             ]
         ),
+        rtol=1e-6,
     )
     point_sp = straight_through.point(
         speed=straight_through.speed, flow_m=Q_(142000, "kg/h")
@@ -821,7 +822,7 @@ def test_back_to_back(back_to_back):
     # rotor specified sec2
     p0r = back_to_back.points_rotor_sp_sec2[0]
     assert_allclose(p0r.flow_v.to("m³/h"), 1129.74495)
-    assert_allclose(p0r.flow_m, 52.082125)
+    assert_allclose(p0r.flow_m, 52.082125, rtol=1e-5)
     assert_allclose(p0r.suc.T(), 313.15)
     assert_allclose(p0r.suc.p(), 13350788.401188)
     assert_allclose(p0r.head, 30603.247711, rtol=1e-6)
