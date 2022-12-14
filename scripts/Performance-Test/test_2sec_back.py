@@ -14,7 +14,7 @@ logger.addHandler(handler)
 
 def handle_exception(exc_type, exc_value, exc_traceback):
     TP_sheet["R23"].value = "ERRO!"
-    AT_sheet["U11"].value = "ERRO!"
+    AT_sheet["Z9"].value = "ERRO!"
     CF_sheet["L8"].value = "ERRO!"
     if issubclass(exc_type, KeyboardInterrupt):
         sys.__excepthook__(exc_type, exc_value, exc_traceback)
@@ -35,8 +35,8 @@ TP_sheet = wb.sheets["Test Procedure Data"]
 FD_sheet = wb.sheets["DataSheet"]
 CF_sheet = wb.sheets["CalcFlow"]
 
-if AT_sheet["U6"].value != None:
-    AT_sheet["U11"].value = "Carregando bibliotecas..."
+if AT_sheet["Z13"].value != None:
+    AT_sheet["Z9"].value = "Carregando bibliotecas..."
 elif TP_sheet["R19"].value != None:
     TP_sheet["R23"].value = "Carregando bibliotecas..."
 elif CF_sheet["L4"].value != None:
@@ -114,10 +114,10 @@ if __name__ == "__main__":
 
         return P_AT_reyn
 
-    if AT_sheet["U6"].value != None:
+    if AT_sheet["Z13"].value != None:
 
-        AT_sheet["U6"].value = None
-        AT_sheet["U11"].value = "Calculando..."
+        AT_sheet["Z13"].value = None
+        AT_sheet["Z9"].value = "Calculando..."
 
         FD_sheet = wb.sheets["DataSheet"]
         ### Reading and writing SECTION 1 from the FD sheet
@@ -431,7 +431,7 @@ if __name__ == "__main__":
 
             imp2_exp = P2_exp
         ################################################################################################################
-        ###############################Check actual test procedure from this point######################################
+        ###############################Check actual test procedure (Brandao) from this point on#########################
         ################################################################################################################
         ### Reading and writing in the Actual Test Data Sheet
 
@@ -594,20 +594,19 @@ if __name__ == "__main__":
         else:
             QQ = []
             for i in range(N):
-                QQ.append(P2_AT[i].flow_v.magnitude)  ################# alterar
+                QQ.append(P2_AT[i].flow_v.magnitude)
 
         Id = list(np.argsort(QQ))
 
         if len(Id) > 1:
             Daux = Dados_AT.value
             Paux = [P for P in P_AT]
-            P2aux = [P for P in P2_AT]  ####alterar
+            P2aux = [P for P in P2_AT]
             for i in range(N):
                 Dados_AT[i, :].value = Daux[Id[i]][:]
                 P_AT[i] = Paux[Id[i]]
                 P2_AT[i] = P2aux[Id[i]]  #####alterar
-        ##############################################################################
-        ###################continuar daqui ###########################################
+
         P_ATconv = []
         P2_ATconv = []
 
@@ -937,9 +936,7 @@ if __name__ == "__main__":
             AT_sheet["G47:AB47"].value = [None] * len(Results2_AT[0, :].value)
 
         AT_sheet["T11"].value = "Calculado!"
-    ##############################################################################
-    ###################continuar daqui ###########################################
-
+    ###########################Acredito que o resto já esteja correto (Brandão)###################
     ###########################################
     ### INÍCIO DA ROTINA DE TEST PROCEDURE
     ############################################

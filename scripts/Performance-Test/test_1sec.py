@@ -237,7 +237,7 @@ if __name__ == "__main__":
             Curva[Nc, :].value = Gar
             Nc = Nc + 1
         elif (
-            Nc > 0 and min(abs(QFD.to("m³/h").m - flow_v_FD.to("m³/h").magnitude)) == 0
+            Nc > 0 and min(abs(QFD.to("m³/h").m - flow_v_FD.to("m³/h").m)) == 0
         ):
             Gar = [None, None, None, None]
             Curva[Nc, :].value = Gar
