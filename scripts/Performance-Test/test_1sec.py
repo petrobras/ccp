@@ -234,8 +234,8 @@ if __name__ == "__main__":
 
         Curva = Curva[0 : Nc + 1, :]
         QFD = Q_(np.array(Curva[0:Nc, 0].value), FD_sheet["AP38"].value)
-
-        if Nc == 0:
+        logger.critical(f"Nc {Nc}, QFD {QFD}, flow_v_FD {flow_v_FD}")
+        if Nc <= 0:
             Gar = [
                 flow_v_FD.to("m³/h").magnitude,
                 P_FD.head.to("kJ/kg").magnitude,
@@ -244,9 +244,7 @@ if __name__ == "__main__":
             ]
             Curva[Nc, :].value = Gar
             Nc = Nc + 1
-        elif (
-            Nc > 0 and min(abs(QFD.to("m³/h").m - flow_v_FD.to("m³/h").m)) == 0
-        ):
+        elif Nc > 1 and min(abs(QFD.to("m³/h").m - flow_v_FD.to("m³/h").m)) == 0:
             Gar = [None, None, None, None]
             Curva[Nc, :].value = Gar
         else:
