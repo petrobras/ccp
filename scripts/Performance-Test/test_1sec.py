@@ -2,6 +2,11 @@ import os
 
 FileName = os.path.basename(__file__)[:-3]
 
+DEBUG_MODE = True
+if DEBUG_MODE:
+    FileName = "Beta_1section.xlsm"
+
+
 import sys
 import logging
 from pathlib import Path
@@ -59,6 +64,9 @@ logger.critical(f"python: {sys.version}")
 logger.critical(f"ccp: {ccp.__version__full}")
 
 if __name__ == "__main__":
+
+    if DEBUG_MODE:
+        AT_sheet["H35"].value = "Calcular"
 
     global P_FD_eff
 
