@@ -2,9 +2,9 @@ import os
 
 FileName = os.path.basename(__file__)[:-3]
 
-DEBUG_MODE = False
+DEBUG_MODE = True
 if DEBUG_MODE:
-    FileName = "Beta_1section.xlsm"
+    FileName = "Beta_1section - Copia.xlsm"
 
 
 import sys
@@ -606,30 +606,45 @@ if __name__ == "__main__":
         if N == 1:
             Q_ratio = [Q_ratio]
 
-        IdG = []
-
-        for i in range(N):
-            if Q_ratio[i] < 0.04:
-                IdG.append(i)
-
-        if len(IdG) == 1:
-            AT_sheet["G32:AB32"].value = Results_AT[IdG[0], :].value
-        elif len(IdG) > 1:
-
-            IdG = [int(k) for k in np.argsort(Q_ratio)[0:2]]
-            IdG = sorted(IdG)
-            if AT_sheet["C23"].value == "Yes":
-                aux1 = np.array(Results_AT[IdG[0], :].value)
-                aux2 = np.array(Results_AT[IdG[1], :].value)
-            else:
-                aux1 = np.array(Results_AT[IdG[0], :-1].value)
-                aux2 = np.array(Results_AT[IdG[1], :-1].value)
-
-            f = (1 - aux1[15]) / (aux2[15] - aux1[15])
-            aux = aux1 + f * (aux2 - aux1)
-            AT_sheet["G32:AB32"].value = aux
-        else:
-            AT_sheet["G32:AB32"].value = [None] * len(Results_AT[0, :].value)
+        # Add guarantee point
+        point_converted_sp = imp_conv.point(flow_m=P_FD.flow_m, speed=P_FD.speed)
+        guarantee_results = AT_sheet["G32:AB32"]
+        guarantee_results[0].value = point_converted_sp.volume_ratio.m
+        guarantee_results[1].value = (
+            point_converted_sp.volume_ratio.m / P_FD.volume_ratio.m
+        )
+        guarantee_results[2].value = point_converted_sp.mach.m
+        guarantee_results[3].value = point_converted_sp.mach.m - P_FD.mach.m
+        guarantee_results[4].value = point_converted_sp.reynolds.m
+        guarantee_results[5].value = point_converted_sp.reynolds.m / P_FD.reynolds.m
+        guarantee_results[6].value = point_converted_sp.phi.m
+        guarantee_results[7].value = point_converted_sp.phi.m / P_FD.phi.m
+        guarantee_results[8].value = point_converted_sp.disch.p("bar").m
+        guarantee_results[9].value = (
+            point_converted_sp.disch.p("bar").m / P_FD.disch.p("bar").m
+        )
+        guarantee_results[10].value = point_converted_sp.head.to("kJ/kg").m
+        guarantee_results[11].value = (
+            point_converted_sp.head.to("kJ/kg").m / P_FD.head.to("kJ/kg").m
+        )
+        guarantee_results[12].value = point_converted_sp.head.to("kJ/kg").m
+        guarantee_results[13].value = (
+            point_converted_sp.head.to("kJ/kg").m / P_FD.head.to("kJ/kg").m
+        )
+        guarantee_results[14].value = point_converted_sp.flow_v.to("m³/h").m
+        guarantee_results[15].value = (
+            point_converted_sp.flow_v.to("m³/h").m / P_FD.flow_v.to("m³/h").m
+        )
+        guarantee_results[16].value = point_converted_sp.power.to("kW").m
+        guarantee_results[17].value = (
+            point_converted_sp.power.to("kW").m / P_FD.power.to("kW").m
+        )
+        guarantee_results[18].value = point_converted_sp.power.to("kW").m
+        guarantee_results[19].value = (
+            point_converted_sp.power.to("kW").m / P_FD.power.to("kW").m
+        )
+        guarantee_results[20].value = point_converted_sp.eff.m
+        guarantee_results[21].value = None
 
         AT_sheet["F36"].value = "Calculado"
 
