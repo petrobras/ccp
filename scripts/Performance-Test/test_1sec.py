@@ -2,7 +2,7 @@ import os
 
 FileName = os.path.basename(__file__)[:-3]
 
-DEBUG_MODE = True
+DEBUG_MODE = False
 if DEBUG_MODE:
     FileName = "Beta_1section.xlsm"
 
