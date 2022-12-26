@@ -258,8 +258,8 @@ class Point2Sec(Point):
 
     Returns
     -------
-    point1sec : ccp.Point2Sec
-        A point for a back-to-back compressor (inherited from ccp.Point).
+    point1sec : ccp.Point1Sec
+        A point for a straight through compressor (inherited from ccp.Point).
 
     Examples
     --------
@@ -637,7 +637,7 @@ class BackToBack(Impeller):
 
         # estimate rotor guarantee flow using fd conditions
         end_seal_flow_m_sp = flow_m_seal(
-            k_seal=k_end, # _seal_mean,
+            k_seal=k_end_seal_mean,
             state_up=guarantee_point_sec2.suc,
             state_down=guarantee_point_sec1.suc,
         )
@@ -664,7 +664,7 @@ class BackToBack(Impeller):
             )
             self.points_rotor_sp_sec2.append(point_r_sp)
             mend_sp = flow_m_seal(
-                k_seal=k_end, # _seal_mean,
+                k_seal=k_end_seal_mean,
                 state_up=guarantee_point_sec2.suc,
                 state_down=guarantee_point_sec1.suc,
             )
@@ -702,7 +702,7 @@ class BackToBack(Impeller):
                 suc=suc_sec2, head=sec2_point.head, eff=sec2_point.eff
             )
             mdiv_sp = flow_m_seal(
-                k_seal=k_div_wall, # _mean,
+                k_seal=k_div_wall_mean,
                 state_up=sec2_disch,
                 state_down=point_r_sp.disch,
             )
@@ -726,7 +726,6 @@ class BackToBack(Impeller):
                 b=guarantee_point_sec1.b,
                 D=guarantee_point_sec1.D,
             )
-
             self.points_flange_sp_sec1.append(point_flange)
         self.imp_flange_sp_sec1 = Impeller(self.points_flange_sp_sec1)
 
