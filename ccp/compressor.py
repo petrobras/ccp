@@ -637,7 +637,7 @@ class BackToBack(Impeller):
 
         # estimate rotor guarantee flow using fd conditions
         end_seal_flow_m_sp = flow_m_seal(
-            k_seal=k_end_seal_mean,
+            k_seal=k_end_seal,
             state_up=guarantee_point_sec2.suc,
             state_down=guarantee_point_sec1.suc,
         )
@@ -664,7 +664,7 @@ class BackToBack(Impeller):
             )
             self.points_rotor_sp_sec2.append(point_r_sp)
             mend_sp = flow_m_seal(
-                k_seal=k_end_seal_mean,
+                k_seal=k_end_seal,
                 state_up=guarantee_point_sec2.suc,
                 state_down=guarantee_point_sec1.suc,
             )
@@ -702,7 +702,7 @@ class BackToBack(Impeller):
                 suc=suc_sec2, head=sec2_point.head, eff=sec2_point.eff
             )
             mdiv_sp = flow_m_seal(
-                k_seal=k_div_wall_mean,
+                k_seal=k_div_wall,
                 state_up=sec2_disch,
                 state_down=point_r_sp.disch,
             )
