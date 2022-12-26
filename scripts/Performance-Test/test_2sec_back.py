@@ -387,10 +387,10 @@ if __name__ == "__main__":
                 Curva2[i, :].value = Caux2[Id2[i]][:]
 
         ##################
-        curve_shape = AT_sheet["C29"].value
-        BL_leak = AT_sheet["C31"].value
-        BF_leak = AT_sheet["C33"].value
-        Div_leak = AT_sheet["C35"].value
+        curve_shape = AT_sheet["C24"].value
+        BL_leak = AT_sheet["C26"].value
+        BF_leak = AT_sheet["C28"].value
+        Div_leak = AT_sheet["C30"].value
 
         if curve_shape == "Yes":
             args_list = []
@@ -435,28 +435,33 @@ if __name__ == "__main__":
         ################################################################################################################
         ### Reading and writing in the Actual Test Data Sheet
 
-        Dados_AT = AT_sheet["G7:S16"]
-        Dados_AT_LK = AT_sheet["X7:AF16"]
+        Dados_AT_1 = AT_sheet["G7:W16"]
+        Dados_AT_2 = AT_sheet["AE7:AO16"]
 
         for i in range(10):
-            if Dados_AT[i, 5].value == None:
+            if Dados_AT_1[i, 5].value == None:
                 N = i
                 break
 
-        Dados_AT = Dados_AT[0:N, :]
-        Dados_AT_LK = Dados_AT_LK[0:N, :]
+        Dados_AT_1 = Dados_AT_1[0:N, :]
+        Dados_AT_2 = Dados_AT_2[0:N, :]
 
-        speed_AT = Q_(AT_sheet.range("H4").value, AT_sheet.range("I4").value)
-        N_ratio = speed_FD / speed_AT
 
         P_AT = []
         P2_AT = []
         P_AT_Bal = []
         P_AT_Buf = []
+        P2_AT_Bal = []
+        P2_AT_Buf = []
+        P_AT_Mdiv = []
+        P_AT_M1d = []
 
         for i in range(N):
 
-            gas = int(Dados_AT[i, 13].value)
+            speed_AT = Q_(Dados_AT_1[i, 16].value, AT_sheet.range("W6").value)
+            N_ratio = speed_FD / speed_AT
+
+            gas = int(Dados_AT_1[i, 15].value)
 
             GasesT = TG_sheet.range(
                 TG_sheet.cells(5, 2 + 4 * (gas - 1)),
@@ -472,125 +477,257 @@ if __name__ == "__main__":
                 if mol_fracT[count] > 0:
                     fluid_AT.update({GasesT[count]: mol_fracT[count]})
 
-            Ps_AT = Q_(Dados_AT[i, 2].value, AT_sheet.range("I6").value)
-            Ts_AT = Q_(Dados_AT[i, 3].value, AT_sheet.range("J6").value)
+            Ps_AT = Q_(Dados_AT_1[i, 2].value, AT_sheet.range("I6").value)
+            Ts_AT = Q_(Dados_AT_1[i, 3].value, AT_sheet.range("J6").value)
 
-            Pd_AT = Q_(Dados_AT[i, 4].value, AT_sheet.range("K6").value)
-            Td_AT = Q_(Dados_AT[i, 5].value, AT_sheet.range("L6").value)
+            Pd_AT = Q_(Dados_AT_1[i, 4].value, AT_sheet.range("K6").value)
+            Td_AT = Q_(Dados_AT_1[i, 5].value, AT_sheet.range("L6").value)
 
-            if Dados_AT[i, 1].value != None:
+            if Dados_AT_1[i, 1].value != None:
                 V_test = True
-                flow_v_AT = Q_(Dados_AT[i, 1].value, AT_sheet.range("H6").value)
+                flow_v_AT = Q_(Dados_AT_1[i, 1].value, AT_sheet.range("H6").value)
             else:
                 V_test = False
-                flow_m_AT = Q_(Dados_AT[i, 0].value, AT_sheet.range("G6").value)
+                flow_m_AT = Q_(Dados_AT_1[i, 0].value, AT_sheet.range("G6").value)
 
             sucAT = State.define(fluid=fluid_AT, p=Ps_AT, T=Ts_AT)
             dischAT = State.define(fluid=fluid_AT, p=Pd_AT, T=Td_AT)
 
             if V_test:
                 flow_m_AT = flow_v_AT * sucAT.rho()
-                Dados_AT[i, 0].value = flow_m_AT.to(AT_sheet["G6"].value).magnitude
+                Dados_AT_1[i, 0].value = flow_m_AT.to(AT_sheet["G6"].value).magnitude
             else:
                 flow_v_AT = flow_m_AT / sucAT.rho()
-                Dados_AT[i, 1].value = flow_v_AT.to(AT_sheet["H6"].value).magnitude
+                Dados_AT_1[i, 1].value = flow_v_AT.to(AT_sheet["H6"].value).magnitude
+
 
             if BL_leak == "Yes":
                 P_AT_Bal.append(
                     [
-                        Q_(Dados_AT_LK[i, 0].value, Dados_AT_LK("X6").value),
-                        Q_(Dados_AT_LK[i, 6].value, Dados_AT_LK("AC6").value),
+                        Q_(Dados_AT_1[i, 8].value, AT_sheet.range("O6").value),
+                        Q_(Dados_AT_1[i, 9].value, AT_sheet.range("P6").value),
+                        Q_(Dados_AT_1[i, 10].value, AT_sheet.range("Q6").value),
                     ]
-                )  ###################
+                )
+            else:
+                P_AT_Bal.append(
+                    [
+                        Q_(0, AT_sheet.range("O6").value),
+                        Q_(0, AT_sheet.range("P6").value),
+                        Q_(0, AT_sheet.range("Q6").value),
+                    ]
+                )
 
             if BF_leak == "Yes":
                 P_AT_Buf.append(
                     [
-                        Q_(Dados_AT_LK[i, 1].value, Dados_AT_LK("Y6").value),
-                        Q_(Dados_AT_LK[i, 5].value, Dados_AT_LK("AB6").value),
+                        Q_(Dados_AT_1[i, 6].value, AT_sheet.range("M6").value),
+                        Q_(Dados_AT_1[i, 7].value, AT_sheet.range("N6").value),
                     ]
-                )  ###################
+                )
+            else:
+                P_AT_Buf.append(
+                    [
+                        Q_(0, AT_sheet.range("M6").value),
+                        Q_(0, AT_sheet.range("N6").value),
+                    ]
+                )
+
+            if Div_leak == "Yes":
+                div_f = Dados_AT_1[i, 11].value
+                m1d_f = Dados_AT_1[i, 14].value
+                if div_f is not None:
+                    div_f = Q_(div_f, AT_sheet.range("R6").value)
+                    m1d_f = None
+                else:
+                    m1d_f = Q_(m1d_f, AT_sheet.range("U6").value)
+
+                P_AT_Mdiv.append(
+                    [
+                        div_f,
+                        Q_(Dados_AT_1[i, 12].value, AT_sheet.range("S6").value),
+                        Q_(Dados_AT_1[i, 13].value, AT_sheet.range("T6").value),
+                    ]
+                )
+                P_AT_M1d.append(m1d_f)
+            else:
+                P_AT_Mdiv.append(
+                    [
+                        Q_(0, AT_sheet.range("R6").value),
+                        Q_(0, AT_sheet.range("S6").value),
+                        Q_(0, AT_sheet.range("T6").value),
+                    ]
+                )
+                P_AT_M1d.append(None)
+
+            if AT_sheet["C8"].value == "Yes":
+                Cas_Area = Q_(AT_sheet["D9"].value, "m**2")
+                if AT_sheet["D11"].value == None:
+                    Cas_Temperature = (sucAT.T() + dischAT.T()).to("kelvin") / 2
+                else:
+                    Cas_Temperature = Cas_Temperature = Q_(
+                        AT_sheet["D11"].value, "degC"
+                    ).to("kelvin")
+                T_amb = Q_(AT_sheet["D13"].value, "degC").to("kelvin")
+                heat_constant = Q_(AT_sheet["D15"].value, "W/m**2/kelvin")
+
+            else:
+                Cas_Area = None
+                Cas_Temperature = None
+                T_amb = None
+                heat_constant = None
 
             P_AT.append(
-                ccp.Point(
-                    speed=speed_AT, flow_m=flow_m_AT, suc=sucAT, disch=dischAT, b=b, D=D
+                compressor.Point2Sec(
+                    speed=speed_AT,
+                    flow_m=flow_m_AT,
+                    suc=sucAT,
+                    disch=dischAT,
+                    b=b,
+                    D=D,
+                    balance_line_flow_m=P_AT_Bal[-1][0],
+                    seal_gas_flow_m=P_AT_Buf[-1][0],
+                    seal_gas_temperature=P_AT_Buf[-1][1],
+                    first_section_discharge_flow_m=P_AT_M1d[-1],
+                    div_wall_flow_m=P_AT_Mdiv[-1][0],
+                    end_seal_upstream_temperature=P_AT_Bal[-1][2],
+                    end_seal_upstream_pressure=P_AT_Bal[-1][1],
+                    div_wall_upstream_temperature=P_AT_Mdiv[-1][2],
+                    div_wall_upstream_pressure=P_AT_Mdiv[-1][1],
+                    casing_area=Cas_Area,
+                    casing_temperature=Cas_Temperature,
+                    ambient_temperature=T_amb,
+                    convection_constant=heat_constant,
                 )
-            )  ###################
+            )
 
             ## Carregando dados da segunda seção
 
-            Ps2_AT = Pd_AT * 0.995
+            speed2_AT = Q_(Dados_AT_2[i, 10].value, AT_sheet.range("AO6").value)
+            N_ratio = speed_FD / speed2_AT
 
-            if SS_config == "IN":
-                Ps2_AT = Pd_AT * 0.995
-                TSS_AT = Q_(Dados_AT[i, 8].value, AT_sheet.range("O6").value)
-            elif SS_config == "OUT":
-                Ps2_AT = Pd_AT * 0.995
-                TSS_AT = Td_AT
+            gas2 = int(Dados_AT_2[i, 9].value)
+
+            GasesT = TG_sheet.range(
+                TG_sheet.cells(5, 2 + 4 * (gas - 1)),
+                TG_sheet.cells(21, 2 + 4 * (gas - 1)),
+            ).value
+            mol_fracT = TG_sheet.range(
+                TG_sheet.cells(5, 4 + 4 * (gas - 1)),
+                TG_sheet.cells(21, 4 + 4 * (gas - 1)),
+            ).value
+
+            fluid2_AT = {}
+            for count in range(len(GasesT)):
+                if mol_fracT[count] > 0:
+                    fluid2_AT.update({GasesT[count]: mol_fracT[count]})
+
+            if Dados_AT_2[i, 1].value != None:
+                V_test = True
+                flow2_v_AT = Q_(Dados_AT_2[i, 1].value, AT_sheet.range("AF6").value)
             else:
-                if Dados_AT[i, 8].value != None:
-                    V_test = True
-                    flow2_v_AT = Q_(Dados_AT[i, 8].value, AT_sheet.range("N6").value)
+                V_test = False
+                flow2_m_AT = Q_(Dados_AT_2[i, 0].value, AT_sheet.range("AE6").value)
+
+            Ps2_AT = Q_(Dados_AT_2[i, 2].value, AT_sheet.range("AG6").value)
+            Ts2_AT = Q_(Dados_AT_2[i, 3].value, AT_sheet.range("AH6").value)
+
+            Pd2_AT = Q_(Dados_AT_2[i, 4].value, AT_sheet.range("AI6").value)
+            Td2_AT = Q_(Dados_AT_2[i, 5].value, AT_sheet.range("AJ6").value)
+
+            suc2_AT = State.define(
+                fluid=fluid2_AT, p=Ps2_AT, T=Ts2_AT
+            )
+            disch2_AT = State.define(
+                fluid=fluid2_AT, p=Pd2_AT, T=Td2_AT
+            )
+
+            if BL_leak == "Yes":
+                P2_AT_Bal.append(
+                    [
+                        Q_(Dados_AT_2[i, 6].value, AT_sheet.range("AK6").value),
+                    ]
+                )
+            else:
+                P2_AT_Bal.append(
+                    [
+                        Q_(0, AT_sheet.range("AK6").value),
+                    ]
+                )
+
+            if BF_leak == "Yes":
+                P2_AT_Buf.append(
+                    [
+                        Q_(Dados_AT_2[i, 7].value, AT_sheet.range("AL6").value),
+                        Q_(Dados_AT_2[i, 8].value, AT_sheet.range("AM6").value),
+                    ]
+                )
+            else:
+                P2_AT_Buf.append(
+                    [
+                        Q_(0, AT_sheet.range("AL6").value),
+                        Q_(0, AT_sheet.range("AM6").value),
+                    ]
+                )
+
+            if V_test:
+                flow2_m_AT = flow2_v_AT * suc2_AT.rho()
+                Dados_AT_2[i, 0].value = flow2_m_AT.to(AT_sheet["AE6"].value).magnitude
+            else:
+                flow2_v_AT = flow2_m_AT / suc2_AT.rho()
+                Dados_AT_2[i, 1].value = flow2_v_AT.to(AT_sheet["AF6"].value).magnitude
+
+            if AT_sheet["C16"].value == "Yes":
+                Cas_Area = Q_(AT_sheet["D17"].value, "m**2")
+                if AT_sheet["D19"].value == None:
+                    Cas_Temperature = (sucAT.T() + dischAT.T()).to("kelvin") / 2
                 else:
-                    V_test = False
-                    flow2_m_AT = Q_(Dados_AT[i, 7].value, AT_sheet.range("M6").value)
+                    Cas_Temperature = Cas_Temperature = Q_(
+                        AT_sheet["D19"].value, "degC"
+                    ).to("kelvin")
+                T_amb = Q_(AT_sheet["D21"].value, "degC").to("kelvin")
+                heat_constant = Q_(AT_sheet["D23"].value, "W/m**2/kelvin")
 
-                    Ps2_AT = Q_(Dados_AT[i, 9].value, AT_sheet.range("O6").value)
-                    Ts2_AT = Q_(Dados_AT[i, 10].value, AT_sheet.range("P6").value)
-
-            Pd2_AT = Q_(Dados_AT[i, 11].value, AT_sheet.range("Q6").value)
-            Td2_AT = Q_(Dados_AT[i, 12].value, AT_sheet.range("R6").value)
-
-            suc2F_AT = State.define(
-                fluid=fluid2_AT, p=Ps2_AT, T=Ts2_AT
-            )  ###################
-            disch2F_AT = State.define(
-                fluid=fluid2_AT, p=Ps2_AT, T=Ts2_AT
-            )  ###################
-
-            # if SS_config == "IN":
-            #     flow2_m_AT = flow_m_AT + flowSS_m_AT
-            #     RSS = flowSS_m_AT / flow2_m_AT
-            #     R1 = flow_m_AT / flow2_m_AT
-            #
-            #     fluid2_AT = fluid_AT
-            #     h2_AT = dischAT.h() * R1 + SS_AT.h() * RSS
-            #
-            #     suc2AT = State.define(fluid=fluid2_AT, p=Ps2_AT, h=h2_AT)
-            #     disch2AT = State.define(fluid=fluid2_AT, p=Pd2_AT, T=Td2_AT)
-            #
-            # elif SS_config == "OUT":
-            #     fluid2_AT = fluid_AT
-            #     flow2_m_AT = flow_m_AT - flowSS_m_AT
-            #
-            #     suc2AT = State.define(fluid=fluid2_AT, p=Ps2_AT, T=Td_AT)
-            #     disch2FD = State.define(fluid=fluid2_AT, p=Pd2_AT, T=Td2_AT)
-
-            # Dados_AT[i, 11].value = suc2AT.T().to(AT_sheet.range("R6").value).magnitude
-
-            # Q1d_AT = flow_m_AT / dischAT.rho()
-            # Dados_AT[i, 12].value = (
-            #     flowSS_v_AT.to("m³/h").magnitude
-            #     / Q1d_AT.to("m³/h").magnitude
-            #     / (flowSS_v_FD.to("m³/h").magnitude / Q1d_FD.to("m³/h").magnitude)
-            # )
+            else:
+                Cas_Area = None
+                Cas_Temperature = None
+                T_amb = None
+                heat_constant = None
 
             P2_AT.append(
-                ccp.Point(
-                    speed=speed_AT,
+                compressor.Point2Sec(
+                    speed=speed2_AT,
                     flow_m=flow2_m_AT,
-                    suc=suc2AT,
-                    disch=disch2AT,
+                    suc=suc2_AT,
+                    disch=disch2_AT,
+                    casing_area=Cas_Area,
+                    casing_temperature=Cas_Temperature,
+                    ambient_temperature=T_amb,
+                    convection_constant=heat_constant,
+                    balance_line_flow_m=P2_AT_Bal[-1][0],
+                    seal_gas_flow_m=P2_AT_Buf[-1][0],
+                    seal_gas_temperature=P2_AT_Buf[-1][1],
+                    first_section_discharge_flow_m=P_AT_M1d[-1],
+                    div_wall_flow_m=P_AT_Mdiv[-1][0],
+                    end_seal_upstream_temperature=P_AT_Bal[-1][2],
+                    end_seal_upstream_pressure=P_AT_Bal[-1][1],
+                    div_wall_upstream_temperature=P_AT_Mdiv[-1][2],
+                    div_wall_upstream_pressure=P_AT_Mdiv[-1][1],
                     b=b2,
                     D=D2,
                 )
             )
 
-        speed_AT
+        imp_conv = compressor.BackToBack(
+            guarantee_point_sec1=P_FD,
+            test_points_sec1=P_AT,
+            guarantee_point_sec2=P2_FD,
+            test_points_sec2=P2_AT,
+            speed=None
+        )
 
-        if AT_sheet["U3"].value == "Vazão Seção 1":
-            QQ = np.array(Dados_AT[:, 1].value)
-
+        if AT_sheet["Y3"].value == "Vazão Seção 1":
+            QQ = np.array(Dados_AT_1[:, 1].value)
         else:
             QQ = []
             for i in range(N):
@@ -599,13 +736,15 @@ if __name__ == "__main__":
         Id = list(np.argsort(QQ))
 
         if len(Id) > 1:
-            Daux = Dados_AT.value
+            Daux = Dados_AT_1.value
+            D2aux = Dados_AT_2.value
             Paux = [P for P in P_AT]
             P2aux = [P for P in P2_AT]
             for i in range(N):
-                Dados_AT[i, :].value = Daux[Id[i]][:]
+                Dados_AT_1[i, :].value = Daux[Id[i]][:]
+                Dados_AT_2[i, :].value = D2aux[Id[i]][:]
                 P_AT[i] = Paux[Id[i]]
-                P2_AT[i] = P2aux[Id[i]]  #####alterar
+                P2_AT[i] = P2aux[Id[i]]
 
         P_ATconv = []
         P2_ATconv = []
@@ -618,10 +757,12 @@ if __name__ == "__main__":
         Results2_AT.value = [[None] * len(Results2_AT[0, :].value)] * 11
         Results2_AT = Results2_AT[0:N, :]
 
+        curve_shape = AT_sheet["C24"].value
+
         for i in range(N):
 
-            if AT_sheet["C23"].value == "Yes":
-                rug = AT_sheet["D24"].value
+            if AT_sheet["C4"].value == "Yes":
+                rug = AT_sheet["D7"].value
 
                 ReAT = P_AT[i].reynolds
                 Re2AT = P2_AT[i].reynolds
@@ -671,28 +812,10 @@ if __name__ == "__main__":
                     )
                 )
 
-                if SS_config == "IN":
-                    flow2_m_ATconv = P_ATconv[i].flow_m + flowSS_m_FD
-                    RSS = flowSS_m_FD / flow2_m_ATconv
-                    R1 = P_ATconv[i].flow_m / flow2_m_ATconv
+                # fluid2_ATconv = fluid_FD
+                # flow2_m_ATconv = P_ATconv[i].flow_m - flowSS_m_FD
 
-                    fluid2_ATconv = {
-                        GasesFD[i]: mol_fracSS_FD[i] * RSS + mol_fracFD[i] * R1
-                        for i in range(len(GasesFD))
-                    }
-                    h2_ATconv = P_ATconv[i].disch.h() * R1 + SS_FD.h() * RSS
-
-                    suc2ATconv = State.define(
-                        fluid=fluid2_ATconv,
-                        p=P_ATconv[i].disch.p() * 0.995,
-                        h=h2_ATconv,
-                    )
-
-                else:
-                    fluid2_ATconv = fluid_FD
-                    flow2_m_ATconv = P_ATconv[i].flow_m - flowSS_m_FD
-
-                    suc2ATconv = P_ATconv[i].disch
+                suc2ATconv = P_ATconv[i].disch
 
                 P2_ATconv.append(
                     ccp.Point(
@@ -720,28 +843,10 @@ if __name__ == "__main__":
                     )
                 )
 
-                if SS_config == "IN":
-                    flow2_m_ATconv = P_ATconv[i].flow_m + flowSS_m_FD
-                    RSS = flowSS_m_FD / flow2_m_ATconv
-                    R1 = P_ATconv[i].flow_m / flow2_m_ATconv
+                # fluid2_ATconv = fluid_FD
+                # flow2_m_ATconv = P_ATconv[i].flow_m - flowSS_m_FD
 
-                    fluid2_ATconv = {
-                        GasesFD[i]: mol_fracSS_FD[i] * RSS + mol_fracFD[i] * R1
-                        for i in range(len(GasesFD))
-                    }
-                    h2_ATconv = P_ATconv[i].disch.h() * R1 + SS_FD.h() * RSS
-
-                    suc2ATconv = State.define(
-                        fluid=fluid2_ATconv,
-                        p=P_ATconv[i].disch.p() * 0.995,
-                        h=h2_ATconv,
-                    )
-
-                else:
-                    fluid2_ATconv = fluid_FD
-                    flow2_m_ATconv = P_ATconv[i].flow_m - flowSS_m_FD
-
-                    suc2ATconv = P_ATconv[i].disch
+                suc2ATconv = P_ATconv[i].disch
 
                 P2_ATconv.append(
                     ccp.Point(
@@ -935,8 +1040,8 @@ if __name__ == "__main__":
 
             AT_sheet["G47:AB47"].value = [None] * len(Results2_AT[0, :].value)
 
-        AT_sheet["T11"].value = "Calculado!"
-    ###########################Acredito que o resto já esteja correto (Brandão)###################
+        AT_sheet["Z9"].value = "Calculado"
+
     ###########################################
     ### INÍCIO DA ROTINA DE TEST PROCEDURE
     ############################################
