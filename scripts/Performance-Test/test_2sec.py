@@ -590,7 +590,7 @@ if __name__ == "__main__":
                 if BL_leak == "Yes":
                     P_AT_Bal.append(
                         [
-                            Q_(Dados_AT_LK[i, 0].value, Dados_AT_LK("X6").value),
+                            Q_(Dados_AT_LK[i, 1].value, Dados_AT_LK("X6").value),
                             Q_(Dados_AT_LK[i, 6].value, Dados_AT_LK("AC6").value),
                         ]
                     )
@@ -598,7 +598,7 @@ if __name__ == "__main__":
                 if BF_leak == "Yes":
                     P_AT_Buf.append(
                         [
-                            Q_(Dados_AT_LK[i, 1].value, Dados_AT_LK("Y6").value),
+                            Q_(Dados_AT_LK[i, 2].value, Dados_AT_LK("Y6").value),
                             Q_(Dados_AT_LK[i, 5].value, Dados_AT_LK("AB6").value),
                         ]
                     )
