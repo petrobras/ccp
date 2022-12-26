@@ -258,8 +258,8 @@ class Point2Sec(Point):
 
     Returns
     -------
-    point1sec : ccp.Point1Sec
-        A point for a straight through compressor (inherited from ccp.Point).
+    point1sec : ccp.Point2Sec
+        A point for a back to back compressor (inherited from ccp.Point).
 
     Examples
     --------
