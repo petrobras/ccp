@@ -752,7 +752,7 @@ def k_seal(flow_m, state_up, state_down):
     """
     p_up = state_up.p()
     z_up = state_up.z()
-    T_up = state_up.T()
+    T_up = state_up.T().to('K')
     MW = state_up.molar_mass()
     p_down = state_down.p()
 
@@ -781,7 +781,7 @@ def flow_m_seal(k_seal, state_up, state_down):
     """
     p_up = state_up.p()
     z_up = state_up.z()
-    T_up = state_up.T()
+    T_up = state_up.T().to('K')
     MW = state_up.molar_mass()
     p_down = state_down.p()
 
