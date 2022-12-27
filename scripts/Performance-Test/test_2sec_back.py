@@ -430,9 +430,7 @@ if __name__ == "__main__":
                 P2_exp += pool.map(ccp.impeller.create_points_parallel, args_list)
 
             imp2_exp = P2_exp
-        ################################################################################################################
-        ###############################Check actual test procedure (Brandao) from this point on#########################
-        ################################################################################################################
+
         ### Reading and writing in the Actual Test Data Sheet
 
         Dados_AT_1 = AT_sheet["G7:W16"]
@@ -512,9 +510,9 @@ if __name__ == "__main__":
             else:
                 P_AT_Bal.append(
                     [
-                        Q_(0, AT_sheet.range("O6").value),
-                        Q_(0, AT_sheet.range("P6").value),
-                        Q_(0, AT_sheet.range("Q6").value),
+                        None,
+                        Q_(Dados_AT_2[i, 2].value, AT_sheet.range("AG6").value), # Copying 2sec Suction info
+                        Q_(Dados_AT_2[i, 3].value, AT_sheet.range("AH6").value),
                     ]
                 )
 
@@ -528,8 +526,8 @@ if __name__ == "__main__":
             else:
                 P_AT_Buf.append(
                     [
-                        Q_(0, AT_sheet.range("M6").value),
-                        Q_(0, AT_sheet.range("N6").value),
+                        None,
+                        Q_(Dados_AT_2[i, 3].value, AT_sheet.range("AH6").value),# Copying 2sec Suction info
                     ]
                 )
 
@@ -553,9 +551,9 @@ if __name__ == "__main__":
             else:
                 P_AT_Mdiv.append(
                     [
-                        Q_(0, AT_sheet.range("R6").value),
-                        Q_(0, AT_sheet.range("S6").value),
-                        Q_(0, AT_sheet.range("T6").value),
+                        None,
+                        Q_(Dados_AT_2[i, 4].value, AT_sheet.range("AI6").value),  # Copying 2sec Disch info
+                        Q_(Dados_AT_2[i, 5].value, AT_sheet.range("AJ6").value),
                     ]
                 )
                 P_AT_M1d.append(None)
@@ -651,7 +649,7 @@ if __name__ == "__main__":
             else:
                 P2_AT_Bal.append(
                     [
-                        Q_(0, AT_sheet.range("AK6").value),
+                        None,
                     ]
                 )
 
@@ -665,8 +663,8 @@ if __name__ == "__main__":
             else:
                 P2_AT_Buf.append(
                     [
-                        Q_(0, AT_sheet.range("AL6").value),
-                        Q_(0, AT_sheet.range("AM6").value),
+                        None,
+                        Q_(Dados_AT_2[i, 3].value, AT_sheet.range("AH6").value), # Copying 2sec Suction info
                     ]
                 )
 
