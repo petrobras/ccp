@@ -474,6 +474,14 @@ class BackToBack(Impeller):
                 ambient_temperature=point.ambient_temperature,
             )
 
+        k_end_seal_mean = sum(self.k_end_seal) / len(
+            self.k_end_seal
+        )
+
+        k_div_wall_mean = sum(self.k_div_wall) / len(
+            self.k_div_wall
+        )
+
         # for i, point in enumerate(test_points_sec1):
         #     if not point.first_section_discharge_flow_m:
         #         # use calculated k_end_seal and k_div_wall to calculate seal mass flow
@@ -662,7 +670,7 @@ class BackToBack(Impeller):
 
         # estimate rotor guarantee flow using fd conditions
         end_seal_flow_m_sp = flow_m_seal(
-            k_seal=k_end_seal,
+            k_seal=k_end_seal_mean,
             state_up=guarantee_point_sec2.suc,
             state_down=guarantee_point_sec1.suc,
         )
@@ -680,7 +688,7 @@ class BackToBack(Impeller):
             T=guarantee_point_sec2.suc.T(),
             fluid=guarantee_point_sec2.suc.fluid,
         )
-        for point_r_t in self.points_rotor_t_sec2:
+        for i, point_r_t in enumerate(self.points_rotor_t_sec2):
             point_r_sp = Point.convert_from(
                 original_point=point_r_t,
                 suc=suc2f_sp,
@@ -689,7 +697,7 @@ class BackToBack(Impeller):
             )
             self.points_rotor_sp_sec2.append(point_r_sp)
             mend_sp = flow_m_seal(
-                k_seal=k_end_seal,
+                k_seal=self.k_end_seal[i],
                 state_up=guarantee_point_sec2.suc,
                 state_down=guarantee_point_sec1.suc,
             )
