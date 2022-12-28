@@ -780,7 +780,7 @@ def k_seal(flow_m, state_up, state_down):
 
     Returns
     -------
-    k_end_seal : pint.Quantity
+    k_seal : pint.Quantity
         Seal constant (kelvin ** 0.5 * kilogram ** 0.5 * mole ** 0.5 / pascal / second).
     """
     p_up = state_up.p()
@@ -798,9 +798,7 @@ def k_seal(flow_m, state_up, state_down):
 
 @check_units
 def flow_m_seal(k_seal, state_up, state_down):
-    """Function to calculate the seal constant k.
-
-    This seal constant is used to estimate the seal leakage in different conditions.
+    """Function to calculate the mass flow across a seal with constant k_seal.
 
     Parameters
     ----------
@@ -811,6 +809,10 @@ def flow_m_seal(k_seal, state_up, state_down):
     state_down : ccp.State
         State downstream of the seal.
 
+    Returns
+    -------
+    flow_m_seal : pint.Quantity
+        Seal mass flow (kg/s).
     """
     p_up = state_up.p()
     z_up = state_up.z()
