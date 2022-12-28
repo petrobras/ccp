@@ -530,15 +530,18 @@ if __name__ == "__main__":
                         Q_(Dados_AT_2[i, 3].value, AT_sheet.range("AH6").value),# Copying 2sec Suction info
                     ]
                 )
-
+            fill_m_div = False
+            fill_m1d = False
             if Div_leak == "Yes":
                 div_f = Dados_AT_1[i, 11].value
                 m1d_f = Dados_AT_1[i, 14].value
                 if div_f is not None:
                     div_f = Q_(div_f, AT_sheet.range("R6").value)
                     m1d_f = None
+                    fill_m1d = True
                 else:
                     m1d_f = Q_(m1d_f, AT_sheet.range("U6").value)
+                    fill_m_div = True
 
                 P_AT_Mdiv.append(
                     [
@@ -598,6 +601,7 @@ if __name__ == "__main__":
                     convection_constant=heat_constant,
                 )
             )
+
 
             ## Carregando dados da segunda seção
 
@@ -716,13 +720,6 @@ if __name__ == "__main__":
                 )
             )
 
-        imp_conv = compressor.BackToBack(
-            guarantee_point_sec1=P_FD,
-            test_points_sec1=P_AT,
-            guarantee_point_sec2=P2_FD,
-            test_points_sec2=P2_AT,
-            speed=None
-        )
 
         if AT_sheet["Y3"].value == "Vazão Seção 1":
             QQ = np.array(Dados_AT_1[:, 1].value)
@@ -744,122 +741,75 @@ if __name__ == "__main__":
                 P_AT[i] = Paux[Id[i]]
                 P2_AT[i] = P2aux[Id[i]]
 
+        imp_conv = compressor.BackToBack(
+            guarantee_point_sec1=P_FD,
+            test_points_sec1=P_AT,
+            guarantee_point_sec2=P2_FD,
+            test_points_sec2=P2_AT,
+            speed=None
+        )
+
+        P_AT = imp_conv.points_flange_t_sec1
+        P2_AT = imp_conv.points_flange_t_sec2
+
+        for i in range(N):
+            if fill_m1d:
+                Dados_AT_1[i, 14].value = P_AT[i].first_section_discharge_flow_m.to(
+                    AT_sheet["U6"].value).m
+            if fill_m_div:
+                Dados_AT_1[i, 11].value = P_AT[i].div_wall_flow_m.to(
+                    AT_sheet["R6"].value).m
+
         P_ATconv = []
         P2_ATconv = []
 
-        Results_AT = AT_sheet["G22:AB32"]
+        Results_AT = AT_sheet["G22:AC32"]
         Results_AT.value = [[None] * len(Results_AT[0, :].value)] * 11
         Results_AT = Results_AT[0:N, :]
 
-        Results2_AT = AT_sheet["G37:AB47"]
+        Results2_AT = AT_sheet["G37:AC47"]
         Results2_AT.value = [[None] * len(Results2_AT[0, :].value)] * 11
         Results2_AT = Results2_AT[0:N, :]
 
         curve_shape = AT_sheet["C24"].value
 
+        reynolds = AT_sheet["C4"].value
+        rug1 = AT_sheet["D5"].value
+        rug2 = AT_sheet["D7"].value
+
         for i in range(N):
 
-            if AT_sheet["C4"].value == "Yes":
-                rug = AT_sheet["D7"].value
+            if reynolds:
 
-                ReAT = P_AT[i].reynolds
-                Re2AT = P2_AT[i].reynolds
-                ReFD = P_FD.reynolds
-                Re2FD = P2_FD.reynolds
-
-                RCAT = 0.988 / ReAT**0.243
-                RC2AT = 0.988 / Re2AT**0.243
-                RCFD = 0.988 / ReFD**0.243
-                RC2FD = 0.988 / Re2FD**0.243
-
-                RBAT = np.log(0.000125 + 13.67 / ReAT) / np.log(rug + 13.67 / ReAT)
-                RB2AT = np.log(0.000125 + 13.67 / Re2AT) / np.log(rug + 13.67 / Re2AT)
-                RBFD = np.log(0.000125 + 13.67 / ReFD) / np.log(rug + 13.67 / ReFD)
-                RB2FD = np.log(0.000125 + 13.67 / Re2FD) / np.log(rug + 13.67 / Re2FD)
-
-                RAAT = 0.066 + 0.934 * (4.8e6 * b.to("ft").magnitude / ReAT) ** RCAT
-                RA2AT = 0.066 + 0.934 * (4.8e6 * b2.to("ft").magnitude / Re2AT) ** RC2AT
-                RAFD = 0.066 + 0.934 * (4.8e6 * b.to("ft").magnitude / ReFD) ** RCFD
-                RA2FD = 0.066 + 0.934 * (4.8e6 * b2.to("ft").magnitude / Re2FD) ** RC2FD
-
-                corr = RAFD / RAAT * RBFD / RBAT
-                corr2 = RA2FD / RA2AT * RB2FD / RB2AT
-
-                if abs(1 - P_AT[i].phi.magnitude / P_FD.phi.magnitude) < 0.04:
-                    eff = 1 - (1 - P_AT[i].eff) * corr
-                else:
-                    eff = P_AT[i].eff
-
-                if abs(1 - P2_AT[i].phi.magnitude / P2_FD.phi.magnitude) < 0.04:
-                    eff2 = 1 - (1 - P2_AT[i].eff) * corr2
-                else:
-                    eff2 = P2_AT[i].eff
-
-                Results_AT[i, 21].value = eff.magnitude
-                Results2_AT[i, 21].value = eff2.magnitude
-
-                P_ATconv.append(
-                    ccp.Point(
-                        suc=P_FD.suc,
-                        eff=eff,
-                        speed=speed_FD,
-                        flow_v=P_AT[i].flow_v * N_ratio,
-                        head=P_AT[i].head * N_ratio**2,
-                        b=b,
-                        D=D,
+                P_ATconv.append(reynolds_corr(
+                        P_AT=imp_conv.points_rotor_t_sec1[i],
+                        P_FD=imp_conv.points_rotor_sp_sec1[i],
+                        rug=rug1,
                     )
                 )
 
-                # fluid2_ATconv = fluid_FD
-                # flow2_m_ATconv = P_ATconv[i].flow_m - flowSS_m_FD
+                Results_AT[i, 21].value = P_ATconv[-1].eff.magnitude
 
-                suc2ATconv = P_ATconv[i].disch
-
-                P2_ATconv.append(
-                    ccp.Point(
-                        suc=suc2ATconv,
-                        eff=eff2,
-                        speed=speed_FD,
-                        flow_v=P2_AT[i].flow_v * N_ratio,
-                        head=P2_AT[i].head * N_ratio**2,
-                        b=b2,
-                        D=D2,
+                P2_ATconv.append(reynolds_corr(
+                    P_AT=imp_conv.points_rotor_t_sec2[i],
+                    P_FD=imp_conv.points_rotor_sp_sec2[i],
+                        rug=rug2,
                     )
                 )
+
+                Results2_AT[i, 21].value = P_ATconv[-1].eff.magnitude
 
             else:
 
                 P_ATconv.append(
-                    ccp.Point(
-                        suc=P_FD.suc,
-                        eff=P_AT[i].eff,
-                        speed=speed_FD,
-                        flow_v=P_AT[i].flow_v * N_ratio,
-                        head=P_AT[i].head * N_ratio**2,
-                        b=b,
-                        D=D,
-                    )
+                    imp_conv.points_flange_sp_sec1[i]
                 )
-
-                # fluid2_ATconv = fluid_FD
-                # flow2_m_ATconv = P_ATconv[i].flow_m - flowSS_m_FD
-
-                suc2ATconv = P_ATconv[i].disch
-
                 P2_ATconv.append(
-                    ccp.Point(
-                        suc=suc2ATconv,
-                        eff=P2_AT[i].eff,
-                        speed=speed_FD,
-                        flow_v=P2_AT[i].flow_v * N_ratio,
-                        head=P2_AT[i].head * N_ratio**2,
-                        b=b2,
-                        D=D2,
-                    )
+                    imp_conv.points_flange_sp_sec2[i]
                 )
 
-                Results_AT[i, 21].value = P_AT[i].eff
-                Results2_AT[i, 21].value = P2_AT[i].eff
+                Results_AT[i, 21].value = ""
+                Results2_AT[i, 21].value = ""
 
             ## Escrevendo resultados para a Seção 1
             Results_AT[i, 0].value = P_AT[i].volume_ratio.magnitude
@@ -922,6 +872,8 @@ if __name__ == "__main__":
                 Results_AT[i, 19].value = P_ATconv[i].power.to("kW").magnitude / min_Pow
 
             Results_AT[i, 20].value = P_AT[i].eff.magnitude
+            if P_AT[i].div_wall_flow_m:
+                Results_AT[i, 22].value = imp_conv.points_flange_sp_sec1[i].div_wall_flow_m.to('kg/h').m
 
             ## Escrevendo resultados para Seção 2
 
@@ -1009,7 +961,7 @@ if __name__ == "__main__":
                     IdG2.append(i)
 
         if len(IdG) == 1:
-            AT_sheet["G32:AB32"].value = Results_AT[IdG[0], :].value
+            AT_sheet["G32:AC32"].value = Results_AT[IdG[0], :].value
         elif len(IdG) > 1:
             IdG = [int(k) for k in np.argsort(Phi)[0:2]]
             IdG = sorted(IdG)
@@ -1018,13 +970,13 @@ if __name__ == "__main__":
             f = (1 - aux1[7]) / (aux2[7] - aux1[7])
 
             aux = aux1 + f * (aux2 - aux1)
-            AT_sheet["G32:AB32"].value = aux
+            AT_sheet["G32:AC32"].value = aux
         else:
 
-            AT_sheet["G32:AB32"].value = [None] * len(Results_AT[0, :].value)
+            AT_sheet["G32:AC32"].value = [None] * len(Results_AT[0, :].value)
 
         if len(IdG2) == 1:
-            AT_sheet["G47:AB47"].value = Results2_AT[IdG2[0], :].value
+            AT_sheet["G47:AC47"].value = Results2_AT[IdG2[0], :].value
         elif len(IdG2) > 1:
             IdG2 = [int(k) for k in np.argsort(Phi2)[0:2]]
             IdG2 = sorted(IdG2)
@@ -1033,10 +985,10 @@ if __name__ == "__main__":
             f = (1 - aux1[7]) / (aux2[7] - aux1[7])
 
             aux = aux1 + f * (aux2 - aux1)
-            AT_sheet["G47:AB47"].value = aux
+            AT_sheet["G47:AC47"].value = aux
         else:
 
-            AT_sheet["G47:AB47"].value = [None] * len(Results2_AT[0, :].value)
+            AT_sheet["G47:AC47"].value = [None] * len(Results2_AT[0, :].value)
 
         AT_sheet["Z9"].value = "Calculado"
 
