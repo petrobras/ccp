@@ -420,9 +420,12 @@ class BackToBack(Impeller):
             elif point.div_wall_flow_m:
                 mdiv_t = point.div_wall_flow_m
                 md1f_t = mdiv_t + ms1f_t + mend_t + 0.95 * mseal_t
+                point.first_section_discharge_flow_m = md1f_t
             else:
                 mdiv_t = 0 * point.flow_m
                 md1f_t = mdiv_t + ms1f_t + mend_t + 0.95 * mseal_t
+                point.div_wall_flow_m = mdiv_t
+                point.first_section_discharge_flow_m = md1f_t
 
             ms1r_t = ms1f_t + mend_t + 0.95 * mseal_t
 
@@ -760,6 +763,8 @@ class BackToBack(Impeller):
                 D=guarantee_point_sec1.D,
             )
             self.points_flange_sp_sec1.append(point_flange)
+            self.points_flange_sp_sec1[-1].div_wall_flow_m = mdiv_sp
+            self.points_flange_sp_sec1[-1].first_section_discharge_flow_m = mdiv_sp + ms1r_sp
         self.imp_flange_sp_sec1 = Impeller(self.points_flange_sp_sec1)
 
 
