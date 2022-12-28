@@ -485,6 +485,9 @@ class BackToBack(Impeller):
             self.k_div_wall
         )
 
+        ##############################################
+        ##### Acho que não precisa - Timbó verificar
+        ##############################################
         # for i, point in enumerate(test_points_sec1):
         #     if not point.first_section_discharge_flow_m:
         #         # use calculated k_end_seal and k_div_wall to calculate seal mass flow
@@ -556,6 +559,7 @@ class BackToBack(Impeller):
         #             casing_temperature=point.casing_temperature,
         #             ambient_temperature=point.ambient_temperature,
         #         )
+        ############################################################################
 
         self.points_rotor_t_sec1 = test_points_sec1_rotor
 
