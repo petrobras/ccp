@@ -91,8 +91,8 @@ if __name__ == "__main__":
             speed=P_FD.speed,
             flow_v=P_AT.flow_v * N_ratio,
             head=P_AT.head * N_ratio**2,
-            b=b,
-            D=D,
+            b=P_FD.b,
+            D=P_FD.D,
         )
 
         # correct head coeficient
@@ -104,8 +104,8 @@ if __name__ == "__main__":
                 speed=P_FD.speed,
                 flow_v=P_AT.flow_v * N_ratio,
                 head=h,
-                b=b,
-                D=D,
+                b=P_FD.b,
+                D=P_FD.D,
             )
 
             return P_AT_reyn.psi.m - P_AT.psi.m * eff.m / P_AT.eff.m
@@ -779,7 +779,7 @@ if __name__ == "__main__":
 
         for i in range(N):
 
-            if reynolds:
+            if reynolds == 'Yes':
 
                 P_ATconv.append(reynolds_corr(
                         P_AT=imp_conv.points_rotor_t_sec1[i],
