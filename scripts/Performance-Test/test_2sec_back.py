@@ -797,7 +797,7 @@ if __name__ == "__main__":
                     )
                 )
 
-                Results2_AT[i, 21].value = P_ATconv[-1].eff.magnitude
+                Results2_AT[i, 21].value = P2_ATconv[-1].eff.magnitude
 
             else:
 
