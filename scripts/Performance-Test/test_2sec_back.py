@@ -244,7 +244,7 @@ if __name__ == "__main__":
             flow2_m_FD = flow2_v_FD * suc2FD.rho()
             FD_sheet["AT34"].value = flow2_m_FD.to("kg/h").magnitude
         else:
-            flow2_m_FD = flow_m_FD
+            flow2_m_FD = Q_(FD_sheet.range("Z21").value, "kg/h")
             flow2_v_FD = flow2_m_FD / suc2FD.rho()
             FD_sheet["AT34"].value = flow2_v_FD.to("m³/h").magnitude
 
