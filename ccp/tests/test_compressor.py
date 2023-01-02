@@ -843,6 +843,7 @@ def test_back_to_back(back_to_back):
     assert_allclose(p0r_sp.flow_m, Q_(156223.564, "kg/h").to("kg/s"), rtol=1e-3)
     assert_allclose(p0r_sp.suc.T(), 312.76555064737, rtol=1e-3)
     assert_allclose(p0r_sp.suc.p(), 4739000)
+    assert_allclose(p0r_sp.disch.T(), 380.541484)
     assert_allclose(p0r_sp.head, 77283.0955755209, rtol=1e-6)
     assert_allclose(p0r_sp.eff, 0.622869673032321, rtol=1e-6)
     assert_allclose(p0r_sp.power, 5384326.21375024, rtol=1e-3)
@@ -857,22 +858,29 @@ def test_back_to_back(back_to_back):
     assert_allclose(p0f_sp.eff, 0.649591, rtol=1e-6)
     assert_allclose(p0f_sp.power, 5077064.78668, rtol=1e-3)
 
-    # # imp specified
-    # assert_allclose(
-    #     back_to_back.sec1.head,
-    #     np.array(
-    #         [
-    #             [
-    #                 211610.343979,
-    #                 205136.724749,
-    #                 173289.555545,
-    #                 148399.758034,
-    #                 193804.346837,
-    #             ]
-    #         ]
-    #     ),
-    # )
-    # point_sp = back_to_back.sec1.point(
-    #     speed=back_to_back.speed, flow_m=Q_(142000, "kg/h")
-    # )
-    # assert_allclose(point_sp.eff, 0.820459, rtol=1e-5)
+    # imp_sec1 specified
+    p0f_sp = back_to_back.point_sec1(
+        flow_m=Q_(153951.321926329, "kg/h"),
+        speed=back_to_back.speed,
+    )
+    assert_allclose(p0f_sp.flow_m, Q_(153951.321926329, "kg/h").to("kg/s"), rtol=1e-2)
+    assert_allclose(p0f_sp.suc.T(), 313.15, rtol=1e-3)
+    assert_allclose(p0f_sp.suc.p(), 4739000)
+    assert_allclose(p0f_sp.disch.T(), 378.811147, rtol=1e-2)
+    assert_allclose(p0f_sp.head, 77063.137578, rtol=1e-2)
+    assert_allclose(p0f_sp.eff, 0.649591, rtol=1e-2)
+    # power in this case is the 'real' power consumed by the rotor
+    assert_allclose(p0r_sp.power, 5384326.21375024, rtol=1e-3)
+
+    # imp_sec2 specified
+    p0f_sp = back_to_back.point_sec2(
+        flow_m=Q_(53.092244, "kg/s"),
+        speed=back_to_back.speed,
+    )
+    assert_allclose(p0f_sp.flow_m, 53.092244)
+    assert_allclose(p0f_sp.suc.T(), 313.15)
+    assert_allclose(p0f_sp.suc.p(), 13350788.401188)
+    assert_allclose(p0f_sp.head, 30603.247711, rtol=1e-6)
+    assert_allclose(p0f_sp.eff, 0.47459, rtol=1e-6)
+    # power in this case is the 'real' power consumed by the rotor
+    assert_allclose(p0r.power, 3358441.494485)

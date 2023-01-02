@@ -561,6 +561,8 @@ class BackToBack(Impeller):
         #         )
         ############################################################################
 
+        self.k_end_seal_mean = k_end_seal_mean
+        self.k_div_wall_mean = k_div_wall_mean
         self.points_rotor_t_sec1 = test_points_sec1_rotor
 
         # calculate rotor condition for sec2
@@ -770,6 +772,47 @@ class BackToBack(Impeller):
             self.points_flange_sp_sec1[-1].div_wall_flow_m = mdiv_sp
             self.points_flange_sp_sec1[-1].first_section_discharge_flow_m = mdiv_sp + ms1r_sp
         self.imp_flange_sp_sec1 = Impeller(self.points_flange_sp_sec1)
+
+    def point_sec1(self, *args, **kwargs):
+        # calculate flange point from impeller object
+        p_sec1 = self.imp_flange_sp_sec1.point(*args, **kwargs)
+
+        # calculate rotor flow
+        ps2f_sp = p_sec1.disch.p() - (
+            self.guarantee_point_sec1.disch.p() - self.guarantee_point_sec2.suc.p()
+        )
+        suc2f_sp = State.define(
+            p=ps2f_sp,
+            T=self.guarantee_point_sec2.suc.T(),
+            fluid=self.guarantee_point_sec2.suc.fluid,
+        )
+        end_seal_flow_m_sp = flow_m_seal(
+            k_seal=self.k_end_seal_mean,
+            state_up=suc2f_sp,
+            state_down=p_sec1.suc,
+        )
+        ms1r_sp = p_sec1.flow_m + end_seal_flow_m_sp
+
+        # calculate 'real' power from rotor conditions
+        p_sec1_rotor = self.imp_rotor_sp_sec1.point(flow_m=ms1r_sp, speed=p_sec1.speed)
+        p_sec1.power = p_sec1_rotor.power
+
+        return p_sec1
+
+    def point_sec2(self, *args, **kwargs):
+        # calculate flange point from impeller object
+        p_sec2 = self.imp_flange_sp_sec2.point(*args, **kwargs)
+
+        # calculate 'real' power from rotor conditions
+        end_seal_flow_m_sp = flow_m_seal(
+            k_seal=self.k_end_seal_mean,
+            state_up=p_sec2.suc,
+            state_down=self.guarantee_point_sec1.suc,
+        )
+        ms2r_sp = p_sec2.flow_m - end_seal_flow_m_sp
+        p_sec2.power = ms2r_sp * p_sec2.head * p_sec2.eff
+
+        return p_sec2
 
 
 @check_units
