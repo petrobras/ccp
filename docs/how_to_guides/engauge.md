@@ -33,6 +33,10 @@ Select 'Raws Xs and Ys' and 'One curve for each line'
 
 After that go to File -> Export and save the .csv file as <curve-name>-head.csv.
 
+Files should be saved with the following convention:
+ - \<curve-name\>-head.csv
+ - \<curve-name\>-eff.csv
+
 ```{image} ../_static/img/step5.gif
 ```
 
@@ -43,10 +47,11 @@ After that we can load the data with the following code:
 ```{code-block} python3
 
 import ccp
+from pathlib import Path
 
 data_dir = Path(...)
 
-suc = State.define(
+suc = ccp.State.define(
     p=Q_(4.08, "bar"),
     T=Q_(33.6, "degC"),
     fluid={
