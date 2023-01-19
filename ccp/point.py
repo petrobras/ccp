@@ -33,8 +33,28 @@ class Point:
     suc, eff, volume_ratio : ccp.State, float, float
         Suction state, polytropic efficiency and volume ratio.
     suc, pres_ratio, disch_T : ccp.State, float, pint.Quantity or float
-    b, D : pint.Quantity, float
-        Impeller width and diameter.
+        Suction state, pressure ration and discharge temperature.
+    b : pint.Quantity, optional
+        Impeller width (m).
+        This value is used to calculate the machine Mach and Reynolds numbers.
+    D : pint.Quantity,optional
+        Impeller diameter (m).
+        This value is used to calculate the machine Mach and Reynolds numbers.
+    casing_area : pint.Quantity, optional
+        Compressor case area used to calculate case heat loss (m²).
+    casing_temperature : pint.Quantity, optional
+        Compressor case temperature used to calculate case heat loss (degK).
+    ambient_temperature : pint.Quantity, optional
+        Ambient temperature used to calculate case heat loss (degK).
+    convection_constant : pint.Quantity, optional
+        Heat transfer (convection) constant (W / m²degK).
+        Default value is 13.6.
+    polytropic_method : str, optional
+        Polytropic method used for head and efficiency calculation.
+        Options are: "mallen_saveille", "sandberg_colby", "schultz" and "huntington".
+        The default is "schultz".
+        The default value can be changed in a global level with:
+        ccp.config.POLYTROPIC_METHOD = "<desired value>"
 
     Returns
     -------
@@ -73,15 +93,14 @@ class Point:
         Impeller width (m).
     D : pint.Quantity
         Impeller diameter (m).
-    casing_area : pint.Quantity, optional
+    casing_area : pint.Quantity
         Compressor case area used to calculate case heat loss (m²).
-    casing_temperature : pint.Quantity, optional
+    casing_temperature : pint.Quantity
         Compressor case temperature used to calculate case heat loss (degK).
-    ambient_temperature : pint.Quantity, optional
+    ambient_temperature : pint.Quantity
         Ambient temperature used to calculate case heat loss (degK).
-    convection_constant : pint.Quantity, optional
+    convection_constant : pint.Quantity
         Heat transfer (convection) constant (W / m²degK).
-        Default value is 13.6.
     reynolds : pint.Quantity
         Reynolds number (dimensionless).
     mach : pint.Quantity
@@ -94,9 +113,9 @@ class Point:
         Ratio between Reynolds for this point and the original point from which it was converted from.
     mach_diff : float
         Difference between Mach for this point and the original point from which it was converted from.
-    volume_ratio_ratio = 1.0
+    volume_ratio_ratio : float
         Ratio between volume_ratio for this point and the original point from which it was converted from.
-    polytropic_method : str, optional
+    polytropic_method : str
         Polytropic method used for head and efficiency calculation.
         Options are: "mallen_saveille", "sandberg_colby", "schultz" and "huntington".
         The default is "schultz".
