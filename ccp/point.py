@@ -37,9 +37,13 @@ class Point:
     b : pint.Quantity, optional
         Impeller width (m).
         This value is used to calculate the machine Mach and Reynolds numbers.
-    D : pint.Quantity,optional
+    D : pint.Quantity, optional
         Impeller diameter (m).
         This value is used to calculate the machine Mach and Reynolds numbers.
+    surface_roughness : pint.Quantity, optional
+        Gas passage mean surface roughness (m).
+        Used in the reynolds correction calculation.
+        Default value is 3.048e-6 m.
     casing_area : pint.Quantity, optional
         Compressor case area used to calculate case heat loss (m²).
     casing_temperature : pint.Quantity, optional
@@ -117,10 +121,6 @@ class Point:
         Ratio between volume_ratio for this point and the original point from which it was converted from.
     polytropic_method : str
         Polytropic method used for head and efficiency calculation.
-        Options are: "mallen_saveille", "sandberg_colby", "schultz" and "huntington".
-        The default is "schultz".
-        The default value can be changed in a global level with:
-        ccp.config.POLYTROPIC_METHOD = "<desired value>"
     """
 
     @check_units
@@ -140,8 +140,9 @@ class Point:
         volume_ratio=None,
         pressure_ratio=None,
         disch_T=None,
-        b=None,
-        D=None,
+        b=0.005,
+        D=0.5,
+        surface_roughness=3.048e-6,
         casing_area=None,
         casing_temperature=None,
         ambient_temperature=None,
@@ -174,6 +175,7 @@ class Point:
 
         self.b = b
         self.D = D
+        self.surface_roughness = surface_roughness
 
         self.casing_area = casing_area
         self.casing_temperature = casing_temperature
