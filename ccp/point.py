@@ -450,7 +450,15 @@ class Point:
 
     @classmethod
     @check_units
-    def convert_from(cls, original_point, suc=None, find="speed", speed=None, **kwargs):
+    def convert_from(
+        cls,
+        original_point,
+        suc=None,
+        find="speed",
+        speed=None,
+        reynolds_correction=False,
+        **kwargs,
+    ):
         """Convert point from an original point.
 
         Parameters
@@ -463,6 +471,9 @@ class Point:
             Options are "speed" or "volume_ratio", default is "speed".
         speed : float, pint.Quantity, optional
             Desired speed. If find="speed", this should be None.
+        reynolds_correction : bool, optional
+            If reynolds correction should be applied during the conversion.
+            If True the ASME PTC 10 reynolds correction is applied
 
         The user must provide 3 of the 4 available arguments. The argument which is not
         provided will be calculated.
@@ -491,6 +502,16 @@ class Point:
                 **kwargs,
             ),
         }
+
+        if reynolds_correction:
+            rc = 0.988 / original_point.reynolds**0.243
+            rb = np.log(0.000125 * 13.67 / original_point.reynolds) / np.log(
+                original_point
+            )
+            ra = (
+                0.066
+                + 0.934 * ((4.8e6 * original_point.b) / original_point.reynolds) ** rc
+            )
 
         converted_point = cls(**convert_point_options[find])
         converted_point.phi_ratio = converted_point.phi / original_point.phi
