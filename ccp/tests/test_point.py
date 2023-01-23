@@ -585,3 +585,37 @@ def test_point_casing_heat_loss():
 
     assert_allclose(p.eff, 0.735723, rtol=1e-6)
     assert_allclose(p.suc.fluid["CO2"], 0.80218)
+
+
+def test_ptc10_c6_sample_calculation():
+    suc_sp = ccp.State.define(
+        p=Q_(200, "psi"),
+        T=Q_(115, "degF"),
+        fluid={"methane": 20, "ethane": 25, "propane": 50, "n-butane": 5},
+    )
+    suc_t = ccp.State.define(
+        p=Q_(20, "psi"),
+        T=Q_(100, "degF"),
+        fluid={"r134a": 1},
+    )
+    disch_t = ccp.State.define(
+        p=Q_(67.5, "psi"),
+        T=Q_(187.4, "degF"),
+        fluid={"r134a": 1},
+    )
+    point_t = ccp.Point(
+        suc=suc_t,
+        disch=disch_t,
+        flow_v=Q_(14137, "ft³/min"),
+        speed=Q_(2245, "RPM"),
+        b=Q_(0.0635, "m"),
+        D=Q_(1.033, "m"),
+    )
+    point_sp = ccp.Point.convert_from(
+        point_t,
+        suc=suc_sp,
+        reynolds_correction=True,
+        speed=Q_(3600, "rpm"),
+        find="volume_ratio",
+    )
+    assert_allclose(point_sp.eff, 0.792242)
