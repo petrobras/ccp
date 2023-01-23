@@ -149,8 +149,6 @@ class Point:
         convection_constant=Q_(13.6, "W/(m²*degK)"),
         polytropic_method=None,
     ):
-        if b is None or D is None:
-            raise ValueError("Arguments b and D must be provided.")
         if polytropic_method is None:
             polytropic_method = ccp.config.POLYTROPIC_METHOD
 

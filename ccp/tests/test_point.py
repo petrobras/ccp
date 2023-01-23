@@ -21,18 +21,6 @@ def disch_0():
     return State.define(p=Q_(5.902, "bar"), T=405.7, fluid=fluid)
 
 
-def test_raises_no_b_D(suc_0, disch_0):
-    with pytest.raises(ValueError) as ex:
-        Point(suc=suc_0, disch=disch_0, flow_v=1, speed=1)
-        assert "Arguments b and D" in str(ex.value)
-    with pytest.raises(ValueError) as ex:
-        Point(suc=suc_0, disch=disch_0, flow_v=1, speed=1, b=1)
-        assert "Arguments b and D" in str(ex.value)
-    with pytest.raises(ValueError) as ex:
-        Point(suc=suc_0, disch=disch_0, flow_v=1, speed=1, D=1)
-        assert "Arguments b and D" in str(ex.value)
-
-
 @pytest.fixture
 def point_disch_flow_v_speed_suc(suc_0, disch_0):
     point_disch_suc = Point(suc=suc_0, disch=disch_0, flow_v=1, speed=1, b=1, D=1)
