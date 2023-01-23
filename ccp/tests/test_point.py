@@ -433,6 +433,61 @@ def test_converted_from_find_volume_ratio(point_eff_flow_v_head_speed_suc_1):
     )
 
 
+def test_converted_from_find_volume_ratio_with_reynolds_correction(
+    point_eff_flow_v_head_speed_suc_1,
+):
+    suc_2 = State.define(
+        p=Q_(0.2, "MPa"), T=301.58, fluid={"n2": 1 - 1e-15, "co2": 1e-15}
+    )
+    point_converted_from_find_volume_ratio = Point.convert_from(
+        original_point=point_eff_flow_v_head_speed_suc_1,
+        suc=suc_2,
+        find="volume_ratio",
+        reynolds_correction=True,
+    )
+
+    assert_allclose(
+        point_converted_from_find_volume_ratio.b, point_eff_flow_v_head_speed_suc_1.b
+    )
+    assert_allclose(
+        point_converted_from_find_volume_ratio.D, point_eff_flow_v_head_speed_suc_1.D
+    )
+    print(
+        point_converted_from_find_volume_ratio.eff,
+    )
+    assert_allclose(
+        point_converted_from_find_volume_ratio.eff,
+        0.8220887816802108,
+        rtol=1e-4,
+    )
+    assert_allclose(
+        point_converted_from_find_volume_ratio.phi,
+        point_eff_flow_v_head_speed_suc_1.phi,
+        rtol=1e-2,
+    )
+    assert_allclose(
+        point_converted_from_find_volume_ratio.psi,
+        7.862445,
+        rtol=1e-6,
+    )
+    assert_allclose(
+        point_converted_from_find_volume_ratio.volume_ratio, 2.682031, rtol=1e-4
+    )
+    assert_allclose(point_converted_from_find_volume_ratio.speed, 1167.101671)
+    assert_allclose(point_converted_from_find_volume_ratio.head, 179275.0, rtol=1e-2)
+    assert_allclose(
+        point_converted_from_find_volume_ratio.power, 875741.275802, rtol=1e-2
+    )
+    assert_allclose(point_converted_from_find_volume_ratio.phi_ratio, 1.0)
+    print(point_converted_from_find_volume_ratio.psi_ratio)
+    assert_allclose(
+        point_converted_from_find_volume_ratio.psi_ratio, 0.9948348978470695
+    )
+    assert_allclose(
+        point_converted_from_find_volume_ratio.volume_ratio_ratio, 0.876025, rtol=1e-4
+    )
+
+
 def test_converted_from_find_volume_ratio_mach_plot(point_eff_flow_v_head_speed_suc_1):
     suc_2 = State.define(
         p=Q_(0.2, "MPa"), T=301.58, fluid={"n2": 1 - 1e-15, "co2": 1e-15}
