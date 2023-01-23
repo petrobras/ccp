@@ -140,9 +140,9 @@ class Point:
         volume_ratio=None,
         pressure_ratio=None,
         disch_T=None,
-        b=0.005,
-        D=0.5,
-        surface_roughness=3.048e-6,
+        b=Q_(0.005, "m"),
+        D=Q_(0.5, "m"),
+        surface_roughness=Q_(3.048e-6, "m"),
         casing_area=None,
         casing_temperature=None,
         ambient_temperature=None,
@@ -478,12 +478,49 @@ class Point:
         """
         if speed is None:
             speed = original_point.speed
+
+        eff_converted = original_point.eff
+        psi_converted = original_point.psi
+
+        if reynolds_correction:
+            rc_original = 0.988 / original_point.reynolds**0.243
+            rb_original = np.log(0.000125 * 13.67 / original_point.reynolds) / np.log(
+                original_point.surface_roughness.to("in").m
+                + (13.67 / original_point.reynolds)
+            )
+            ra_original = (
+                0.066
+                + 0.934
+                * ((4.8e6 * original_point.b.to("ft").m) / original_point.reynolds)
+                ** rc_original
+            )
+
+            reynolds_converted = reynolds(
+                suc=suc, speed=speed, b=original_point.b, D=original_point.D
+            )
+            rc_converted = 0.988 / reynolds_converted**0.243
+            rb_converted = np.log(0.000125 * 13.67 / reynolds_converted) / np.log(
+                original_point.surface_roughness.to("in").m
+                + (13.67 / reynolds_converted)
+            )
+            ra_converted = (
+                0.066
+                + 0.934
+                * ((4.8e6 * original_point.b.to("in").m) / reynolds_converted)
+                ** rc_converted
+            )
+
+            eff_converted = 1 - (1 - original_point.eff) * (
+                ra_converted / ra_original
+            ) * (rb_converted / rb_original)
+            psi_converted = original_point.psi * (eff_converted / original_point.eff)
+
         convert_point_options = {
             "speed": dict(
                 suc=suc,
-                eff=original_point.eff,
+                eff=eff_converted,
                 phi=original_point.phi,
-                psi=original_point.psi,
+                psi=psi_converted,
                 volume_ratio=original_point.volume_ratio,
                 b=original_point.b,
                 D=original_point.D,
@@ -491,25 +528,15 @@ class Point:
             ),
             "volume_ratio": dict(
                 suc=suc,
-                eff=original_point.eff,
+                eff=eff_converted,
                 phi=original_point.phi,
-                psi=original_point.psi,
+                psi=psi_converted,
                 speed=speed,
                 b=original_point.b,
                 D=original_point.D,
                 **kwargs,
             ),
         }
-
-        if reynolds_correction:
-            rc = 0.988 / original_point.reynolds**0.243
-            rb = np.log(0.000125 * 13.67 / original_point.reynolds) / np.log(
-                original_point
-            )
-            ra = (
-                0.066
-                + 0.934 * ((4.8e6 * original_point.b) / original_point.reynolds) ** rc
-            )
 
         converted_point = cls(**convert_point_options[find])
         converted_point.phi_ratio = converted_point.phi / original_point.phi
