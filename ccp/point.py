@@ -142,7 +142,7 @@ class Point:
         disch_T=None,
         b=Q_(0.005, "m"),
         D=Q_(0.5, "m"),
-        surface_roughness=Q_(3.048e-6, "m"),
+        surface_roughness=Q_(3.175e-6, "m"),
         casing_area=None,
         casing_temperature=None,
         ambient_temperature=None,
@@ -484,7 +484,7 @@ class Point:
 
         if reynolds_correction:
             rc_original = 0.988 / original_point.reynolds**0.243
-            rb_original = np.log(0.000125 * 13.67 / original_point.reynolds) / np.log(
+            rb_original = np.log(0.000125 + 13.67 / original_point.reynolds) / np.log(
                 original_point.surface_roughness.to("in").m
                 + (13.67 / original_point.reynolds)
             )
@@ -499,14 +499,14 @@ class Point:
                 suc=suc, speed=speed, b=original_point.b, D=original_point.D
             )
             rc_converted = 0.988 / reynolds_converted**0.243
-            rb_converted = np.log(0.000125 * 13.67 / reynolds_converted) / np.log(
+            rb_converted = np.log(0.000125 + 13.67 / reynolds_converted) / np.log(
                 original_point.surface_roughness.to("in").m
                 + (13.67 / reynolds_converted)
             )
             ra_converted = (
                 0.066
                 + 0.934
-                * ((4.8e6 * original_point.b.to("in").m) / reynolds_converted)
+                * ((4.8e6 * original_point.b.to("ft").m) / reynolds_converted)
                 ** rc_converted
             )
 
