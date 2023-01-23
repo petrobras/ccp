@@ -78,6 +78,7 @@ units = {
     "s": "joule/(kelvin kilogram)",
     "b": "meter",
     "D": "meter",
+    "roughness": "meter",
     "head": "joule/kilogram",
     "eff": "dimensionless",
     "power": "watt",
