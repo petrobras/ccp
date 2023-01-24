@@ -609,6 +609,14 @@ class Impeller:
                         curves[curve][speed]["x"] = [
                             flow.to(flow_units).m for flow in flow_curve
                         ]
+                else:
+                    flow_curve = [
+                        Q_(flow, args[f"flow_units_{curve}"])
+                        for flow in curves[curve][speed]["x"]
+                    ]
+                    curves[curve][speed]["x"] = [
+                        flow.to(flow_units).m for flow in flow_curve
+                    ]
                 if curves[curve][speed]["x"][0] > min_x:
                     min_x = curves[curve][speed]["x"][0]
                 if curves[curve][speed]["x"][-1] < max_x:

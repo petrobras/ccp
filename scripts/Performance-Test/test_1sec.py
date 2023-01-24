@@ -59,9 +59,13 @@ from ccp import State, Q_
 from ccp import compressor
 import numpy as np
 
+
 logger.critical("System Information:")
 logger.critical(f"python: {sys.version}")
 logger.critical(f"ccp: {ccp.__version__full}")
+logger.critical(
+    f"REFPROP path: {ccp._CP.get_config_string(ccp._CP.ALTERNATIVE_REFPROP_PATH)}"
+)
 
 if __name__ == "__main__":
 
@@ -465,6 +469,12 @@ if __name__ == "__main__":
 
             if AT_sheet["C23"].value == "Yes":
                 if (BL_leak == "Yes") | (BF_leak == "Yes"):
+                    P_AT_reyn = reynolds_corr(
+                        P_AT=imp_conv.points_rotor_t[i],
+                        P_FD=imp_conv.points_rotor_sp[i],
+                        rug=AT_sheet["D24"].value,
+                    )
+
                     P_AT_reyn = reynolds_corr(
                         P_AT=imp_conv.points_rotor_t[i],
                         P_FD=imp_conv.points_rotor_sp[i],
