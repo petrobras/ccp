@@ -20,7 +20,7 @@ logger.addHandler(handler)
 def handle_exception(exc_type, exc_value, exc_traceback):
     AT_sheet["F36"].value = "ERRO!"
     TP_sheet["J23"].value = "ERRO!"
-    CF_sheet["L8"].value = "ERRO!"
+    CF_sheet["M8"].value = "ERRO!"
     if issubclass(exc_type, KeyboardInterrupt):
         sys.__excepthook__(exc_type, exc_value, exc_traceback)
     else:
@@ -44,8 +44,8 @@ if AT_sheet["H35"].value != None:
     AT_sheet["F36"].value = "Carregando bibliotecas..."
 elif TP_sheet["K19"].value != None:
     TP_sheet["J23"].value = "Carregando bibliotecas..."
-elif CF_sheet["L4"].value != None:
-    CF_sheet["L8"].value = "Carregando bibliotecas..."
+elif CF_sheet["M4"].value != None:
+    CF_sheet["M8"].value = "Carregando bibliotecas..."
 
 from scipy.optimize import newton
 
@@ -829,21 +829,21 @@ if __name__ == "__main__":
 
         TP_sheet["J23"].value = "Calculado"
 
-    if CF_sheet["L4"].value != None:
+    if CF_sheet["M4"].value != None:
         global qm
 
-        CF_sheet["L8"].value = "Calculando..."
+        CF_sheet["M8"].value = "Calculando..."
 
-        CF_sheet["L4"].value = None
+        CF_sheet["M4"].value = None
 
         i = 4
-        data = np.array(CF_sheet[i, 2:8].value)
+        data = np.array(CF_sheet[i, 2:9].value)
 
         while len(data[data == None]) == 0:
 
-            Units = CF_sheet["C4:I4"].value
+            Units = CF_sheet["C4:J4"].value
 
-            gas = int(AT_sheet.cells[2 + i, 12].value)
+            gas = int(float(data[6]))
 
             GasesT = TG_sheet.range(
                 TG_sheet.cells(5, 2 + 4 * (gas - 1)),
@@ -930,9 +930,9 @@ if __name__ == "__main__":
 
             Re = D / mu * qm / (np.pi * D**2 / 4)
 
-            CF_sheet[i, 8].value = qm.to(Units[-1]).magnitude
+            CF_sheet[i, 9].value = qm.to(Units[-1]).magnitude
 
             i += 1
-            data = np.array(CF_sheet[i, 2:8].value)
+            data = np.array(CF_sheet[i, 2:9].value)
 
-        CF_sheet["L8"].value = "Calculado"
+        CF_sheet["M8"].value = "Calculado"
