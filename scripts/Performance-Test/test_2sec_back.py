@@ -330,14 +330,22 @@ if __name__ == "__main__":
         head1_unit = FD_sheet["AQ41"].value
         QFD = Q_(np.array(Curva[0:Nc, 0].value), flow1_unit)
 
-        if Nc > 0 and min(abs(QFD.to(flow1_unit).m - flow_v_FD.to(flow1_unit).m)) == 0:
+        if Nc <= 0:
+            Gar = [
+                flow_v_FD.to("m³/h").magnitude,
+                P_FD.head.to("kJ/kg").magnitude,
+                None,
+                P_FD.eff.magnitude,
+            ]
+            Curva[Nc, :].value = Gar
+            Nc = Nc + 1
+        elif Nc > 1 and min(abs(QFD.to("m³/h").m - flow_v_FD.to("m³/h").m)) == 0:
             Gar = [None, None, None, None]
             Curva[Nc, :].value = Gar
-
         else:
             Gar = [
-                flow_v_FD.to(flow1_unit).magnitude,
-                P_FD.head.to(head1_unit).magnitude,
+                flow_v_FD.to("m³/h").magnitude,
+                P_FD.head.to("kJ/kg").magnitude,
                 None,
                 P_FD.eff.magnitude,
             ]
@@ -359,17 +367,22 @@ if __name__ == "__main__":
         head2_unit = FD_sheet["AQ52"].value
         QFD2 = Q_(np.array(Curva2[0:Nc2, 0].value), flow2_unit)
 
-        if (
-            Nc2 > 0
-            and min(abs(QFD2.to("m³/h").m - P2_FD.flow_v.to(flow2_unit).magnitude)) == 0
-        ):
+        if Nc2 <= 0:
+            Gar = [
+                flow2_v_FD_v_FD.to("m³/h").magnitude,
+                P2_FD.head.to("kJ/kg").magnitude,
+                None,
+                P2_FD.eff.magnitude,
+            ]
+            Curva2[Nc2, :].value = Gar
+            Nc2 = Nc2 + 1
+        elif Nc2 > 1 and min(abs(QFD2.to("m³/h").m - flow2_v_FD.to("m³/h").m)) == 0:
             Gar = [None, None, None, None]
             Curva2[Nc2, :].value = Gar
-
         else:
             Gar = [
-                P2_FD.flow_v.to(flow2_unit).magnitude,
-                P2_FD.head.to(head2_unit).magnitude,
+                flow2_v_FD.to("m³/h").magnitude,
+                P2_FD.head.to("kJ/kg").magnitude,
                 None,
                 P2_FD.eff.magnitude,
             ]
@@ -740,7 +753,7 @@ if __name__ == "__main__":
                 Dados_AT_2[i, :].value = D2aux[Id[i]][:]
                 P_AT[i] = Paux[Id[i]]
                 P2_AT[i] = P2aux[Id[i]]
-
+        logger.critical(f'P_FD: {P_FD} /// P_AT: {P_AT} /// P2_FD: {P2_FD} /// P2_AT: {P2_AT}')
         imp_conv = compressor.BackToBack(
             guarantee_point_sec1=P_FD,
             test_points_sec1=P_AT,
