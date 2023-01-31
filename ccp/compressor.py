@@ -530,6 +530,8 @@ class BackToBack(Impeller):
                     ambient_temperature=point.ambient_temperature,
                 )
 
+        self.k_end_seal_mean = k_end_seal_mean
+        self.k_div_wall_mean = k_div_wall_mean
         self.points_rotor_t_sec1 = test_points_sec1_rotor
 
         # calculate rotor condition for sec2
