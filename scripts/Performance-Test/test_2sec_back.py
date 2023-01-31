@@ -690,14 +690,15 @@ if __name__ == "__main__":
                 P2_AT_Buf.append(
                     [
                         Q_(Dados_AT_2[i, 7].value, AT_sheet.range("AL6").value),
-                        Q_(Dados_AT_2[i, 8].value, AT_sheet.range("AM6").value),
                     ]
                 )
             else:
                 P2_AT_Buf.append(
                     [
                         None,
-                        Q_(Dados_AT_2[i, 3].value, AT_sheet.range("AH6").value), # Copying 2sec Suction info
+                        Q_(
+                            Dados_AT_2[i, 3].value, AT_sheet.range("AH6").value
+                        ),  # Copying 2sec Suction info
                     ]
                 )
 
