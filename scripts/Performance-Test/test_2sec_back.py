@@ -560,11 +560,11 @@ if __name__ == "__main__":
                 if div_f is not None:
                     div_f = Q_(div_f, AT_sheet.range("R6").value)
                     m1d_f = None
-                    fill_m1d = True
+                    fill_m1d = False
                 else:
                     if m1d_f:
                         m1d_f = Q_(m1d_f, AT_sheet.range("U6").value)
-                    fill_m_div = True
+                    fill_m_div = False
 
                 P_AT_Mdiv.append(
                     [
