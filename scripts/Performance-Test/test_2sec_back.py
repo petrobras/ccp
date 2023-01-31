@@ -566,7 +566,8 @@ if __name__ == "__main__":
                     m1d_f = None
                     fill_m1d = True
                 else:
-                    m1d_f = Q_(m1d_f, AT_sheet.range("U6").value)
+                    if m1d_f:
+                        m1d_f = Q_(m1d_f, AT_sheet.range("U6").value)
                     fill_m_div = True
 
                 P_AT_Mdiv.append(
@@ -581,7 +582,9 @@ if __name__ == "__main__":
                 P_AT_Mdiv.append(
                     [
                         None,
-                        Q_(Dados_AT_2[i, 4].value, AT_sheet.range("AI6").value),  # Copying 2sec Disch info
+                        Q_(
+                            Dados_AT_2[i, 4].value, AT_sheet.range("AI6").value
+                        ),  # Copying 2sec Disch info
                         Q_(Dados_AT_2[i, 5].value, AT_sheet.range("AJ6").value),
                     ]
                 )
