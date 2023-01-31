@@ -871,7 +871,7 @@ def test_back_to_back(back_to_back):
     assert_allclose(p0f_sp.head, 77063.137578, rtol=1e-2)
     assert_allclose(p0f_sp.eff, 0.649591, rtol=1e-2)
     # power in this case is the 'real' power consumed by the rotor
-    assert_allclose(p0r_sp.power, 5384326.21375024, rtol=1e-3)
+    assert_allclose(p0f_sp.power, 5384326.21375024, rtol=1e-3)
 
     # imp_sec2 specified
     p0f_sp = back_to_back.point_sec2(
@@ -884,7 +884,7 @@ def test_back_to_back(back_to_back):
     assert_allclose(p0f_sp.head, 30603.247711, rtol=1e-4)
     assert_allclose(p0f_sp.eff, 0.47459, rtol=1e-4)
     # power in this case is the 'real' power consumed by the rotor
-    assert_allclose(p0r.power, 3358441.494485, 1e-4)
+    assert_allclose(p0f_sp.power, 3359509.626922, 1e-4)
 
 
 def test_back_to_back_with_reynolds_correction(back_to_back):

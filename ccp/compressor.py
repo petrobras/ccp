@@ -777,7 +777,7 @@ class BackToBack(Impeller):
             state_down=self.guarantee_point_sec1.suc,
         )
         ms2r_sp = p_sec2.flow_m - end_seal_flow_m_sp
-        p_sec2.power = ms2r_sp * p_sec2.head * p_sec2.eff
+        p_sec2.power = ms2r_sp * p_sec2.head / p_sec2.eff
 
         return p_sec2
 
