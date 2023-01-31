@@ -464,7 +464,6 @@ if __name__ == "__main__":
         Dados_AT_1 = Dados_AT_1[0:N, :]
         Dados_AT_2 = Dados_AT_2[0:N, :]
 
-
         P_AT = []
         P2_AT = []
         P_AT_Bal = []
@@ -518,20 +517,25 @@ if __name__ == "__main__":
                 flow_v_AT = flow_m_AT / sucAT.rho()
                 Dados_AT_1[i, 1].value = flow_v_AT.to(AT_sheet["H6"].value).magnitude
 
-
             if BL_leak == "Yes":
                 P_AT_Bal.append(
                     [
-                        Q_(Dados_AT_1[i, 8].value, AT_sheet.range("O6").value),
+                        None,
                         Q_(Dados_AT_1[i, 9].value, AT_sheet.range("P6").value),
                         Q_(Dados_AT_1[i, 10].value, AT_sheet.range("Q6").value),
                     ]
                 )
+                if Dados_AT_1[i, 8].value is not None:
+                    P_AT_Bal[-1][0] = (
+                        Q_(Dados_AT_1[i, 8].value, AT_sheet.range("O6").value),
+                    )
             else:
                 P_AT_Bal.append(
                     [
                         None,
-                        Q_(Dados_AT_2[i, 2].value, AT_sheet.range("AG6").value), # Copying 2sec Suction info
+                        Q_(
+                            Dados_AT_2[i, 2].value, AT_sheet.range("AG6").value
+                        ),  # Copying 2sec Suction info
                         Q_(Dados_AT_2[i, 3].value, AT_sheet.range("AH6").value),
                     ]
                 )
@@ -547,7 +551,9 @@ if __name__ == "__main__":
                 P_AT_Buf.append(
                     [
                         None,
-                        Q_(Dados_AT_2[i, 3].value, AT_sheet.range("AH6").value),# Copying 2sec Suction info
+                        Q_(
+                            Dados_AT_2[i, 3].value, AT_sheet.range("AH6").value
+                        ),  # Copying 2sec Suction info
                     ]
                 )
             fill_m_div = False
