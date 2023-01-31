@@ -399,7 +399,9 @@ if __name__ == "__main__":
                 Curva2[i, :].value = Caux2[Id2[i]][:]
 
         ##################
-        reynolds_correction = AT_sheet["C4"].value
+        reynolds_correction = False
+        if AT_sheet["C4"].value == "Yes":
+            reynolds_correction = True
         curve_shape = AT_sheet["C24"].value
         BL_leak = AT_sheet["C26"].value
         BF_leak = AT_sheet["C28"].value
@@ -759,8 +761,8 @@ if __name__ == "__main__":
             test_points_sec1=P_AT,
             guarantee_point_sec2=P2_FD,
             test_points_sec2=P2_AT,
-            speed=None,
-            reynolds_correction=
+            speed=speed_FD,
+            reynolds_correction=reynolds_correction,
         )
 
         P_AT = imp_conv.points_flange_t_sec1
