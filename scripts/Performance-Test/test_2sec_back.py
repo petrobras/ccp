@@ -2,7 +2,7 @@ import os
 
 FileName = os.path.basename(__file__)[:-3]
 
-DEBUG_MODE = False
+DEBUG_MODE = True
 if DEBUG_MODE:
     FileName = "Beta_2section_back_to_back_export.xlsm"
 
@@ -407,6 +407,7 @@ if __name__ == "__main__":
                 Curva2[i, :].value = Caux2[Id2[i]][:]
 
         ##################
+        reynolds_correction = AT_sheet["C4"].value
         curve_shape = AT_sheet["C24"].value
         BL_leak = AT_sheet["C26"].value
         BF_leak = AT_sheet["C28"].value
@@ -526,9 +527,10 @@ if __name__ == "__main__":
                     ]
                 )
                 if Dados_AT_1[i, 8].value is not None:
-                    P_AT_Bal[-1][0] = (
-                        Q_(Dados_AT_1[i, 8].value, AT_sheet.range("O6").value),
+                    P_AT_Bal[-1][0] = Q_(
+                        Dados_AT_1[i, 8].value, AT_sheet.range("O6").value
                     )
+
             else:
                 P_AT_Bal.append(
                     [
@@ -766,6 +768,7 @@ if __name__ == "__main__":
             guarantee_point_sec2=P2_FD,
             test_points_sec2=P2_AT,
             speed=None,
+            reynolds_correction=
         )
 
         P_AT = imp_conv.points_flange_t_sec1
@@ -794,41 +797,15 @@ if __name__ == "__main__":
 
         curve_shape = AT_sheet["C24"].value
 
-        reynolds = AT_sheet["C4"].value
         rug1 = AT_sheet["D5"].value
         rug2 = AT_sheet["D7"].value
 
         for i in range(N):
+            P_ATconv.append(imp_conv.points_flange_sp_sec1[i])
+            P2_ATconv.append(imp_conv.points_flange_sp_sec2[i])
 
-            if reynolds == "Yes":
-
-                P_ATconv.append(
-                    reynolds_corr(
-                        P_AT=imp_conv.points_rotor_t_sec1[i],
-                        P_FD=imp_conv.points_rotor_sp_sec1[i],
-                        rug=rug1,
-                    )
-                )
-
-                Results_AT[i, 21].value = P_ATconv[-1].eff.magnitude
-
-                P2_ATconv.append(
-                    reynolds_corr(
-                        P_AT=imp_conv.points_rotor_t_sec2[i],
-                        P_FD=imp_conv.points_rotor_sp_sec2[i],
-                        rug=rug2,
-                    )
-                )
-
-                Results2_AT[i, 21].value = P2_ATconv[-1].eff.magnitude
-
-            else:
-
-                P_ATconv.append(imp_conv.points_flange_sp_sec1[i])
-                P2_ATconv.append(imp_conv.points_flange_sp_sec2[i])
-
-                Results_AT[i, 21].value = ""
-                Results2_AT[i, 21].value = ""
+            Results_AT[i, 21].value = ""
+            Results2_AT[i, 21].value = ""
 
             ## Escrevendo resultados para a Seção 1
             Results_AT[i, 0].value = P_AT[i].volume_ratio.magnitude

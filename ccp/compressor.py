@@ -117,12 +117,13 @@ class StraightThrough(Impeller):
     """Straight Through compressor"""
 
     @check_units
-    def __init__(self, guarantee_point, test_points, speed=None):
+    def __init__(self, guarantee_point, test_points, speed=None, reynolds_correction=False):
         self.guarantee_point = guarantee_point
         self.test_points = test_points
         if speed is None:
             speed = guarantee_point.speed
         self.speed = speed
+        self.reynolds_correction = reynolds_correction
 
         # points for test flange conditions
         self.points_flange_t = test_points
@@ -186,6 +187,7 @@ class StraightThrough(Impeller):
                     suc=initial_suc,
                     speed=self.speed,
                     find="volume_ratio",
+                    reynolds_correction=self.reynolds_correction,
                 )
                 ms1r_sp = initial_point_rotor_sp.flow_m
                 mend_sp = flow_m_seal(
@@ -376,6 +378,7 @@ class BackToBack(Impeller):
         test_points_sec1,
         guarantee_point_sec2,
         test_points_sec2,
+        reynolds_correction=False,
         speed=None,
     ):
         self.guarantee_point_sec1 = guarantee_point_sec1
@@ -385,6 +388,7 @@ class BackToBack(Impeller):
         if speed is None:
             speed = guarantee_point_sec1.speed
         self.speed = speed
+        self.reynolds_correction = reynolds_correction
 
         # points for test flange conditions
         self.points_flange_t_sec1 = test_points_sec1
@@ -575,6 +579,7 @@ class BackToBack(Impeller):
                 suc=guarantee_point_sec1.suc,
                 speed=self.speed,
                 find="volume_ratio",
+                reynolds_correction=self.reynolds_correction
             )
             # determine rotor specified suction state
             end_seal_state_upstream_sp = State.define(
@@ -633,6 +638,7 @@ class BackToBack(Impeller):
                 suc=rotor_sp_sec1_suc,
                 speed=self.speed,
                 find="volume_ratio",
+                reynolds_correction=self.reynolds_correction
             )
             self.points_rotor_sp_sec1.append(point_r_sp)
         self.imp_rotor_sp_sec1 = Impeller(self.points_rotor_sp_sec1)
@@ -663,6 +669,7 @@ class BackToBack(Impeller):
                 suc=suc2f_sp,
                 speed=self.speed,
                 find="volume_ratio",
+                reynolds_correction=self.reynolds_correction,
             )
             self.points_rotor_sp_sec2.append(point_r_sp)
             mend_sp = flow_m_seal(
