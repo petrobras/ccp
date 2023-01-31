@@ -202,15 +202,11 @@ if __name__ == "__main__":
 
         max_H = max(
             [
-                P_FD.head.to("kJ/kg").magnitude,
-                P_FD_eff.head.to("kJ/kg").magnitude,
                 H_FD.to("kJ/kg").magnitude,
             ]
         )
         min_Pow = min(
             [
-                P_FD.power.to("kW").magnitude,
-                P_FD_eff.power.to("kW").magnitude,
                 Pow_FD.to("kW").magnitude,
             ]
         )
@@ -288,15 +284,11 @@ if __name__ == "__main__":
 
         max_H2 = max(
             [
-                P2_FD.head.to("kJ/kg").magnitude,
-                P2_FD_eff.head.to("kJ/kg").magnitude,
                 H2_FD.to("kJ/kg").magnitude,
             ]
         )
         min_Pow2 = min(
             [
-                P2_FD.power.to("kW").magnitude,
-                P2_FD_eff.power.to("kW").magnitude,
                 Pow2_FD.to("kW").magnitude,
             ]
         )
