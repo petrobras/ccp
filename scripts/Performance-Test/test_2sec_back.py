@@ -935,52 +935,74 @@ if __name__ == "__main__":
         Phi = np.abs(1 - np.array(Results_AT[0:N, 7].value))
         Phi2 = np.abs(1 - np.array(Results2_AT[0:N, 7].value))
 
-        IdG = []
-        IdG2 = []
+        point_sec1 = imp_conv.point_sec1(
+            flow_m=flow_m_FD,
+            speed=speed_FD,
+        )
+        point_sec2 = imp_conv.point_sec2(
+            flow_m=flow2_m_FD,
+            speed=speed_FD,
+        )
 
-        for i in range(N):
-            try:
-                if Phi[i] < 0.04:
-                    IdG.append(i)
-            except:
-                if Phi < 0.04:
-                    IdG.append(i)
-            try:
-                if Phi2[i] < 0.04:
-                    IdG2.append(i)
-            except:
-                if Phi2 < 0.04:
-                    IdG2.append(i)
+        AT_sheet["G32"].value = point_sec1.volume_ratio.m
+        AT_sheet["H32"].value = point_sec1.volume_ratio.m / P_FD.volume_ratio.m
+        AT_sheet["I32"].value = point_sec1.mach.m
+        AT_sheet["J32"].value = point_sec1.mach.m - P_FD.mach.m
+        AT_sheet["K32"].value = point_sec1.reynolds.m
+        AT_sheet["L32"].value = point_sec1.reynolds.m / P_FD.reynolds.m
+        AT_sheet["M32"].value = point_sec1.phi.m
+        AT_sheet["N32"].value = point_sec1.phi.m / P_FD.phi.m
+        AT_sheet["O32"].value = point_sec1.disch.p("bar").m
+        AT_sheet["P32"].value = point_sec1.disch.p("bar").m / P_FD.disch.p("bar").m
+        AT_sheet["Q32"].value = " - "
+        AT_sheet["R32"].value = " - "
+        AT_sheet["S32"].value = point_sec1.head.to("kJ/kg").m
+        AT_sheet["T32"].value = point_sec1.head.to("kJ/kg").m / P_FD.head.to("kJ/kg").m
+        AT_sheet["U32"].value = point_sec1.flow_v.to("m³/h").m
+        AT_sheet["V32"].value = (
+            point_sec1.flow_v.to("m³/h").m / P_FD.flow_v.to("m³/h").m
+        )
+        AT_sheet["W32"].value = " - "
+        AT_sheet["X32"].value = " - "
+        AT_sheet["Y32"].value = point_sec1.power.to("kW").m
+        AT_sheet["Z32"].value = point_sec1.power.to("kW").m / Pow_FD.to("kW").m
 
-        if len(IdG) == 1:
-            AT_sheet["G32:AC32"].value = Results_AT[IdG[0], :].value
-        elif len(IdG) > 1:
-            IdG = [int(k) for k in np.argsort(Phi)[0:2]]
-            IdG = sorted(IdG)
-            aux1 = np.array(Results_AT[IdG[0], :].value)
-            aux2 = np.array(Results_AT[IdG[1], :].value)
-            f = (1 - aux1[7]) / (aux2[7] - aux1[7])
-
-            aux = aux1 + f * (aux2 - aux1)
-            AT_sheet["G32:AC32"].value = aux
+        if AT_sheet["C4"].value == "Yes":
+            AT_sheet["AA32"].value = None
+            AT_sheet["AB32"].value = point_sec1.eff.m
         else:
+            AT_sheet["AA32"].value = point_sec1.eff.m
+            AT_sheet["AB32"].value = None
 
-            AT_sheet["G32:AC32"].value = [None] * len(Results_AT[0, :].value)
+        AT_sheet["G47"].value = point_sec2.volume_ratio.m
+        AT_sheet["H47"].value = point_sec2.volume_ratio.m / P2_FD.volume_ratio.m
+        AT_sheet["I47"].value = point_sec2.mach.m
+        AT_sheet["J47"].value = point_sec2.mach.m - P2_FD.mach.m
+        AT_sheet["K47"].value = point_sec2.reynolds.m
+        AT_sheet["L47"].value = point_sec2.reynolds.m / P2_FD.reynolds.m
+        AT_sheet["M47"].value = point_sec2.phi.m
+        AT_sheet["N47"].value = point_sec2.phi.m / P2_FD.phi.m
+        AT_sheet["O47"].value = point_sec2.disch.p("bar").m
+        AT_sheet["P47"].value = point_sec2.disch.p("bar").m / P2_FD.disch.p("bar").m
+        AT_sheet["Q47"].value = " - "
+        AT_sheet["R47"].value = " - "
+        AT_sheet["S47"].value = point_sec2.head.to("kJ/kg").m
+        AT_sheet["T47"].value = point_sec2.head.to("kJ/kg").m / P2_FD.head.to("kJ/kg").m
+        AT_sheet["U47"].value = point_sec2.flow_v.to("m³/h").m
+        AT_sheet["V47"].value = (
+            point_sec2.flow_v.to("m³/h").m / P2_FD.flow_v.to("m³/h").m
+        )
+        AT_sheet["W47"].value = " - "
+        AT_sheet["X47"].value = " - "
+        AT_sheet["Y47"].value = point_sec2.power.to("kW").m
+        AT_sheet["Z47"].value = point_sec2.power.to("kW").m / Pow2_FD.to("kW").m
 
-        if len(IdG2) == 1:
-            AT_sheet["G47:AC47"].value = Results2_AT[IdG2[0], :].value
-        elif len(IdG2) > 1:
-            IdG2 = [int(k) for k in np.argsort(Phi2)[0:2]]
-            IdG2 = sorted(IdG2)
-            aux1 = np.array(Results2_AT[IdG2[0], :].value)
-            aux2 = np.array(Results2_AT[IdG2[1], :].value)
-            f = (1 - aux1[7]) / (aux2[7] - aux1[7])
-
-            aux = aux1 + f * (aux2 - aux1)
-            AT_sheet["G47:AC47"].value = aux
+        if AT_sheet["C4"].value == "Yes":
+            AT_sheet["AA47"].value = None
+            AT_sheet["AB47"].value = point_sec2.eff.m
         else:
-
-            AT_sheet["G47:AC47"].value = [None] * len(Results2_AT[0, :].value)
+            AT_sheet["AA47"].value = point_sec2.eff.m
+            AT_sheet["AB47"].value = None
 
         AT_sheet["Z9"].value = "Calculado"
 
