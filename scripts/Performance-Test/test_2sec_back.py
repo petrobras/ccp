@@ -2,6 +2,10 @@ import os
 
 FileName = os.path.basename(__file__)[:-3]
 
+DEBUG_MODE = False
+if DEBUG_MODE:
+    FileName = "Beta_2section_back_to_back_export.xlsm"
+
 import sys
 import logging
 from pathlib import Path
@@ -60,6 +64,9 @@ logger.critical(f"python: {sys.version}")
 logger.critical(f"ccp: {ccp.__version__full}")
 
 if __name__ == "__main__":
+
+    if DEBUG_MODE:
+        AT_sheet["Z13"].value = "Calcular"
 
     global P_FD_eff, P2_FD_eff
 
