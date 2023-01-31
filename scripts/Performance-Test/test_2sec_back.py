@@ -631,7 +631,6 @@ if __name__ == "__main__":
                 )
             )
 
-
             ## Carregando dados da segunda seção
 
             speed2_AT = Q_(Dados_AT_2[i, 10].value, AT_sheet.range("AO6").value)
@@ -666,12 +665,8 @@ if __name__ == "__main__":
             Pd2_AT = Q_(Dados_AT_2[i, 4].value, AT_sheet.range("AI6").value)
             Td2_AT = Q_(Dados_AT_2[i, 5].value, AT_sheet.range("AJ6").value)
 
-            suc2_AT = State.define(
-                fluid=fluid2_AT, p=Ps2_AT, T=Ts2_AT
-            )
-            disch2_AT = State.define(
-                fluid=fluid2_AT, p=Pd2_AT, T=Td2_AT
-            )
+            suc2_AT = State.define(fluid=fluid2_AT, p=Ps2_AT, T=Ts2_AT)
+            disch2_AT = State.define(fluid=fluid2_AT, p=Pd2_AT, T=Td2_AT)
 
             if BL_leak == "Yes":
                 P2_AT_Bal.append(
@@ -738,18 +733,10 @@ if __name__ == "__main__":
                     convection_constant=heat_constant,
                     balance_line_flow_m=P2_AT_Bal[-1][0],
                     seal_gas_flow_m=P2_AT_Buf[-1][0],
-                    seal_gas_temperature=P2_AT_Buf[-1][1],
-                    first_section_discharge_flow_m=P_AT_M1d[-1],
-                    div_wall_flow_m=P_AT_Mdiv[-1][0],
-                    end_seal_upstream_temperature=P_AT_Bal[-1][2],
-                    end_seal_upstream_pressure=P_AT_Bal[-1][1],
-                    div_wall_upstream_temperature=P_AT_Mdiv[-1][2],
-                    div_wall_upstream_pressure=P_AT_Mdiv[-1][1],
                     b=b2,
                     D=D2,
                 )
             )
-
 
         if AT_sheet["Y3"].value == "Vazão Seção 1":
             QQ = np.array(Dados_AT_1[:, 1].value)
@@ -770,13 +757,15 @@ if __name__ == "__main__":
                 Dados_AT_2[i, :].value = D2aux[Id[i]][:]
                 P_AT[i] = Paux[Id[i]]
                 P2_AT[i] = P2aux[Id[i]]
-        logger.critical(f'P_FD: {P_FD} /// P_AT: {P_AT} /// P2_FD: {P2_FD} /// P2_AT: {P2_AT}')
+        logger.critical(
+            f"P_FD: {P_FD} /// P_AT: {P_AT} /// P2_FD: {P2_FD} /// P2_AT: {P2_AT}"
+        )
         imp_conv = compressor.BackToBack(
             guarantee_point_sec1=P_FD,
             test_points_sec1=P_AT,
             guarantee_point_sec2=P2_FD,
             test_points_sec2=P2_AT,
-            speed=None
+            speed=None,
         )
 
         P_AT = imp_conv.points_flange_t_sec1
@@ -784,11 +773,13 @@ if __name__ == "__main__":
 
         for i in range(N):
             if fill_m1d:
-                Dados_AT_1[i, 14].value = P_AT[i].first_section_discharge_flow_m.to(
-                    AT_sheet["U6"].value).m
+                Dados_AT_1[i, 14].value = (
+                    P_AT[i].first_section_discharge_flow_m.to(AT_sheet["U6"].value).m
+                )
             if fill_m_div:
-                Dados_AT_1[i, 11].value = P_AT[i].div_wall_flow_m.to(
-                    AT_sheet["R6"].value).m
+                Dados_AT_1[i, 11].value = (
+                    P_AT[i].div_wall_flow_m.to(AT_sheet["R6"].value).m
+                )
 
         P_ATconv = []
         P2_ATconv = []
@@ -809,9 +800,10 @@ if __name__ == "__main__":
 
         for i in range(N):
 
-            if reynolds == 'Yes':
+            if reynolds == "Yes":
 
-                P_ATconv.append(reynolds_corr(
+                P_ATconv.append(
+                    reynolds_corr(
                         P_AT=imp_conv.points_rotor_t_sec1[i],
                         P_FD=imp_conv.points_rotor_sp_sec1[i],
                         rug=rug1,
@@ -820,9 +812,10 @@ if __name__ == "__main__":
 
                 Results_AT[i, 21].value = P_ATconv[-1].eff.magnitude
 
-                P2_ATconv.append(reynolds_corr(
-                    P_AT=imp_conv.points_rotor_t_sec2[i],
-                    P_FD=imp_conv.points_rotor_sp_sec2[i],
+                P2_ATconv.append(
+                    reynolds_corr(
+                        P_AT=imp_conv.points_rotor_t_sec2[i],
+                        P_FD=imp_conv.points_rotor_sp_sec2[i],
                         rug=rug2,
                     )
                 )
@@ -831,12 +824,8 @@ if __name__ == "__main__":
 
             else:
 
-                P_ATconv.append(
-                    imp_conv.points_flange_sp_sec1[i]
-                )
-                P2_ATconv.append(
-                    imp_conv.points_flange_sp_sec2[i]
-                )
+                P_ATconv.append(imp_conv.points_flange_sp_sec1[i])
+                P2_ATconv.append(imp_conv.points_flange_sp_sec2[i])
 
                 Results_AT[i, 21].value = ""
                 Results2_AT[i, 21].value = ""
@@ -903,7 +892,9 @@ if __name__ == "__main__":
 
             Results_AT[i, 20].value = P_AT[i].eff.magnitude
             if P_AT[i].div_wall_flow_m:
-                Results_AT[i, 22].value = imp_conv.points_flange_sp_sec1[i].div_wall_flow_m.to('kg/h').m
+                Results_AT[i, 22].value = (
+                    imp_conv.points_flange_sp_sec1[i].div_wall_flow_m.to("kg/h").m
+                )
 
             ## Escrevendo resultados para Seção 2
 
