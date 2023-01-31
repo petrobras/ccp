@@ -727,7 +727,7 @@ if __name__ == "__main__":
                 heat_constant = None
 
             P2_AT.append(
-                compressor.Point2Sec(
+                compressor.Point1Sec(
                     speed=speed2_AT,
                     flow_m=flow2_m_AT,
                     suc=suc2_AT,
