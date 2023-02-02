@@ -1,11 +1,12 @@
 import os
 
-FileName = os.path.basename(__file__)[:-3]
-
+filename = os.path.basename(__file__)[:-3]
 DEBUG_MODE = False
-if DEBUG_MODE:
-    FileName = "Beta_1section - Copia.xlsm"
 
+if filename == "test_scripts":  # if the script is run from the test file
+    filename = "Beta_1section.xlsm"
+elif DEBUG_MODE:
+    filename = "Beta_1section.xlsm"
 
 import sys
 import logging
@@ -33,7 +34,7 @@ sys.excepthook = handle_exception
 
 from xlwings import Book
 
-wb = Book(FileName)  # connect to an existing file in the current working directory
+wb = Book(filename)  # connect to an existing file in the current working directory
 AT_sheet = wb.sheets["Actual Test Data"]
 TG_sheet = wb.sheets["Test Gas"]
 TP_sheet = wb.sheets["Test Procedure Data"]
@@ -67,9 +68,9 @@ logger.critical(
     f"REFPROP path: {ccp._CP.get_config_string(ccp._CP.ALTERNATIVE_REFPROP_PATH)}"
 )
 
-if __name__ == "__main__":
+if __name__ == "__main__" or __name__ == "builtins":
 
-    if DEBUG_MODE:
+    if DEBUG_MODE or __name__ == "test_scripts":
         AT_sheet["H35"].value = "Calcular"
 
     global P_FD_eff
@@ -126,7 +127,6 @@ if __name__ == "__main__":
         return P_AT_reyn
 
     if AT_sheet["H35"].value != None:
-
         AT_sheet["H35"].value = None
         AT_sheet["F36"].value = "Calculando..."
 
@@ -157,12 +157,9 @@ if __name__ == "__main__":
 
         D = Q_(FD_sheet.range("AB132").value, "mm")
         b = Q_(FD_sheet.range("AQ132").value, "mm")
-
         GasesFD = FD_sheet.range("B69:B85").value
         mol_fracFD = FD_sheet.range("K69:K85").value
-
         fluid_FD = {GasesFD[i]: mol_fracFD[i] for i in range(len(GasesFD))}
-
         sucFD = State.define(fluid=fluid_FD, p=Ps_FD, T=Ts_FD)
 
         if V_test:
@@ -228,7 +225,6 @@ if __name__ == "__main__":
         FD_sheet["K90"].value = sucFD.molar_mass().to("g/mol").magnitude
 
         ### End of Reading and writing in the FD sheet
-
         Curva = FD_sheet["AP39:AS46"]
 
         for i in range(8):
@@ -593,7 +589,6 @@ if __name__ == "__main__":
 
         D = Q_(FD_sheet.range("AB132").value, "mm")
         b = Q_(FD_sheet.range("AQ132").value, "mm")
-
         GasesFD = FD_sheet.range("B69:B85").value
         mol_fracFD = FD_sheet.range("K69:K85").value
 
