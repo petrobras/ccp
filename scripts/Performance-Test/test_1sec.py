@@ -420,8 +420,14 @@ if __name__ == "__main__":
                 )
             )
 
+        reynolds_correction = False
+        if AT_sheet["C23"].value == "Yes":
+            reynolds_correction = True
         imp_conv = compressor.StraightThrough(
-            guarantee_point=P_FD, test_points=P_AT, speed=None
+            guarantee_point=P_FD,
+            test_points=P_AT,
+            speed=speed_FD,
+            reynolds_correction=reynolds_correction,
         )
 
         QQ = np.array(Dados_AT[:, 1].value)
@@ -470,77 +476,34 @@ if __name__ == "__main__":
             Results_AT[i, 17].value = P_AT[i].power.to("kW").magnitude / min_Pow
             Results_AT[i, 20].value = P_AT[i].eff.magnitude
 
-            if AT_sheet["C23"].value == "Yes":
+            Results_AT[i, 8].value = (
+                imp_conv.points_flange_sp[i].disch.p().to("bar").magnitude
+            )
+            Results_AT[i, 9].value = (
+                imp_conv.points_flange_sp[i].disch.p().to("bar").m
+                / P_exp_flow.disch.p().to("bar").m
+            )
 
-                point_converted_reyn = ccp.Point.convert_from(
-                    original_point=P_AT[i],
-                    suc=P_FD.suc,
-                    find="volume_ratio",
-                    speed=P_FD.speed,
-                    reynolds_correction=True,
-                )
-
-                points_converted_reyn.append(point_converted_reyn)
-
-                Results_AT[i, 8].value = (
-                    point_converted_reyn.disch.p().to("bar").magnitude
-                )
-                Results_AT[i, 9].value = (
-                    point_converted_reyn.disch.p().to("bar").m
-                    / P_exp_flow.disch.p().to("bar").m
-                )
-
-                Results_AT[i, 12].value = point_converted_reyn.head.to(
-                    "kJ/kg"
-                ).magnitude
-                Results_AT[i, 13].value = (
-                    point_converted_reyn.head.to("kJ/kg").magnitude / max_H
-                )  ###change
-
-                Results_AT[i, 14].value = point_converted_reyn.flow_v.to(
-                    "m³/h"
-                ).magnitude
-                Results_AT[i, 15].value = (
-                    point_converted_reyn.flow_v.to("m³/h").magnitude
-                    / P_exp_flow.flow_v.to("m³/h").magnitude
-                )
-
-                Results_AT[i, 18].value = point_converted_reyn.power.to("kW").magnitude
-                Results_AT[i, 19].value = (
-                    point_converted_reyn.power.to("kW").magnitude / min_Pow
-                )
-
-                Results_AT[i, 21].value = point_converted_reyn.eff.magnitude
-
-            else:
-                Results_AT[i, 8].value = (
-                    imp_conv.points_flange_sp[i].disch.p().to("bar").magnitude
-                )
-                Results_AT[i, 9].value = (
-                    imp_conv.points_flange_sp[i].disch.p().to("bar").m
-                    / P_exp_flow.disch.p().to("bar").m
-                )
-
-                Results_AT[i, 12].value = (
-                    imp_conv.points_flange_sp[i].head.to("kJ/kg").magnitude
-                )
-                Results_AT[i, 13].value = (
-                    imp_conv.points_flange_sp[i].head.to("kJ/kg").magnitude / max_H
-                )
-                Results_AT[i, 14].value = (
-                    imp_conv.points_flange_sp[i].flow_v.to("m³/h").magnitude
-                )
-                Results_AT[i, 15].value = (
-                    imp_conv.points_flange_sp[i].flow_v.to("m³/h").magnitude
-                    / P_exp_flow.flow_v.to("m³/h").magnitude
-                )
-                Results_AT[i, 18].value = (
-                    imp_conv.points_flange_sp[i].power.to("kW").magnitude
-                )
-                Results_AT[i, 19].value = (
-                    imp_conv.points_flange_sp[i].power.to("kW").magnitude / min_Pow
-                )  #########
-                Results_AT[i, 21].value = ""
+            Results_AT[i, 12].value = (
+                imp_conv.points_flange_sp[i].head.to("kJ/kg").magnitude
+            )
+            Results_AT[i, 13].value = (
+                imp_conv.points_flange_sp[i].head.to("kJ/kg").magnitude / max_H
+            )
+            Results_AT[i, 14].value = (
+                imp_conv.points_flange_sp[i].flow_v.to("m³/h").magnitude
+            )
+            Results_AT[i, 15].value = (
+                imp_conv.points_flange_sp[i].flow_v.to("m³/h").magnitude
+                / P_exp_flow.flow_v.to("m³/h").magnitude
+            )
+            Results_AT[i, 18].value = (
+                imp_conv.points_flange_sp[i].power.to("kW").magnitude
+            )
+            Results_AT[i, 19].value = (
+                imp_conv.points_flange_sp[i].power.to("kW").magnitude / min_Pow
+            )  #########
+            Results_AT[i, 21].value = ""
 
         Q_ratio = np.abs(1 - np.array(Results_AT[0:N, 15].value))
 
@@ -548,13 +511,7 @@ if __name__ == "__main__":
             Q_ratio = [Q_ratio]
 
         # Add guarantee point
-        if AT_sheet["C23"].value == "Yes":
-            imp_conv_reyn = ccp.Impeller(points_converted_reyn)
-            point_converted_sp = imp_conv_reyn.point(
-                flow_m=P_FD.flow_m, speed=P_FD.speed
-            )
-        else:
-            point_converted_sp = imp_conv.point(flow_m=P_FD.flow_m, speed=P_FD.speed)
+        point_converted_sp = imp_conv.point(flow_m=P_FD.flow_m, speed=P_FD.speed)
         guarantee_results = AT_sheet["G32:AB32"]
         guarantee_results[0].value = point_converted_sp.volume_ratio.m
         guarantee_results[1].value = (
