@@ -503,7 +503,8 @@ if __name__ == "__main__":
             Results_AT[i, 19].value = (
                 imp_conv.points_flange_sp[i].power.to("kW").magnitude / min_Pow
             )  #########
-            Results_AT[i, 21].value = ""
+            if reynolds_correction:
+                Results_AT[i, 21].value = imp_conv.points_flange_sp[i].eff.magnitude
 
         Q_ratio = np.abs(1 - np.array(Results_AT[0:N, 15].value))
 
