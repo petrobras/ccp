@@ -117,7 +117,9 @@ class StraightThrough(Impeller):
     """Straight Through compressor"""
 
     @check_units
-    def __init__(self, guarantee_point, test_points, speed=None, reynolds_correction=False):
+    def __init__(
+        self, guarantee_point, test_points, speed=None, reynolds_correction=False
+    ):
         self.guarantee_point = guarantee_point
         self.test_points = test_points
         if speed is None:
@@ -590,7 +592,7 @@ class BackToBack(Impeller):
                 suc=guarantee_point_sec1.suc,
                 speed=self.speed,
                 find="volume_ratio",
-                reynolds_correction=self.reynolds_correction
+                reynolds_correction=self.reynolds_correction,
             )
             # determine rotor specified suction state
             end_seal_state_upstream_sp = State.define(
@@ -649,7 +651,7 @@ class BackToBack(Impeller):
                 suc=rotor_sp_sec1_suc,
                 speed=self.speed,
                 find="volume_ratio",
-                reynolds_correction=self.reynolds_correction
+                reynolds_correction=self.reynolds_correction,
             )
             self.points_rotor_sp_sec1.append(point_r_sp)
         self.imp_rotor_sp_sec1 = Impeller(self.points_rotor_sp_sec1)
@@ -748,7 +750,9 @@ class BackToBack(Impeller):
             )
             self.points_flange_sp_sec1.append(point_flange)
             self.points_flange_sp_sec1[-1].div_wall_flow_m = mdiv_sp
-            self.points_flange_sp_sec1[-1].first_section_discharge_flow_m = mdiv_sp + ms1r_sp
+            self.points_flange_sp_sec1[-1].first_section_discharge_flow_m = (
+                mdiv_sp + ms1r_sp
+            )
         self.imp_flange_sp_sec1 = Impeller(self.points_flange_sp_sec1)
 
     def point_sec1(self, *args, **kwargs):
@@ -815,7 +819,7 @@ def k_seal(flow_m, state_up, state_down):
     """
     p_up = state_up.p()
     z_up = state_up.z()
-    T_up = state_up.T().to('K')
+    T_up = state_up.T().to("K")
     MW = state_up.molar_mass()
     p_down = state_down.p()
 
@@ -846,7 +850,7 @@ def flow_m_seal(k_seal, state_up, state_down):
     """
     p_up = state_up.p()
     z_up = state_up.z()
-    T_up = state_up.T().to('K')
+    T_up = state_up.T().to("K")
     MW = state_up.molar_mass()
     p_down = state_down.p()
 
