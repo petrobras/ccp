@@ -466,18 +466,29 @@ class BackToBack(Impeller):
             if not point.first_section_discharge_flow_m:
                 # use calculated k_end_seal and k_div_wall to calculate seal mass flow
                 # use manual mean, since np.mean removes the units
-                k_end_seal_mean = sum(self.k_end_seal[self.k_end_seal != 0]) / len(
-                    self.k_end_seal[self.k_end_seal != 0]
-                )
+                if (self.k_end_seal == 0).all():
+                    k_end_seal_mean = Q_(
+                        0, "kelvin**0.5 kilogram**0.5 mole**0.5/(pascal second)"
+                    )
+                else:
+                    k_end_seal_mean = sum(self.k_end_seal[self.k_end_seal != 0]) / len(
+                        self.k_end_seal[self.k_end_seal != 0]
+                    )
+
                 self.k_end_seal[i] = k_end_seal_mean
                 end_seal_flow_m = flow_m_seal(
                     k_seal=k_end_seal_mean,
                     state_up=point.end_seal_upstream_state,
                     state_down=point.end_seal_downstream_state,
                 )
-                k_div_wall_mean = sum(self.k_div_wall[self.k_div_wall != 0]) / len(
-                    self.k_div_wall[self.k_div_wall != 0]
-                )
+                if (self.k_div_wall == 0).all():
+                    k_div_wall_mean = Q_(
+                        0, "kelvin**0.5 kilogram**0.5 mole**0.5/(pascal second)"
+                    )
+                else:
+                    k_div_wall_mean = sum(self.k_div_wall[self.k_div_wall != 0]) / len(
+                        self.k_div_wall[self.k_div_wall != 0]
+                    )
                 self.k_div_wall[i] = k_div_wall_mean
                 div_wall_flow_m = flow_m_seal(
                     k_seal=k_div_wall_mean,

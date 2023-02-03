@@ -580,7 +580,7 @@ if __name__ == "__main__" or __name__ == "builtins":
             else:
                 P_AT_Mdiv.append(
                     [
-                        None,
+                        0,
                         Q_(
                             Dados_AT_2[i, 4].value, AT_sheet.range("AI6").value
                         ),  # Copying 2sec Disch info
