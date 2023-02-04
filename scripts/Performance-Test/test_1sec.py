@@ -70,7 +70,7 @@ logger.critical(
 
 if __name__ == "__main__" or __name__ == "builtins":
 
-    if DEBUG_MODE or __name__ == "test_scripts":
+    if DEBUG_MODE or __name__ == "builtins":
         AT_sheet["H35"].value = "Calcular"
 
     global P_FD_eff
