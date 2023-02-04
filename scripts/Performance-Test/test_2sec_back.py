@@ -780,8 +780,10 @@ if __name__ == "__main__" or __name__ == "builtins":
                     P_AT[i].div_wall_flow_m.to(AT_sheet["R6"].value).m
                 )
 
-        P_ATconv = []
-        P2_ATconv = []
+        P_AT_rotor = []
+        P_AT_rotor_conv = []
+        P_AT_flange_conv = []
+        P2_AT_flange_conv = []
 
         Results_AT = AT_sheet["G22:AC32"]
         Results_AT.value = [[None] * len(Results_AT[0, :].value)] * 11
@@ -797,8 +799,10 @@ if __name__ == "__main__" or __name__ == "builtins":
         rug2 = AT_sheet["D7"].value
 
         for i in range(N):
-            P_ATconv.append(imp_conv.points_flange_sp_sec1[i])
-            P2_ATconv.append(imp_conv.points_flange_sp_sec2[i])
+            P_AT_rotor.append(imp_conv.test_points_sec1[i])
+            P_AT_rotor_conv.append(imp_conv.points_rotor_sp_sec1[i])
+            P_AT_flange_conv.append(imp_conv.points_flange_sp_sec1[i])
+            P2_AT_flange_conv.append(imp_conv.points_flange_sp_sec2[i])
 
             Results_AT[i, 21].value = ""
             Results2_AT[i, 21].value = ""
@@ -816,21 +820,21 @@ if __name__ == "__main__" or __name__ == "builtins":
             )
             Results_AT[i, 6].value = P_AT[i].phi.magnitude
             Results_AT[i, 7].value = P_AT[i].phi.magnitude / P_FD.phi.magnitude
-            Results_AT[i, 8].value = P_ATconv[i].disch.p().to("bar").magnitude
+            Results_AT[i, 8].value = P_AT_flange_conv[i].disch.p().to("bar").magnitude
             Results_AT[i, 9].value = (
-                P_ATconv[i].disch.p().to("bar").magnitude / Pd_FD.to("bar").magnitude
+                    P_AT_flange_conv[i].disch.p().to("bar").magnitude / Pd_FD.to("bar").magnitude
             )
             Results_AT[i, 10].value = P_AT[i].head.to("kJ/kg").magnitude
             Results_AT[i, 11].value = P_AT[i].head.to("kJ/kg").magnitude / max_H
-            Results_AT[i, 12].value = P_ATconv[i].head.to("kJ/kg").magnitude
-            Results_AT[i, 13].value = P_ATconv[i].head.to("kJ/kg").magnitude / max_H
-            Results_AT[i, 14].value = P_ATconv[i].flow_v.to("m³/h").magnitude
+            Results_AT[i, 12].value = P_AT_flange_conv[i].head.to("kJ/kg").magnitude
+            Results_AT[i, 13].value = P_AT_flange_conv[i].head.to("kJ/kg").magnitude / max_H
+            Results_AT[i, 14].value = P_AT_flange_conv[i].flow_v.to("m³/h").magnitude
             Results_AT[i, 15].value = (
-                P_ATconv[i].flow_v.to("m³/h").magnitude
-                / P_FD.flow_v.to("m³/h").magnitude
+                    P_AT_flange_conv[i].flow_v.to("m³/h").magnitude
+                    / P_FD.flow_v.to("m³/h").magnitude
             )
-            Results_AT[i, 16].value = P_AT[i].power.to("kW").magnitude
-            Results_AT[i, 17].value = P_AT[i].power.to("kW").magnitude / min_Pow
+            Results_AT[i, 16].value = P_AT_rotor[i].power.to("kW").magnitude
+            Results_AT[i, 17].value = P_AT_rotor[i].power.to("kW").magnitude / min_Pow
 
             if AT_sheet["C25"].value == "Yes":
 
@@ -853,15 +857,15 @@ if __name__ == "__main__" or __name__ == "builtins":
                 )
 
                 Results_AT[i, 18].value = (
-                    (P_ATconv[i].power - HL_AT + HL_FD).to("kW").magnitude
+                    (P_AT_flange_conv[i].power - HL_AT + HL_FD).to("kW").magnitude
                 )
-                Results_AT[i, 19].value = (P_ATconv[i].power - HL_AT + HL_FD).to(
+                Results_AT[i, 19].value = (P_AT_flange_conv[i].power - HL_AT + HL_FD).to(
                     "kW"
                 ).magnitude / min_Pow
 
             else:
-                Results_AT[i, 18].value = P_ATconv[i].power.to("kW").magnitude
-                Results_AT[i, 19].value = P_ATconv[i].power.to("kW").magnitude / min_Pow
+                Results_AT[i, 18].value = P_AT_rotor_conv[i].power.to("kW").magnitude
+                Results_AT[i, 19].value = P_AT_rotor_conv[i].power.to("kW").magnitude / min_Pow
 
             Results_AT[i, 20].value = P_AT[i].eff.magnitude
             if P_AT[i].div_wall_flow_m:
@@ -883,18 +887,18 @@ if __name__ == "__main__" or __name__ == "builtins":
             )
             Results2_AT[i, 6].value = P2_AT[i].phi.magnitude
             Results2_AT[i, 7].value = P2_AT[i].phi.magnitude / P2_FD.phi.magnitude
-            Results2_AT[i, 8].value = P2_ATconv[i].disch.p().to("bar").magnitude
+            Results2_AT[i, 8].value = P2_AT_flange_conv[i].disch.p().to("bar").magnitude
             Results2_AT[i, 9].value = (
-                P2_ATconv[i].disch.p().to("bar").magnitude / Pd2_FD.to("bar").magnitude
+                    P2_AT_flange_conv[i].disch.p().to("bar").magnitude / Pd2_FD.to("bar").magnitude
             )
             Results2_AT[i, 10].value = P2_AT[i].head.to("kJ/kg").magnitude
             Results2_AT[i, 11].value = P2_AT[i].head.to("kJ/kg").magnitude / max_H2
-            Results2_AT[i, 12].value = P2_ATconv[i].head.to("kJ/kg").magnitude
-            Results2_AT[i, 13].value = P2_ATconv[i].head.to("kJ/kg").magnitude / max_H2
-            Results2_AT[i, 14].value = P2_ATconv[i].flow_v.to("m³/h").magnitude
+            Results2_AT[i, 12].value = P2_AT_flange_conv[i].head.to("kJ/kg").magnitude
+            Results2_AT[i, 13].value = P2_AT_flange_conv[i].head.to("kJ/kg").magnitude / max_H2
+            Results2_AT[i, 14].value = P2_AT_flange_conv[i].flow_v.to("m³/h").magnitude
             Results2_AT[i, 15].value = (
-                P2_ATconv[i].flow_v.to("m³/h").magnitude
-                / P2_FD.flow_v.to("m³/h").magnitude
+                    P2_AT_flange_conv[i].flow_v.to("m³/h").magnitude
+                    / P2_FD.flow_v.to("m³/h").magnitude
             )
             Results2_AT[i, 16].value = P2_AT[i].power.to("kW").magnitude
             Results2_AT[i, 17].value = P2_AT[i].power.to("kW").magnitude / min_Pow2
@@ -920,16 +924,16 @@ if __name__ == "__main__" or __name__ == "builtins":
                 )
 
                 Results2_AT[i, 18].value = (
-                    (P2_ATconv[i].power - HL2_AT + HL2_FD).to("kW").magnitude
+                    (P2_AT_flange_conv[i].power - HL2_AT + HL2_FD).to("kW").magnitude
                 )
-                Results2_AT[i, 19].value = (P2_ATconv[i].power - HL2_AT + HL2_FD).to(
+                Results2_AT[i, 19].value = (P2_AT_flange_conv[i].power - HL2_AT + HL2_FD).to(
                     "kW"
                 ).magnitude / min_Pow2
 
             else:
-                Results2_AT[i, 18].value = P2_ATconv[i].power.to("kW").magnitude
+                Results2_AT[i, 18].value = P2_AT_flange_conv[i].power.to("kW").magnitude
                 Results2_AT[i, 19].value = (
-                    P2_ATconv[i].power.to("kW").magnitude / min_Pow2
+                        P2_AT_flange_conv[i].power.to("kW").magnitude / min_Pow2
                 )
 
             Results2_AT[i, 20].value = P2_AT[i].eff.magnitude
