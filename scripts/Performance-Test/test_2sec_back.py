@@ -406,9 +406,8 @@ if __name__ == "__main__" or __name__ == "builtins":
         if AT_sheet["C4"].value == "Yes":
             reynolds_correction = True
         curve_shape = AT_sheet["C24"].value
-        BL_leak = AT_sheet["C26"].value
+        BL_leak = Div_leak = AT_sheet["C26"].value
         BF_leak = AT_sheet["C28"].value
-        Div_leak = AT_sheet["C30"].value
 
         if curve_shape == "Yes":
             args_list = []
