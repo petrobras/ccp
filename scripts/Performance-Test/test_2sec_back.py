@@ -530,7 +530,7 @@ if __name__ == "__main__" or __name__ == "builtins":
             else:
                 P_AT_Bal.append(
                     [
-                        None,
+                        0,
                         Q_(
                             Dados_AT_2[i, 2].value, AT_sheet.range("AG6").value
                         ),  # Copying 2sec Suction info
@@ -548,7 +548,7 @@ if __name__ == "__main__" or __name__ == "builtins":
             else:
                 P_AT_Buf.append(
                     [
-                        None,
+                        0,
                         Q_(
                             Dados_AT_2[i, 3].value, AT_sheet.range("AH6").value
                         ),  # Copying 2sec Suction info
@@ -675,7 +675,7 @@ if __name__ == "__main__" or __name__ == "builtins":
             else:
                 P2_AT_Bal.append(
                     [
-                        None,
+                        0,
                     ]
                 )
 
@@ -688,7 +688,7 @@ if __name__ == "__main__" or __name__ == "builtins":
             else:
                 P2_AT_Buf.append(
                     [
-                        None,
+                        0,
                         Q_(
                             Dados_AT_2[i, 3].value, AT_sheet.range("AH6").value
                         ),  # Copying 2sec Suction info
