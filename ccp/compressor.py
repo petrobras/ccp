@@ -404,6 +404,10 @@ class BackToBack(Impeller):
         self.k_div_wall = np.zeros(
             len(test_points_sec1), dtype=np.object
         )  # array with div wall seal constants
+
+        for point in test_points_sec1:
+            if point.div_wall_flow_m:
+                point.first_section_discharge_flow_m = point.flow_m + point.div_wall_flow_m
         for i, point in enumerate(test_points_sec1):
             if point.first_section_discharge_flow_m:
                 md1f_t = point.first_section_discharge_flow_m
