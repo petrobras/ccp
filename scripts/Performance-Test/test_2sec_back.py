@@ -2,7 +2,7 @@ import os
 
 filename = os.path.basename(__file__)[:-3]
 
-DEBUG_MODE = Falsej
+DEBUG_MODE = False
 
 if filename == "test_scripts":  # if the script is run from the test file
     filename = "Beta_2section_back_to_back.xlsm"
