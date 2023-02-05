@@ -28,6 +28,7 @@ import ccp
 import xlwings as xl
 from numpy.testing import assert_allclose
 from pathlib import Path
+import runpy
 
 ccp_path = Path(ccp.__file__).parent.parent
 script_1sec = ccp_path / "scripts/Performance-Test/test_1sec.py"
@@ -45,8 +46,7 @@ def test_1sec_reynolds_casing_balance_buffer():
     actual_test_sheet["$C$35"].value = "Yes"  # set balance
     actual_test_sheet["$C$37"].value = "Yes"  # set buffer
 
-    exec(open(str(script_1sec), encoding="utf-8").read(), {"__file__": __file__})
-
+    runpy.run_path(str(script_1sec), run_name="test_script")
     assert actual_test_sheet["$F$3"].value == "Tested points - Measurements"
     assert actual_test_sheet["$M$4"].value == "Gas Selection"
     assert actual_test_sheet["$G$5"].value == "Ms"
@@ -360,7 +360,7 @@ def test_1sec_reynolds_casing_balance():
     actual_test_sheet["$C$35"].value = "Yes"  # set balance
     actual_test_sheet["$C$37"].value = "No"  # set buffer
 
-    exec(open(str(script_1sec), encoding="utf-8").read(), {"__file__": __file__})
+    runpy.run_path(str(script_1sec), run_name="test_script")
 
     assert actual_test_sheet["$F$3"].value == "Tested points - Measurements"
     assert actual_test_sheet["$M$4"].value == "Gas Selection"
@@ -675,7 +675,7 @@ def test_1sec_reynolds_casing():
     actual_test_sheet["$C$35"].value = "No"  # set balance
     actual_test_sheet["$C$37"].value = "No"  # set buffer
 
-    exec(open(str(script_1sec), encoding="utf-8").read(), {"__file__": __file__})
+    runpy.run_path(str(script_1sec), run_name="test_script")
 
     assert actual_test_sheet["$F$3"].value == "Tested points - Measurements"
     assert actual_test_sheet["$M$4"].value == "Gas Selection"
@@ -990,7 +990,7 @@ def test_1sec_reynolds():
     actual_test_sheet["$C$35"].value = "No"  # set balance
     actual_test_sheet["$C$37"].value = "No"  # set buffer
 
-    exec(open(str(script_1sec), encoding="utf-8").read(), {"__file__": __file__})
+    runpy.run_path(str(script_1sec), run_name="test_script")
 
     assert actual_test_sheet["$F$3"].value == "Tested points - Measurements"
     assert actual_test_sheet["$M$4"].value == "Gas Selection"
@@ -1305,7 +1305,7 @@ def test_1sec():
     actual_test_sheet["$C$35"].value = "No"  # set balance
     actual_test_sheet["$C$37"].value = "No"  # set buffer
 
-    exec(open(str(script_1sec), encoding="utf-8").read(), {"__file__": __file__})
+    runpy.run_path(str(script_1sec), run_name="test_script")
 
     assert actual_test_sheet["$F$3"].value == "Tested points - Measurements"
     assert actual_test_sheet["$M$4"].value == "Gas Selection"
@@ -1616,7 +1616,7 @@ def test_2sec_reynolds_casing_balance_divwall_buffer():
     actual_test_sheet["$C$26"].value = "Yes"  # set balance and divwall
     actual_test_sheet["$C$28"].value = "Yes"  # set buffer
 
-    exec(open(str(script_2sec), encoding="utf-8").read(), {"__file__": __file__})
+    runpy.run_path(str(script_2sec), run_name="test_script")
 
     assert actual_test_sheet["$B$3"].value == "Opções"
     assert actual_test_sheet["$F$3"].value == "SECTION 1 - Tested points - Measurements"
@@ -2226,7 +2226,7 @@ def test_2sec_reynolds_casing_balance_divwall():
     actual_test_sheet["$C$26"].value = "Yes"  # set balance and divwall
     actual_test_sheet["$C$28"].value = "No"  # set buffer
 
-    exec(open(str(script_2sec), encoding="utf-8").read(), {"__file__": __file__})
+    runpy.run_path(str(script_2sec), run_name="test_script")
 
     assert actual_test_sheet["$B$3"].value == "Opções"
     assert actual_test_sheet["$F$3"].value == "SECTION 1 - Tested points - Measurements"
@@ -2835,7 +2835,7 @@ def test_2sec_reynolds_casing():
     actual_test_sheet["$C$26"].value = "No"  # set balance and divwall
     actual_test_sheet["$C$28"].value = "No"  # set buffer
 
-    exec(open(str(script_2sec), encoding="utf-8").read(), {"__file__": __file__})
+    runpy.run_path(str(script_2sec), run_name="test_script")
 
     assert actual_test_sheet["$B$3"].value == "Opções"
     assert actual_test_sheet["$F$3"].value == "SECTION 1 - Tested points - Measurements"
@@ -3440,7 +3440,7 @@ def test_2sec_reynolds():
     actual_test_sheet["$C$26"].value = "No"  # set balance and divwall
     actual_test_sheet["$C$28"].value = "No"  # set buffer
 
-    exec(open(str(script_2sec), encoding="utf-8").read(), {"__file__": __file__})
+    runpy.run_path(str(script_2sec), run_name="test_script")
 
     assert actual_test_sheet["$B$3"].value == "Opções"
     assert actual_test_sheet["$F$3"].value == "SECTION 1 - Tested points - Measurements"
@@ -4044,7 +4044,7 @@ def test_2sec():
     actual_test_sheet["$C$26"].value = "No"  # set balance and divwall
     actual_test_sheet["$C$28"].value = "No"  # set buffer
 
-    exec(open(str(script_2sec), encoding="utf-8").read(), {"__file__": __file__})
+    runpy.run_path(str(script_2sec), run_name="test_script")
 
     assert actual_test_sheet["$B$3"].value == "Opções"
     assert actual_test_sheet["$F$3"].value == "SECTION 1 - Tested points - Measurements"

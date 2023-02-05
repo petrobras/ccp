@@ -3,7 +3,7 @@ import os
 filename = os.path.basename(__file__)[:-3]
 DEBUG_MODE = False
 
-if filename == "test_scripts":  # if the script is run from the test file
+if filename == "test_1sec":  # if the script is run from the test file
     filename = "Beta_1section.xlsm"
 elif DEBUG_MODE:
     filename = "Beta_1section.xlsm"
@@ -68,9 +68,9 @@ logger.critical(
     f"REFPROP path: {ccp._CP.get_config_string(ccp._CP.ALTERNATIVE_REFPROP_PATH)}"
 )
 
-if __name__ == "__main__" or __name__ == "builtins":
+if __name__ == "__main__" or __name__ == "test_script":
 
-    if DEBUG_MODE or __name__ == "builtins":
+    if DEBUG_MODE or __name__ == "test_script":
         AT_sheet["H35"].value = "Calcular"
 
     global P_FD_eff
