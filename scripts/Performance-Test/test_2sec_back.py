@@ -555,7 +555,7 @@ if __name__ == "__main__" or __name__ == "test_script":
                 heat_constant = None
 
             P_AT.append(
-                compressor.Point2Sec(
+                compressor.PointFirstSection(
                     speed=speed_AT,
                     flow_m=flow_m_AT,
                     suc=sucAT,
@@ -669,7 +669,7 @@ if __name__ == "__main__" or __name__ == "test_script":
                 heat_constant = None
 
             P2_AT.append(
-                compressor.Point1Sec(
+                compressor.PointSecondSection(
                     speed=speed2_AT,
                     flow_m=flow2_m_AT,
                     suc=suc2_AT,

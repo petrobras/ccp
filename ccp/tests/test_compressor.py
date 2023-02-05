@@ -1,7 +1,7 @@
 import pytest
 import numpy as np
 from numpy.testing import assert_allclose
-from ccp.compressor import StraightThrough, Point1Sec, Point2Sec, BackToBack
+from ccp.compressor import StraightThrough, Point1Sec, PointFirstSection, PointSecondSection, BackToBack
 from ccp.point import Point
 from ccp.state import State
 from ccp import Q_
@@ -347,7 +347,7 @@ def test_straight_through(straight_through):
 
 
 def test_point2sec():
-    p = Point2Sec(
+    p = PointFirstSection(
         flow_m=Q_(4.325, "kg/s"),
         speed=Q_(9096, "RPM"),
         b=Q_(10.5, "mm"),
@@ -433,7 +433,7 @@ def back_to_back():
     )
 
     test_points_sec1 = [
-        Point2Sec(
+        PointFirstSection(
             flow_m=Q_(8.716, "kg/s"),
             speed=Q_(9024, "RPM"),
             b=Q_(10.5, "mm"),
@@ -471,7 +471,7 @@ def back_to_back():
             casing_temperature=Q_(23.895, "degC"),
             ambient_temperature=Q_(0, "degC"),
         ),
-        Point2Sec(
+        PointFirstSection(
             flow_m=Q_(5.724, "kg/s"),
             speed=Q_(9057, "RPM"),
             b=Q_(10.5, "mm"),
@@ -509,7 +509,7 @@ def back_to_back():
             casing_temperature=Q_(23.895, "degC"),
             ambient_temperature=Q_(0, "degC"),
         ),
-        Point2Sec(
+        PointFirstSection(
             flow_m=Q_(4.325, "kg/s"),
             speed=Q_(9096, "RPM"),
             b=Q_(10.5, "mm"),
@@ -547,7 +547,7 @@ def back_to_back():
             casing_temperature=Q_(23.895, "degC"),
             ambient_temperature=Q_(0, "degC"),
         ),
-        Point2Sec(
+        PointFirstSection(
             flow_m=Q_(3.888, "kg/s"),
             speed=Q_(9071, "RPM"),
             b=Q_(10.5, "mm"),
@@ -585,7 +585,7 @@ def back_to_back():
             casing_temperature=Q_(23.895, "degC"),
             ambient_temperature=Q_(0, "degC"),
         ),
-        Point2Sec(
+        PointFirstSection(
             flow_m=Q_(3.277, "kg/s"),
             speed=Q_(9123, "RPM"),
             b=Q_(10.5, "mm"),
@@ -626,7 +626,7 @@ def back_to_back():
     ]
 
     test_points_sec2 = [
-        Point1Sec(
+        PointSecondSection(
             flow_m=Q_(4.927, "kg/s"),
             speed=Q_(7739, "RPM"),
             b=Q_(6.38, "mm"),
@@ -651,7 +651,7 @@ def back_to_back():
             casing_temperature=Q_(17.97, "degC"),
             ambient_temperature=Q_(0, "degC"),
         ),
-        Point1Sec(
+        PointSecondSection(
             flow_m=Q_(4.105, "kg/s"),
             speed=Q_(7330, "RPM"),
             b=Q_(6.38, "mm"),
@@ -676,7 +676,7 @@ def back_to_back():
             casing_temperature=Q_(17.97, "degC"),
             ambient_temperature=Q_(0, "degC"),
         ),
-        Point1Sec(
+        PointSecondSection(
             flow_m=Q_(3.36, "kg/s"),
             speed=Q_(7412, "RPM"),
             b=Q_(6.38, "mm"),
@@ -701,7 +701,7 @@ def back_to_back():
             casing_temperature=Q_(17.97, "degC"),
             ambient_temperature=Q_(0, "degC"),
         ),
-        Point1Sec(
+        PointSecondSection(
             flow_m=Q_(2.587, "kg/s"),
             speed=Q_(7449, "RPM"),
             b=Q_(6.38, "mm"),
@@ -726,7 +726,7 @@ def back_to_back():
             casing_temperature=Q_(17.97, "degC"),
             ambient_temperature=Q_(0, "degC"),
         ),
-        Point1Sec(
+        PointSecondSection(
             flow_m=Q_(2.075, "kg/s"),
             speed=Q_(7399, "RPM"),
             b=Q_(6.38, "mm"),
