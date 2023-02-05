@@ -451,7 +451,7 @@ if __name__ == "__main__" or __name__ == "builtins":
         ### Reading and writing in the Actual Test Data Sheet
 
         Dados_AT_1 = AT_sheet["G7:W16"]
-        Dados_AT_2 = AT_sheet["AE7:AO16"]
+        Dados_AT_2 = AT_sheet["AE7:AN16"]
 
         for i in range(10):
             if Dados_AT_1[i, 5].value == None:
@@ -631,10 +631,10 @@ if __name__ == "__main__" or __name__ == "builtins":
 
             ## Carregando dados da segunda seção
 
-            speed2_AT = Q_(Dados_AT_2[i, 10].value, AT_sheet.range("AO6").value)
+            speed2_AT = Q_(Dados_AT_2[i, 9].value, AT_sheet.range("AN6").value)
             N_ratio = speed_FD / speed2_AT
 
-            gas2 = int(Dados_AT_2[i, 9].value)
+            gas2 = int(Dados_AT_2[i, 8].value)
 
             GasesT = TG_sheet.range(
                 TG_sheet.cells(5, 2 + 4 * (gas - 1)),
