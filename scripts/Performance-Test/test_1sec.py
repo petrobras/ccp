@@ -75,57 +75,6 @@ if __name__ == "__main__" or __name__ == "test_script":
 
     global P_FD_eff
 
-    def reynolds_corr(P_AT, P_FD, rug=None):
-
-        ReAT = P_AT.reynolds
-        ReFD = P_FD.reynolds
-
-        RCAT = 0.988 / ReAT**0.243
-        RCFD = 0.988 / ReFD**0.243
-
-        RBAT = np.log(0.000125 + 13.67 / ReAT) / np.log(rug + 13.67 / ReAT)
-        RBFD = np.log(0.000125 + 13.67 / ReFD) / np.log(rug + 13.67 / ReFD)
-
-        RAAT = 0.066 + 0.934 * (4.8e6 * b.to("ft").magnitude / ReAT) ** RCAT
-        RAFD = 0.066 + 0.934 * (4.8e6 * b.to("ft").magnitude / ReFD) ** RCFD
-
-        corr = RAFD / RAAT * RBFD / RBAT
-
-        # correct efficiency
-        eff = 1 - (1 - P_AT.eff) * corr
-
-        #####Results_AT[i, 21].value = eff.m
-        N_ratio = (P_FD.speed / P_AT.speed).to("dimensionless").m
-
-        P_ATconv_temp = ccp.Point(
-            suc=P_FD.suc,
-            eff=eff,
-            speed=P_FD.speed,
-            flow_v=P_AT.flow_v * N_ratio,
-            head=P_AT.head * N_ratio**2,
-            b=b,
-            D=D,
-        )
-
-        # correct head coeficient
-        def update_h(h):
-            global P_AT_reyn
-            P_AT_reyn = ccp.Point(
-                suc=P_FD.suc,
-                eff=eff,
-                speed=P_FD.speed,
-                flow_v=P_AT.flow_v * N_ratio,
-                head=h,
-                b=b,
-                D=D,
-            )
-
-            return P_AT_reyn.psi.m - P_AT.psi.m * eff.m / P_AT.eff.m
-
-        newton(update_h, P_ATconv_temp.psi.m, tol=1)
-
-        return P_AT_reyn
-
     if AT_sheet["H35"].value != None:
         AT_sheet["H35"].value = None
         AT_sheet["F36"].value = "Calculando..."
