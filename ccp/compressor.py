@@ -224,7 +224,7 @@ class StraightThrough(Impeller):
         super().__init__(self.points_flange_sp)
 
 
-class Point2Sec(Point):
+class PointFirstSection(Point):
     """Point class for a compressor with 2 sections in a back-to-back configuration.
 
     Parameters
@@ -268,7 +268,7 @@ class Point2Sec(Point):
     Examples
     --------
     >>> import ccp
-    >>> p = Point2Sec(
+    >>> p = PointFirstSection(
     ...     flow_m=Q_(4.325, "kg/s"),
     ...     speed=Q_(9096, "RPM"),
     ...     b=Q_(10.5, "mm"),
@@ -370,6 +370,12 @@ class Point2Sec(Point):
         )
 
 
+class PointSecondSection(Point1Sec):
+    """Point for second section"""
+
+    pass
+
+
 class BackToBack(Impeller):
     """Back to Back compressor"""
 
@@ -407,7 +413,9 @@ class BackToBack(Impeller):
 
         for point in test_points_sec1:
             if point.div_wall_flow_m:
-                point.first_section_discharge_flow_m = point.flow_m + point.div_wall_flow_m
+                point.first_section_discharge_flow_m = (
+                    point.flow_m + point.div_wall_flow_m
+                )
         for i, point in enumerate(test_points_sec1):
             if point.first_section_discharge_flow_m:
                 md1f_t = point.first_section_discharge_flow_m
