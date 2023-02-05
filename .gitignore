@@ -97,3 +97,4 @@ ENV/
 /ccp.egg-info/
 /docs/references/generated/
 /ccp/app/data/**/
+log.txt
