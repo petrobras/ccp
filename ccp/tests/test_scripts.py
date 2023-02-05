@@ -1660,9 +1660,8 @@ def test_2sec_reynolds_casing_balance_divwall_buffer():
     assert actual_test_sheet["$AJ$5"].value == "Td"
     assert actual_test_sheet["$AK$5"].value == "Mbal"
     assert actual_test_sheet["$AL$5"].value == "Mbuf"
-    assert actual_test_sheet["$AM$5"].value == "Tbuf"
-    assert actual_test_sheet["$AN$5"].value == "Gas Selection"
-    assert actual_test_sheet["$AO$5"].value == "Speed"
+    assert actual_test_sheet["$AM$5"].value == "Gas Selection"
+    assert actual_test_sheet["$AN$5"].value == "Speed"
     assert actual_test_sheet["$D$6"].value == "Rugosidade [in] - Case 2"
     assert actual_test_sheet["$G$6"].value == "kg/s"
     assert actual_test_sheet["$H$6"].value == "m³/h"
@@ -1688,8 +1687,7 @@ def test_2sec_reynolds_casing_balance_divwall_buffer():
     assert actual_test_sheet["$AJ$6"].value == "kelvin"
     assert actual_test_sheet["$AK$6"].value == "kg/s"
     assert actual_test_sheet["$AL$6"].value == "kg/s"
-    assert actual_test_sheet["$AM$6"].value == "kelvin"
-    assert actual_test_sheet["$AO$6"].value == "rpm"
+    assert actual_test_sheet["$AN$6"].value == "rpm"
     assert_allclose(actual_test_sheet["$D$7"].value, 0.01)
     assert_allclose(actual_test_sheet["$F$7"].value, 1.0)
     assert_allclose(actual_test_sheet["$G$7"].value, 3.277)
@@ -1716,8 +1714,8 @@ def test_2sec_reynolds_casing_balance_divwall_buffer():
     assert_allclose(actual_test_sheet["$AJ$7"].value, 346.4)
     assert_allclose(actual_test_sheet["$AK$7"].value, 0.1211)
     assert_allclose(actual_test_sheet["$AL$7"].value, 0.06033)
-    assert_allclose(actual_test_sheet["$AN$7"].value, 1.0)
-    assert_allclose(actual_test_sheet["$AO$7"].value, 7399.0)
+    assert_allclose(actual_test_sheet["$AM$7"].value, 1.0)
+    assert_allclose(actual_test_sheet["$AN$7"].value, 7399.0)
     assert actual_test_sheet["$B$8"].value == "Casing 1 heat loss"
     assert actual_test_sheet["$C$8"].value == "Yes"
     assert actual_test_sheet["$D$8"].value == "Casing area [m²]"
@@ -1745,8 +1743,8 @@ def test_2sec_reynolds_casing_balance_divwall_buffer():
     assert_allclose(actual_test_sheet["$AJ$8"].value, 344.1)
     assert_allclose(actual_test_sheet["$AK$8"].value, 0.1171)
     assert_allclose(actual_test_sheet["$AL$8"].value, 0.05892)
-    assert_allclose(actual_test_sheet["$AN$8"].value, 1.0)
-    assert_allclose(actual_test_sheet["$AO$8"].value, 7449.0)
+    assert_allclose(actual_test_sheet["$AM$8"].value, 1.0)
+    assert_allclose(actual_test_sheet["$AN$8"].value, 7449.0)
     assert_allclose(actual_test_sheet["$D$9"].value, 5.5)
     assert_allclose(actual_test_sheet["$F$9"].value, 3.0)
     assert_allclose(actual_test_sheet["$G$9"].value, 4.325)
@@ -1775,8 +1773,8 @@ def test_2sec_reynolds_casing_balance_divwall_buffer():
     assert_allclose(actual_test_sheet["$AJ$9"].value, 339.9)
     assert_allclose(actual_test_sheet["$AK$9"].value, 0.1222)
     assert_allclose(actual_test_sheet["$AL$9"].value, 0.07412)
-    assert_allclose(actual_test_sheet["$AN$9"].value, 1.0)
-    assert_allclose(actual_test_sheet["$AO$9"].value, 7412.0)
+    assert_allclose(actual_test_sheet["$AM$9"].value, 1.0)
+    assert_allclose(actual_test_sheet["$AN$9"].value, 7412.0)
 
     assert actual_test_sheet["$D$10"].value == "Casing temperature* [ °C ]"
     assert_allclose(actual_test_sheet["$F$10"].value, 4.0)
@@ -1803,8 +1801,8 @@ def test_2sec_reynolds_casing_balance_divwall_buffer():
     assert_allclose(actual_test_sheet["$AJ$10"].value, 333.3)
     assert_allclose(actual_test_sheet["$AK$10"].value, 0.1079)
     assert_allclose(actual_test_sheet["$AL$10"].value, 0.06692)
-    assert_allclose(actual_test_sheet["$AN$10"].value, 1.0)
-    assert_allclose(actual_test_sheet["$AO$10"].value, 7330.0)
+    assert_allclose(actual_test_sheet["$AM$10"].value, 1.0)
+    assert_allclose(actual_test_sheet["$AN$10"].value, 7330.0)
     assert_allclose(actual_test_sheet["$D$11"].value, 23.895)
     assert_allclose(actual_test_sheet["$F$11"].value, 5.0)
     assert_allclose(actual_test_sheet["$G$11"].value, 8.716)
@@ -1830,8 +1828,8 @@ def test_2sec_reynolds_casing_balance_divwall_buffer():
     assert_allclose(actual_test_sheet["$AJ$11"].value, 335.1)
     assert_allclose(actual_test_sheet["$AK$11"].value, 0.1066)
     assert_allclose(actual_test_sheet["$AL$11"].value, 0.06367)
-    assert_allclose(actual_test_sheet["$AN$11"].value, 1.0)
-    assert_allclose(actual_test_sheet["$AO$11"].value, 7739.0)
+    assert_allclose(actual_test_sheet["$AM$11"].value, 1.0)
+    assert_allclose(actual_test_sheet["$AN$11"].value, 7739.0)
     assert actual_test_sheet["$D$12"].value == "Ambient Temperature [ °C ]"
     assert_allclose(actual_test_sheet["$F$12"].value, 6.0)
     assert_allclose(actual_test_sheet["$AD$12"].value, 6.0)
@@ -2272,9 +2270,8 @@ def test_2sec_reynolds_casing_balance_divwall():
     assert actual_test_sheet["$AJ$5"].value == "Td"
     assert actual_test_sheet["$AK$5"].value == "Mbal"
     assert actual_test_sheet["$AL$5"].value == "Mbuf"
-    assert actual_test_sheet["$AM$5"].value == "Tbuf"
-    assert actual_test_sheet["$AN$5"].value == "Gas Selection"
-    assert actual_test_sheet["$AO$5"].value == "Speed"
+    assert actual_test_sheet["$AM$5"].value == "Gas Selection"
+    assert actual_test_sheet["$AN$5"].value == "Speed"
     assert actual_test_sheet["$D$6"].value == "Rugosidade [in] - Case 2"
     assert actual_test_sheet["$G$6"].value == "kg/s"
     assert actual_test_sheet["$H$6"].value == "m³/h"
@@ -2300,8 +2297,7 @@ def test_2sec_reynolds_casing_balance_divwall():
     assert actual_test_sheet["$AJ$6"].value == "kelvin"
     assert actual_test_sheet["$AK$6"].value == "kg/s"
     assert actual_test_sheet["$AL$6"].value == "kg/s"
-    assert actual_test_sheet["$AM$6"].value == "kelvin"
-    assert actual_test_sheet["$AO$6"].value == "rpm"
+    assert actual_test_sheet["$AN$6"].value == "rpm"
     assert_allclose(actual_test_sheet["$D$7"].value, 0.01)
     assert_allclose(actual_test_sheet["$F$7"].value, 1.0)
     assert_allclose(actual_test_sheet["$G$7"].value, 3.277)
@@ -2328,8 +2324,8 @@ def test_2sec_reynolds_casing_balance_divwall():
     assert_allclose(actual_test_sheet["$AJ$7"].value, 346.4)
     assert_allclose(actual_test_sheet["$AK$7"].value, 0.1211)
     assert_allclose(actual_test_sheet["$AL$7"].value, 0.06033)
-    assert_allclose(actual_test_sheet["$AN$7"].value, 1.0)
-    assert_allclose(actual_test_sheet["$AO$7"].value, 7399.0)
+    assert_allclose(actual_test_sheet["$AM$7"].value, 1.0)
+    assert_allclose(actual_test_sheet["$AN$7"].value, 7399.0)
     assert actual_test_sheet["$B$8"].value == "Casing 1 heat loss"
     assert actual_test_sheet["$C$8"].value == "Yes"
     assert actual_test_sheet["$D$8"].value == "Casing area [m²]"
@@ -2357,8 +2353,8 @@ def test_2sec_reynolds_casing_balance_divwall():
     assert_allclose(actual_test_sheet["$AJ$8"].value, 344.1)
     assert_allclose(actual_test_sheet["$AK$8"].value, 0.1171)
     assert_allclose(actual_test_sheet["$AL$8"].value, 0.05892)
-    assert_allclose(actual_test_sheet["$AN$8"].value, 1.0)
-    assert_allclose(actual_test_sheet["$AO$8"].value, 7449.0)
+    assert_allclose(actual_test_sheet["$AM$8"].value, 1.0)
+    assert_allclose(actual_test_sheet["$AN$8"].value, 7449.0)
     assert_allclose(actual_test_sheet["$D$9"].value, 5.5)
     assert_allclose(actual_test_sheet["$F$9"].value, 3.0)
     assert_allclose(actual_test_sheet["$G$9"].value, 4.325)
@@ -2388,8 +2384,8 @@ def test_2sec_reynolds_casing_balance_divwall():
     assert_allclose(actual_test_sheet["$AK$9"].value, 0.1222)
     assert_allclose(actual_test_sheet["$AL$9"].value, 0.07412)
 
-    assert_allclose(actual_test_sheet["$AN$9"].value, 1.0)
-    assert_allclose(actual_test_sheet["$AO$9"].value, 7412.0)
+    assert_allclose(actual_test_sheet["$AM$9"].value, 1.0)
+    assert_allclose(actual_test_sheet["$AN$9"].value, 7412.0)
     assert actual_test_sheet["$D$10"].value == "Casing temperature* [ °C ]"
     assert_allclose(actual_test_sheet["$F$10"].value, 4.0)
     assert_allclose(actual_test_sheet["$G$10"].value, 5.724)
@@ -2415,8 +2411,8 @@ def test_2sec_reynolds_casing_balance_divwall():
     assert_allclose(actual_test_sheet["$AJ$10"].value, 333.3)
     assert_allclose(actual_test_sheet["$AK$10"].value, 0.1079)
     assert_allclose(actual_test_sheet["$AL$10"].value, 0.06692)
-    assert_allclose(actual_test_sheet["$AN$10"].value, 1.0)
-    assert_allclose(actual_test_sheet["$AO$10"].value, 7330.0)
+    assert_allclose(actual_test_sheet["$AM$10"].value, 1.0)
+    assert_allclose(actual_test_sheet["$AN$10"].value, 7330.0)
     assert_allclose(actual_test_sheet["$D$11"].value, 23.895)
     assert_allclose(actual_test_sheet["$F$11"].value, 5.0)
     assert_allclose(actual_test_sheet["$G$11"].value, 8.716)
@@ -2442,8 +2438,8 @@ def test_2sec_reynolds_casing_balance_divwall():
     assert_allclose(actual_test_sheet["$AJ$11"].value, 335.1)
     assert_allclose(actual_test_sheet["$AK$11"].value, 0.1066)
     assert_allclose(actual_test_sheet["$AL$11"].value, 0.06367)
-    assert_allclose(actual_test_sheet["$AN$11"].value, 1.0)
-    assert_allclose(actual_test_sheet["$AO$11"].value, 7739.0)
+    assert_allclose(actual_test_sheet["$AM$11"].value, 1.0)
+    assert_allclose(actual_test_sheet["$AN$11"].value, 7739.0)
     assert actual_test_sheet["$D$12"].value == "Ambient Temperature [ °C ]"
     assert_allclose(actual_test_sheet["$F$12"].value, 6.0)
     assert_allclose(actual_test_sheet["$AD$12"].value, 6.0)
@@ -2883,9 +2879,8 @@ def test_2sec_reynolds_casing():
     assert actual_test_sheet["$AJ$5"].value == "Td"
     assert actual_test_sheet["$AK$5"].value == "Mbal"
     assert actual_test_sheet["$AL$5"].value == "Mbuf"
-    assert actual_test_sheet["$AM$5"].value == "Tbuf"
-    assert actual_test_sheet["$AN$5"].value == "Gas Selection"
-    assert actual_test_sheet["$AO$5"].value == "Speed"
+    assert actual_test_sheet["$AM$5"].value == "Gas Selection"
+    assert actual_test_sheet["$AN$5"].value == "Speed"
     assert actual_test_sheet["$D$6"].value == "Rugosidade [in] - Case 2"
     assert actual_test_sheet["$G$6"].value == "kg/s"
     assert actual_test_sheet["$H$6"].value == "m³/h"
@@ -2911,8 +2906,7 @@ def test_2sec_reynolds_casing():
     assert actual_test_sheet["$AJ$6"].value == "kelvin"
     assert actual_test_sheet["$AK$6"].value == "kg/s"
     assert actual_test_sheet["$AL$6"].value == "kg/s"
-    assert actual_test_sheet["$AM$6"].value == "kelvin"
-    assert actual_test_sheet["$AO$6"].value == "rpm"
+    assert actual_test_sheet["$AN$6"].value == "rpm"
     assert_allclose(actual_test_sheet["$D$7"].value, 0.01)
     assert_allclose(actual_test_sheet["$F$7"].value, 1.0)
     assert_allclose(actual_test_sheet["$G$7"].value, 3.277)
@@ -2939,8 +2933,8 @@ def test_2sec_reynolds_casing():
     assert_allclose(actual_test_sheet["$AJ$7"].value, 346.4)
     assert_allclose(actual_test_sheet["$AK$7"].value, 0.1211)
     assert_allclose(actual_test_sheet["$AL$7"].value, 0.06033)
-    assert_allclose(actual_test_sheet["$AN$7"].value, 1.0)
-    assert_allclose(actual_test_sheet["$AO$7"].value, 7399.0)
+    assert_allclose(actual_test_sheet["$AM$7"].value, 1.0)
+    assert_allclose(actual_test_sheet["$AN$7"].value, 7399.0)
     assert actual_test_sheet["$B$8"].value == "Casing 1 heat loss"
     assert actual_test_sheet["$C$8"].value == "Yes"
     assert actual_test_sheet["$D$8"].value == "Casing area [m²]"
@@ -2968,8 +2962,8 @@ def test_2sec_reynolds_casing():
     assert_allclose(actual_test_sheet["$AJ$8"].value, 344.1)
     assert_allclose(actual_test_sheet["$AK$8"].value, 0.1171)
     assert_allclose(actual_test_sheet["$AL$8"].value, 0.05892)
-    assert_allclose(actual_test_sheet["$AN$8"].value, 1.0)
-    assert_allclose(actual_test_sheet["$AO$8"].value, 7449.0)
+    assert_allclose(actual_test_sheet["$AM$8"].value, 1.0)
+    assert_allclose(actual_test_sheet["$AN$8"].value, 7449.0)
     assert_allclose(actual_test_sheet["$D$9"].value, 5.5)
     assert_allclose(actual_test_sheet["$F$9"].value, 3.0)
     assert_allclose(actual_test_sheet["$G$9"].value, 4.325)
@@ -2999,8 +2993,8 @@ def test_2sec_reynolds_casing():
     assert_allclose(actual_test_sheet["$AK$9"].value, 0.1222)
     assert_allclose(actual_test_sheet["$AL$9"].value, 0.07412)
 
-    assert_allclose(actual_test_sheet["$AN$9"].value, 1.0)
-    assert_allclose(actual_test_sheet["$AO$9"].value, 7412.0)
+    assert_allclose(actual_test_sheet["$AM$9"].value, 1.0)
+    assert_allclose(actual_test_sheet["$AN$9"].value, 7412.0)
     assert actual_test_sheet["$D$10"].value == "Casing temperature* [ °C ]"
     assert_allclose(actual_test_sheet["$F$10"].value, 4.0)
     assert_allclose(actual_test_sheet["$G$10"].value, 5.724)
@@ -3026,8 +3020,8 @@ def test_2sec_reynolds_casing():
     assert_allclose(actual_test_sheet["$AJ$10"].value, 333.3)
     assert_allclose(actual_test_sheet["$AK$10"].value, 0.1079)
     assert_allclose(actual_test_sheet["$AL$10"].value, 0.06692)
-    assert_allclose(actual_test_sheet["$AN$10"].value, 1.0)
-    assert_allclose(actual_test_sheet["$AO$10"].value, 7330.0)
+    assert_allclose(actual_test_sheet["$AM$10"].value, 1.0)
+    assert_allclose(actual_test_sheet["$AN$10"].value, 7330.0)
     assert_allclose(actual_test_sheet["$D$11"].value, 23.895)
     assert_allclose(actual_test_sheet["$F$11"].value, 5.0)
     assert_allclose(actual_test_sheet["$G$11"].value, 8.716)
@@ -3053,8 +3047,8 @@ def test_2sec_reynolds_casing():
     assert_allclose(actual_test_sheet["$AJ$11"].value, 335.1)
     assert_allclose(actual_test_sheet["$AK$11"].value, 0.1066)
     assert_allclose(actual_test_sheet["$AL$11"].value, 0.06367)
-    assert_allclose(actual_test_sheet["$AN$11"].value, 1.0)
-    assert_allclose(actual_test_sheet["$AO$11"].value, 7739.0)
+    assert_allclose(actual_test_sheet["$AM$11"].value, 1.0)
+    assert_allclose(actual_test_sheet["$AN$11"].value, 7739.0)
     assert actual_test_sheet["$D$12"].value == "Ambient Temperature [ °C ]"
     assert_allclose(actual_test_sheet["$F$12"].value, 6.0)
     assert_allclose(actual_test_sheet["$AD$12"].value, 6.0)
@@ -3446,7 +3440,7 @@ def test_2sec_reynolds():
     actual_test_sheet["$C$26"].value = "No"  # set balance and divwall
     actual_test_sheet["$C$28"].value = "No"  # set buffer
 
-    # exec(open(str(script_2sec), encoding="utf-8").read(), {"__file__": __file__})
+    exec(open(str(script_2sec), encoding="utf-8").read(), {"__file__": __file__})
 
     assert actual_test_sheet["$B$3"].value == "Opções"
     assert actual_test_sheet["$F$3"].value == "SECTION 1 - Tested points - Measurements"
@@ -3490,9 +3484,8 @@ def test_2sec_reynolds():
     assert actual_test_sheet["$AJ$5"].value == "Td"
     assert actual_test_sheet["$AK$5"].value == "Mbal"
     assert actual_test_sheet["$AL$5"].value == "Mbuf"
-    assert actual_test_sheet["$AM$5"].value == "Tbuf"
-    assert actual_test_sheet["$AN$5"].value == "Gas Selection"
-    assert actual_test_sheet["$AO$5"].value == "Speed"
+    assert actual_test_sheet["$AM$5"].value == "Gas Selection"
+    assert actual_test_sheet["$AN$5"].value == "Speed"
     assert actual_test_sheet["$D$6"].value == "Rugosidade [in] - Case 2"
     assert actual_test_sheet["$G$6"].value == "kg/s"
     assert actual_test_sheet["$H$6"].value == "m³/h"
@@ -3518,8 +3511,7 @@ def test_2sec_reynolds():
     assert actual_test_sheet["$AJ$6"].value == "kelvin"
     assert actual_test_sheet["$AK$6"].value == "kg/s"
     assert actual_test_sheet["$AL$6"].value == "kg/s"
-    assert actual_test_sheet["$AM$6"].value == "kelvin"
-    assert actual_test_sheet["$AO$6"].value == "rpm"
+    assert actual_test_sheet["$AN$6"].value == "rpm"
     assert_allclose(actual_test_sheet["$D$7"].value, 0.01)
     assert_allclose(actual_test_sheet["$F$7"].value, 1.0)
     assert_allclose(actual_test_sheet["$G$7"].value, 3.277)
@@ -3546,8 +3538,8 @@ def test_2sec_reynolds():
     assert_allclose(actual_test_sheet["$AJ$7"].value, 346.4)
     assert_allclose(actual_test_sheet["$AK$7"].value, 0.1211)
     assert_allclose(actual_test_sheet["$AL$7"].value, 0.06033)
-    assert_allclose(actual_test_sheet["$AN$7"].value, 1.0)
-    assert_allclose(actual_test_sheet["$AO$7"].value, 7399.0)
+    assert_allclose(actual_test_sheet["$AM$7"].value, 1.0)
+    assert_allclose(actual_test_sheet["$AN$7"].value, 7399.0)
     assert actual_test_sheet["$B$8"].value == "Casing 1 heat loss"
     assert actual_test_sheet["$C$8"].value == "No"
     assert actual_test_sheet["$D$8"].value == "Casing area [m²]"
@@ -3575,8 +3567,8 @@ def test_2sec_reynolds():
     assert_allclose(actual_test_sheet["$AJ$8"].value, 344.1)
     assert_allclose(actual_test_sheet["$AK$8"].value, 0.1171)
     assert_allclose(actual_test_sheet["$AL$8"].value, 0.05892)
-    assert_allclose(actual_test_sheet["$AN$8"].value, 1.0)
-    assert_allclose(actual_test_sheet["$AO$8"].value, 7449.0)
+    assert_allclose(actual_test_sheet["$AM$8"].value, 1.0)
+    assert_allclose(actual_test_sheet["$AN$8"].value, 7449.0)
     assert_allclose(actual_test_sheet["$D$9"].value, 5.5)
     assert_allclose(actual_test_sheet["$F$9"].value, 3.0)
     assert_allclose(actual_test_sheet["$G$9"].value, 4.325)
@@ -3605,8 +3597,8 @@ def test_2sec_reynolds():
     assert_allclose(actual_test_sheet["$AJ$9"].value, 339.9)
     assert_allclose(actual_test_sheet["$AK$9"].value, 0.1222)
     assert_allclose(actual_test_sheet["$AL$9"].value, 0.07412)
-    assert_allclose(actual_test_sheet["$AN$9"].value, 1.0)
-    assert_allclose(actual_test_sheet["$AO$9"].value, 7412.0)
+    assert_allclose(actual_test_sheet["$AM$9"].value, 1.0)
+    assert_allclose(actual_test_sheet["$AN$9"].value, 7412.0)
     assert actual_test_sheet["$D$10"].value == "Casing temperature* [ °C ]"
     assert_allclose(actual_test_sheet["$F$10"].value, 4.0)
     assert_allclose(actual_test_sheet["$G$10"].value, 5.724)
@@ -3633,8 +3625,8 @@ def test_2sec_reynolds():
     assert_allclose(actual_test_sheet["$AJ$10"].value, 333.3)
     assert_allclose(actual_test_sheet["$AK$10"].value, 0.1079)
     assert_allclose(actual_test_sheet["$AL$10"].value, 0.06692)
-    assert_allclose(actual_test_sheet["$AN$10"].value, 1.0)
-    assert_allclose(actual_test_sheet["$AO$10"].value, 7330.0)
+    assert_allclose(actual_test_sheet["$AM$10"].value, 1.0)
+    assert_allclose(actual_test_sheet["$AN$10"].value, 7330.0)
     assert_allclose(actual_test_sheet["$D$11"].value, 23.895)
     assert_allclose(actual_test_sheet["$F$11"].value, 5.0)
     assert_allclose(actual_test_sheet["$G$11"].value, 8.716)
@@ -3660,8 +3652,8 @@ def test_2sec_reynolds():
     assert_allclose(actual_test_sheet["$AJ$11"].value, 335.1)
     assert_allclose(actual_test_sheet["$AK$11"].value, 0.1066)
     assert_allclose(actual_test_sheet["$AL$11"].value, 0.06367)
-    assert_allclose(actual_test_sheet["$AN$11"].value, 1.0)
-    assert_allclose(actual_test_sheet["$AO$11"].value, 7739.0)
+    assert_allclose(actual_test_sheet["$AM$11"].value, 1.0)
+    assert_allclose(actual_test_sheet["$AN$11"].value, 7739.0)
     assert actual_test_sheet["$D$12"].value == "Ambient Temperature [ °C ]"
     assert_allclose(actual_test_sheet["$F$12"].value, 6.0)
     assert_allclose(actual_test_sheet["$AD$12"].value, 6.0)
@@ -4096,9 +4088,8 @@ def test_2sec():
     assert actual_test_sheet["$AJ$5"].value == "Td"
     assert actual_test_sheet["$AK$5"].value == "Mbal"
     assert actual_test_sheet["$AL$5"].value == "Mbuf"
-    assert actual_test_sheet["$AM$5"].value == "Tbuf"
-    assert actual_test_sheet["$AN$5"].value == "Gas Selection"
-    assert actual_test_sheet["$AO$5"].value == "Speed"
+    assert actual_test_sheet["$AM$5"].value == "Gas Selection"
+    assert actual_test_sheet["$AN$5"].value == "Speed"
     assert actual_test_sheet["$D$6"].value == "Rugosidade [in] - Case 2"
     assert actual_test_sheet["$G$6"].value == "kg/s"
     assert actual_test_sheet["$H$6"].value == "m³/h"
@@ -4124,8 +4115,7 @@ def test_2sec():
     assert actual_test_sheet["$AJ$6"].value == "kelvin"
     assert actual_test_sheet["$AK$6"].value == "kg/s"
     assert actual_test_sheet["$AL$6"].value == "kg/s"
-    assert actual_test_sheet["$AM$6"].value == "kelvin"
-    assert actual_test_sheet["$AO$6"].value == "rpm"
+    assert actual_test_sheet["$AN$6"].value == "rpm"
     assert_allclose(actual_test_sheet["$D$7"].value, 0.01)
     assert_allclose(actual_test_sheet["$F$7"].value, 1.0)
     assert_allclose(actual_test_sheet["$G$7"].value, 3.277)
@@ -4152,8 +4142,8 @@ def test_2sec():
     assert_allclose(actual_test_sheet["$AJ$7"].value, 346.4)
     assert_allclose(actual_test_sheet["$AK$7"].value, 0.1211)
     assert_allclose(actual_test_sheet["$AL$7"].value, 0.06033)
-    assert_allclose(actual_test_sheet["$AN$7"].value, 1.0)
-    assert_allclose(actual_test_sheet["$AO$7"].value, 7399.0)
+    assert_allclose(actual_test_sheet["$AM$7"].value, 1.0)
+    assert_allclose(actual_test_sheet["$AN$7"].value, 7399.0)
     assert actual_test_sheet["$B$8"].value == "Casing 1 heat loss"
     assert actual_test_sheet["$C$8"].value == "No"
     assert actual_test_sheet["$D$8"].value == "Casing area [m²]"
@@ -4181,8 +4171,8 @@ def test_2sec():
     assert_allclose(actual_test_sheet["$AJ$8"].value, 344.1)
     assert_allclose(actual_test_sheet["$AK$8"].value, 0.1171)
     assert_allclose(actual_test_sheet["$AL$8"].value, 0.05892)
-    assert_allclose(actual_test_sheet["$AN$8"].value, 1.0)
-    assert_allclose(actual_test_sheet["$AO$8"].value, 7449.0)
+    assert_allclose(actual_test_sheet["$AM$8"].value, 1.0)
+    assert_allclose(actual_test_sheet["$AN$8"].value, 7449.0)
     assert_allclose(actual_test_sheet["$D$9"].value, 5.5)
     assert_allclose(actual_test_sheet["$F$9"].value, 3.0)
     assert_allclose(actual_test_sheet["$G$9"].value, 4.325)
@@ -4211,8 +4201,8 @@ def test_2sec():
     assert_allclose(actual_test_sheet["$AJ$9"].value, 339.9)
     assert_allclose(actual_test_sheet["$AK$9"].value, 0.1222)
     assert_allclose(actual_test_sheet["$AL$9"].value, 0.07412)
-    assert_allclose(actual_test_sheet["$AN$9"].value, 1.0)
-    assert_allclose(actual_test_sheet["$AO$9"].value, 7412.0)
+    assert_allclose(actual_test_sheet["$AM$9"].value, 1.0)
+    assert_allclose(actual_test_sheet["$AN$9"].value, 7412.0)
     assert actual_test_sheet["$D$10"].value == "Casing temperature* [ °C ]"
 
     assert_allclose(actual_test_sheet["$F$10"].value, 4.0)
@@ -4239,8 +4229,8 @@ def test_2sec():
     assert_allclose(actual_test_sheet["$AJ$10"].value, 333.3)
     assert_allclose(actual_test_sheet["$AK$10"].value, 0.1079)
     assert_allclose(actual_test_sheet["$AL$10"].value, 0.06692)
-    assert_allclose(actual_test_sheet["$AN$10"].value, 1.0)
-    assert_allclose(actual_test_sheet["$AO$10"].value, 7330.0)
+    assert_allclose(actual_test_sheet["$AM$10"].value, 1.0)
+    assert_allclose(actual_test_sheet["$AN$10"].value, 7330.0)
     assert_allclose(actual_test_sheet["$D$11"].value, 23.895)
     assert_allclose(actual_test_sheet["$F$11"].value, 5.0)
     assert_allclose(actual_test_sheet["$G$11"].value, 8.716)
@@ -4266,8 +4256,8 @@ def test_2sec():
     assert_allclose(actual_test_sheet["$AJ$11"].value, 335.1)
     assert_allclose(actual_test_sheet["$AK$11"].value, 0.1066)
     assert_allclose(actual_test_sheet["$AL$11"].value, 0.06367)
-    assert_allclose(actual_test_sheet["$AN$11"].value, 1.0)
-    assert_allclose(actual_test_sheet["$AO$11"].value, 7739.0)
+    assert_allclose(actual_test_sheet["$AM$11"].value, 1.0)
+    assert_allclose(actual_test_sheet["$AN$11"].value, 7739.0)
     assert actual_test_sheet["$D$12"].value == "Ambient Temperature [ °C ]"
     assert_allclose(actual_test_sheet["$F$12"].value, 6.0)
     assert_allclose(actual_test_sheet["$AD$12"].value, 6.0)
