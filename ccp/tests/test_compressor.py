@@ -1,7 +1,13 @@
 import pytest
 import numpy as np
 from numpy.testing import assert_allclose
-from ccp.compressor import StraightThrough, Point1Sec, PointFirstSection, PointSecondSection, BackToBack
+from ccp.compressor import (
+    StraightThrough,
+    Point1Sec,
+    PointFirstSection,
+    PointSecondSection,
+    BackToBack,
+)
 from ccp.point import Point
 from ccp.state import State
 from ccp import Q_
@@ -344,6 +350,15 @@ def test_straight_through(straight_through):
         speed=straight_through.speed, flow_m=Q_(142000, "kg/h")
     )
     assert_allclose(point_sp.eff, 0.820459, rtol=1e-5)
+
+
+def test_straight_through_calculate_speed(straight_through):
+    straight_through.calculate_speed_to_match_discharge_pressure()
+    point_sp = straight_through.point(
+        speed=straight_through.speed,
+        flow_m=straight_through.guarantee_point.flow_m,
+    )
+    assert_allclose(point_sp.disch.p(), straight_through.guarantee_point.disch.p())
 
 
 def test_point2sec():
@@ -1008,3 +1023,13 @@ def test_back_to_back_with_reynolds_correction(back_to_back):
     assert_allclose(p0f_sp.eff, 0.489115, rtol=1e-4)
     # power in this case is the 'real' power consumed by the rotor
     assert_allclose(p0r.power, 3375713.294289, 1e-4)
+
+
+def test_back_to_back_calculate_speed(back_to_back):
+    back_to_back = BackToBack(**back_to_back, reynolds_correction=True)
+    back_to_back.calculate_speed_to_match_discharge_pressure()
+    point_sp = back_to_back.point_sec2(
+        speed=back_to_back.speed,
+        flow_m=back_to_back.guarantee_point_sec2.flow_m,
+    )
+    assert_allclose(point_sp.disch.p(), back_to_back.guarantee_point_sec2.disch.p())

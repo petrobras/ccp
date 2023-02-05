@@ -8,6 +8,8 @@ from ccp.state import State
 from ccp.config.units import check_units
 from ccp import Q_
 import numpy as np
+from scipy.optimize import newton
+from copy import deepcopy
 
 
 class Point1Sec(Point):
@@ -223,6 +225,28 @@ class StraightThrough(Impeller):
 
         super().__init__(self.points_flange_sp)
 
+    def calculate_speed_to_match_discharge_pressure(self):
+        """Calculate the speed to match the discharge pressure of the guarantee point."""
+
+        def calculate_disch_pressure_delta(x):
+            compressor = StraightThrough(
+                guarantee_point=self.guarantee_point,
+                test_points=self.test_points,
+                speed=x,
+                reynolds_correction=self.reynolds_correction,
+            )
+
+            point = compressor.point(flow_m=self.guarantee_point.flow_m, speed=x)
+            return point.disch.p().m - self.guarantee_point.disch.p().m
+
+        new_speed = newton(calculate_disch_pressure_delta, self.speed.m)
+        self.__init__(
+            guarantee_point=self.guarantee_point,
+            test_points=self.test_points,
+            speed=new_speed,
+            reynolds_correction=self.reynolds_correction,
+        )
+
 
 class PointFirstSection(Point):
     """Point class for a compressor with 2 sections in a back-to-back configuration.
@@ -333,6 +357,8 @@ class PointFirstSection(Point):
             *args,
             **kwargs,
         )
+        self._args = args
+        self._kwargs = kwargs
         self.balance_line_flow_m = balance_line_flow_m
         self.seal_gas_flow_m = seal_gas_flow_m
         self.seal_gas_temperature = seal_gas_temperature
@@ -369,6 +395,27 @@ class PointFirstSection(Point):
             p=self.div_wall_downstream_state.p(), h=self.div_wall_upstream_state.h()
         )
 
+    def __deepcopy__(self, memo):
+        return self.__class__(
+            *self._args,
+            **self._kwargs,
+            balance_line_flow_m=self.balance_line_flow_m,
+            seal_gas_flow_m=self.seal_gas_flow_m,
+            seal_gas_temperature=self.seal_gas_temperature,
+            first_section_discharge_flow_m=self.first_section_discharge_flow_m,
+            div_wall_flow_m=self.div_wall_flow_m,
+            end_seal_upstream_temperature=self.end_seal_upstream_temperature,
+            end_seal_upstream_pressure=self.end_seal_upstream_pressure,
+            div_wall_upstream_temperature=self.div_wall_upstream_temperature,
+            div_wall_upstream_pressure=self.div_wall_upstream_pressure,
+            oil_flow_journal_bearing_de=self.oil_flow_journal_bearing_de,
+            oil_flow_journal_bearing_nde=self.oil_flow_journal_bearing_nde,
+            oil_flow_thrust_bearing_nde=self.oil_flow_thrust_bearing_nde,
+            oil_inlet_temperature=self.oil_inlet_temperature,
+            oil_outlet_temperature_de=self.oil_outlet_temperature_de,
+            oil_outlet_temperature_nde=self.oil_outlet_temperature_nde,
+        )
+
 
 class PointSecondSection(Point1Sec):
     """Point for second section"""
@@ -391,6 +438,12 @@ class BackToBack(Impeller):
     ):
         self.guarantee_point_sec1 = guarantee_point_sec1
         self.guarantee_point_sec2 = guarantee_point_sec2
+        self._test_points_sec1_original = [
+            deepcopy(point) for point in test_points_sec1
+        ]
+        self._test_points_sec2_original = [
+            deepcopy(point) for point in test_points_sec2
+        ]
         self.test_points_sec1 = test_points_sec1
         self.test_points_sec2 = test_points_sec2
         if speed is None:
@@ -476,18 +529,27 @@ class BackToBack(Impeller):
                     ambient_temperature=point.ambient_temperature,
                 )
 
+            # use calculated k_end_seal and k_div_wall to calculate seal mass flow
+            # use manual mean, since np.mean removes the units
+            if (self.k_end_seal == 0).all():
+                k_end_seal_mean = Q_(
+                    0, "kelvin**0.5 kilogram**0.5 mole**0.5/(pascal second)"
+                )
+            else:
+                k_end_seal_mean = sum(self.k_end_seal[self.k_end_seal != 0]) / len(
+                    self.k_end_seal[self.k_end_seal != 0]
+                )
+            if (self.k_div_wall == 0).all():
+                k_div_wall_mean = Q_(
+                    0, "kelvin**0.5 kilogram**0.5 mole**0.5/(pascal second)"
+                )
+            else:
+                k_div_wall_mean = sum(self.k_div_wall[self.k_div_wall != 0]) / len(
+                    self.k_div_wall[self.k_div_wall != 0]
+                )
+
         for i, point in enumerate(test_points_sec1):
             if not point.first_section_discharge_flow_m:
-                # use calculated k_end_seal and k_div_wall to calculate seal mass flow
-                # use manual mean, since np.mean removes the units
-                if (self.k_end_seal == 0).all():
-                    k_end_seal_mean = Q_(
-                        0, "kelvin**0.5 kilogram**0.5 mole**0.5/(pascal second)"
-                    )
-                else:
-                    k_end_seal_mean = sum(self.k_end_seal[self.k_end_seal != 0]) / len(
-                        self.k_end_seal[self.k_end_seal != 0]
-                    )
 
                 self.k_end_seal[i] = k_end_seal_mean
                 end_seal_flow_m = flow_m_seal(
@@ -495,14 +557,7 @@ class BackToBack(Impeller):
                     state_up=point.end_seal_upstream_state,
                     state_down=point.end_seal_downstream_state,
                 )
-                if (self.k_div_wall == 0).all():
-                    k_div_wall_mean = Q_(
-                        0, "kelvin**0.5 kilogram**0.5 mole**0.5/(pascal second)"
-                    )
-                else:
-                    k_div_wall_mean = sum(self.k_div_wall[self.k_div_wall != 0]) / len(
-                        self.k_div_wall[self.k_div_wall != 0]
-                    )
+
                 self.k_div_wall[i] = k_div_wall_mean
                 div_wall_flow_m = flow_m_seal(
                     k_seal=k_div_wall_mean,
@@ -807,6 +862,38 @@ class BackToBack(Impeller):
         p_sec2.power = ms2r_sp * p_sec2.head / p_sec2.eff
 
         return p_sec2
+
+    def calculate_speed_to_match_discharge_pressure(self):
+        """Calculate the speed to match the discharge pressure of the guarantee point."""
+        test_points_sec1 = deepcopy(self._test_points_sec1_original)
+        test_points_sec2 = deepcopy(self._test_points_sec2_original)
+
+        def calculate_disch_pressure_delta(x):
+            compressor = BackToBack(
+                guarantee_point_sec1=self.guarantee_point_sec1,
+                guarantee_point_sec2=self.guarantee_point_sec2,
+                test_points_sec1=test_points_sec1,
+                test_points_sec2=test_points_sec2,
+                speed=x,
+                reynolds_correction=self.reynolds_correction,
+            )
+
+            point = compressor.point_sec2(
+                flow_m=self.guarantee_point_sec2.flow_m, speed=x
+            )
+            delta_p = point.disch.p().m - self.guarantee_point_sec2.disch.p().m
+            return delta_p
+
+        new_speed = newton(calculate_disch_pressure_delta, self.speed.m)
+
+        self.__init__(
+            guarantee_point_sec1=self.guarantee_point_sec1,
+            guarantee_point_sec2=self.guarantee_point_sec2,
+            test_points_sec1=test_points_sec1,
+            test_points_sec2=test_points_sec2,
+            speed=new_speed,
+            reynolds_correction=self.reynolds_correction,
+        )
 
 
 @check_units
