@@ -4,7 +4,7 @@ filename = os.path.basename(__file__)[:-3]
 
 DEBUG_MODE = False
 
-if filename == "test_scripts":  # if the script is run from the test file
+if filename == "test_2sec_back":  # if the script is run from the test file
     filename = "Beta_2section_back_to_back.xlsm"
 elif DEBUG_MODE:
     filename = "Beta_2section_back_to_back.xlsm"
@@ -66,9 +66,9 @@ logger.critical("System Information:")
 logger.critical(f"python: {sys.version}")
 logger.critical(f"ccp: {ccp.__version__full}")
 
-if __name__ == "__main__" or __name__ == "builtins":
+if __name__ == "__main__" or __name__ == "test_script":
 
-    if DEBUG_MODE or __name__ == "builtins":
+    if DEBUG_MODE or __name__ == "test_script":
         AT_sheet["Z13"].value = "Calcular"
 
     global P_FD_eff, P2_FD_eff
