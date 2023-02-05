@@ -873,6 +873,7 @@ if __name__ == "__main__" or __name__ == "builtins":
                 )
 
             Results_AT[i, 20].value = P_AT[i].eff.magnitude
+            Results_AT[i, 21].value = P_AT_flange_conv[i].eff.magnitude
             if P_AT[i].div_wall_flow_m:
                 Results_AT[i, 22].value = (
                     imp_conv.points_flange_sp_sec1[i].div_wall_flow_m.to("kg/h").m
@@ -945,6 +946,7 @@ if __name__ == "__main__" or __name__ == "builtins":
                 )
 
             Results2_AT[i, 20].value = P2_AT[i].eff.magnitude
+            Results2_AT[i, 21].value = P2_AT_flange_conv[i].eff.magnitude
 
         Phi = np.abs(1 - np.array(Results_AT[0:N, 7].value))
         Phi2 = np.abs(1 - np.array(Results2_AT[0:N, 7].value))
