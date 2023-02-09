@@ -109,7 +109,7 @@ if __name__ == "__main__" or __name__ == "test_script":
         GasesFD = FD_sheet.range("B69:B85").value
         mol_fracFD = FD_sheet.range("K69:K85").value
         fluid_FD = {GasesFD[i]: mol_fracFD[i] for i in range(len(GasesFD))}
-        sucFD = State.define(fluid=fluid_FD, p=Ps_FD, T=Ts_FD)
+        sucFD = State(fluid=fluid_FD, p=Ps_FD, T=Ts_FD)
 
         if V_test:
             flow_m_FD = flow_v_FD * sucFD.rho()
@@ -122,7 +122,7 @@ if __name__ == "__main__" or __name__ == "test_script":
             FD_sheet["AQ34"].value = "Inlet Volume Flow"
             FD_sheet["AT34"].value = "m³/h"
 
-        dischFD = State.define(fluid=fluid_FD, p=Pd_FD, T=Td_FD)
+        dischFD = State(fluid=fluid_FD, p=Pd_FD, T=Td_FD)
 
         P_FD = ccp.Point(
             speed=speed_FD, flow_m=flow_m_FD, suc=sucFD, disch=dischFD, b=b, D=D
@@ -289,8 +289,8 @@ if __name__ == "__main__" or __name__ == "test_script":
                 V_test = False
                 flow_m_AT = Q_(Dados_AT[i, 0].value, AT_sheet.range("G6").value)
 
-            sucAT = State.define(fluid=fluid_AT, p=Ps_AT, T=Ts_AT)
-            dischAT = State.define(fluid=fluid_AT, p=Pd_AT, T=Td_AT)
+            sucAT = State(fluid=fluid_AT, p=Ps_AT, T=Ts_AT)
+            dischAT = State(fluid=fluid_AT, p=Pd_AT, T=Td_AT)
 
             if V_test:
                 flow_m_AT = flow_v_AT * sucAT.rho()
@@ -543,7 +543,7 @@ if __name__ == "__main__" or __name__ == "test_script":
 
         fluid_FD = {GasesFD[i]: mol_fracFD[i] for i in range(len(GasesFD))}
 
-        sucFD = State.define(fluid=fluid_FD, p=Ps_FD, T=Ts_FD)
+        sucFD = State(fluid=fluid_FD, p=Ps_FD, T=Ts_FD)
 
         if V_test:
             flow_m_FD = flow_v_FD * sucFD.rho()
@@ -556,7 +556,7 @@ if __name__ == "__main__" or __name__ == "test_script":
             FD_sheet["AQ34"].value = "Inlet Volume Flow"
             FD_sheet["AT34"].value = "m³/h"
 
-        dischFD = State.define(fluid=fluid_FD, p=Pd_FD, T=Td_FD)
+        dischFD = State(fluid=fluid_FD, p=Pd_FD, T=Td_FD)
 
         P_FD = ccp.Point(
             speed=speed_FD, flow_m=flow_m_FD, suc=sucFD, disch=dischFD, b=b, D=D
@@ -633,13 +633,13 @@ if __name__ == "__main__" or __name__ == "test_script":
             if mol_fracT[i] > 0:
                 fluid_TP.update({GasesT[i]: mol_fracT[i]})
 
-        sucTP = State.define(fluid=fluid_TP, p=Ps_TP, T=Ts_TP)
-        dischTPk = State.define(fluid=fluid_TP, p=Pd_TP, s=sucTP.s())
+        sucTP = State(fluid=fluid_TP, p=Ps_TP, T=Ts_TP)
+        dischTPk = State(fluid=fluid_TP, p=Pd_TP, s=sucTP.s())
 
         hd_TP = sucTP.h() + (dischTPk.h() - sucTP.h()) / ccp.point.eff_isentropic(
             suc=P_FD.suc, disch=P_FD.disch
         )
-        dischTP = State.define(fluid=fluid_TP, p=Pd_TP, h=hd_TP)
+        dischTP = State(fluid=fluid_TP, p=Pd_TP, h=hd_TP)
 
         if V_test:
             flow_m_TP = flow_v_TP * sucTP.rho()
@@ -772,7 +772,7 @@ if __name__ == "__main__" or __name__ == "test_script":
 
             P2 = P1 - dP
 
-            State_FO = State.define(fluid=fluid_AT, p=P1, T=T1)
+            State_FO = State(fluid=fluid_AT, p=P1, T=T1)
 
             beta = d / D
             mu = State_FO.viscosity()

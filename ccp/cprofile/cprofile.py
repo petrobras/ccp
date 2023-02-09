@@ -32,7 +32,7 @@ def generate_label(caller):
 
 
 def state():
-    State.define(
+    State(
         rho=0.9280595769591103, p=Q_(1, "bar"), fluid={"Methane": 0.5, "Ethane": 0.5}
     )
 
@@ -52,7 +52,7 @@ def impeller():
         h2s=0.00017,
         water=0.002,
     )
-    suc = State.define(p=Q_(1.6995, "MPa"), T=311.55, fluid=fluid)
+    suc = State(p=Q_(1.6995, "MPa"), T=311.55, fluid=fluid)
 
     p0 = Point(
         suc=suc,
@@ -91,7 +91,7 @@ def create_ccp_points():
         pentane=0.03,
         hexane=0.01,
     )
-    suc_fd = State.define(p=Q_(3876, "kPa"), T=Q_(11, "degC"), fluid=composition_fd)
+    suc_fd = State(p=Q_(3876, "kPa"), T=Q_(11, "degC"), fluid=composition_fd)
 
     test_dir = Path.home() / "ccp/ccp/tests"
     curve_path = test_dir / "data"
@@ -108,7 +108,7 @@ def create_ccp_points():
         head_units="kJ/kg",
     )
     new_fluid = {"co2": 0.7, "n2": 0.3}
-    new_suc = State.define(p=Q_(10, "bar"), T=Q_(40, "degC"), fluid=new_fluid)
+    new_suc = State(p=Q_(10, "bar"), T=Q_(40, "degC"), fluid=new_fluid)
     imp_conv = Impeller.convert_from(imp_fd, suc=new_suc, find="speed")
 
 
