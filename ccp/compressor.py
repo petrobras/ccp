@@ -236,10 +236,11 @@ class StraightThrough(Impeller):
             )
 
             point = compressor.point(flow_m=self.guarantee_point.flow_m, speed=x)
-            return point.disch.p().m - self.guarantee_point.disch.p().m
+            # add 1 pascal to guarantee that discharge pressure is higher
+            return point.disch.p().m - (self.guarantee_point.disch.p().m + 1)
 
         new_speed = newton(calculate_disch_pressure_delta, self.speed.m)
-        self.__init__(
+        return self.__class__(
             guarantee_point=self.guarantee_point,
             test_points=self.test_points,
             speed=new_speed,
@@ -860,12 +861,13 @@ class BackToBack(Impeller):
             point = compressor.point_sec2(
                 flow_m=self.guarantee_point_sec2.flow_m, speed=x
             )
-            delta_p = point.disch.p().m - self.guarantee_point_sec2.disch.p().m
+            # add 1 pascal to guarantee that discharge pressure is higher
+            delta_p = point.disch.p().m - (self.guarantee_point_sec2.disch.p().m + 1)
             return delta_p
 
         new_speed = newton(calculate_disch_pressure_delta, self.speed.m)
 
-        self.__init__(
+        return self.__class__(
             guarantee_point_sec1=self.guarantee_point_sec1,
             guarantee_point_sec2=self.guarantee_point_sec2,
             test_points_sec1=self.test_points_sec1,
