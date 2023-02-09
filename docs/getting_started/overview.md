@@ -52,6 +52,7 @@ imp = ccp.Impeller([point0, point1])
 
 # Get results from the Impeller with methods such as
 imp.head_plot()
+imp.disch.T_plot()
 ```
 You can get more details by reading the {ref}`Tutorial`.
 
