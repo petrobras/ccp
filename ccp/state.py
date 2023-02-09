@@ -521,7 +521,7 @@ class State(CP.AbstractState):
 
     @staticmethod
     def _rebuild(cls, kwargs):
-        return cls.define(**kwargs)
+        return cls(**kwargs)
 
     @classmethod
     @check_units
