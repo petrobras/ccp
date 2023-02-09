@@ -51,7 +51,7 @@ from pathlib import Path
 
 data_dir = Path(...)
 
-suc = ccp.State.define(
+suc = ccp.State(
     p=Q_(4.08, "bar"),
     T=Q_(33.6, "degC"),
     fluid={

@@ -23,9 +23,9 @@ fluid = {
 
 # Define suction and discharge states:
 
-suc0 = ccp.State.define(fluid=fluid, p=ps, T=Ts)
-disch0 = ccp.State.define(fluid=fluid, p=Q_(7.255, 'bar'), T=391.1)
-disch1 = ccp.State.define(fluid=fluid, p=Q_(6.754, 'bar'), T=382.1)
+suc0 = ccp.State(fluid=fluid, p=ps, T=Ts)
+disch0 = ccp.State(fluid=fluid, p=Q_(7.255, 'bar'), T=391.1)
+disch1 = ccp.State(fluid=fluid, p=Q_(6.754, 'bar'), T=382.1)
 
 # Create performance point(s):
 
@@ -52,7 +52,6 @@ imp = ccp.Impeller([point0, point1])
 
 # Get results from the Impeller with methods such as
 imp.head_plot()
-imp.disch.T.plot()
 ```
 You can get more details by reading the {ref}`Tutorial`.
 
