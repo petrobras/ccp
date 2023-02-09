@@ -11,7 +11,7 @@ data_dir = test_dir / "data"
 
 @pytest.fixture
 def impeller_lp_sec1_from_csv():
-    suc = ccp.State.define(
+    suc = ccp.State(
         p=Q_(4.08, "bar"),
         T=Q_(33.6, "degC"),
         fluid={

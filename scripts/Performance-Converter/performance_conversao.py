@@ -72,7 +72,7 @@ if __name__ == '__main__':
                 n_sheet['I8'].value = 'Erro! %molar!'
                 n_sheet['I9'].value = 'Reinicie o Script!'
         try:
-            suc = ccp.State.define(p=p, T=T, fluid=fluid)
+            suc = ccp.State(p=p, T=T, fluid=fluid)
         except ValueError as e:
             if o_sheet_template:
                 sheet['K15'].value = 'Composição do Gás!'
@@ -894,7 +894,7 @@ if __name__ == '__main__':
                 if gas == 'Original':
                     fluid = disch_normal_o.fluid
                 try:
-                    State_FO = ccp.State.define(fluid=fluid, p=P1, T=T1)
+                    State_FO = ccp.State(fluid=fluid, p=P1, T=T1)
                 except ValueError:
                     CF_sheet['O7'].value = 'Composição do Gás!'
                     CF_sheet['O8'].value = 'Reinicie o Script!'
@@ -953,7 +953,7 @@ if __name__ == '__main__':
                         disch_normal.molar_mass() * P_normal)
                 CF_sheet[i, 10].value = flow_normal.to(Units[8]).magnitude
 
-                flow_rate = qm / ccp.State.define(p=P1, T=T1, fluid=fluid).rho()
+                flow_rate = qm / ccp.State(p=P1, T=T1, fluid=fluid).rho()
                 CF_sheet[i, 11].value = flow_rate.to(Units[9]).magnitude
                 i += 1
                 data = np.array(CF_sheet[i, 2:9].value)
@@ -1023,7 +1023,7 @@ if __name__ == '__main__':
                         fluid = disch_normal_o.fluid
                         disch_normal = disch_normal_o
                     try:
-                        disch_normal = ccp.State.define(p=Q_(1, 'atm'), T=Q_(0, 'degC'), fluid=fluid)
+                        disch_normal = ccp.State(p=Q_(1, 'atm'), T=Q_(0, 'degC'), fluid=fluid)
                     except ValueError:
                         t_sheet['B31'].value = 'Composição do Gás!'
                         t_sheet['B32'].value = 'Reinicie o Script!'
@@ -1043,8 +1043,8 @@ if __name__ == '__main__':
                         t_sheet.cells(20, 5 + i).value = flow_m.to(t_sheet.cells(20, 4).value).magnitude
 
                     speed_T = Q_(t_sheet.cells(12, 5 + i).value, t_sheet.cells(12, 4).value)
-                    suc_T = ccp.State.define(p=Ps_T, T=Ts_T, fluid=fluid)
-                    disch_T = ccp.State.define(p=Pd_T, T=Td_T, fluid=fluid)
+                    suc_T = ccp.State(p=Ps_T, T=Ts_T, fluid=fluid)
+                    disch_T = ccp.State(p=Pd_T, T=Td_T, fluid=fluid)
 
                     P_test.append(ccp.Point(speed=speed_T, flow_m=flow_m, suc=suc_T, disch=disch_T, b=b, D=D))
 

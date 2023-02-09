@@ -12,13 +12,13 @@ skip = False  # skip slow tests
 @pytest.fixture
 def suc_0():
     fluid = dict(CarbonDioxide=0.76064, Nitrogen=0.23581, Oxygen=0.00284)
-    return State.define(p=Q_(1.839, "bar"), T=291.5, fluid=fluid)
+    return State(p=Q_(1.839, "bar"), T=291.5, fluid=fluid)
 
 
 @pytest.fixture
 def disch_0():
     fluid = dict(CarbonDioxide=0.76064, Nitrogen=0.23581, Oxygen=0.00284)
-    return State.define(p=Q_(5.902, "bar"), T=405.7, fluid=fluid)
+    return State(p=Q_(5.902, "bar"), T=405.7, fluid=fluid)
 
 
 @pytest.fixture
@@ -334,7 +334,7 @@ def suc_1():
         h2s=0.00017,
         water=0.002,
     )
-    suc_1 = State.define(p=Q_(1.6995, "MPa"), T=311.55, fluid=fluid)
+    suc_1 = State(p=Q_(1.6995, "MPa"), T=311.55, fluid=fluid)
 
     return suc_1
 
@@ -355,7 +355,7 @@ def point_eff_flow_v_head_speed_suc_1(suc_1):
 
 
 def test_converted_from_find_speed(point_eff_flow_v_head_speed_suc_1):
-    suc_2 = State.define(
+    suc_2 = State(
         p=Q_(0.2, "MPa"), T=301.58, fluid={"n2": 1 - 1e-15, "co2": 1e-15}
     )
     point_converted_from_find_speed = Point.convert_from(
@@ -390,7 +390,7 @@ def test_converted_from_find_speed(point_eff_flow_v_head_speed_suc_1):
 
 
 def test_converted_from_find_volume_ratio(point_eff_flow_v_head_speed_suc_1):
-    suc_2 = State.define(
+    suc_2 = State(
         p=Q_(0.2, "MPa"), T=301.58, fluid={"n2": 1 - 1e-15, "co2": 1e-15}
     )
     point_converted_from_find_volume_ratio = Point.convert_from(
@@ -436,7 +436,7 @@ def test_converted_from_find_volume_ratio(point_eff_flow_v_head_speed_suc_1):
 def test_converted_from_find_volume_ratio_with_reynolds_correction(
     point_eff_flow_v_head_speed_suc_1,
 ):
-    suc_2 = State.define(
+    suc_2 = State(
         p=Q_(0.2, "MPa"), T=301.58, fluid={"n2": 1 - 1e-15, "co2": 1e-15}
     )
     point_converted_from_find_volume_ratio = Point.convert_from(
@@ -488,7 +488,7 @@ def test_converted_from_find_volume_ratio_with_reynolds_correction(
 
 
 def test_converted_from_find_volume_ratio_mach_plot(point_eff_flow_v_head_speed_suc_1):
-    suc_2 = State.define(
+    suc_2 = State(
         p=Q_(0.2, "MPa"), T=301.58, fluid={"n2": 1 - 1e-15, "co2": 1e-15}
     )
     point_converted_from_find_volume_ratio = Point.convert_from(
@@ -504,7 +504,7 @@ def test_converted_from_find_volume_ratio_mach_plot(point_eff_flow_v_head_speed_
 def test_converted_from_find_volume_ratio_reynolds_plot(
     point_eff_flow_v_head_speed_suc_1,
 ):
-    suc_2 = State.define(
+    suc_2 = State(
         p=Q_(0.2, "MPa"), T=301.58, fluid={"n2": 1 - 1e-15, "co2": 1e-15}
     )
     point_converted_from_find_volume_ratio = Point.convert_from(
@@ -541,10 +541,10 @@ def test_global_polytropic_method(suc_0, disch_0):
 
 
 def test_case_sc_at():
-    suc = State.define(
+    suc = State(
         p=Q_("5516000 Pa"), T=Q_("311 K"), fluid={"CO2": 0.70000, "METHANE": 0.30000}
     )
-    disch = State.define(
+    disch = State(
         p=Q_("16547000 Pa"), T=Q_("416 K"), fluid={"CO2": 0.70000, "METHANE": 0.30000}
     )
     assert_allclose(eff_pol_huntington(suc, disch), 0.818206, rtol=1e-6)
@@ -557,7 +557,7 @@ def test_point_casing_heat_loss():
         speed=Q_(7894, "RPM"),
         b=Q_(28.5, "mm"),
         D=Q_(365, "mm"),
-        suc=State.define(
+        suc=State(
             p=Q_(1.826, "bar"),
             T=Q_(296.7, "degK"),
             fluid={
@@ -567,7 +567,7 @@ def test_point_casing_heat_loss():
                 "oxygen": 0.0003,
             },
         ),
-        disch=State.define(
+        disch=State(
             p=Q_(6.142, "bar"),
             T=Q_(392.1, "degK"),
             fluid={
@@ -587,17 +587,17 @@ def test_point_casing_heat_loss():
 
 
 def test_ptc10_c6_sample_calculation():
-    suc_sp = ccp.State.define(
+    suc_sp = ccp.State(
         p=Q_(200, "psi"),
         T=Q_(115, "degF"),
         fluid={"methane": 20, "ethane": 25, "propane": 50, "n-butane": 5},
     )
-    suc_t = ccp.State.define(
+    suc_t = ccp.State(
         p=Q_(20, "psi"),
         T=Q_(100, "degF"),
         fluid={"r134a": 1},
     )
-    disch_t = ccp.State.define(
+    disch_t = ccp.State(
         p=Q_(67.5, "psi"),
         T=Q_(187.4, "degF"),
         fluid={"r134a": 1},

@@ -24,9 +24,9 @@ def points0():
         npentane=0.0009,
         nhexane=0.0007,
     )
-    suc = State.define(p=Q_(62.7, "bar"), T=Q_(31.2, "degC"), fluid=fluid)
-    disch = State.define(p=Q_(76.82, "bar"), T=Q_(48.2, "degC"), fluid=fluid)
-    disch1 = State.define(p=Q_(76.0, "bar"), T=Q_(48.0, "degC"), fluid=fluid)
+    suc = State(p=Q_(62.7, "bar"), T=Q_(31.2, "degC"), fluid=fluid)
+    disch = State(p=Q_(76.82, "bar"), T=Q_(48.2, "degC"), fluid=fluid)
+    disch1 = State(p=Q_(76.0, "bar"), T=Q_(48.0, "degC"), fluid=fluid)
     p0 = Point(
         suc=suc,
         disch=disch,
@@ -69,7 +69,7 @@ def imp1():
         h2s=0.00017,
         water=0.002,
     )
-    suc = State.define(p=Q_(1.6995, "MPa"), T=311.55, fluid=fluid)
+    suc = State(p=Q_(1.6995, "MPa"), T=311.55, fluid=fluid)
 
     p0 = Point(
         suc=suc,
@@ -96,7 +96,7 @@ def imp1():
 
 
 def test_impeller_new_suction(imp1):
-    new_suc = State.define(
+    new_suc = State(
         p=Q_(0.2, "MPa"), T=301.58, fluid={"n2": 1 - 1e-15, "co2": 1e-15}
     )
     imp2 = Impeller.convert_from(imp1, suc=new_suc, find="speed")
@@ -115,7 +115,7 @@ def test_impeller_new_suction(imp1):
 def imp2():
     points = [
         Point(
-            suc=State.define(p=Q_("100663 Pa"), T=Q_("305 K"), fluid={"AIR": 1.00000}),
+            suc=State(p=Q_("100663 Pa"), T=Q_("305 K"), fluid={"AIR": 1.00000}),
             speed=Q_("1263 rad/s"),
             flow_v=Q_("1.15 m³/s"),
             head=Q_("147634 J/kg"),
@@ -124,7 +124,7 @@ def imp2():
             D=0.32560,
         ),
         Point(
-            suc=State.define(p=Q_("100663 Pa"), T=Q_("305 K"), fluid={"AIR": 1.00000}),
+            suc=State(p=Q_("100663 Pa"), T=Q_("305 K"), fluid={"AIR": 1.00000}),
             speed=Q_("1263 rad/s"),
             flow_v=Q_("1.26 m³/s"),
             head=Q_("144664 J/kg"),
@@ -133,7 +133,7 @@ def imp2():
             D=0.32560,
         ),
         Point(
-            suc=State.define(p=Q_("100663 Pa"), T=Q_("305 K"), fluid={"AIR": 1.00000}),
+            suc=State(p=Q_("100663 Pa"), T=Q_("305 K"), fluid={"AIR": 1.00000}),
             speed=Q_("1263 rad/s"),
             flow_v=Q_("1.36 m³/s"),
             head=Q_("139945 J/kg"),
@@ -142,7 +142,7 @@ def imp2():
             D=0.32560,
         ),
         Point(
-            suc=State.define(p=Q_("100663 Pa"), T=Q_("305 K"), fluid={"AIR": 1.00000}),
+            suc=State(p=Q_("100663 Pa"), T=Q_("305 K"), fluid={"AIR": 1.00000}),
             speed=Q_("1337 rad/s"),
             flow_v=Q_("1.22 m³/s"),
             head=Q_("166686 J/kg"),
@@ -151,7 +151,7 @@ def imp2():
             D=0.32560,
         ),
         Point(
-            suc=State.define(p=Q_("100663 Pa"), T=Q_("305 K"), fluid={"AIR": 1.00000}),
+            suc=State(p=Q_("100663 Pa"), T=Q_("305 K"), fluid={"AIR": 1.00000}),
             speed=Q_("1337 rad/s"),
             flow_v=Q_("1.35 m³/s"),
             head=Q_("163620 J/kg"),
@@ -160,7 +160,7 @@ def imp2():
             D=0.32560,
         ),
         Point(
-            suc=State.define(p=Q_("100663 Pa"), T=Q_("305 K"), fluid={"AIR": 1.00000}),
+            suc=State(p=Q_("100663 Pa"), T=Q_("305 K"), fluid={"AIR": 1.00000}),
             speed=Q_("1337 rad/s"),
             flow_v=Q_("1.48 m³/s"),
             head=Q_("158536 J/kg"),
@@ -187,7 +187,7 @@ def test_impeller_disch_state(imp2):
 
 
 def test_impeller2_new_suction(imp2):
-    new_suc = State.define(
+    new_suc = State(
         p=Q_(0.2, "MPa"), T=301.58, fluid={"n2": 1 - 1e-15, "co2": 1e-15}
     )
     imp2_new = Impeller.convert_from(imp2, suc=new_suc, find="speed")
@@ -220,7 +220,7 @@ def imp3():
         pentane=0.03,
         hexane=0.01,
     )
-    suc_fd = State.define(p=Q_(3876, "kPa"), T=Q_(11, "degC"), fluid=composition_fd)
+    suc_fd = State(p=Q_(3876, "kPa"), T=Q_(11, "degC"), fluid=composition_fd)
 
     test_dir = Path(__file__).parent
     curve_path = test_dir / "data"
@@ -252,7 +252,7 @@ def test_impeller_point(imp3):
 
 
 def test_conversion(imp3):
-    new_suc = ccp.State.define(p=Q_(2000, "kPa"), T=300, fluid={"co2": 1})
+    new_suc = ccp.State(p=Q_(2000, "kPa"), T=300, fluid={"co2": 1})
     new_imp3 = ccp.Impeller.convert_from(imp3, suc=new_suc)
 
     # fmt: off
@@ -554,7 +554,7 @@ def test_save_load():
         pentane=0.03,
         hexane=0.01,
     )
-    suc_fd = State.define(p=Q_(3876, "kPa"), T=Q_(11, "degC"), fluid=composition_fd)
+    suc_fd = State(p=Q_(3876, "kPa"), T=Q_(11, "degC"), fluid=composition_fd)
 
     test_dir = Path(__file__).parent
     curve_path = test_dir / "data"
@@ -762,7 +762,7 @@ def test_load_from_dict_isis():
         pentane=0.03,
         hexane=0.01,
     )
-    suc_fd = State.define(p=Q_(3876, "kPa"), T=Q_(11, "degC"), fluid=composition_fd)
+    suc_fd = State(p=Q_(3876, "kPa"), T=Q_(11, "degC"), fluid=composition_fd)
 
     imp = ccp.Impeller.load_from_dict_isis(
         suc=suc_fd,
@@ -871,7 +871,7 @@ def test_interpolation_warning():
     fluid = dict(
         n2=1,
     )
-    suc = State.define(p=Q_(62.7, "bar"), T=Q_(31.2, "degC"), fluid=fluid)
+    suc = State(p=Q_(62.7, "bar"), T=Q_(31.2, "degC"), fluid=fluid)
 
     with pytest.warns(UserWarning) as record:
         ccp.Impeller.load_from_dict(
@@ -892,7 +892,7 @@ def test_interpolation_warning():
         pentane=0.03,
         hexane=0.01,
     )
-    suc_fd = State.define(p=Q_(3876, "kPa"), T=Q_(11, "degC"), fluid=composition_fd)
+    suc_fd = State(p=Q_(3876, "kPa"), T=Q_(11, "degC"), fluid=composition_fd)
 
 
 def test_univariate_spline():
@@ -912,7 +912,7 @@ def test_univariate_spline():
         pentane=0.03,
         hexane=0.01,
     )
-    suc_fd = State.define(p=Q_(3876, "kPa"), T=Q_(11, "degC"), fluid=composition_fd)
+    suc_fd = State(p=Q_(3876, "kPa"), T=Q_(11, "degC"), fluid=composition_fd)
     imp3 = Impeller.load_from_engauge_csv(
         suc=suc_fd,
         curve_name=curve_name,
