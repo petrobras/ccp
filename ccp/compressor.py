@@ -165,9 +165,11 @@ class StraightThrough(Impeller):
                     speed=point.speed,
                     b=point.b,
                     D=point.D,
+                    surface_roughness=point.surface_roughness,
                     casing_area=point.casing_area,
                     casing_temperature=point.casing_temperature,
                     ambient_temperature=point.ambient_temperature,
+                    convection_constant=point.convection_constant,
                 )
             )
 
@@ -219,6 +221,11 @@ class StraightThrough(Impeller):
                     speed=speed,
                     b=guarantee_point.b,
                     D=guarantee_point.D,
+                    surface_roughness=guarantee_point.surface_roughness,
+                    casing_area=guarantee_point.casing_area,
+                    casing_temperature=guarantee_point.casing_temperature,
+                    ambient_temperature=guarantee_point.ambient_temperature,
+                    convection_constant=guarantee_point.convection_constant,
                 )
             )
 
@@ -510,6 +517,8 @@ class BackToBack(Impeller):
                     casing_area=point.casing_area,
                     casing_temperature=point.casing_temperature,
                     ambient_temperature=point.ambient_temperature,
+                    surface_roughness=point.surface_roughness,
+                    convection_constant=point.convection_constant,
                 )
 
             # use calculated k_end_seal and k_div_wall to calculate seal mass flow
@@ -595,6 +604,8 @@ class BackToBack(Impeller):
                     casing_area=point.casing_area,
                     casing_temperature=point.casing_temperature,
                     ambient_temperature=point.ambient_temperature,
+                    surface_roughness=point.surface_roughness,
+                    convection_constant=point.convection_constant,
                 )
 
         self.k_end_seal_mean = k_end_seal_mean
@@ -619,6 +630,8 @@ class BackToBack(Impeller):
                 casing_area=point_f.casing_area,
                 casing_temperature=point_f.casing_temperature,
                 ambient_temperature=point_f.ambient_temperature,
+                surface_roughness=point_f.surface_roughness,
+                convection_constant=point_f.convection_constant,
             )
             test_points_sec2_rotor[i] = point_r
 

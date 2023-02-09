@@ -5,7 +5,7 @@ DEBUG_MODE = False
 
 if filename == "test_1sec":  # if the script is run from the test file
     filename = "Beta_1section.xlsm"
-elif DEBUG_MODE:
+if DEBUG_MODE:
     filename = "Beta_1section.xlsm"
 
 import sys
