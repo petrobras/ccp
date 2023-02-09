@@ -375,6 +375,13 @@ if __name__ == "__main__" or __name__ == "test_script":
             reynolds_correction=reynolds_correction,
         )
 
+        # calculate speed to match pressure
+        if AT_sheet["H36"].value is not None:
+            AT_sheet["H36"].value = None
+            imp_conv = imp_conv.calculate_speed_to_match_discharge_pressure()
+            FD_sheet["T38"].value = imp_conv.speed.to("RPM").m
+            speed_FD = Q_(FD_sheet.range("T38").value, "rpm")
+
         QQ = np.array(Dados_AT[:, 1].value)
         Id = list(np.argsort(QQ))
         Daux = Dados_AT.value
@@ -457,7 +464,7 @@ if __name__ == "__main__" or __name__ == "test_script":
             Q_ratio = [Q_ratio]
 
         # Add guarantee point
-        point_converted_sp = imp_conv.point(flow_m=P_FD.flow_m, speed=P_FD.speed)
+        point_converted_sp = imp_conv.point(flow_m=P_FD.flow_m, speed=speed_FD)
         guarantee_results = AT_sheet["G32:AB32"]
         guarantee_results[0].value = point_converted_sp.volume_ratio.m
         guarantee_results[1].value = (

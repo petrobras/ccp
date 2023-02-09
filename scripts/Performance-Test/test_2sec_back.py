@@ -716,6 +716,13 @@ if __name__ == "__main__" or __name__ == "test_script":
             reynolds_correction=reynolds_correction,
         )
 
+        # calculate speed to match discharge pressure
+        if AT_sheet["Z14"].value is not None:
+            AT_sheet["Z14"].value = None
+            imp_conv = imp_conv.calculate_speed_to_match_discharge_pressure()
+            FD_sheet["T38"].value = imp_conv.speed.to("RPM").m
+            speed_FD = Q_(FD_sheet.range("T38").value, "rpm")
+
         P_AT = imp_conv.points_flange_t_sec1
         P2_AT = imp_conv.points_flange_t_sec2
 
