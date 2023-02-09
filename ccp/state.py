@@ -17,13 +17,8 @@ from .config.units import check_units
 class State(CP.AbstractState):
     """A thermodynamic state.
 
-    .. note::
-        To create a state use State.define(...)
-
-
     This class is inherited from CP.AbstractState.
     Some extra functionality has been added.
-
 
     Creates a state from fluid composition and two properties.
     Properties can be floats (SI units are considered) or pint quantities.
@@ -40,16 +35,16 @@ class State(CP.AbstractState):
         Entropy
     rho : float, pint.Quantity
         Specific mass
-
     fluid : dict
         Dictionary with constituent and composition.
-        (e.g.: ({'Oxygen': 0.2096, 'Nitrogen': 0.7812, 'Argon': 0.0092})
-    EOS : string
-        String with HEOS or REFPROP
+        (e.g.: fluid={'Oxygen': 0.2096, 'Nitrogen': 0.7812, 'Argon': 0.0092})
+    EOS : str, optional
+        String with REFPROP, HEOS, PR or SRK.
+        Default is set in ccp.config.EOS
 
     Returns
     -------
-    state : State object
+    state : ccp.State
 
     Examples
     --------
@@ -387,7 +382,7 @@ class State(CP.AbstractState):
             viscosity = Q_(super().viscosity(), "pascal second")
         except ValueError:
             # handle error for cubic eos such as PR, SRK etc.
-            dummy_state = self.define(
+            dummy_state = self.__class__(
                 p=self.p(), T=self.T(), fluid=self.fluid, EOS="REFPROP"
             )
             viscosity = Q_(super(State, dummy_state).viscosity(), "pascal second")
@@ -556,13 +551,13 @@ class State(CP.AbstractState):
 
         fluid : dict
             Dictionary with constituent and composition.
-            (e.g.: ({'Oxygen': 0.2096, 'Nitrogen': 0.7812, 'Argon': 0.0092})
-        EOS : string
-            String with HEOS or REFPROP
+            (e.g.: fluid={'Oxygen': 0.2096, 'Nitrogen': 0.7812, 'Argon': 0.0092})
+            String with REFPROP, HEOS, PR or SRK.
+            Default is set in ccp.config.EOS
 
         Returns
         -------
-        state : State object
+        state : ccp.State
 
         Examples
         --------
@@ -603,7 +598,7 @@ class State(CP.AbstractState):
         p : float, pint.Quantity
             Pressure (Pa).
         T : float, pint.Quantity
-            Temperature (degk).
+            Temperature (degK).
         rho : float, pint.Quantity
             Specific mass (kg/m**3).
         h : float, pint.Quantity
