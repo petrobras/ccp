@@ -56,24 +56,24 @@ class State(CP.AbstractState):
     >>> import ccp
     >>> Q_ = ccp.Q_
     >>> fluid = {'Oxygen': 0.2096, 'Nitrogen': 0.7812, 'Argon': 0.0092}
-    >>> s = ccp.State.define(p=101008, T=273, fluid=fluid)
+    >>> s = ccp.State(p=101008, T=273, fluid=fluid)
     >>> s.rho()
     <Quantity(1.28939426, 'kilogram / meter ** 3')>
     >>> # Using pint quantities
-    >>> s = ccp.State.define(fluid=fluid, p=Q_(1, 'atm'), T=Q_(0, 'degC'))
+    >>> s = ccp.State(fluid=fluid, p=Q_(1, 'atm'), T=Q_(0, 'degC'))
     >>> s.h()
     <Quantity(273291.7, 'joule / kilogram')>
     """
+
     def __new__(cls, *args, **kwargs):
-        fluid = kwargs["fluid"]
-        EOS = kwargs["EOS"]
+        fluid = kwargs.get("fluid")
         if fluid is None:
             raise TypeError("A fluid is required. Provide as fluid=dict(...)")
-
+        EOS = kwargs.get("EOS")
         if EOS is None:
             EOS = ccp.config.EOS
 
-        _fluid = "&".join(fluid.keys())
+        _fluid = "&".join([get_name(name) for name in fluid.keys()])
 
         try:
             state = super().__new__(cls, EOS, _fluid)
@@ -88,6 +88,7 @@ class State(CP.AbstractState):
                     error_msg += f"\nCould not create state with {fluid1} + {fluid2}"
             raise ValueError(error_msg)
         return state
+
     @check_units
     def __init__(
         self,
@@ -102,7 +103,6 @@ class State(CP.AbstractState):
         # no call to super(). see :
         # http://stackoverflow.com/questions/18260095/
         self.EOS = EOS
-        self.fluid = fluid
 
         constituents = []
         molar_fractions = []
@@ -113,9 +113,11 @@ class State(CP.AbstractState):
             molar_fractions.append(v)
             # create an adequate fluid string to cp.AbstractState
         _fluid = "&".join(constituents)
+        self._fluid = _fluid
 
         normalize_mix(molar_fractions)
         self.set_mole_fractions(molar_fractions)
+        self.fluid = dict(zip(constituents, molar_fractions))
         self.init_args = dict(p=p, T=T, h=h, s=s, rho=rho)
         self.setup_args = copy(self.init_args)
         if isinstance(fluid, str) and len(self.fluid) == 1:
@@ -139,7 +141,7 @@ class State(CP.AbstractState):
         fluid_repr = [f'"{k}": {fluid_dict[k]:.5f}' for k in sorted_fluid_keys]
         fluid_repr = "fluid={" + ", ".join(fluid_repr) + "}"
 
-        return "State.define(" + args_repr + ", " + fluid_repr + ")"
+        return "State(" + args_repr + ", " + fluid_repr + ")"
 
     def __eq__(self, other):
         if isinstance(other, self.__class__):
@@ -575,6 +577,10 @@ class State(CP.AbstractState):
         >>> s.h()
         <Quantity(273291.7, 'joule / kilogram')>
         """
+        warn(
+            "Method ccp.State.define is deprecated. Use ccp.State() instead.",
+            DeprecationWarning,
+        )
         return cls(p=p, T=T, h=h, s=s, rho=rho, fluid=fluid, EOS=EOS, **kwargs)
 
     @check_units
