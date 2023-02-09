@@ -64,12 +64,70 @@ class State(CP.AbstractState):
     >>> s.h()
     <Quantity(273291.7, 'joule / kilogram')>
     """
+    def __new__(cls, *args, **kwargs):
+        fluid = kwargs["fluid"]
+        EOS = kwargs["EOS"]
+        if fluid is None:
+            raise TypeError("A fluid is required. Provide as fluid=dict(...)")
 
-    def __init__(self, EOS, _fluid):
+        if EOS is None:
+            EOS = ccp.config.EOS
+
+        _fluid = "&".join(fluid.keys())
+
+        try:
+            state = super().__new__(cls, EOS, _fluid)
+        except ValueError:
+            error_msg = ""
+            constituents = list(fluid.keys())
+            for fluid1, fluid2 in combinations(constituents, 2):
+                try:
+                    fluid_pair = f"{fluid1}&{fluid2}"
+                    cls(EOS, fluid_pair)
+                except ValueError:
+                    error_msg += f"\nCould not create state with {fluid1} + {fluid2}"
+            raise ValueError(error_msg)
+        return state
+    @check_units
+    def __init__(
+        self,
+        p=None,
+        T=None,
+        h=None,
+        s=None,
+        rho=None,
+        fluid=None,
+        EOS=None,
+    ):
         # no call to super(). see :
         # http://stackoverflow.com/questions/18260095/
         self.EOS = EOS
-        self._fluid = _fluid
+        self.fluid = fluid
+
+        constituents = []
+        molar_fractions = []
+
+        for k, v in fluid.items():
+            k = get_name(k)
+            constituents.append(k)
+            molar_fractions.append(v)
+            # create an adequate fluid string to cp.AbstractState
+        _fluid = "&".join(constituents)
+
+        normalize_mix(molar_fractions)
+        self.set_mole_fractions(molar_fractions)
+        self.init_args = dict(p=p, T=T, h=h, s=s, rho=rho)
+        self.setup_args = copy(self.init_args)
+        if isinstance(fluid, str) and len(self.fluid) == 1:
+            self.fluid[get_name(fluid)] = 1.0
+
+        if isinstance(fluid, dict):
+            if len(self.fluid) < len(fluid):
+                raise ValueError(
+                    "You might have repeated components in the fluid dictionary."
+                )
+
+        self.update(**self.setup_args)
 
     def __repr__(self):
         args = {k: v for k, v in self.init_args.items() if v is not None}
@@ -517,52 +575,7 @@ class State(CP.AbstractState):
         >>> s.h()
         <Quantity(273291.7, 'joule / kilogram')>
         """
-        if fluid is None:
-            raise TypeError("A fluid is required. Provide as fluid=dict(...)")
-
-        if EOS is None:
-            EOS = ccp.config.EOS
-
-        constituents = []
-        molar_fractions = []
-
-        for k, v in fluid.items():
-            k = get_name(k)
-            constituents.append(k)
-            molar_fractions.append(v)
-            # create an adequate fluid string to cp.AbstractState
-        _fluid = "&".join(constituents)
-
-        try:
-            state = cls(EOS, _fluid)
-        except ValueError:
-            error_msg = ""
-            for fluid1, fluid2 in combinations(constituents, 2):
-                try:
-                    fluid_pair = f"{fluid1}&{fluid2}"
-                    state = cls(EOS, fluid_pair)
-                except ValueError:
-                    error_msg += f"\nCould not create state with {fluid1} + {fluid2}"
-
-            raise ValueError(error_msg)
-
-        normalize_mix(molar_fractions)
-        state.set_mole_fractions(molar_fractions)
-        state.init_args = dict(p=p, T=T, h=h, s=s, rho=rho)
-        state.setup_args = copy(state.init_args)
-        state.fluid = state._fluid_dict()
-        if isinstance(fluid, str) and len(state.fluid) == 1:
-            state.fluid[get_name(fluid)] = 1.0
-
-        if isinstance(fluid, dict):
-            if len(state.fluid) < len(fluid):
-                raise ValueError(
-                    "You might have repeated components in the fluid dictionary."
-                )
-
-        state.update(**state.setup_args)
-
-        return state
+        return cls(p=p, T=T, h=h, s=s, rho=rho, fluid=fluid, EOS=EOS, **kwargs)
 
     @check_units
     def update(
