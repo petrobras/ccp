@@ -9,7 +9,6 @@ from ccp.config.units import check_units
 from ccp import Q_
 import numpy as np
 from scipy.optimize import newton
-from copy import deepcopy
 
 
 class Point1Sec(Point):
@@ -359,9 +358,15 @@ class PointFirstSection(Point):
         )
         self._args = args
         self._kwargs = kwargs
-        self.balance_line_flow_m = balance_line_flow_m
         self.seal_gas_flow_m = seal_gas_flow_m
         self.seal_gas_temperature = seal_gas_temperature
+
+        # keep the following original values used in instantiation
+        self._balance_line_flow_m = balance_line_flow_m
+        self._div_wall_flow_m = div_wall_flow_m
+        self._first_section_discharge_flow_m = first_section_discharge_flow_m
+
+        self.balance_line_flow_m = balance_line_flow_m
         self.first_section_discharge_flow_m = first_section_discharge_flow_m
         self.div_wall_flow_m = div_wall_flow_m
         self.end_seal_upstream_temperature = end_seal_upstream_temperature
@@ -395,27 +400,6 @@ class PointFirstSection(Point):
             p=self.div_wall_downstream_state.p(), h=self.div_wall_upstream_state.h()
         )
 
-    def __deepcopy__(self, memo):
-        return self.__class__(
-            *self._args,
-            **self._kwargs,
-            balance_line_flow_m=self.balance_line_flow_m,
-            seal_gas_flow_m=self.seal_gas_flow_m,
-            seal_gas_temperature=self.seal_gas_temperature,
-            first_section_discharge_flow_m=self.first_section_discharge_flow_m,
-            div_wall_flow_m=self.div_wall_flow_m,
-            end_seal_upstream_temperature=self.end_seal_upstream_temperature,
-            end_seal_upstream_pressure=self.end_seal_upstream_pressure,
-            div_wall_upstream_temperature=self.div_wall_upstream_temperature,
-            div_wall_upstream_pressure=self.div_wall_upstream_pressure,
-            oil_flow_journal_bearing_de=self.oil_flow_journal_bearing_de,
-            oil_flow_journal_bearing_nde=self.oil_flow_journal_bearing_nde,
-            oil_flow_thrust_bearing_nde=self.oil_flow_thrust_bearing_nde,
-            oil_inlet_temperature=self.oil_inlet_temperature,
-            oil_outlet_temperature_de=self.oil_outlet_temperature_de,
-            oil_outlet_temperature_nde=self.oil_outlet_temperature_nde,
-        )
-
 
 class PointSecondSection(Point1Sec):
     """Point for second section"""
@@ -438,12 +422,6 @@ class BackToBack(Impeller):
     ):
         self.guarantee_point_sec1 = guarantee_point_sec1
         self.guarantee_point_sec2 = guarantee_point_sec2
-        self._test_points_sec1_original = [
-            deepcopy(point) for point in test_points_sec1
-        ]
-        self._test_points_sec2_original = [
-            deepcopy(point) for point in test_points_sec2
-        ]
         self.test_points_sec1 = test_points_sec1
         self.test_points_sec2 = test_points_sec2
         if speed is None:
@@ -470,10 +448,14 @@ class BackToBack(Impeller):
                     point.flow_m + point.div_wall_flow_m
                 )
         for i, point in enumerate(test_points_sec1):
-            if point.first_section_discharge_flow_m:
-                md1f_t = point.first_section_discharge_flow_m
+            # Here we check for _first_section_discharge_flow_m because we want to use the
+            # value given in the test point, not the calculated value.
+            # This way we can guarantee that everytime we create the compressor, the same
+            # values are used, and we also get the same results.
+            if point._first_section_discharge_flow_m:
+                md1f_t = point._first_section_discharge_flow_m
                 ms1f_t = point.flow_m
-                mbal_t = point.balance_line_flow_m
+                mbal_t = point._balance_line_flow_m
                 mseal_t = point.seal_gas_flow_m
                 mend_t = mbal_t - (0.95 * mseal_t) / 2
                 point.end_seal_flow_m = mend_t
@@ -549,7 +531,7 @@ class BackToBack(Impeller):
                 )
 
         for i, point in enumerate(test_points_sec1):
-            if not point.first_section_discharge_flow_m:
+            if not point._first_section_discharge_flow_m:
 
                 self.k_end_seal[i] = k_end_seal_mean
                 end_seal_flow_m = flow_m_seal(
@@ -865,15 +847,12 @@ class BackToBack(Impeller):
 
     def calculate_speed_to_match_discharge_pressure(self):
         """Calculate the speed to match the discharge pressure of the guarantee point."""
-        test_points_sec1 = deepcopy(self._test_points_sec1_original)
-        test_points_sec2 = deepcopy(self._test_points_sec2_original)
-
         def calculate_disch_pressure_delta(x):
             compressor = BackToBack(
                 guarantee_point_sec1=self.guarantee_point_sec1,
                 guarantee_point_sec2=self.guarantee_point_sec2,
-                test_points_sec1=test_points_sec1,
-                test_points_sec2=test_points_sec2,
+                test_points_sec1=self.test_points_sec1,
+                test_points_sec2=self.test_points_sec2,
                 speed=x,
                 reynolds_correction=self.reynolds_correction,
             )
@@ -889,8 +868,8 @@ class BackToBack(Impeller):
         self.__init__(
             guarantee_point_sec1=self.guarantee_point_sec1,
             guarantee_point_sec2=self.guarantee_point_sec2,
-            test_points_sec1=test_points_sec1,
-            test_points_sec2=test_points_sec2,
+            test_points_sec1=self.test_points_sec1,
+            test_points_sec2=self.test_points_sec2,
             speed=new_speed,
             reynolds_correction=self.reynolds_correction,
         )

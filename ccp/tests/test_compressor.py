@@ -1025,7 +1025,6 @@ def test_back_to_back_with_reynolds_correction(back_to_back):
     assert_allclose(p0r.power, 3375713.294289, 1e-4)
 
 
-@pytest.mark.skip("Not converging for now")
 def test_back_to_back_calculate_speed(back_to_back):
     back_to_back = BackToBack(**back_to_back, reynolds_correction=True)
     back_to_back.calculate_speed_to_match_discharge_pressure()
