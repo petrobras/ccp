@@ -39,6 +39,43 @@ def test_state_define():
 
 
 def test_eos():
+    state = State(p=100000, T=300, fluid={"Methane": 1 - 1e-15, "Ethane": 1e-15})
+    assert state.p().units == "pascal"
+    assert state.T().units == "kelvin"
+    assert state.p().magnitude == 100000
+    assert state.T().magnitude == 300
+    assert_allclose(state.rhomass(), 0.6442542612980722, rtol=1e-7)
+
+    state = State(
+        p=100000, T=300, fluid={"Methane": 1 - 1e-15, "Ethane": 1e-15}, EOS="PR"
+    )
+    assert state.p().units == "pascal"
+    assert state.T().units == "kelvin"
+    assert state.p().magnitude == 100000
+    assert state.T().magnitude == 300
+    assert_allclose(state.rhomass(), 0.6445687063978816, rtol=1e-7)
+
+    state = State(
+        p=100000, T=300, fluid={"Methane": 1 - 1e-15, "Ethane": 1e-15}, EOS="SRK"
+    )
+    assert state.p().units == "pascal"
+    assert state.T().units == "kelvin"
+    assert state.p().magnitude == 100000
+    assert state.T().magnitude == 300
+    assert_allclose(state.rhomass(), 0.6442384800595821, rtol=1e-7)
+
+    state = State(
+        p=100000, T=300, fluid={"Methane": 1 - 1e-15, "Ethane": 1e-15}, EOS="HEOS"
+    )
+    assert state.p().units == "pascal"
+    assert state.T().units == "kelvin"
+    assert_allclose(state.p().magnitude, 100000)
+    assert state.T().magnitude == 300
+    assert state.rhomass() == 0.6442581578304425
+    assert_allclose(state.rhomass(), 0.6442581578304425, rtol=1e-7)
+
+
+def test_eos_config():
     ccp.config.EOS = "REFPROP"
     state = State(p=100000, T=300, fluid={"Methane": 1 - 1e-15, "Ethane": 1e-15})
     assert state.p().units == "pascal"
@@ -84,6 +121,22 @@ def test_new_binary_pairs():
         p=100000, T=300, fluid={"r1234ze": 0.6, "co2": 0.2, "n2": 0.1, "o2": 0.1}
     )
     assert_allclose(state.rho(), 3.373371, rtol=1e-6)
+
+
+def test_binary_pairs_error():
+    with pytest.raises(ValueError) as exc:
+        State(
+            p=227619.99999999997,
+            T=291.01,
+            fluid={
+                "R134A": 0.00017000170001701953,
+                "R1234ZEE": 0.30598305983059837,
+                "NITROGEN": 0.6800668006680066,
+                "OXYGEN": 0.01378013780137799,
+            },
+            EOS="HEOS",
+        )
+    assert "Could not create state with" in str(exc.value)
 
 
 def test_state_define_units():
