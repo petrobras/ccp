@@ -78,7 +78,7 @@ class State(CP.AbstractState):
             for fluid1, fluid2 in combinations(constituents, 2):
                 try:
                     fluid_pair = f"{fluid1}&{fluid2}"
-                    cls(EOS, fluid_pair)
+                    super().__new__(cls, EOS, fluid_pair)
                 except ValueError:
                     error_msg += f"\nCould not create state with {fluid1} + {fluid2}"
             raise ValueError(error_msg)
