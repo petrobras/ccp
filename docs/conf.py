@@ -23,7 +23,7 @@ import ccp
 
 # General information about the project.
 project = "ccp"
-copyright = "2021"
+copyright = "2023"
 author = "ccp devs"
 
 # The version info for the project you're documenting, acts as replacement for
