@@ -242,7 +242,7 @@ if __name__ == "__main__" or __name__ == "test_script":
 
         ### Reading and writing in the Actual Test Data Sheet
 
-        Dados_AT = AT_sheet["G7:Q16"]
+        Dados_AT = AT_sheet["G7:R16"]
 
         for i in range(10):
             if Dados_AT[i, 5].value == None:
@@ -257,10 +257,10 @@ if __name__ == "__main__" or __name__ == "test_script":
 
         for i in range(N):
 
-            speed_AT = Q_(Dados_AT[i, 10].value, AT_sheet.range("Q6").value)
+            speed_AT = Q_(Dados_AT[i, 11].value, AT_sheet.range("R6").value)
             N_ratio = speed_FD / speed_AT
 
-            gas = int(Dados_AT[i, 6].value)
+            gas = int(Dados_AT[i, 7].value)
 
             GasesT = TG_sheet.range(
                 TG_sheet.cells(5, 2 + 4 * (gas - 1)),
@@ -302,13 +302,8 @@ if __name__ == "__main__" or __name__ == "test_script":
             # Heat loss consideration - power and efficiency  correction
             if AT_sheet["C25"].value == "Yes":
                 Cas_Area = Q_(AT_sheet["D26"].value, "m**2")
-                if AT_sheet["D28"].value == None:
-                    Cas_Temperature = (sucAT.T() + dischAT.T()).to("kelvin") / 2
-                else:
-                    Cas_Temperature = Cas_Temperature = Q_(
-                        AT_sheet["D28"].value, "degC"
-                    ).to("kelvin")
-                T_amb = Q_(AT_sheet["D30"].value, "degC").to("kelvin")
+                T_amb = Q_(0, AT_sheet["M6"].value)
+                Cas_Temperature = Q_(Dados_AT[i, 6].value, AT_sheet["M6"].value)
                 heat_constant = Q_(AT_sheet["D32"].value, "W/m**2/kelvin")
 
             else:
@@ -327,20 +322,20 @@ if __name__ == "__main__" or __name__ == "test_script":
                 surface_roughness = Q_(AT_sheet["D24"].value, "inches")
 
             if BL_leak == "Yes":
-                if Dados_AT[i, 7].value == None:
-                    Dados_AT[i, 7].value = 0
-                balance_line_flow = Q_(Dados_AT[i, 7].value, AT_sheet.range("N6").value)
+                if Dados_AT[i, 8].value == None:
+                    Dados_AT[i, 8].value = 0
+                balance_line_flow = Q_(Dados_AT[i, 8].value, AT_sheet.range("O6").value)
             else:
                 balance_line_flow = Q_(0, "kg/s")
 
             if BF_leak == "Yes":
-                if Dados_AT[i, 8].value == None:
-                    Dados_AT[i, 8].value = 0
                 if Dados_AT[i, 9].value == None:
                     Dados_AT[i, 9].value = 0
-                seal_gas_flow = Q_(Dados_AT[i, 8].value, AT_sheet.range("O6").value)
+                if Dados_AT[i, 10].value == None:
+                    Dados_AT[i, 10].value = 0
+                seal_gas_flow = Q_(Dados_AT[i, 9].value, AT_sheet.range("P6").value)
                 seal_gas_temperature = Q_(
-                    Dados_AT[i, 9].value, AT_sheet.range("P6").value
+                    Dados_AT[i, 10].value, AT_sheet.range("Q6").value
                 ).to("kelvin")
             else:
                 seal_gas_flow = Q_(0, "kg/s")
