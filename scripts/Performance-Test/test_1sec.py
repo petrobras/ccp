@@ -5,7 +5,7 @@ DEBUG_MODE = False
 
 if filename == "test_1sec":  # if the script is run from the test file
     filename = "Beta_1section.xlsm"
-elif DEBUG_MODE:
+if DEBUG_MODE:
     filename = "Beta_1section.xlsm"
 
 import sys
@@ -109,7 +109,7 @@ if __name__ == "__main__" or __name__ == "test_script":
         GasesFD = FD_sheet.range("B69:B85").value
         mol_fracFD = FD_sheet.range("K69:K85").value
         fluid_FD = {GasesFD[i]: mol_fracFD[i] for i in range(len(GasesFD))}
-        sucFD = State.define(fluid=fluid_FD, p=Ps_FD, T=Ts_FD)
+        sucFD = State(fluid=fluid_FD, p=Ps_FD, T=Ts_FD)
 
         if V_test:
             flow_m_FD = flow_v_FD * sucFD.rho()
@@ -122,7 +122,7 @@ if __name__ == "__main__" or __name__ == "test_script":
             FD_sheet["AQ34"].value = "Inlet Volume Flow"
             FD_sheet["AT34"].value = "m³/h"
 
-        dischFD = State.define(fluid=fluid_FD, p=Pd_FD, T=Td_FD)
+        dischFD = State(fluid=fluid_FD, p=Pd_FD, T=Td_FD)
 
         P_FD = ccp.Point(
             speed=speed_FD, flow_m=flow_m_FD, suc=sucFD, disch=dischFD, b=b, D=D
@@ -242,7 +242,7 @@ if __name__ == "__main__" or __name__ == "test_script":
 
         ### Reading and writing in the Actual Test Data Sheet
 
-        Dados_AT = AT_sheet["G7:Q16"]
+        Dados_AT = AT_sheet["G7:R16"]
 
         for i in range(10):
             if Dados_AT[i, 5].value == None:
@@ -257,10 +257,10 @@ if __name__ == "__main__" or __name__ == "test_script":
 
         for i in range(N):
 
-            speed_AT = Q_(Dados_AT[i, 10].value, AT_sheet.range("Q6").value)
+            speed_AT = Q_(Dados_AT[i, 11].value, AT_sheet.range("R6").value)
             N_ratio = speed_FD / speed_AT
 
-            gas = int(Dados_AT[i, 6].value)
+            gas = int(Dados_AT[i, 7].value)
 
             GasesT = TG_sheet.range(
                 TG_sheet.cells(5, 2 + 4 * (gas - 1)),
@@ -289,8 +289,8 @@ if __name__ == "__main__" or __name__ == "test_script":
                 V_test = False
                 flow_m_AT = Q_(Dados_AT[i, 0].value, AT_sheet.range("G6").value)
 
-            sucAT = State.define(fluid=fluid_AT, p=Ps_AT, T=Ts_AT)
-            dischAT = State.define(fluid=fluid_AT, p=Pd_AT, T=Td_AT)
+            sucAT = State(fluid=fluid_AT, p=Ps_AT, T=Ts_AT)
+            dischAT = State(fluid=fluid_AT, p=Pd_AT, T=Td_AT)
 
             if V_test:
                 flow_m_AT = flow_v_AT * sucAT.rho()
@@ -302,13 +302,8 @@ if __name__ == "__main__" or __name__ == "test_script":
             # Heat loss consideration - power and efficiency  correction
             if AT_sheet["C25"].value == "Yes":
                 Cas_Area = Q_(AT_sheet["D26"].value, "m**2")
-                if AT_sheet["D28"].value == None:
-                    Cas_Temperature = (sucAT.T() + dischAT.T()).to("kelvin") / 2
-                else:
-                    Cas_Temperature = Cas_Temperature = Q_(
-                        AT_sheet["D28"].value, "degC"
-                    ).to("kelvin")
-                T_amb = Q_(AT_sheet["D30"].value, "degC").to("kelvin")
+                T_amb = Q_(0, AT_sheet["M6"].value)
+                Cas_Temperature = Q_(Dados_AT[i, 6].value, AT_sheet["M6"].value)
                 heat_constant = Q_(AT_sheet["D32"].value, "W/m**2/kelvin")
 
             else:
@@ -327,20 +322,20 @@ if __name__ == "__main__" or __name__ == "test_script":
                 surface_roughness = Q_(AT_sheet["D24"].value, "inches")
 
             if BL_leak == "Yes":
-                if Dados_AT[i, 7].value == None:
-                    Dados_AT[i, 7].value = 0
-                balance_line_flow = Q_(Dados_AT[i, 7].value, AT_sheet.range("N6").value)
+                if Dados_AT[i, 8].value == None:
+                    Dados_AT[i, 8].value = 0
+                balance_line_flow = Q_(Dados_AT[i, 8].value, AT_sheet.range("O6").value)
             else:
                 balance_line_flow = Q_(0, "kg/s")
 
             if BF_leak == "Yes":
-                if Dados_AT[i, 8].value == None:
-                    Dados_AT[i, 8].value = 0
                 if Dados_AT[i, 9].value == None:
                     Dados_AT[i, 9].value = 0
-                seal_gas_flow = Q_(Dados_AT[i, 8].value, AT_sheet.range("O6").value)
+                if Dados_AT[i, 10].value == None:
+                    Dados_AT[i, 10].value = 0
+                seal_gas_flow = Q_(Dados_AT[i, 9].value, AT_sheet.range("P6").value)
                 seal_gas_temperature = Q_(
-                    Dados_AT[i, 9].value, AT_sheet.range("P6").value
+                    Dados_AT[i, 10].value, AT_sheet.range("Q6").value
                 ).to("kelvin")
             else:
                 seal_gas_flow = Q_(0, "kg/s")
@@ -374,6 +369,13 @@ if __name__ == "__main__" or __name__ == "test_script":
             speed=speed_FD,
             reynolds_correction=reynolds_correction,
         )
+
+        # calculate speed to match pressure
+        if AT_sheet["H36"].value is not None:
+            AT_sheet["H36"].value = None
+            imp_conv = imp_conv.calculate_speed_to_match_discharge_pressure()
+            FD_sheet["T38"].value = imp_conv.speed.to("RPM").m
+            speed_FD = Q_(FD_sheet.range("T38").value, "rpm")
 
         QQ = np.array(Dados_AT[:, 1].value)
         Id = list(np.argsort(QQ))
@@ -457,7 +459,7 @@ if __name__ == "__main__" or __name__ == "test_script":
             Q_ratio = [Q_ratio]
 
         # Add guarantee point
-        point_converted_sp = imp_conv.point(flow_m=P_FD.flow_m, speed=P_FD.speed)
+        point_converted_sp = imp_conv.point(flow_m=P_FD.flow_m, speed=speed_FD)
         guarantee_results = AT_sheet["G32:AB32"]
         guarantee_results[0].value = point_converted_sp.volume_ratio.m
         guarantee_results[1].value = (
@@ -543,7 +545,7 @@ if __name__ == "__main__" or __name__ == "test_script":
 
         fluid_FD = {GasesFD[i]: mol_fracFD[i] for i in range(len(GasesFD))}
 
-        sucFD = State.define(fluid=fluid_FD, p=Ps_FD, T=Ts_FD)
+        sucFD = State(fluid=fluid_FD, p=Ps_FD, T=Ts_FD)
 
         if V_test:
             flow_m_FD = flow_v_FD * sucFD.rho()
@@ -556,7 +558,7 @@ if __name__ == "__main__" or __name__ == "test_script":
             FD_sheet["AQ34"].value = "Inlet Volume Flow"
             FD_sheet["AT34"].value = "m³/h"
 
-        dischFD = State.define(fluid=fluid_FD, p=Pd_FD, T=Td_FD)
+        dischFD = State(fluid=fluid_FD, p=Pd_FD, T=Td_FD)
 
         P_FD = ccp.Point(
             speed=speed_FD, flow_m=flow_m_FD, suc=sucFD, disch=dischFD, b=b, D=D
@@ -633,13 +635,13 @@ if __name__ == "__main__" or __name__ == "test_script":
             if mol_fracT[i] > 0:
                 fluid_TP.update({GasesT[i]: mol_fracT[i]})
 
-        sucTP = State.define(fluid=fluid_TP, p=Ps_TP, T=Ts_TP)
-        dischTPk = State.define(fluid=fluid_TP, p=Pd_TP, s=sucTP.s())
+        sucTP = State(fluid=fluid_TP, p=Ps_TP, T=Ts_TP)
+        dischTPk = State(fluid=fluid_TP, p=Pd_TP, s=sucTP.s())
 
         hd_TP = sucTP.h() + (dischTPk.h() - sucTP.h()) / ccp.point.eff_isentropic(
             suc=P_FD.suc, disch=P_FD.disch
         )
-        dischTP = State.define(fluid=fluid_TP, p=Pd_TP, h=hd_TP)
+        dischTP = State(fluid=fluid_TP, p=Pd_TP, h=hd_TP)
 
         if V_test:
             flow_m_TP = flow_v_TP * sucTP.rho()
@@ -772,7 +774,7 @@ if __name__ == "__main__" or __name__ == "test_script":
 
             P2 = P1 - dP
 
-            State_FO = State.define(fluid=fluid_AT, p=P1, T=T1)
+            State_FO = State(fluid=fluid_AT, p=P1, T=T1)
 
             beta = d / D
             mu = State_FO.viscosity()

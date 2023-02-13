@@ -158,7 +158,7 @@ if __name__ == "__main__":
 
                 fluid_FD = {GasesFD[i]: mol_fracFD[i] for i in range(len(GasesFD))}
 
-                sucFD = State.define(fluid=fluid_FD, p=Ps_FD, T=Ts_FD)
+                sucFD = State(fluid=fluid_FD, p=Ps_FD, T=Ts_FD)
 
                 if V_test:
                     flow_m_FD = flow_v_FD * sucFD.rho()
@@ -171,7 +171,7 @@ if __name__ == "__main__":
                     FD_sheet["AQ34"].value = "Inlet Volume Flow"
                     FD_sheet["AU34"].value = "m³/h"
 
-                dischFD = State.define(fluid=fluid_FD, p=Pd_FD, T=Td_FD)
+                dischFD = State(fluid=fluid_FD, p=Pd_FD, T=Td_FD)
 
                 P_FD = ccp.Point(
                     speed=speed_FD, flow_m=flow_m_FD, suc=sucFD, disch=dischFD, b=b, D=D
@@ -275,7 +275,7 @@ if __name__ == "__main__":
                     }
 
                 if SS_config != "NONE":
-                    SS_FD = State.define(fluid=fluidSS_FD, p=Ps2_FD, T=TSS_FD)
+                    SS_FD = State(fluid=fluidSS_FD, p=Ps2_FD, T=TSS_FD)
 
                     if V_test:
                         flowSS_m_FD = flowSS_v_FD * SS_FD.rho()
@@ -300,24 +300,24 @@ if __name__ == "__main__":
                     h2_FD = dischFD.h() * R1 + SS_FD.h() * RSS
                     h2_FD_eff = P_FD_eff.disch.h() * R1 + SS_FD.h() * RSS
 
-                    suc2FD = State.define(fluid=fluid2_FD, p=Ps2_FD, h=h2_FD)
-                    suc2FD_eff = State.define(fluid=fluid2_FD, p=Ps2_FD, h=h2_FD_eff)
-                    disch2FD = State.define(fluid=fluid2_FD, p=Pd2_FD, T=Td2_FD)
+                    suc2FD = State(fluid=fluid2_FD, p=Ps2_FD, h=h2_FD)
+                    suc2FD_eff = State(fluid=fluid2_FD, p=Ps2_FD, h=h2_FD_eff)
+                    disch2FD = State(fluid=fluid2_FD, p=Pd2_FD, T=Td2_FD)
                     FD_sheet["AT35"].value = suc2FD.T().to("degC").magnitude
                 elif SS_config == "OUT":
                     fluid2_FD = fluid_FD
                     flow2_m_FD = flow_m_FD - flowSS_m_FD
 
-                    suc2FD = State.define(fluid=fluid2_FD, p=Ps2_FD, T=Td_FD)
+                    suc2FD = State(fluid=fluid2_FD, p=Ps2_FD, T=Td_FD)
                     suc2FD_eff = (
                         P_FD_eff.disch
                     )  # considers suction with first stage efficiency
-                    disch2FD = State.define(fluid=fluid2_FD, p=Pd2_FD, T=Td2_FD)
+                    disch2FD = State(fluid=fluid2_FD, p=Pd2_FD, T=Td2_FD)
                     FD_sheet["AT35"].value = suc2FD.T().to("degC").magnitude
                 else:
-                    suc2FD = State.define(fluid=fluid2_FD, p=Ps2_FD, T=Ts2_FD)
+                    suc2FD = State(fluid=fluid2_FD, p=Ps2_FD, T=Ts2_FD)
                     suc2FD_eff = suc2FD
-                    disch2FD = State.define(fluid=fluid2_FD, p=Pd2_FD, T=Td2_FD)
+                    disch2FD = State(fluid=fluid2_FD, p=Pd2_FD, T=Td2_FD)
                     if V_test:
                         flow2_v_FD = Q_(FD_sheet.range("Z29").value, "m³/h")
                         flow2_m_FD = flow2_v_FD * suc2FD.rho()
@@ -577,8 +577,8 @@ if __name__ == "__main__":
                     V_test = False
                     flow_m_AT = Q_(Dados_AT[i, 0].value, AT_sheet.range("G6").value)
 
-                sucAT = State.define(fluid=fluid_AT, p=Ps_AT, T=Ts_AT)
-                dischAT = State.define(fluid=fluid_AT, p=Pd_AT, T=Td_AT)
+                sucAT = State(fluid=fluid_AT, p=Ps_AT, T=Ts_AT)
+                dischAT = State(fluid=fluid_AT, p=Pd_AT, T=Td_AT)
 
                 if V_test:
                     flow_m_AT = flow_v_AT * sucAT.rho()
@@ -645,7 +645,7 @@ if __name__ == "__main__":
 
                     fluidSS_AT = fluid_AT
 
-                    SS_AT = State.define(fluid=fluidSS_AT, p=Ps2_AT, T=TSS_AT)
+                    SS_AT = State(fluid=fluidSS_AT, p=Ps2_AT, T=TSS_AT)
 
                     if V_test:
                         flowSS_m_AT = flowSS_v_AT * SS_AT.rho()
@@ -666,15 +666,15 @@ if __name__ == "__main__":
                     fluid2_AT = fluid_AT
                     h2_AT = dischAT.h() * R1 + SS_AT.h() * RSS
 
-                    suc2AT = State.define(fluid=fluid2_AT, p=Ps2_AT, h=h2_AT)
-                    disch2AT = State.define(fluid=fluid2_AT, p=Pd2_AT, T=Td2_AT)
+                    suc2AT = State(fluid=fluid2_AT, p=Ps2_AT, h=h2_AT)
+                    disch2AT = State(fluid=fluid2_AT, p=Pd2_AT, T=Td2_AT)
 
                 elif SS_config == "OUT":
                     fluid2_AT = fluid_AT
                     flow2_m_AT = flow_m_AT - flowSS_m_AT
 
-                    suc2AT = State.define(fluid=fluid2_AT, p=Ps2_AT, T=Td_AT)
-                    disch2AT = State.define(fluid=fluid2_AT, p=Pd2_AT, T=Td2_AT)
+                    suc2AT = State(fluid=fluid2_AT, p=Ps2_AT, T=Td_AT)
+                    disch2AT = State(fluid=fluid2_AT, p=Pd2_AT, T=Td2_AT)
                 # else:
                 #     Done in another workbook
 
@@ -804,7 +804,7 @@ if __name__ == "__main__":
                         }
                         h2_ATconv = P_ATconv[i].disch.h() * R1 + SS_FD.h() * RSS
 
-                        suc2ATconv = State.define(
+                        suc2ATconv = State(
                             fluid=fluid2_ATconv,
                             p=P_ATconv[i].disch.p() * 0.995,
                             h=h2_ATconv,
@@ -853,7 +853,7 @@ if __name__ == "__main__":
                         }
                         h2_ATconv = P_ATconv[i].disch.h() * R1 + SS_FD.h() * RSS
 
-                        suc2ATconv = State.define(
+                        suc2ATconv = State(
                             fluid=fluid2_ATconv,
                             p=P_ATconv[i].disch.p() * 0.995,
                             h=h2_ATconv,
@@ -1112,7 +1112,7 @@ if __name__ == "__main__":
 
                 fluid_FD = {GasesFD[i]: mol_fracFD[i] for i in range(len(GasesFD))}
 
-                sucFD = State.define(fluid=fluid_FD, p=Ps_FD, T=Ts_FD)
+                sucFD = State(fluid=fluid_FD, p=Ps_FD, T=Ts_FD)
 
                 if V_test:
                     flow_m_FD = flow_v_FD * sucFD.rho()
@@ -1125,7 +1125,7 @@ if __name__ == "__main__":
                     FD_sheet["AQ34"].value = "Inlet Volume Flow"
                     FD_sheet["AU34"].value = "m³/h"
 
-                dischFD = State.define(fluid=fluid_FD, p=Pd_FD, T=Td_FD)
+                dischFD = State(fluid=fluid_FD, p=Pd_FD, T=Td_FD)
 
                 P_FD = ccp.Point(
                     speed=speed_FD, flow_m=flow_m_FD, suc=sucFD, disch=dischFD, b=b, D=D
@@ -1228,7 +1228,7 @@ if __name__ == "__main__":
                     }
 
                 if SS_config != "NONE":
-                    SS_FD = State.define(fluid=fluidSS_FD, p=Ps2_FD, T=TSS_FD)
+                    SS_FD = State(fluid=fluidSS_FD, p=Ps2_FD, T=TSS_FD)
 
                     if V_test:
                         flowSS_m_FD = flowSS_v_FD * SS_FD.rho()
@@ -1253,24 +1253,24 @@ if __name__ == "__main__":
                     h2_FD = dischFD.h() * R1 + SS_FD.h() * RSS
                     h2_FD_eff = P_FD_eff.disch.h() * R1 + SS_FD.h() * RSS
 
-                    suc2FD = State.define(fluid=fluid2_FD, p=Ps2_FD, h=h2_FD)
-                    suc2FD_eff = State.define(fluid=fluid2_FD, p=Ps2_FD, h=h2_FD_eff)
-                    disch2FD = State.define(fluid=fluid2_FD, p=Pd2_FD, T=Td2_FD)
+                    suc2FD = State(fluid=fluid2_FD, p=Ps2_FD, h=h2_FD)
+                    suc2FD_eff = State(fluid=fluid2_FD, p=Ps2_FD, h=h2_FD_eff)
+                    disch2FD = State(fluid=fluid2_FD, p=Pd2_FD, T=Td2_FD)
                     FD_sheet["AT35"].value = suc2FD.T().to("degC").magnitude
                 elif SS_config == "OUT":
                     fluid2_FD = fluid_FD
                     flow2_m_FD = flow_m_FD - flowSS_m_FD
 
-                    suc2FD = State.define(fluid=fluid2_FD, p=Ps2_FD, T=Td_FD)
+                    suc2FD = State(fluid=fluid2_FD, p=Ps2_FD, T=Td_FD)
                     suc2FD_eff = (
                         P_FD_eff.disch
                     )  # considers suction with first stage efficiency
-                    disch2FD = State.define(fluid=fluid2_FD, p=Pd2_FD, T=Td2_FD)
+                    disch2FD = State(fluid=fluid2_FD, p=Pd2_FD, T=Td2_FD)
                     FD_sheet["AT35"].value = suc2FD.T().to("degC").magnitude
                 else:
-                    suc2FD = State.define(fluid=fluid2_FD, p=Ps2_FD, T=Ts2_FD)
+                    suc2FD = State(fluid=fluid2_FD, p=Ps2_FD, T=Ts2_FD)
                     suc2FD_eff = suc2FD
-                    disch2FD = State.define(fluid=fluid2_FD, p=Pd2_FD, T=Td2_FD)
+                    disch2FD = State(fluid=fluid2_FD, p=Pd2_FD, T=Td2_FD)
                     if V_test:
                         flow2_v_FD = Q_(FD_sheet.range("Z29").value, "m³/h")
                         flow2_m_FD = flow2_v_FD * suc2FD.rho()
@@ -1375,13 +1375,13 @@ if __name__ == "__main__":
                 if mol_fracT[i] > 0:
                     fluid_TP.update({GasesT[i]: mol_fracT[i]})
 
-            sucTP = State.define(fluid=fluid_TP, p=Ps_TP, T=Ts_TP)
-            dischTPk = State.define(fluid=fluid_TP, p=Pd_TP, s=sucTP.s())
+            sucTP = State(fluid=fluid_TP, p=Ps_TP, T=Ts_TP)
+            dischTPk = State(fluid=fluid_TP, p=Pd_TP, s=sucTP.s())
 
             hd_TP = sucTP.h() + (dischTPk.h() - sucTP.h()) / ccp.point.eff_isentropic(
                 suc=P_FD.suc, disch=P_FD.disch
             )
-            dischTP = State.define(fluid=fluid_TP, p=Pd_TP, h=hd_TP)
+            dischTP = State(fluid=fluid_TP, p=Pd_TP, h=hd_TP)
 
             if V_test:
                 flow_m_TP = flow_v_TP * sucTP.rho()
@@ -1511,7 +1511,7 @@ if __name__ == "__main__":
 
             fluidSS_TP = fluid_TP
 
-            SS_TP = State.define(fluid=fluidSS_TP, p=Ps2_TP, T=TSS_TP)
+            SS_TP = State(fluid=fluidSS_TP, p=Ps2_TP, T=TSS_TP)
 
             if V_test:
                 flowSS_m_TP = flowSS_v_TP * SS_TP.rho()
@@ -1538,7 +1538,7 @@ if __name__ == "__main__":
 
                 h2_TP = dischTP.h() * R1 + SS_TP.h() * RSS
 
-                suc2TP = State.define(fluid=fluid2_TP, p=Ps2_TP, h=h2_TP)
+                suc2TP = State(fluid=fluid2_TP, p=Ps2_TP, h=h2_TP)
                 flow2_v_TP = flow2_m_TP * suc2TP.v()
                 TP_sheet["H14"].value = flow2_v_TP.to(
                     TP_sheet.range("I14").value
@@ -1555,7 +1555,7 @@ if __name__ == "__main__":
                     TP_sheet.range("G14").value
                 ).magnitude
 
-                suc2TP = State.define(fluid=fluid2_TP, p=Ps2_TP, T=Td_TP)
+                suc2TP = State(fluid=fluid2_TP, p=Ps2_TP, T=Td_TP)
 
                 flow2_v_TP = flow2_m_TP * suc2TP.v()
                 TP_sheet["H14"].value = flow2_v_TP.to(
@@ -1566,12 +1566,12 @@ if __name__ == "__main__":
                     suc2FD.T().to(TP_sheet.range("O14").value).magnitude
                 )
 
-            disch2TPk = State.define(fluid=fluid2_TP, p=Pd2_TP, s=suc2TP.s())
+            disch2TPk = State(fluid=fluid2_TP, p=Pd2_TP, s=suc2TP.s())
 
             hd2_TP = sucTP.h() + (
                 disch2TPk.h() - suc2TP.h()
             ) / ccp.point.eff_isentropic(suc=P2_FD.suc, disch=P2_FD.disch)
-            disch2TP = State.define(fluid=fluid2_TP, p=Pd2_TP, h=hd2_TP)
+            disch2TP = State(fluid=fluid2_TP, p=Pd2_TP, h=hd2_TP)
 
             TP_sheet["R14"].value = (
                 disch2TP.T().to(TP_sheet.range("S14").value).magnitude
@@ -1726,7 +1726,7 @@ if __name__ == "__main__":
 
                 P2 = P1 - dP
 
-                State_FO = State.define(fluid=fluid_AT, p=P1, T=T1)
+                State_FO = State(fluid=fluid_AT, p=P1, T=T1)
 
                 beta = d / D
                 mu = State_FO.viscosity()

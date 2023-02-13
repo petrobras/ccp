@@ -9,7 +9,6 @@ from ccp.config.units import check_units
 from ccp import Q_
 import numpy as np
 from scipy.optimize import newton
-from copy import deepcopy
 
 
 class Point1Sec(Point):
@@ -49,7 +48,7 @@ class Point1Sec(Point):
     ...     speed=Q_(7894, "RPM"),
     ...     b=Q_(28.5, "mm"),
     ...     D=Q_(365, "mm"),
-    ...     suc=State.define(
+    ...     suc=State(
     ...         p=Q_(1.826, "bar"),
     ...         T=Q_(296.7, "degK"),
     ...         fluid={
@@ -59,7 +58,7 @@ class Point1Sec(Point):
     ...             "oxygen": 0.0003,
     ...         },
     ...     ),
-    ...     disch=State.define(
+    ...     disch=State(
     ...         p=Q_(6.142, "bar"),
     ...         T=Q_(392.1, "degK"),
     ...         fluid={
@@ -155,7 +154,7 @@ class StraightThrough(Impeller):
             point.Ts1r = Ts1r
             k_end = k_seal(flow_m=mend, state_up=point.disch, state_down=point.suc)
             self.k_end_seal.append(k_end)
-            suc_rotor = State.define(
+            suc_rotor = State(
                 p=point.suc.p(), T=point.Ts1r, fluid=point.suc.fluid
             )
             test_points_rotor.append(
@@ -166,9 +165,11 @@ class StraightThrough(Impeller):
                     speed=point.speed,
                     b=point.b,
                     D=point.D,
+                    surface_roughness=point.surface_roughness,
                     casing_area=point.casing_area,
                     casing_temperature=point.casing_temperature,
                     ambient_temperature=point.ambient_temperature,
+                    convection_constant=point.convection_constant,
                 )
             )
 
@@ -220,6 +221,11 @@ class StraightThrough(Impeller):
                     speed=speed,
                     b=guarantee_point.b,
                     D=guarantee_point.D,
+                    surface_roughness=guarantee_point.surface_roughness,
+                    casing_area=guarantee_point.casing_area,
+                    casing_temperature=guarantee_point.casing_temperature,
+                    ambient_temperature=guarantee_point.ambient_temperature,
+                    convection_constant=guarantee_point.convection_constant,
                 )
             )
 
@@ -237,10 +243,11 @@ class StraightThrough(Impeller):
             )
 
             point = compressor.point(flow_m=self.guarantee_point.flow_m, speed=x)
-            return point.disch.p().m - self.guarantee_point.disch.p().m
+            # add 1 pascal to guarantee that discharge pressure is higher
+            return point.disch.p().m - (self.guarantee_point.disch.p().m + 1)
 
         new_speed = newton(calculate_disch_pressure_delta, self.speed.m)
-        self.__init__(
+        return self.__class__(
             guarantee_point=self.guarantee_point,
             test_points=self.test_points,
             speed=new_speed,
@@ -297,14 +304,14 @@ class PointFirstSection(Point):
     ...     speed=Q_(9096, "RPM"),
     ...     b=Q_(10.5, "mm"),
     ...     D=Q_(365, "mm"),
-    ...     suc=State.define(
+    ...     suc=State(
     ...         p=Q_(5.182, "bar"),
     ...         T=Q_(299.5, "degK"),
     ...         fluid={
     ...             "carbon dioxide": 1,
     ...         },
     ...     ),
-    ...     disch=State.define(
+    ...     disch=State(
     ...         p=Q_(14.95, "bar"),
     ...         T=Q_(397.6, "degK"),
     ...         fluid={
@@ -359,9 +366,15 @@ class PointFirstSection(Point):
         )
         self._args = args
         self._kwargs = kwargs
-        self.balance_line_flow_m = balance_line_flow_m
         self.seal_gas_flow_m = seal_gas_flow_m
         self.seal_gas_temperature = seal_gas_temperature
+
+        # keep the following original values used in instantiation
+        self._balance_line_flow_m = balance_line_flow_m
+        self._div_wall_flow_m = div_wall_flow_m
+        self._first_section_discharge_flow_m = first_section_discharge_flow_m
+
+        self.balance_line_flow_m = balance_line_flow_m
         self.first_section_discharge_flow_m = first_section_discharge_flow_m
         self.div_wall_flow_m = div_wall_flow_m
         self.end_seal_upstream_temperature = end_seal_upstream_temperature
@@ -375,7 +388,7 @@ class PointFirstSection(Point):
         self.oil_outlet_temperature_de = oil_outlet_temperature_de
         self.oil_outlet_temperature_nde = oil_outlet_temperature_nde
 
-        self.end_seal_upstream_state = State.define(
+        self.end_seal_upstream_state = State(
             p=self.end_seal_upstream_pressure,
             T=self.end_seal_upstream_temperature,
             fluid=self.suc.fluid,
@@ -385,7 +398,7 @@ class PointFirstSection(Point):
             p=self.end_seal_downstream_state.p(), h=self.end_seal_upstream_state.h()
         )
 
-        self.div_wall_upstream_state = State.define(
+        self.div_wall_upstream_state = State(
             p=self.div_wall_upstream_pressure,
             T=self.div_wall_upstream_temperature,
             fluid=self.suc.fluid,
@@ -393,27 +406,6 @@ class PointFirstSection(Point):
         self.div_wall_downstream_state = copy(self.disch)
         self.div_wall_downstream_state.update(
             p=self.div_wall_downstream_state.p(), h=self.div_wall_upstream_state.h()
-        )
-
-    def __deepcopy__(self, memo):
-        return self.__class__(
-            *self._args,
-            **self._kwargs,
-            balance_line_flow_m=self.balance_line_flow_m,
-            seal_gas_flow_m=self.seal_gas_flow_m,
-            seal_gas_temperature=self.seal_gas_temperature,
-            first_section_discharge_flow_m=self.first_section_discharge_flow_m,
-            div_wall_flow_m=self.div_wall_flow_m,
-            end_seal_upstream_temperature=self.end_seal_upstream_temperature,
-            end_seal_upstream_pressure=self.end_seal_upstream_pressure,
-            div_wall_upstream_temperature=self.div_wall_upstream_temperature,
-            div_wall_upstream_pressure=self.div_wall_upstream_pressure,
-            oil_flow_journal_bearing_de=self.oil_flow_journal_bearing_de,
-            oil_flow_journal_bearing_nde=self.oil_flow_journal_bearing_nde,
-            oil_flow_thrust_bearing_nde=self.oil_flow_thrust_bearing_nde,
-            oil_inlet_temperature=self.oil_inlet_temperature,
-            oil_outlet_temperature_de=self.oil_outlet_temperature_de,
-            oil_outlet_temperature_nde=self.oil_outlet_temperature_nde,
         )
 
 
@@ -438,12 +430,6 @@ class BackToBack(Impeller):
     ):
         self.guarantee_point_sec1 = guarantee_point_sec1
         self.guarantee_point_sec2 = guarantee_point_sec2
-        self._test_points_sec1_original = [
-            deepcopy(point) for point in test_points_sec1
-        ]
-        self._test_points_sec2_original = [
-            deepcopy(point) for point in test_points_sec2
-        ]
         self.test_points_sec1 = test_points_sec1
         self.test_points_sec2 = test_points_sec2
         if speed is None:
@@ -470,10 +456,14 @@ class BackToBack(Impeller):
                     point.flow_m + point.div_wall_flow_m
                 )
         for i, point in enumerate(test_points_sec1):
-            if point.first_section_discharge_flow_m:
-                md1f_t = point.first_section_discharge_flow_m
+            # Here we check for _first_section_discharge_flow_m because we want to use the
+            # value given in the test point, not the calculated value.
+            # This way we can guarantee that everytime we create the compressor, the same
+            # values are used, and we also get the same results.
+            if point._first_section_discharge_flow_m:
+                md1f_t = point._first_section_discharge_flow_m
                 ms1f_t = point.flow_m
-                mbal_t = point.balance_line_flow_m
+                mbal_t = point._balance_line_flow_m
                 mseal_t = point.seal_gas_flow_m
                 mend_t = mbal_t - (0.95 * mseal_t) / 2
                 point.end_seal_flow_m = mend_t
@@ -510,10 +500,10 @@ class BackToBack(Impeller):
                     ms1f_t * Ts1f_t + mend_t * Tend_t + 0.95 * mseal_t * Tseal_t
                 ) / (ms1f_t + mend_t + 0.95 * mseal_t)
                 Td1r_t = (md1f_t * Td1f_t - mdiv_t * Tdiv_t) / (md1f_t - mdiv_t)
-                suc_sec1_rotor_t = State.define(
+                suc_sec1_rotor_t = State(
                     p=ps1f_t, T=Ts1r_t, fluid=point.suc.fluid
                 )
-                disch_sec1_rotor_t = State.define(
+                disch_sec1_rotor_t = State(
                     p=pd1f_t, T=Td1r_t, fluid=point.suc.fluid
                 )
 
@@ -527,6 +517,8 @@ class BackToBack(Impeller):
                     casing_area=point.casing_area,
                     casing_temperature=point.casing_temperature,
                     ambient_temperature=point.ambient_temperature,
+                    surface_roughness=point.surface_roughness,
+                    convection_constant=point.convection_constant,
                 )
 
             # use calculated k_end_seal and k_div_wall to calculate seal mass flow
@@ -549,7 +541,7 @@ class BackToBack(Impeller):
                 )
 
         for i, point in enumerate(test_points_sec1):
-            if not point.first_section_discharge_flow_m:
+            if not point._first_section_discharge_flow_m:
 
                 self.k_end_seal[i] = k_end_seal_mean
                 end_seal_flow_m = flow_m_seal(
@@ -595,10 +587,10 @@ class BackToBack(Impeller):
                 ) / (ms1f_t + mend_t + 0.95 * mseal_t)
                 Td1r_t = (md1f_t * Td1f_t - mdiv_t * Tdiv_t) / (md1f_t - mdiv_t)
 
-                suc_sec1_rotor_t = State.define(
+                suc_sec1_rotor_t = State(
                     p=ps1f_t, T=Ts1r_t, fluid=point.suc.fluid
                 )
-                disch_sec1_rotor_t = State.define(
+                disch_sec1_rotor_t = State(
                     p=pd1f_t, T=Td1r_t, fluid=point.suc.fluid
                 )
 
@@ -612,6 +604,8 @@ class BackToBack(Impeller):
                     casing_area=point.casing_area,
                     casing_temperature=point.casing_temperature,
                     ambient_temperature=point.ambient_temperature,
+                    surface_roughness=point.surface_roughness,
+                    convection_constant=point.convection_constant,
                 )
 
         self.k_end_seal_mean = k_end_seal_mean
@@ -636,6 +630,8 @@ class BackToBack(Impeller):
                 casing_area=point_f.casing_area,
                 casing_temperature=point_f.casing_temperature,
                 ambient_temperature=point_f.ambient_temperature,
+                surface_roughness=point_f.surface_roughness,
+                convection_constant=point_f.convection_constant,
             )
             test_points_sec2_rotor[i] = point_r
 
@@ -662,7 +658,7 @@ class BackToBack(Impeller):
                 reynolds_correction=self.reynolds_correction,
             )
             # determine rotor specified suction state
-            end_seal_state_upstream_sp = State.define(
+            end_seal_state_upstream_sp = State(
                 p=initial_point.disch.p(),
                 T=guarantee_point_sec2.suc.T(),
                 fluid=initial_point.suc.fluid,
@@ -708,7 +704,7 @@ class BackToBack(Impeller):
 
             ms1f_sp_array[i] = ms1f_sp
 
-            rotor_sp_sec1_suc = ccp.State.define(
+            rotor_sp_sec1_suc = ccp.State(
                 p=guarantee_point_sec1.suc.p(),
                 T=Ts1r_sp,
                 fluid=guarantee_point_sec1.suc.fluid,
@@ -738,7 +734,7 @@ class BackToBack(Impeller):
         ps2f_sp = disch_r_sp.p() - (
             guarantee_point_sec1.disch.p() - guarantee_point_sec2.suc.p()
         )
-        suc2f_sp = State.define(
+        suc2f_sp = State(
             p=ps2f_sp,
             T=guarantee_point_sec2.suc.T(),
             fluid=guarantee_point_sec2.suc.fluid,
@@ -777,7 +773,7 @@ class BackToBack(Impeller):
             self.points_rotor_sp_sec1, ms1f_sp_array, self.k_end_seal, self.k_div_wall
         ):
             # calculate div wall flow
-            suc_sec2 = ccp.State.define(
+            suc_sec2 = ccp.State(
                 p=point_r_sp.disch.p(),
                 T=guarantee_point_sec2.suc.T(),
                 fluid=guarantee_point_sec2.suc.fluid,
@@ -804,7 +800,7 @@ class BackToBack(Impeller):
             # calculate flange disch
             Td1r_sp = point_r_sp.disch.T()
             Td1f_sp = (ms1r_sp * Td1r_sp + mdiv_sp * Tdiv_sp) / (ms1r_sp + mdiv_sp)
-            disch_f = ccp.State.define(
+            disch_f = ccp.State(
                 p=point_r_sp.disch.p(), T=Td1f_sp, fluid=guarantee_point_sec1.suc.fluid
             )
             point_flange = Point(
@@ -830,7 +826,7 @@ class BackToBack(Impeller):
         ps2f_sp = p_sec1.disch.p() - (
             self.guarantee_point_sec1.disch.p() - self.guarantee_point_sec2.suc.p()
         )
-        suc2f_sp = State.define(
+        suc2f_sp = State(
             p=ps2f_sp,
             T=self.guarantee_point_sec2.suc.T(),
             fluid=self.guarantee_point_sec2.suc.fluid,
@@ -865,15 +861,12 @@ class BackToBack(Impeller):
 
     def calculate_speed_to_match_discharge_pressure(self):
         """Calculate the speed to match the discharge pressure of the guarantee point."""
-        test_points_sec1 = deepcopy(self._test_points_sec1_original)
-        test_points_sec2 = deepcopy(self._test_points_sec2_original)
-
         def calculate_disch_pressure_delta(x):
             compressor = BackToBack(
                 guarantee_point_sec1=self.guarantee_point_sec1,
                 guarantee_point_sec2=self.guarantee_point_sec2,
-                test_points_sec1=test_points_sec1,
-                test_points_sec2=test_points_sec2,
+                test_points_sec1=self.test_points_sec1,
+                test_points_sec2=self.test_points_sec2,
                 speed=x,
                 reynolds_correction=self.reynolds_correction,
             )
@@ -881,16 +874,17 @@ class BackToBack(Impeller):
             point = compressor.point_sec2(
                 flow_m=self.guarantee_point_sec2.flow_m, speed=x
             )
-            delta_p = point.disch.p().m - self.guarantee_point_sec2.disch.p().m
+            # add 1 pascal to guarantee that discharge pressure is higher
+            delta_p = point.disch.p().m - (self.guarantee_point_sec2.disch.p().m + 1)
             return delta_p
 
         new_speed = newton(calculate_disch_pressure_delta, self.speed.m)
 
-        self.__init__(
+        return self.__class__(
             guarantee_point_sec1=self.guarantee_point_sec1,
             guarantee_point_sec2=self.guarantee_point_sec2,
-            test_points_sec1=test_points_sec1,
-            test_points_sec2=test_points_sec2,
+            test_points_sec1=self.test_points_sec1,
+            test_points_sec2=self.test_points_sec2,
             speed=new_speed,
             reynolds_correction=self.reynolds_correction,
         )

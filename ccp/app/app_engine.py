@@ -118,7 +118,7 @@ def get_imp_fd():
         pentane=0.03,
         hexane=0.01,
     )
-    suc_fd = ccp.State.define(p=Q_(3876, "kPa"), T=Q_(11, "degC"), fluid=composition_fd)
+    suc_fd = ccp.State(p=Q_(3876, "kPa"), T=Q_(11, "degC"), fluid=composition_fd)
 
     curve_name = "normal"
     curve_path = Path(CCP_PATH / "tests/data")
@@ -173,8 +173,8 @@ def calculate_performance(tag, run_time, imp_fd):
         npentane=data_tag.UTGCA_1231_AI_002_NC5,  # Analisador_N-PENTANO_AW-002',
     )
 
-    suc_st = ccp.State.define(p=ps_st, T=Ts_st, fluid=composition_st)
-    disch_st = ccp.State.define(p=pd_st, T=Td_st, fluid=composition_st)
+    suc_st = ccp.State(p=ps_st, T=Ts_st, fluid=composition_st)
+    disch_st = ccp.State(p=pd_st, T=Td_st, fluid=composition_st)
     imp_st = ccp.Impeller.convert_from(imp_fd, suc=suc_st)
 
     point_st = ccp.Point(

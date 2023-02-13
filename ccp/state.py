@@ -17,13 +17,8 @@ from .config.units import check_units
 class State(CP.AbstractState):
     """A thermodynamic state.
 
-    .. note::
-        To create a state use State.define(...)
-
-
     This class is inherited from CP.AbstractState.
     Some extra functionality has been added.
-
 
     Creates a state from fluid composition and two properties.
     Properties can be floats (SI units are considered) or pint quantities.
@@ -40,36 +35,96 @@ class State(CP.AbstractState):
         Entropy
     rho : float, pint.Quantity
         Specific mass
-
     fluid : dict
         Dictionary with constituent and composition.
-        (e.g.: ({'Oxygen': 0.2096, 'Nitrogen': 0.7812, 'Argon': 0.0092})
-    EOS : string
-        String with HEOS or REFPROP
+        (e.g.: fluid={'Oxygen': 0.2096, 'Nitrogen': 0.7812, 'Argon': 0.0092})
+    EOS : str, optional
+        String with REFPROP, HEOS, PR or SRK.
+        Default is set in ccp.config.EOS
 
     Returns
     -------
-    state : State object
+    state : ccp.State
 
     Examples
     --------
     >>> import ccp
     >>> Q_ = ccp.Q_
     >>> fluid = {'Oxygen': 0.2096, 'Nitrogen': 0.7812, 'Argon': 0.0092}
-    >>> s = ccp.State.define(p=101008, T=273, fluid=fluid)
+    >>> s = ccp.State(p=101008, T=273, fluid=fluid)
     >>> s.rho()
     <Quantity(1.28939426, 'kilogram / meter ** 3')>
     >>> # Using pint quantities
-    >>> s = ccp.State.define(fluid=fluid, p=Q_(1, 'atm'), T=Q_(0, 'degC'))
+    >>> s = ccp.State(fluid=fluid, p=Q_(1, 'atm'), T=Q_(0, 'degC'))
     >>> s.h()
     <Quantity(273291.7, 'joule / kilogram')>
     """
 
-    def __init__(self, EOS, _fluid):
+    def __new__(cls, *args, **kwargs):
+        fluid = kwargs.get("fluid")
+        if fluid is None:
+            raise TypeError("A fluid is required. Provide as fluid=dict(...)")
+        EOS = kwargs.get("EOS")
+        if EOS is None:
+            EOS = ccp.config.EOS
+
+        _fluid = "&".join([get_name(name) for name in fluid.keys()])
+
+        try:
+            state = super().__new__(cls, EOS, _fluid)
+        except ValueError:
+            error_msg = ""
+            constituents = list(fluid.keys())
+            for fluid1, fluid2 in combinations(constituents, 2):
+                try:
+                    fluid_pair = f"{fluid1}&{fluid2}"
+                    super().__new__(cls, EOS, fluid_pair)
+                except ValueError:
+                    error_msg += f"\nCould not create state with {fluid1} + {fluid2}"
+            raise ValueError(error_msg)
+        return state
+
+    @check_units
+    def __init__(
+        self,
+        p=None,
+        T=None,
+        h=None,
+        s=None,
+        rho=None,
+        fluid=None,
+        EOS=None,
+    ):
         # no call to super(). see :
         # http://stackoverflow.com/questions/18260095/
         self.EOS = EOS
+
+        constituents = []
+        molar_fractions = []
+
+        for k, v in fluid.items():
+            k = get_name(k)
+            constituents.append(k)
+            molar_fractions.append(v)
+            # create an adequate fluid string to cp.AbstractState
+        _fluid = "&".join(constituents)
         self._fluid = _fluid
+
+        normalize_mix(molar_fractions)
+        self.set_mole_fractions(molar_fractions)
+        self.fluid = dict(zip(constituents, molar_fractions))
+        self.init_args = dict(p=p, T=T, h=h, s=s, rho=rho)
+        self.setup_args = copy(self.init_args)
+        if isinstance(fluid, str) and len(self.fluid) == 1:
+            self.fluid[get_name(fluid)] = 1.0
+
+        if isinstance(fluid, dict):
+            if len(self.fluid) < len(fluid):
+                raise ValueError(
+                    "You might have repeated components in the fluid dictionary."
+                )
+
+        self.update(**self.setup_args)
 
     def __repr__(self):
         args = {k: v for k, v in self.init_args.items() if v is not None}
@@ -81,7 +136,7 @@ class State(CP.AbstractState):
         fluid_repr = [f'"{k}": {fluid_dict[k]:.5f}' for k in sorted_fluid_keys]
         fluid_repr = "fluid={" + ", ".join(fluid_repr) + "}"
 
-        return "State.define(" + args_repr + ", " + fluid_repr + ")"
+        return "State(" + args_repr + ", " + fluid_repr + ")"
 
     def __eq__(self, other):
         if isinstance(other, self.__class__):
@@ -327,7 +382,7 @@ class State(CP.AbstractState):
             viscosity = Q_(super().viscosity(), "pascal second")
         except ValueError:
             # handle error for cubic eos such as PR, SRK etc.
-            dummy_state = self.define(
+            dummy_state = self.__class__(
                 p=self.p(), T=self.T(), fluid=self.fluid, EOS="REFPROP"
             )
             viscosity = Q_(super(State, dummy_state).viscosity(), "pascal second")
@@ -461,7 +516,7 @@ class State(CP.AbstractState):
 
     @staticmethod
     def _rebuild(cls, kwargs):
-        return cls.define(**kwargs)
+        return cls(**kwargs)
 
     @classmethod
     @check_units
@@ -496,13 +551,13 @@ class State(CP.AbstractState):
 
         fluid : dict
             Dictionary with constituent and composition.
-            (e.g.: ({'Oxygen': 0.2096, 'Nitrogen': 0.7812, 'Argon': 0.0092})
-        EOS : string
-            String with HEOS or REFPROP
+            (e.g.: fluid={'Oxygen': 0.2096, 'Nitrogen': 0.7812, 'Argon': 0.0092})
+            String with REFPROP, HEOS, PR or SRK.
+            Default is set in ccp.config.EOS
 
         Returns
         -------
-        state : State object
+        state : ccp.State
 
         Examples
         --------
@@ -517,52 +572,11 @@ class State(CP.AbstractState):
         >>> s.h()
         <Quantity(273291.7, 'joule / kilogram')>
         """
-        if fluid is None:
-            raise TypeError("A fluid is required. Provide as fluid=dict(...)")
-
-        if EOS is None:
-            EOS = ccp.config.EOS
-
-        constituents = []
-        molar_fractions = []
-
-        for k, v in fluid.items():
-            k = get_name(k)
-            constituents.append(k)
-            molar_fractions.append(v)
-            # create an adequate fluid string to cp.AbstractState
-        _fluid = "&".join(constituents)
-
-        try:
-            state = cls(EOS, _fluid)
-        except ValueError:
-            error_msg = ""
-            for fluid1, fluid2 in combinations(constituents, 2):
-                try:
-                    fluid_pair = f"{fluid1}&{fluid2}"
-                    state = cls(EOS, fluid_pair)
-                except ValueError:
-                    error_msg += f"\nCould not create state with {fluid1} + {fluid2}"
-
-            raise ValueError(error_msg)
-
-        normalize_mix(molar_fractions)
-        state.set_mole_fractions(molar_fractions)
-        state.init_args = dict(p=p, T=T, h=h, s=s, rho=rho)
-        state.setup_args = copy(state.init_args)
-        state.fluid = state._fluid_dict()
-        if isinstance(fluid, str) and len(state.fluid) == 1:
-            state.fluid[get_name(fluid)] = 1.0
-
-        if isinstance(fluid, dict):
-            if len(state.fluid) < len(fluid):
-                raise ValueError(
-                    "You might have repeated components in the fluid dictionary."
-                )
-
-        state.update(**state.setup_args)
-
-        return state
+        warn(
+            "Method ccp.State.define is deprecated. Use ccp.State() instead.",
+            DeprecationWarning,
+        )
+        return cls(p=p, T=T, h=h, s=s, rho=rho, fluid=fluid, EOS=EOS, **kwargs)
 
     @check_units
     def update(
@@ -584,7 +598,7 @@ class State(CP.AbstractState):
         p : float, pint.Quantity
             Pressure (Pa).
         T : float, pint.Quantity
-            Temperature (degk).
+            Temperature (degK).
         rho : float, pint.Quantity
             Specific mass (kg/m**3).
         h : float, pint.Quantity

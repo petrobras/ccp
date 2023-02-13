@@ -20,7 +20,7 @@ def test_point1sec():
         speed=Q_(7894, "RPM"),
         b=Q_(28.5, "mm"),
         D=Q_(365, "mm"),
-        suc=State.define(
+        suc=State(
             p=Q_(1.826, "bar"),
             T=Q_(296.7, "degK"),
             fluid={
@@ -30,7 +30,7 @@ def test_point1sec():
                 "oxygen": 0.0003,
             },
         ),
-        disch=State.define(
+        disch=State(
             p=Q_(6.142, "bar"),
             T=Q_(392.1, "degK"),
             fluid={
@@ -75,8 +75,8 @@ def straight_through():
         "carbon dioxide": 9.259,
         "water": 0.200,
     }
-    suc_sp = State.define(p=Q_(16.99, "bar"), T=Q_(38.4, "degC"), fluid=fluid_sp)
-    disch_sp = State.define(p=Q_(80.38, "bar"), T=Q_(164.6, "degC"), fluid=fluid_sp)
+    suc_sp = State(p=Q_(16.99, "bar"), T=Q_(38.4, "degC"), fluid=fluid_sp)
+    disch_sp = State(p=Q_(80.38, "bar"), T=Q_(164.6, "degC"), fluid=fluid_sp)
     guarantee_point = Point(
         suc=suc_sp,
         disch=disch_sp,
@@ -92,7 +92,7 @@ def straight_through():
             speed=Q_(7894, "RPM"),
             b=Q_(28.5, "mm"),
             D=Q_(365, "mm"),
-            suc=State.define(
+            suc=State(
                 p=Q_(1.826, "bar"),
                 T=Q_(296.7, "degK"),
                 fluid={
@@ -102,7 +102,7 @@ def straight_through():
                     "oxygen": 0.0003,
                 },
             ),
-            disch=State.define(
+            disch=State(
                 p=Q_(6.142, "bar"),
                 T=Q_(392.1, "degK"),
                 fluid={
@@ -130,7 +130,7 @@ def straight_through():
             speed=Q_(7981, "RPM"),
             b=Q_(28.5, "mm"),
             D=Q_(365, "mm"),
-            suc=State.define(
+            suc=State(
                 p=Q_(1.51, "bar"),
                 T=Q_(297, "degK"),
                 fluid={
@@ -140,7 +140,7 @@ def straight_through():
                     "oxygen": 0.0003,
                 },
             ),
-            disch=State.define(
+            disch=State(
                 p=Q_(6.306, "bar"),
                 T=Q_(399.9, "degK"),
                 fluid={
@@ -168,7 +168,7 @@ def straight_through():
             speed=Q_(7984, "RPM"),
             b=Q_(28.5, "mm"),
             D=Q_(365, "mm"),
-            suc=State.define(
+            suc=State(
                 p=Q_(1.553, "bar"),
                 T=Q_(296.3, "degK"),
                 fluid={
@@ -178,7 +178,7 @@ def straight_through():
                     "oxygen": 0.0003,
                 },
             ),
-            disch=State.define(
+            disch=State(
                 p=Q_(7.526, "bar"),
                 T=Q_(409.9, "degK"),
                 fluid={
@@ -206,7 +206,7 @@ def straight_through():
             speed=Q_(7981, "RPM"),
             b=Q_(28.5, "mm"),
             D=Q_(365, "mm"),
-            suc=State.define(
+            suc=State(
                 p=Q_(1.432, "bar"),
                 T=Q_(296.3, "degK"),
                 fluid={
@@ -216,7 +216,7 @@ def straight_through():
                     "oxygen": 0.0003,
                 },
             ),
-            disch=State.define(
+            disch=State(
                 p=Q_(7.505, "bar"),
                 T=Q_(415.3, "degK"),
                 fluid={
@@ -244,7 +244,7 @@ def straight_through():
             speed=Q_(7963, "RPM"),
             b=Q_(28.5, "mm"),
             D=Q_(365, "mm"),
-            suc=State.define(
+            suc=State(
                 p=Q_(1.375, "bar"),
                 T=Q_(296, "degK"),
                 fluid={
@@ -254,7 +254,7 @@ def straight_through():
                     "oxygen": 0.0003,
                 },
             ),
-            disch=State.define(
+            disch=State(
                 p=Q_(7.473, "bar"),
                 T=Q_(419.1, "degK"),
                 fluid={
@@ -367,14 +367,14 @@ def test_point2sec():
         speed=Q_(9096, "RPM"),
         b=Q_(10.5, "mm"),
         D=Q_(365, "mm"),
-        suc=State.define(
+        suc=State(
             p=Q_(5.182, "bar"),
             T=Q_(299.5, "degK"),
             fluid={
                 "carbon dioxide": 1,
             },
         ),
-        disch=State.define(
+        disch=State(
             p=Q_(14.95, "bar"),
             T=Q_(397.6, "degK"),
             fluid={
@@ -422,8 +422,8 @@ def back_to_back():
         "water": 0,
     }
 
-    suc_sp_sec1 = State.define(p=Q_(47.39, "bar"), T=Q_(40, "degC"), fluid=fluid_sp)
-    disch_sp_sec1 = State.define(
+    suc_sp_sec1 = State(p=Q_(47.39, "bar"), T=Q_(40, "degC"), fluid=fluid_sp)
+    disch_sp_sec1 = State(
         p=Q_(136.27, "bar"), T=Q_(123.7, "degC"), fluid=fluid_sp
     )
     guarantee_point_sec1 = Point(
@@ -434,8 +434,8 @@ def back_to_back():
         b=Q_(10.15, "mm"),
         D=Q_(365, "mm"),
     )
-    suc_sp_sec2 = State.define(p=Q_(135.38, "bar"), T=Q_(40, "degC"), fluid=fluid_sp)
-    disch_sp_sec2 = State.define(
+    suc_sp_sec2 = State(p=Q_(135.38, "bar"), T=Q_(40, "degC"), fluid=fluid_sp)
+    disch_sp_sec2 = State(
         p=Q_(250.44, "bar"), T=Q_(86.7, "degC"), fluid=fluid_sp
     )
     guarantee_point_sec2 = Point(
@@ -453,14 +453,14 @@ def back_to_back():
             speed=Q_(9024, "RPM"),
             b=Q_(10.5, "mm"),
             D=Q_(365, "mm"),
-            suc=State.define(
+            suc=State(
                 p=Q_(7.083, "bar"),
                 T=Q_(298.9, "degK"),
                 fluid={
                     "carbon dioxide": 1,
                 },
             ),
-            disch=State.define(
+            disch=State(
                 p=Q_(14.16, "bar"),
                 T=Q_(377.1, "degK"),
                 fluid={
@@ -491,14 +491,14 @@ def back_to_back():
             speed=Q_(9057, "RPM"),
             b=Q_(10.5, "mm"),
             D=Q_(365, "mm"),
-            suc=State.define(
+            suc=State(
                 p=Q_(5.592, "bar"),
                 T=Q_(298.7, "degK"),
                 fluid={
                     "carbon dioxide": 1,
                 },
             ),
-            disch=State.define(
+            disch=State(
                 p=Q_(14.78, "bar"),
                 T=Q_(389.8, "degK"),
                 fluid={
@@ -529,14 +529,14 @@ def back_to_back():
             speed=Q_(9096, "RPM"),
             b=Q_(10.5, "mm"),
             D=Q_(365, "mm"),
-            suc=State.define(
+            suc=State(
                 p=Q_(5.182, "bar"),
                 T=Q_(299.5, "degK"),
                 fluid={
                     "carbon dioxide": 1,
                 },
             ),
-            disch=State.define(
+            disch=State(
                 p=Q_(14.95, "bar"),
                 T=Q_(397.6, "degK"),
                 fluid={
@@ -567,14 +567,14 @@ def back_to_back():
             speed=Q_(9071, "RPM"),
             b=Q_(10.5, "mm"),
             D=Q_(365, "mm"),
-            suc=State.define(
+            suc=State(
                 p=Q_(5.16, "bar"),
                 T=Q_(300.4, "degK"),
                 fluid={
                     "carbon dioxide": 1,
                 },
             ),
-            disch=State.define(
+            disch=State(
                 p=Q_(15.07, "bar"),
                 T=Q_(400.2, "degK"),
                 fluid={
@@ -605,14 +605,14 @@ def back_to_back():
             speed=Q_(9123, "RPM"),
             b=Q_(10.5, "mm"),
             D=Q_(365, "mm"),
-            suc=State.define(
+            suc=State(
                 p=Q_(5.038, "bar"),
                 T=Q_(300.9, "degK"),
                 fluid={
                     "carbon dioxide": 1,
                 },
             ),
-            disch=State.define(
+            disch=State(
                 p=Q_(15.04, "bar"),
                 T=Q_(404.3, "degK"),
                 fluid={
@@ -646,14 +646,14 @@ def back_to_back():
             speed=Q_(7739, "RPM"),
             b=Q_(6.38, "mm"),
             D=Q_(320, "mm"),
-            suc=State.define(
+            suc=State(
                 p=Q_(13.11, "bar"),
                 T=Q_(305.1, "degK"),
                 fluid={
                     "carbon dioxide": 1,
                 },
             ),
-            disch=State.define(
+            disch=State(
                 p=Q_(16.31, "bar"),
                 T=Q_(335.1, "degK"),
                 fluid={
@@ -671,14 +671,14 @@ def back_to_back():
             speed=Q_(7330, "RPM"),
             b=Q_(6.38, "mm"),
             D=Q_(320, "mm"),
-            suc=State.define(
+            suc=State(
                 p=Q_(12.69, "bar"),
                 T=Q_(304.5, "degK"),
                 fluid={
                     "carbon dioxide": 1,
                 },
             ),
-            disch=State.define(
+            disch=State(
                 p=Q_(16.78, "bar"),
                 T=Q_(333.3, "degK"),
                 fluid={
@@ -696,14 +696,14 @@ def back_to_back():
             speed=Q_(7412, "RPM"),
             b=Q_(6.38, "mm"),
             D=Q_(320, "mm"),
-            suc=State.define(
+            suc=State(
                 p=Q_(12.62, "bar"),
                 T=Q_(304.4, "degK"),
                 fluid={
                     "carbon dioxide": 1,
                 },
             ),
-            disch=State.define(
+            disch=State(
                 p=Q_(18.15, "bar"),
                 T=Q_(339.9, "degK"),
                 fluid={
@@ -721,14 +721,14 @@ def back_to_back():
             speed=Q_(7449, "RPM"),
             b=Q_(6.38, "mm"),
             D=Q_(320, "mm"),
-            suc=State.define(
+            suc=State(
                 p=Q_(12.46, "bar"),
                 T=Q_(304.5, "degK"),
                 fluid={
                     "carbon dioxide": 1,
                 },
             ),
-            disch=State.define(
+            disch=State(
                 p=Q_(18.6, "bar"),
                 T=Q_(344.1, "degK"),
                 fluid={
@@ -746,14 +746,14 @@ def back_to_back():
             speed=Q_(7399, "RPM"),
             b=Q_(6.38, "mm"),
             D=Q_(320, "mm"),
-            suc=State.define(
+            suc=State(
                 p=Q_(12.52, "bar"),
                 T=Q_(304.5, "degK"),
                 fluid={
                     "carbon dioxide": 1,
                 },
             ),
-            disch=State.define(
+            disch=State(
                 p=Q_(18.88, "bar"),
                 T=Q_(346.4, "degK"),
                 fluid={

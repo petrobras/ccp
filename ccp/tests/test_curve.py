@@ -16,9 +16,9 @@ def test_raise_1_point():
 
 @pytest.fixture
 def curve0():
-    suc = State.define(p=Q_(1, "bar"), T=300, fluid={"co2": 1 - 1e-15, "n2": 1e-15})
-    disch = State.define(p=Q_(2, "bar"), T=370, fluid={"co2": 1 - 1e-15, "n2": 1e-15})
-    disch1 = State.define(
+    suc = State(p=Q_(1, "bar"), T=300, fluid={"co2": 1 - 1e-15, "n2": 1e-15})
+    disch = State(p=Q_(2, "bar"), T=370, fluid={"co2": 1 - 1e-15, "n2": 1e-15})
+    disch1 = State(
         p=Q_(2.5, "bar"), T=375, fluid={"co2": 1 - 1e-15, "n2": 1e-15}
     )
     p0 = Point(suc=suc, disch=disch, flow_v=1, speed=1, b=1, D=1)
@@ -59,15 +59,15 @@ def test_curve_interpolation(curve0):
 
 @pytest.fixture
 def curve1():
-    suc = State.define(p=Q_(1, "bar"), T=300, fluid={"co2": 1 - 1e-15, "n2": 1e-15})
-    disch = State.define(p=Q_(2, "bar"), T=370, fluid={"co2": 1 - 1e-15, "n2": 1e-15})
-    disch1 = State.define(
+    suc = State(p=Q_(1, "bar"), T=300, fluid={"co2": 1 - 1e-15, "n2": 1e-15})
+    disch = State(p=Q_(2, "bar"), T=370, fluid={"co2": 1 - 1e-15, "n2": 1e-15})
+    disch1 = State(
         p=Q_(2.5, "bar"), T=375, fluid={"co2": 1 - 1e-15, "n2": 1e-15}
     )
-    disch2 = State.define(
+    disch2 = State(
         p=Q_(2.6, "bar"), T=376, fluid={"co2": 1 - 1e-15, "n2": 1e-15}
     )
-    disch3 = State.define(
+    disch3 = State(
         p=Q_(2.7, "bar"), T=377, fluid={"co2": 1 - 1e-15, "n2": 1e-15}
     )
     p0 = Point(suc=suc, disch=disch, flow_v=1, speed=1, b=1, D=1)
