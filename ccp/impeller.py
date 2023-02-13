@@ -257,7 +257,7 @@ class Impeller:
         disch_p = func_p(flow_v)
 
         p0 = self.points[0]
-        disch = State.define(p=disch_p, T=disch_T, fluid=p0.suc.fluid)
+        disch = State(p=disch_p, T=disch_T, fluid=p0.suc.fluid)
 
         point = Point(
             suc=p0.suc, disch=disch, flow_v=flow_v, speed=speed, b=p0.b, D=p0.D
@@ -323,7 +323,7 @@ class Impeller:
                 curves[1][i].disch.p().m,
             )
 
-            disch = State.define(p=disch_p, T=disch_T, fluid=p0.suc.fluid)
+            disch = State(p=disch_p, T=disch_T, fluid=p0.suc.fluid)
 
             p = Point(
                 suc=p0.suc,
@@ -754,7 +754,7 @@ class Impeller:
         ...    pentane=0.03,
         ...    hexane=0.01,
         ... )
-        >>> suc_fd = State.define(p=Q_(3876, "kPa"), T=Q_(11, "degC"), fluid=composition_fd)
+        >>> suc_fd = State(p=Q_(3876, "kPa"), T=Q_(11, "degC"), fluid=composition_fd)
         >>> imp = ccp.Impeller.load_from_dict_isis(
         ...    suc=suc_fd,
         ...    head_curves=head_curves_dict,
@@ -1049,7 +1049,7 @@ def impeller_example():
     test_dir = Path(__file__).parent / "tests"
     data_dir = test_dir / "data"
 
-    suc = State.define(
+    suc = State(
         p=Q_(4.08, "bar"),
         T=Q_(33.6, "degC"),
         fluid={

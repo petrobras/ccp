@@ -324,7 +324,7 @@ class Point:
         disch_rho = 1 / disch_v
 
         # consider first an isentropic compression
-        disch = State.define(rho=disch_rho, s=suc.s(), fluid=suc.fluid)
+        disch = State(rho=disch_rho, s=suc.s(), fluid=suc.fluid)
 
         def update_state(x, update_type):
             if update_type == "pressure":
@@ -342,7 +342,7 @@ class Point:
         except ValueError:
             # re-instantiate disch, since update with temperature not converging
             # might break the state
-            disch = State.define(rho=disch_rho, s=suc.s(), fluid=suc.fluid)
+            disch = State(rho=disch_rho, s=suc.s(), fluid=suc.fluid)
             newton(update_state, disch.p().magnitude, args=("pressure",), tol=1e-1)
 
         self.disch = disch
@@ -435,7 +435,7 @@ class Point:
         disch_T = self.disch_T
         pressure_ratio = self.pressure_ratio
         disch_p = suc.p() * pressure_ratio
-        self.disch = State.define(p=disch_p, T=disch_T, fluid=suc.fluid)
+        self.disch = State(p=disch_p, T=disch_T, fluid=suc.fluid)
         self._calc_from_disch_flow_v_speed_suc()
 
     def _calc_from_disch_T_flow_m_pressure_ratio_speed_suc(self):
@@ -443,7 +443,7 @@ class Point:
         disch_T = self.disch_T
         pressure_ratio = self.pressure_ratio
         disch_p = suc.p() * pressure_ratio
-        self.disch = State.define(p=disch_p, T=disch_T, fluid=suc.fluid)
+        self.disch = State(p=disch_p, T=disch_T, fluid=suc.fluid)
         self._calc_from_disch_flow_m_speed_suc()
 
     @classmethod
@@ -578,7 +578,7 @@ class Point:
     @staticmethod
     def _dict_from_load(dict_parameters):
         """Change dict to format that can be used by load constructor."""
-        suc = State.define(
+        suc = State(
             p=Q_(dict_parameters.pop("p")),
             T=Q_(dict_parameters.pop("T")),
             fluid=dict_parameters.pop("fluid"),
@@ -1326,7 +1326,7 @@ def head_reference(suc, disch, num_steps=100):
     """
 
     def calc_step_discharge_temp(T1, p1, p0, h0, v0, e):
-        s1 = State.define(p=p1, T=T1, fluid=suc.fluid)
+        s1 = State(p=p1, T=T1, fluid=suc.fluid)
         h1 = s1.h()
 
         vm = (v0 + s1.v()) / 2
@@ -1353,11 +1353,11 @@ def head_reference(suc, disch, num_steps=100):
 
         # TODO implement p_intervals considering pressure ratio
         for p0, p1 in zip(p_intervals[:-1], p_intervals[1:]):
-            s0 = State.define(p=p0, T=T0, fluid=suc.fluid)
+            s0 = State(p=p0, T=T0, fluid=suc.fluid)
             T1 = newton(
                 calc_step_discharge_temp, (T0 + 1e-3), args=(p1, p0, s0.h(), s0.v(), e)
             )
-            s1 = State.define(p=p1, T=T1, fluid=suc.fluid)
+            s1 = State(p=p1, T=T1, fluid=suc.fluid)
             _ref_H += head_pol(s0, s1)
 
             T0 = T1
@@ -1419,7 +1419,7 @@ def head_reference_2017(suc, disch, num_steps=100):
         p_intervals.append(p)
 
     def calc_step_discharge_z(s1, s0, p1, p0, z0, R, e):
-        state1 = ccp.State.define(p=p1, s=s1, fluid=suc.fluid)
+        state1 = ccp.State(p=p1, s=s1, fluid=suc.fluid)
         z1 = state1.z()
         a = (z0 * (p1 / p0) - z1) / ((p1 / p0) - 1)
         b = (z1 - z0) / ((p1 / p0) - 1)
@@ -1435,11 +1435,11 @@ def head_reference_2017(suc, disch, num_steps=100):
         s0 = suc.s().magnitude
 
         for p0, p1 in zip(p_intervals[:-1], p_intervals[1:]):
-            state0 = ccp.State.define(p=p0, s=s0, fluid=suc.fluid)
+            state0 = ccp.State(p=p0, s=s0, fluid=suc.fluid)
             z0 = state0.z()
 
             s1 = newton(calc_step_discharge_z, (s0 + 1e-8), args=(s0, p1, p0, z0, R, e))
-            state1 = ccp.State.define(p=p1, s=s1, fluid=suc.fluid)
+            state1 = ccp.State(p=p1, s=s1, fluid=suc.fluid)
             _ref_H_2017 += ccp.point.head_pol(state0, state1)
 
             s0 = s1
@@ -1636,7 +1636,7 @@ def eff_pol_huntington(suc, disch):
     error = 1
     n = 0
     while error > 1e-10:
-        state3 = State.define(p=p3, T=T3, fluid=suc.fluid)
+        state3 = State(p=p3, T=T3, fluid=suc.fluid)
         s3 = state3.s()
         z3 = state3.z()
         cp3 = state3.cp()
@@ -1885,7 +1885,7 @@ def disch_from_suc_head_eff(suc, head, eff, polytropic_method=None):
     h_disch = head / eff + suc.h()
 
     #  consider first an isentropic compression
-    disch = State.define(h=h_disch, s=suc.s(), fluid=suc.fluid)
+    disch = State(h=h_disch, s=suc.s(), fluid=suc.fluid)
 
     def update_pressure(p):
         disch.update(h=h_disch, p=p)
@@ -1919,7 +1919,7 @@ def disch_from_suc_disch_p_eff(suc, disch_p, eff, polytropic_method=None):
     if polytropic_method is None:
         polytropic_method = ccp.config.POLYTROPIC_METHOD
 
-    disch = ccp.State.define(p=disch_p, s=suc.s(), fluid=suc.fluid)
+    disch = ccp.State(p=disch_p, s=suc.s(), fluid=suc.fluid)
     eff_calc_func = globals()[f"eff_pol_{polytropic_method}"]
 
     def update_state(x):
