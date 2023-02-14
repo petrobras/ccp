@@ -36,47 +36,44 @@ def get_session():
 
 get_session()
 
-st.session_state.session_name = st.sidebar.text_input(
-    "Session name", value=st.session_state.session_name
-)
-
 # Create a Streamlit sidebar with a file uploader to load a session state file
-with st.sidebar.form("my-form", clear_on_submit=True):
-    file = st.file_uploader("Load Data")
-    submitted = st.form_submit_button("Load Data")
-
-if submitted and file is not None:
-    st.sidebar.write("Loaded!")
-    session_state_data = json.load(file)
-    st.session_state.update(session_state_data)
-    st.session_state.session_name = file.name.replace(".json", "")
-    st.experimental_rerun()
-
-if st.sidebar.button("Save session state"):
-    session_state_dict = dict(st.session_state)
-    session_state_json = json.dumps(session_state_dict)
-    file_name = f"{st.session_state.session_name}.json" or "session_state.json"
-    with open(file_name, "w") as f:
-        f.write(session_state_json)
-    st.sidebar.download_button(
-        label="Download session state",
-        data=session_state_json,
-        file_name=file_name,
-        mime="application/json",
+with st.sidebar.expander("📁 File"):
+    st.session_state.session_name = st.text_input(
+        "Session name", value=st.session_state.session_name
     )
+
+    with st.form("my-form", clear_on_submit=True):
+        file = st.file_uploader("Load Data")
+        submitted = st.form_submit_button("Load Data")
+
+    if submitted and file is not None:
+        st.write("Loaded!")
+        session_state_data = json.load(file)
+        st.session_state.update(session_state_data)
+        st.session_state.session_name = file.name.replace(".json", "")
+        st.experimental_rerun()
+
+    if st.button("Save session state"):
+        session_state_dict = dict(st.session_state)
+        session_state_json = json.dumps(session_state_dict)
+        file_name = f"{st.session_state.session_name}.json" or "session_state.json"
+        with open(file_name, "w") as f:
+            f.write(session_state_json)
+        st.download_button(
+            label="Download session state",
+            data=session_state_json,
+            file_name=file_name,
+            mime="application/json",
+        )
 
 
 # add container with 4 columns and 2 rows
-with st.expander("Options"):
-    col1, col2, col3 = st.columns(3)
-    with col1:
-        reynolds_correction = st.checkbox("Reynolds Correction", value=True)
-        casing_heat_loss = st.checkbox("Casing Heat Loss", value=True)
-    with col2:
-        calculate_leakages = st.checkbox("Calculate Leakages", value=True)
-        seal_gas_flow = st.checkbox("Seal Gas Flow", value=True)
-    with col3:
-        variable_speed = st.checkbox("Variable Speed", value=True)
+with st.sidebar.expander("⚙️ Options"):
+    reynolds_correction = st.checkbox("Reynolds Correction", value=True)
+    casing_heat_loss = st.checkbox("Casing Heat Loss", value=True)
+    calculate_leakages = st.checkbox("Calculate Leakages", value=True)
+    seal_gas_flow = st.checkbox("Seal Gas Flow", value=True)
+    variable_speed = st.checkbox("Variable Speed", value=True)
 
 # parameters with name and label
 flow_m_units = ["kg/h", "lbm/h", "kg/s", "lbm/s"]
