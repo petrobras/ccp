@@ -6,6 +6,17 @@ from pathlib import Path
 
 Q_ = ccp.Q_
 
+
+assets = Path(__file__).parent / "assets"
+ccp_ico = assets / "favicon.ico"
+ccp_logo = assets / "ccp.png"
+
+st.set_page_config(
+    page_title="Hello",
+    page_icon=str(ccp_ico),
+    layout="wide",
+)
+
 assets = Path(__file__).parent / "assets"
 ccp_ico = assets / "favicon.ico"
 ccp_logo = assets / "ccp.png"
@@ -15,6 +26,45 @@ st.markdown(
 # Test Data for Back-to-Back Compressor
 """
 )
+
+
+def get_session():
+    # if file is being loaded, session_name is set with the file name
+    if "session_name" not in st.session_state:
+        st.session_state.session_name = ""
+
+
+get_session()
+
+st.session_state.session_name = st.sidebar.text_input(
+    "Session name", value=st.session_state.session_name
+)
+
+# Create a Streamlit sidebar with a file uploader to load a session state file
+with st.sidebar.form("my-form", clear_on_submit=True):
+    file = st.file_uploader("Load Data")
+    submitted = st.form_submit_button("Load Data")
+
+if submitted and file is not None:
+    st.sidebar.write("Loaded!")
+    session_state_data = json.load(file)
+    st.session_state.update(session_state_data)
+    st.session_state.session_name = file.name.replace(".json", "")
+    st.experimental_rerun()
+
+if st.sidebar.button("Save session state"):
+    session_state_dict = dict(st.session_state)
+    session_state_json = json.dumps(session_state_dict)
+    file_name = f"{st.session_state.session_name}.json" or "session_state.json"
+    with open(file_name, "w") as f:
+        f.write(session_state_json)
+    st.sidebar.download_button(
+        label="Download session state",
+        data=session_state_json,
+        file_name=file_name,
+        mime="application/json",
+    )
+
 
 # add container with 4 columns and 2 rows
 with st.expander("Options"):
@@ -110,15 +160,19 @@ parameters_map = {
     },
     "power": {
         "label": "Power",
-        "units": ["kW", "hp", "W", "Btu/h", "MW"]
+        "units": ["kW", "hp", "W", "Btu/h", "MW"],
     },
     "b": {
-        "label": "First impeller width",
-        "units": ["mm", "m", "ft", "in"]
+        "label": "First Impeller Width",
+        "units": ["mm", "m", "ft", "in"],
     },
     "D": {
-        "label": "First impeller diameter",
-        "units": ["mm", "m", "ft", "in"]
+        "label": "First Impeller Diameter",
+        "units": ["mm", "m", "ft", "in"],
+    },
+    "casing_area": {
+        "label": "Casing Area",
+        "units": ["m²", "mm²", "ft²", "in²"],
     },
 }
 
@@ -145,6 +199,7 @@ with st.expander("Data Sheet"):
         "power",
         "b",
         "D",
+        "casing_area",
     ]:
         parameter_container = st.container()
         (
@@ -454,24 +509,3 @@ if calculate_button:
                     **kwargs,
                 )
             )
-
-
-# Create a Streamlit sidebar with a file uploader to load a session state file
-uploaded_file = st.sidebar.file_uploader("Load Data", type=["json"])
-if uploaded_file is not None:
-    session_state_data = json.load(uploaded_file)
-    st.session_state.update(session_state_data)
-
-# Create a Streamlit button to save the session state to a file
-session_name = st.sidebar.text_input("Session name")
-if st.sidebar.button("Save session state"):
-    session_state_dict = dict(st.session_state)
-    session_state_json = json.dumps(session_state_dict)
-    with open(f"{session_name}.json", "w") as f:
-        f.write(session_state_json)
-    st.sidebar.download_button(
-        label="Download session state",
-        data=session_state_json,
-        file_name=f"{session_name}.json",
-        mime="application/json",
-    )
