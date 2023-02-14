@@ -1,5 +1,4 @@
 import streamlit as st
-from ccp import ureg
 
 from pathlib import Path
 
@@ -27,48 +26,66 @@ with st.expander("Options"):
         variable_speed = st.checkbox("Variable Speed", value=True)
 
 # parameters with name and label
-parameters_labels = {
-    "flow": "Flow",
-    "suction_pressure": "Suction Pressure",
-    "suction_temperature": "Suction Temperature",
-    "discharge_pressure": "Discharge Pressure",
-    "discharge_temperature": "Discharge Temperature",
-    "casing_delta_T": "Casing ΔT",
-    "balance_line_flow_m": "Balance Line Flow",
-    "seal_gas_flow_m": "Seal Gas Flow",
-    "seal_gas_temperature": "Seal Gas Temperature",
-    "speed": "Speed",
-}
-
-parameters_units = {
-    "flow": ["kg/h", "lbm/h", "kg/s", "lbm/s", "m3/h", "m3/s"],
-    "suction_pressure": ["bar", "psi", "Pa", "kPa", "MPa"],
-    "suction_temperature": ["degK", "degC", "degF", "degR"],
-    "discharge_pressure": ["bar", "psi", "Pa", "kPa", "MPa"],
-    "discharge_temperature": ["degK", "degC", "degF", "degR"],
-    "casing_delta_T": ["degK", "degC", "degF", "degR"],
-    "balance_line_flow_m": ["kg/h", "lbm/h", "kg/s", "lbm/s"],
-    "seal_gas_flow_m": ["kg/h", "lbm/h", "kg/s", "lbm/s"],
-    "seal_gas_temperature": ["degK", "degC", "degF", "degR"],
-    "speed": ["rpm", "Hz"],
+parameters_map = {
+    "flow": {
+        "label": "Flow",
+        "units": ["kg/h", "lbm/h", "kg/s", "lbm/s", "m3/h", "m3/s"],
+    },
+    "suction_pressure": {
+        "label": "Suction Pressure",
+        "units": ["bar", "psi", "Pa", "kPa", "MPa"],
+    },
+    "suction_temperature": {
+        "label": "Suction Temperature",
+        "units": ["degK", "degC", "degF", "degR"],
+    },
+    "discharge_pressure": {
+        "label": "Discharge Pressure",
+        "units": ["bar", "psi", "Pa", "kPa", "MPa"],
+    },
+    "discharge_temperature": {
+        "label": "Discharge Temperature",
+        "units": ["degK", "degC", "degF", "degR"],
+    },
+    "casing_delta_T": {
+        "label": "Casing ΔT",
+        "units": ["degK", "degC", "degF", "degR"],
+    },
+    "balance_line_flow_m": {
+        "label": "Balance Line Flow",
+        "units": ["kg/h", "lbm/h", "kg/s", "lbm/s", "m3/h", "m3/s"],
+    },
+    "seal_gas_flow_m": {
+        "label": "Seal Gas Flow",
+        "units": ["kg/h", "lbm/h", "kg/s", "lbm/s", "m3/h", "m3/s"],
+    },
+    "seal_gas_temperature": {
+        "label": "Seal Gas Temperature",
+        "units": ["degK", "degC", "degF", "degR"],
+    },
+    "speed": {
+        "label": "Speed",
+        "units": ["rpm", "Hz"],
+    },
 }
 
 # add container with 11 columns
 title_container = st.container()
 title_columns = title_container.columns(11, gap="small")
-for col, label in zip(title_columns, parameters_labels.values()):
-    col.markdown(f"{label}")
+for col, parameter in zip(title_columns, parameters_map.values()):
+    col.markdown(f"{parameter['label']}")
 
 # add container with 11 columns of the units
 units_container = st.container()
 units_columns = units_container.columns(11, gap="small")
 parameters_units_selected = {}
-for col, parameter, units in zip(
-    units_columns, parameters_units.keys(), parameters_units.values()
+for col, parameter in zip(
+    units_columns,
+    parameters_map.keys(),
 ):
     parameters_units_selected[parameter] = col.selectbox(
         f"{parameter} units.",
-        options=units,
+        options=parameters_map[parameter]["units"],
         key=parameter,
         label_visibility="collapsed",
     )
@@ -79,7 +96,7 @@ test_data_columns = test_data_container.columns(11, gap="small")
 test_data_values = {}
 points = range(8)
 for point in points:
-    for col, parameter in zip(test_data_columns, parameters_units.keys()):
+    for col, parameter in zip(test_data_columns, parameters_map.keys()):
         test_data_values[parameter] = col.text_input(
             f"{parameter} value.",
             key=f"{parameter}_{point}",
