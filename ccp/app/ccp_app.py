@@ -1,5 +1,6 @@
 import streamlit as st
 from pathlib import Path
+from ccp import ureg
 
 
 assets = Path(__file__).parent / "assets"
@@ -9,11 +10,12 @@ ccp_logo = assets / "ccp.png"
 st.set_page_config(
     page_title="Hello",
     page_icon=str(ccp_ico),
+    layout="wide",
 )
 
 st.markdown(
     """
- # ccp - Centrifugal Compressor Performance
+# ccp - Centrifugal Compressor Performance
 ccp is a python library for calculation of centrifugal compressor performance.
 The code uses 
 [CoolProp](http://www.coolprop.org/) / 
