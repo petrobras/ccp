@@ -6,7 +6,6 @@ from pathlib import Path
 
 Q_ = ccp.Q_
 
-
 assets = Path(__file__).parent / "assets"
 ccp_ico = assets / "favicon.ico"
 ccp_logo = assets / "ccp.png"
@@ -16,10 +15,6 @@ st.set_page_config(
     page_icon=str(ccp_ico),
     layout="wide",
 )
-
-assets = Path(__file__).parent / "assets"
-ccp_ico = assets / "favicon.ico"
-ccp_logo = assets / "ccp.png"
 
 st.markdown(
     """
@@ -44,11 +39,21 @@ with st.sidebar.expander("📁 File"):
 
     with st.form("my_form", clear_on_submit=True):
         file = st.file_uploader("Load Data")
-        submitted = st.form_submit_button("Load Data")
+        submitted = st.form_submit_button("Load")
 
     if submitted and file is not None:
         st.write("Loaded!")
         session_state_data = json.load(file)
+        # remove keys that cannot be set with st.session_state.update
+        for key in [
+            "FormSubmitter:my_form-Load",
+            "FormSubmitter:my_form-Load Data",
+            "my_form",
+        ]:
+            try:
+                del session_state_data[key]
+            except KeyError:
+                pass
         st.session_state.update(session_state_data)
         st.session_state.session_name = file.name.replace(".json", "")
         st.experimental_rerun()
@@ -76,7 +81,6 @@ for fluid in ccp.fluid_list.keys():
             fluid_list.append(possible_name)
 fluid_list = sorted(fluid_list)
 fluid_list.insert(0, "")
-print(fluid_list)
 
 with st.expander("Gas Selection"):
     gas_columns = st.columns(5)
@@ -234,6 +238,17 @@ with st.expander("Data Sheet"):
     points_title_columns[1].markdown("Units")
     points_title_columns[2].markdown("First Section")
     points_title_columns[3].markdown("Second Section")
+
+    points_gas_columns = points_title.columns(4, gap="small")
+    points_gas_columns[0].markdown("Gas Selection")
+    points_gas_columns[1].markdown("")
+    gas_options = [st.session_state[f"gas_{i}"] for i, gas in enumerate(gas_columns)]
+    points_gas_columns[2].selectbox(
+        "First Section", options=gas_options, label_visibility="collapsed"
+    )
+    points_gas_columns[3].selectbox(
+        "Second Section", options=gas_options, label_visibility="collapsed"
+    )
 
     # build one container with 8 columns for each parameter
     for parameter in [
@@ -408,153 +423,184 @@ kwargs = {}
 
 if calculate_button:
     print("calculating")
-    for i in range(1, number_of_points + 1):
-        # check if at least flow, suction pressure and suction temperature are filled
-        if (
-            st.session_state[f"flow_section_1_point_{i}"] == ""
-            or st.session_state[f"suction_pressure_section_1_point_{i}"] == ""
-            or st.session_state[f"suction_temperature_section_1_point_{i}"] == ""
-        ):
-            print("continue", i)
-            continue
-        else:
-            print("ok", i)
-            st.warning(
-                f"Please fill at least flow, suction pressure and suction temperature for point {i}"
-            )
-            calculate_button = False
-            if (
-                Q_(0, parameters_map["flow"]["selected_units"]).dimensionality
-                == "[mass] / [time]"
-            ):
-                if st.session_state[f"flow_section_1_point_{i}"]:
-                    kwargs["flow_m"] = Q_(
-                        st.session_state[f"flow_section_1_point_{i}"],
-                        parameters_map["flow"]["selected_units"],
-                    )
-                else:
-                    kwargs["flow_m"] = None
-            else:
-                if st.session_state[f"flow_section_1_point_{i}"]:
-                    kwargs["flow_v"] = Q_(
-                        st.session_state[f"flow_section_1_point_{i}"],
-                        parameters_map["flow"]["selected_units"],
-                    )
-                else:
-                    kwargs["flow_v"] = None
-            kwargs["suc"] = ccp.State(
-                p=Q_(
-                    st.session_state[f"suction_pressure_section_1_point_{i}"],
-                    parameters_map["suction_pressure"]["selected_units"],
-                ),
-                T=Q_(
-                    st.session_state[f"suction_temperature_section_1_point_{i}"],
-                    parameters_map["suction_temperature"]["selected_units"],
-                ),
-                fluid={"CO2": 1},
-            )
-            kwargs["disch"] = ccp.State(
-                p=Q_(
-                    st.session_state[f"discharge_pressure_section_1_point_{i}"],
-                    parameters_map["discharge_pressure"]["selected_units"],
-                ),
-                T=Q_(
-                    st.session_state[f"discharge_temperature_section_1_point_{i}"],
-                    parameters_map["discharge_temperature"]["selected_units"],
-                ),
-                fluid={"CO2": 1},
-            )
-            if (
-                st.session_state[f"casing_delta_T_section_1_point_{i}"]
-                and casing_heat_loss
-            ):
-                kwargs["casing_temperature"] = Q_(
-                    st.session_state[f"casing_delta_T_section_1_point_{i}"],
-                    parameters_map["casing_delta_T"]["selected_units"],
-                )
-                kwargs["ambient_temperature"] = 0
-            else:
-                kwargs["casing_temperature"] = 0
-                kwargs["ambient_temperature"] = 0
+    # calculate guarantee point for first section
+    kwargs_guarantee_section_1 = {}
+    if (
+        Q_(0, parameters_map["flow"]["selected_units"]).dimensionality
+        == "[mass] / [time]"
+    ):
+        kwargs_guarantee_section_1["flow_m"] = Q_(
+            st.session_state[f"flow_section_1_point_{i}"],
+            parameters_map["flow"]["selected_units"],
+        )
+    else:
+        kwargs_guarantee_section_1["flow_v"] = Q_(
+            st.session_state[f"flow_section_1_point_{i}"],
+            parameters_map["flow"]["selected_units"],
+        )
 
-            if (
-                st.session_state[f"balance_line_flow_m_section_1_point_{i}"]
-                and calculate_leakages
-            ):
-                kwargs["balance_line_flow_m"] = Q_(
-                    st.session_state[f"balance_line_flow_m_section_1_point_{i}"],
-                    parameters_map["balance_line_flow_m"]["selected_units"],
-                )
-            else:
-                kwargs["balance_line_flow_m"] = None
-
-            if (
-                st.session_state[f"seal_gas_flow_m_section_1_point_{i}"]
-                and calculate_leakages
-            ):
-                kwargs["seal_gas_flow_m"] = Q_(
-                    st.session_state[f"seal_gas_flow_m_section_1_point_{i}"],
-                    parameters_map["seal_gas_flow_m"]["selected_units"],
-                )
-                kwargs["seal_gas_temperature"] = Q_(
-                    st.session_state[f"seal_gas_temperature_section_1_point_{i}"],
-                    parameters_map["seal_gas_temperature"]["selected_units"],
-                )
-            else:
-                kwargs["seal_gas_flow_m"] = None
-                kwargs["seal_gas_temperature"] = None
-
-            if (
-                st.session_state[f"div_wall_flow_m_section_1_point_{i}"]
-                and calculate_leakages
-            ):
-                kwargs["div_wall_flow_m"] = Q_(
-                    st.session_state[f"div_wall_flow_m_section_1_point_{i}"],
-                    parameters_map["div_wall_flow_m"]["selected_units"],
-                )
-                kwargs["div_wall_upstream_pressure"] = Q_(
-                    st.session_state[f"div_wall_upstream_pressure_section_1_point_{i}"],
-                    parameters_map["div_wall_upstream_pressure"]["selected_units"],
-                )
-                kwargs["div_wall_upstream_temperature"] = Q_(
-                    st.session_state[
-                        f"div_wall_upstream_temperature_section_1_point_{i}"
-                    ],
-                    parameters_map["div_wall_upstream_temperature"]["selected_units"],
-                )
-            else:
-                kwargs["div_wall_flow_m"] = None
-                kwargs["div_wall_upstream_pressure"] = None
-                kwargs["div_wall_upstream_temperature"] = None
-
-            if (
-                st.session_state[f"first_section_discharge_flow_m_section_1_point_{i}"]
-                and calculate_leakages
-            ):
-                kwargs["first_section_discharge_flow_m"] = Q_(
-                    st.session_state[
-                        f"first_section_discharge_flow_m_section_1_point_{i}"
-                    ],
-                    parameters_map["first_section_discharge_flow_m"]["selected_units"],
-                )
-            else:
-                kwargs["first_section_discharge_flow_m"] = None
-
-            first_section_test_points.append(
-                PointFirstSection(
-                    speed=Q_(
-                        st.session_state[f"speed_section_1_point_{i}"],
-                        parameters_map["speed"]["selected_units"],
-                    ),
-                    b=Q_(10.15, "mm"),
-                    D=Q_(365, "mm"),
-                    oil_flow_journal_bearing_de=Q_(31.515, "l/min"),
-                    oil_flow_journal_bearing_nde=Q_(22.67, "l/min"),
-                    oil_flow_thrust_bearing_nde=Q_(126.729, "l/min"),
-                    oil_inlet_temperature=Q_(41.544, "degC"),
-                    oil_outlet_temperature_de=Q_(49.727, "degC"),
-                    oil_outlet_temperature_nde=Q_(50.621, "degC"),
-                    casing_area=5.5,
-                    **kwargs,
-                )
-            )
+    kwargs_guarantee_section_1["suc"] = ccp.State(
+        p=Q_(
+            st.session_state.suction_pressure_section_1_point_guarantee,
+            st.session_state.suction_pressure_section_1_point_guarantee_units,
+        ),
+        T=Q_(
+            st.session_state.suction_temperature_section_1_point_guarantee,
+            st.session_state.suction_temperature_section_1_point_guarantee_units,
+        ),
+        fluid={"co2": 1.0},
+    )
+    guarantee_point_section_1 = ccp.Point(
+        **kwargs_guarantee_section_1,
+    )
+    #
+    # for i in range(1, number_of_points + 1):
+    #     # check if at least flow, suction pressure and suction temperature are filled
+    #     if (
+    #         st.session_state[f"flow_section_1_point_{i}"] == ""
+    #         or st.session_state[f"suction_pressure_section_1_point_{i}"] == ""
+    #         or st.session_state[f"suction_temperature_section_1_point_{i}"] == ""
+    #     ):
+    #         print("continue", i)
+    #         continue
+    #     else:
+    #         print("ok", i)
+    #         st.warning(
+    #             f"Please fill at least flow, suction pressure and suction temperature for point {i}"
+    #         )
+    #         calculate_button = False
+    #         if (
+    #             Q_(0, parameters_map["flow"]["selected_units"]).dimensionality
+    #             == "[mass] / [time]"
+    #         ):
+    #             if st.session_state[f"flow_section_1_point_{i}"]:
+    #                 kwargs["flow_m"] = Q_(
+    #                     st.session_state[f"flow_section_1_point_{i}"],
+    #                     parameters_map["flow"]["selected_units"],
+    #                 )
+    #             else:
+    #                 kwargs["flow_m"] = None
+    #         else:
+    #             if st.session_state[f"flow_section_1_point_{i}"]:
+    #                 kwargs["flow_v"] = Q_(
+    #                     st.session_state[f"flow_section_1_point_{i}"],
+    #                     parameters_map["flow"]["selected_units"],
+    #                 )
+    #             else:
+    #                 kwargs["flow_v"] = None
+    #         kwargs["suc"] = ccp.State(
+    #             p=Q_(
+    #                 st.session_state[f"suction_pressure_section_1_point_{i}"],
+    #                 parameters_map["suction_pressure"]["selected_units"],
+    #             ),
+    #             T=Q_(
+    #                 st.session_state[f"suction_temperature_section_1_point_{i}"],
+    #                 parameters_map["suction_temperature"]["selected_units"],
+    #             ),
+    #             fluid={"CO2": 1},
+    #         )
+    #         kwargs["disch"] = ccp.State(
+    #             p=Q_(
+    #                 st.session_state[f"discharge_pressure_section_1_point_{i}"],
+    #                 parameters_map["discharge_pressure"]["selected_units"],
+    #             ),
+    #             T=Q_(
+    #                 st.session_state[f"discharge_temperature_section_1_point_{i}"],
+    #                 parameters_map["discharge_temperature"]["selected_units"],
+    #             ),
+    #             fluid={"CO2": 1},
+    #         )
+    #         if (
+    #             st.session_state[f"casing_delta_T_section_1_point_{i}"]
+    #             and casing_heat_loss
+    #         ):
+    #             kwargs["casing_temperature"] = Q_(
+    #                 st.session_state[f"casing_delta_T_section_1_point_{i}"],
+    #                 parameters_map["casing_delta_T"]["selected_units"],
+    #             )
+    #             kwargs["ambient_temperature"] = 0
+    #         else:
+    #             kwargs["casing_temperature"] = 0
+    #             kwargs["ambient_temperature"] = 0
+    #
+    #         if (
+    #             st.session_state[f"balance_line_flow_m_section_1_point_{i}"]
+    #             and calculate_leakages
+    #         ):
+    #             kwargs["balance_line_flow_m"] = Q_(
+    #                 st.session_state[f"balance_line_flow_m_section_1_point_{i}"],
+    #                 parameters_map["balance_line_flow_m"]["selected_units"],
+    #             )
+    #         else:
+    #             kwargs["balance_line_flow_m"] = None
+    #
+    #         if (
+    #             st.session_state[f"seal_gas_flow_m_section_1_point_{i}"]
+    #             and calculate_leakages
+    #         ):
+    #             kwargs["seal_gas_flow_m"] = Q_(
+    #                 st.session_state[f"seal_gas_flow_m_section_1_point_{i}"],
+    #                 parameters_map["seal_gas_flow_m"]["selected_units"],
+    #             )
+    #             kwargs["seal_gas_temperature"] = Q_(
+    #                 st.session_state[f"seal_gas_temperature_section_1_point_{i}"],
+    #                 parameters_map["seal_gas_temperature"]["selected_units"],
+    #             )
+    #         else:
+    #             kwargs["seal_gas_flow_m"] = None
+    #             kwargs["seal_gas_temperature"] = None
+    #
+    #         if (
+    #             st.session_state[f"div_wall_flow_m_section_1_point_{i}"]
+    #             and calculate_leakages
+    #         ):
+    #             kwargs["div_wall_flow_m"] = Q_(
+    #                 st.session_state[f"div_wall_flow_m_section_1_point_{i}"],
+    #                 parameters_map["div_wall_flow_m"]["selected_units"],
+    #             )
+    #             kwargs["div_wall_upstream_pressure"] = Q_(
+    #                 st.session_state[f"div_wall_upstream_pressure_section_1_point_{i}"],
+    #                 parameters_map["div_wall_upstream_pressure"]["selected_units"],
+    #             )
+    #             kwargs["div_wall_upstream_temperature"] = Q_(
+    #                 st.session_state[
+    #                     f"div_wall_upstream_temperature_section_1_point_{i}"
+    #                 ],
+    #                 parameters_map["div_wall_upstream_temperature"]["selected_units"],
+    #             )
+    #         else:
+    #             kwargs["div_wall_flow_m"] = None
+    #             kwargs["div_wall_upstream_pressure"] = None
+    #             kwargs["div_wall_upstream_temperature"] = None
+    #
+    #         if (
+    #             st.session_state[f"first_section_discharge_flow_m_section_1_point_{i}"]
+    #             and calculate_leakages
+    #         ):
+    #             kwargs["first_section_discharge_flow_m"] = Q_(
+    #                 st.session_state[
+    #                     f"first_section_discharge_flow_m_section_1_point_{i}"
+    #                 ],
+    #                 parameters_map["first_section_discharge_flow_m"]["selected_units"],
+    #             )
+    #         else:
+    #             kwargs["first_section_discharge_flow_m"] = None
+    #
+    #         first_section_test_points.append(
+    #             PointFirstSection(
+    #                 speed=Q_(
+    #                     st.session_state[f"speed_section_1_point_{i}"],
+    #                     parameters_map["speed"]["selected_units"],
+    #                 ),
+    #                 b=Q_(10.15, "mm"),
+    #                 D=Q_(365, "mm"),
+    #                 oil_flow_journal_bearing_de=Q_(31.515, "l/min"),
+    #                 oil_flow_journal_bearing_nde=Q_(22.67, "l/min"),
+    #                 oil_flow_thrust_bearing_nde=Q_(126.729, "l/min"),
+    #                 oil_inlet_temperature=Q_(41.544, "degC"),
+    #                 oil_outlet_temperature_de=Q_(49.727, "degC"),
+    #                 oil_outlet_temperature_nde=Q_(50.621, "degC"),
+    #                 casing_area=5.5,
+    #                 **kwargs,
+    #             )
+    #         )
