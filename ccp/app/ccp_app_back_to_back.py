@@ -23,7 +23,7 @@ ccp_logo = assets / "ccp.png"
 
 st.markdown(
     """
-# Test Data for Back-to-Back Compressor
+# Performance Test Back-to-Back Compressor
 """
 )
 
@@ -65,6 +65,58 @@ with st.sidebar.expander("📁 File"):
             file_name=file_name,
             mime="application/json",
         )
+
+
+# Gas selection
+fluid_list = []
+for fluid in ccp.fluid_list.keys():
+    fluid_list.append(fluid.lower())
+    for possible_name in ccp.fluid_list[fluid].possible_names:
+        if possible_name != fluid.lower():
+            fluid_list.append(possible_name)
+fluid_list = sorted(fluid_list)
+fluid_list.insert(0, "")
+print(fluid_list)
+
+with st.expander("Gas Selection"):
+    gas_columns = st.columns(5)
+    for i, gas_column in enumerate(gas_columns):
+        gas_column.text_input(
+            f"Gas Name",
+            value=f"gas_{i}",
+            key=f"gas_{i}",
+        )
+        component, molar_fraction = gas_column.columns([2, 1])
+        default_components = [
+            "methane",
+            "ethane",
+            "propane",
+            "n-butane",
+            "i-butane",
+            "n-pentane",
+            "i-pentane",
+            "n-hexane",
+            "n-heptane",
+            "n-octane",
+            "nitrogen",
+            "h2s",
+            "co2",
+            "h2o",
+        ]
+        for j, default_component in enumerate(default_components):
+            component.selectbox(
+                "Component",
+                options=fluid_list,
+                index=fluid_list.index(default_component),
+                key=f"gas_{i}_component_{j}",
+                label_visibility="collapsed",
+            )
+            molar_fraction.text_input(
+                "Molar Fraction",
+                value="0",
+                key=f"gas_{i}_molar_fraction_{j}",
+                label_visibility="collapsed",
+            )
 
 
 # add container with 4 columns and 2 rows
@@ -156,7 +208,7 @@ parameters_map = {
         "units": ["%", "decimal"],
     },
     "power": {
-        "label": "Power",
+        "label": "Gas Power",
         "units": ["kW", "hp", "W", "Btu/h", "MW"],
     },
     "b": {
@@ -190,10 +242,10 @@ with st.expander("Data Sheet"):
         "suction_temperature",
         "discharge_pressure",
         "discharge_temperature",
+        "power",
+        "speed",
         "head",
         "efficiency",
-        "speed",
-        "power",
         "b",
         "D",
         "casing_area",
