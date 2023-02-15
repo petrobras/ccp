@@ -83,9 +83,12 @@ fluid_list = sorted(fluid_list)
 fluid_list.insert(0, "")
 
 with st.expander("Gas Selection"):
+    gas_compositions = {}
     gas_columns = st.columns(5)
     for i, gas_column in enumerate(gas_columns):
-        gas_column.text_input(
+        gas_compositions[f"gas_{i}"] = {}
+
+        gas_compositions[f"gas_{i}"]["name"] = gas_column.text_input(
             f"Gas Name",
             value=f"gas_{i}",
             key=f"gas_{i}",
@@ -108,14 +111,16 @@ with st.expander("Gas Selection"):
             "h2o",
         ]
         for j, default_component in enumerate(default_components):
-            component.selectbox(
+            gas_compositions[f"gas_{i}"][f"component_{j}"] = component.selectbox(
                 "Component",
                 options=fluid_list,
                 index=fluid_list.index(default_component),
                 key=f"gas_{i}_component_{j}",
                 label_visibility="collapsed",
             )
-            molar_fraction.text_input(
+            gas_compositions[f"gas_{i}"][
+                f"molar_fraction_{j}"
+            ] = molar_fraction.text_input(
                 "Molar Fraction",
                 value="0",
                 key=f"gas_{i}_molar_fraction_{j}",
@@ -243,11 +248,15 @@ with st.expander("Data Sheet"):
     points_gas_columns[0].markdown("Gas Selection")
     points_gas_columns[1].markdown("")
     gas_options = [st.session_state[f"gas_{i}"] for i, gas in enumerate(gas_columns)]
-    points_gas_columns[2].selectbox(
-        "First Section", options=gas_options, label_visibility="collapsed"
+    gas_name_section_1_point_guarantee = points_gas_columns[2].selectbox(
+        "gas_section_1_point_guarantee",
+        options=gas_options,
+        label_visibility="collapsed",
     )
-    points_gas_columns[3].selectbox(
-        "Second Section", options=gas_options, label_visibility="collapsed"
+    gas_name_section_2_point_guarantee = points_gas_columns[3].selectbox(
+        "gas_section_2_point_guarantee",
+        options=gas_options,
+        label_visibility="collapsed",
     )
 
     # build one container with 8 columns for each parameter
@@ -281,7 +290,7 @@ with st.expander("Data Sheet"):
         parameters_map[parameter]["selected_units"] = units_col.selectbox(
             f"{parameter} units",
             options=parameters_map[parameter]["units"],
-            key=f"{parameter}_units_section_1_guarantee",
+            key=f"{parameter}_units_section_1_point_guarantee",
             label_visibility="collapsed",
         )
         parameters_map[parameter]["section_1"]["values"][
@@ -425,34 +434,54 @@ if calculate_button:
     print("calculating")
     # calculate guarantee point for first section
     kwargs_guarantee_section_1 = {}
-    if (
-        Q_(0, parameters_map["flow"]["selected_units"]).dimensionality
-        == "[mass] / [time]"
-    ):
-        kwargs_guarantee_section_1["flow_m"] = Q_(
-            st.session_state[f"flow_section_1_point_{i}"],
-            parameters_map["flow"]["selected_units"],
-        )
-    else:
-        kwargs_guarantee_section_1["flow_v"] = Q_(
-            st.session_state[f"flow_section_1_point_{i}"],
-            parameters_map["flow"]["selected_units"],
-        )
 
-    kwargs_guarantee_section_1["suc"] = ccp.State(
-        p=Q_(
-            st.session_state.suction_pressure_section_1_point_guarantee,
-            st.session_state.suction_pressure_section_1_point_guarantee_units,
-        ),
-        T=Q_(
-            st.session_state.suction_temperature_section_1_point_guarantee,
-            st.session_state.suction_temperature_section_1_point_guarantee_units,
-        ),
-        fluid={"co2": 1.0},
-    )
-    guarantee_point_section_1 = ccp.Point(
-        **kwargs_guarantee_section_1,
-    )
+    gas_composition_section_1_point_guarantee = {}
+    # get gas composition from selected gas
+    for gas in gas_compositions.keys():
+        if gas_compositions[gas]["name"] == gas_name_section_1_point_guarantee:
+            for i in range(len(default_components) - 1):
+                component = gas_compositions[gas][f"component_{i}"]
+                molar_fraction = float(gas_compositions[gas][f"molar_fraction_{i}"])
+                if molar_fraction != 0:
+                    gas_composition_section_1_point_guarantee[
+                        component
+                    ] = molar_fraction
+
+    # gas_name = st.session_state.gas_section_1_point_guarantee
+    # for gas in gas_columns:
+    #     print(gas)
+    # for i in range(len(default_components)):
+    #     pass
+
+    # if (
+    #     Q_(0, parameters_map["flow"]["selected_units"]).dimensionality
+    #     == "[mass] / [time]"
+    # ):
+    #     kwargs_guarantee_section_1["flow_m"] = Q_(
+    #         st.session_state[f"flow_section_1_point_{i}"],
+    #         parameters_map["flow"]["selected_units"],
+    #     )
+    # else:
+    #     kwargs_guarantee_section_1["flow_v"] = Q_(
+    #         st.session_state[f"flow_section_1_point_{i}"],
+    #         parameters_map["flow"]["selected_units"],
+    #     )
+    #
+    # kwargs_guarantee_section_1["suc"] = ccp.State(
+    #     p=Q_(
+    #         st.session_state.suction_pressure_section_1_point_guarantee,
+    #         st.session_state.suction_pressure_section_1_point_guarantee_units,
+    #     ),
+    #     T=Q_(
+    #         st.session_state.suction_temperature_section_1_point_guarantee,
+    #         st.session_state.suction_temperature_section_1_point_guarantee_units,
+    #     ),
+    #     fluid={"co2": 1.0},
+    # )
+    # guarantee_point_section_1 = ccp.Point(
+    #     **kwargs_guarantee_section_1,
+    # )
+
     #
     # for i in range(1, number_of_points + 1):
     #     # check if at least flow, suction pressure and suction temperature are filled
