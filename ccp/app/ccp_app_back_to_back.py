@@ -42,7 +42,7 @@ with st.sidebar.expander("📁 File"):
         "Session name", value=st.session_state.session_name
     )
 
-    with st.form("my-form", clear_on_submit=True):
+    with st.form("my_form", clear_on_submit=True):
         file = st.file_uploader("Load Data")
         submitted = st.form_submit_button("Load Data")
 
