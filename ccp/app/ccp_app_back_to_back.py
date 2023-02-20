@@ -556,9 +556,9 @@ if calculate_button:
         **kwargs_guarantee_section_2,
     )
 
-
     for section in ["section_1", "section_2"]:
         for i in range(1, number_of_test_points + 1):
+            print("i", i)
             kwargs = {}
             # check if at least flow, suction pressure and suction temperature are filled
             if (
@@ -569,7 +569,6 @@ if calculate_button:
                 print("continue", i)
                 continue
             else:
-                print("ok", i)
                 st.warning(
                     f"Please fill at least flow, suction pressure and suction temperature for point {i}"
                 )
@@ -580,7 +579,7 @@ if calculate_button:
                 ):
                     if st.session_state[f"flow_{section}_point_{i}"]:
                         kwargs["flow_m"] = Q_(
-                            st.session_state[f"flow_{section}_point_{i}"],
+                            float(st.session_state[f"flow_{section}_point_{i}"]),
                             parameters_map["flow"][section]["test_units"],
                         )
                     else:
@@ -588,40 +587,51 @@ if calculate_button:
                 else:
                     if st.session_state[f"flow_{section}_point_{i}"]:
                         kwargs["flow_v"] = Q_(
-                            st.session_state[f"flow_{section}_point_{i}"],
+                            float(st.session_state[f"flow_{section}_point_{i}"]),
                             parameters_map["flow"][section]["test_units"],
                         )
                     else:
                         kwargs["flow_v"] = None
+                print(i, kwargs)
                 kwargs["suc"] = ccp.State(
                     p=Q_(
-                        st.session_state[f"suction_pressure_{section}_point_{i}"],
+                        float(
+                            st.session_state[f"suction_pressure_{section}_point_{i}"]
+                        ),
                         parameters_map["suction_pressure"][section]["test_units"],
                     ),
                     T=Q_(
-                        st.session_state[f"suction_temperature_{section}_point_{i}"],
+                        float(
+                            st.session_state[f"suction_temperature_{section}_point_{i}"]
+                        ),
                         parameters_map["suction_temperature"][section]["test_units"],
                     ),
                     fluid={"CO2": 1},
                 )
                 kwargs["disch"] = ccp.State(
                     p=Q_(
-                        st.session_state[f"discharge_pressure_section_1_point_{i}"],
-                        parameters_map["discharge_pressure"]["selected_units"],
+                        float(
+                            st.session_state[f"discharge_pressure_{section}_point_{i}"]
+                        ),
+                        parameters_map["discharge_pressure"][section]["test_units"],
                     ),
                     T=Q_(
-                        st.session_state[f"discharge_temperature_section_1_point_{i}"],
-                        parameters_map["discharge_temperature"]["selected_units"],
+                        float(
+                            st.session_state[
+                                f"discharge_temperature_{section}_point_{i}"
+                            ]
+                        ),
+                        parameters_map["discharge_temperature"][section]["test_units"],
                     ),
                     fluid={"CO2": 1},
                 )
                 if (
-                    st.session_state[f"casing_delta_T_section_1_point_{i}"]
+                    st.session_state[f"casing_delta_T_{section}_point_{i}"]
                     and casing_heat_loss
                 ):
                     kwargs["casing_temperature"] = Q_(
-                        st.session_state[f"casing_delta_T_section_1_point_{i}"],
-                        parameters_map["casing_delta_T"]["selected_units"],
+                        float(st.session_state[f"casing_delta_T_{section}_point_{i}"]),
+                        parameters_map["casing_delta_T"][section]["test_units"],
                     )
                     kwargs["ambient_temperature"] = 0
                 else:
@@ -629,27 +639,33 @@ if calculate_button:
                     kwargs["ambient_temperature"] = 0
 
                 if (
-                    st.session_state[f"balance_line_flow_m_section_1_point_{i}"]
+                    st.session_state[f"balance_line_flow_m_{section}_point_{i}"]
                     and calculate_leakages
                 ):
                     kwargs["balance_line_flow_m"] = Q_(
-                        st.session_state[f"balance_line_flow_m_section_1_point_{i}"],
-                        parameters_map["balance_line_flow_m"]["selected_units"],
+                        float(
+                            st.session_state[f"balance_line_flow_m_{section}_point_{i}"]
+                        ),
+                        parameters_map["balance_line_flow_m"][section]["test_units"],
                     )
                 else:
                     kwargs["balance_line_flow_m"] = None
 
                 if (
-                    st.session_state[f"seal_gas_flow_m_section_1_point_{i}"]
+                    st.session_state[f"seal_gas_flow_m_{section}_point_{i}"]
                     and calculate_leakages
                 ):
                     kwargs["seal_gas_flow_m"] = Q_(
-                        st.session_state[f"seal_gas_flow_m_section_1_point_{i}"],
-                        parameters_map["seal_gas_flow_m"]["selected_units"],
+                        float(st.session_state[f"seal_gas_flow_m_{section}_point_{i}"]),
+                        parameters_map["seal_gas_flow_m"][section]["test_units"],
                     )
                     kwargs["seal_gas_temperature"] = Q_(
-                        st.session_state[f"seal_gas_temperature_section_1_point_{i}"],
-                        parameters_map["seal_gas_temperature"]["selected_units"],
+                        float(
+                            st.session_state[
+                                f"seal_gas_temperature_{section}_point_{i}"
+                            ]
+                        ),
+                        parameters_map["seal_gas_temperature"][section]["test_units"],
                     )
                 else:
                     kwargs["seal_gas_flow_m"] = None
@@ -660,21 +676,27 @@ if calculate_button:
                     and calculate_leakages
                 ):
                     kwargs["div_wall_flow_m"] = Q_(
-                        st.session_state[f"div_wall_flow_m_section_1_point_{i}"],
-                        parameters_map["div_wall_flow_m"]["selected_units"],
+                        float(st.session_state[f"div_wall_flow_m_section_1_point_{i}"]),
+                        parameters_map["div_wall_flow_m"][section]["test_units"],
                     )
                     kwargs["div_wall_upstream_pressure"] = Q_(
-                        st.session_state[
-                            f"div_wall_upstream_pressure_section_1_point_{i}"
+                        float(
+                            st.session_state[
+                                f"div_wall_upstream_pressure_section_1_point_{i}"
+                            ]
+                        ),
+                        parameters_map["div_wall_upstream_pressure"][section][
+                            "test_units"
                         ],
-                        parameters_map["div_wall_upstream_pressure"]["selected_units"],
                     )
                     kwargs["div_wall_upstream_temperature"] = Q_(
-                        st.session_state[
-                            f"div_wall_upstream_temperature_section_1_point_{i}"
-                        ],
-                        parameters_map["div_wall_upstream_temperature"][
-                            "selected_units"
+                        float(
+                            st.session_state[
+                                f"div_wall_upstream_temperature_section_1_point_{i}"
+                            ]
+                        ),
+                        parameters_map["div_wall_upstream_temperature"][section][
+                            "test_units"
                         ],
                     )
                 else:
@@ -689,33 +711,43 @@ if calculate_button:
                     and calculate_leakages
                 ):
                     kwargs["first_section_discharge_flow_m"] = Q_(
-                        st.session_state[
-                            f"first_section_discharge_flow_m_section_1_point_{i}"
-                        ],
-                        parameters_map["first_section_discharge_flow_m"][
-                            "selected_units"
+                        float(
+                            st.session_state[
+                                f"first_section_discharge_flow_m_section_1_point_{i}"
+                            ]
+                        ),
+                        parameters_map["first_section_discharge_flow_m"][section][
+                            "test_units"
                         ],
                     )
                 else:
                     kwargs["first_section_discharge_flow_m"] = None
 
+                kwargs["b"] = Q_(
+                    float(st.session_state[f"b_{section}_point_guarantee"]),
+                    parameters_map["b"][section]["data_sheet_units"],
+                )
+                kwargs["D"] = Q_(
+                    float(st.session_state[f"D_{section}_point_guarantee"]),
+                    parameters_map["D"][section]["data_sheet_units"],
+                )
+                kwargs["casing_area"] = Q_(
+                    float(st.session_state[f"casing_area_{section}_point_guarantee"]),
+                    parameters_map["casing_area"][section]["data_sheet_units"],
+                )
+
                 first_section_test_points.append(
                     PointFirstSection(
                         speed=Q_(
-                            st.session_state[f"speed_section_1_point_{i}"],
-                            parameters_map["speed"]["selected_units"],
+                            float(st.session_state[f"speed_section_1_point_{i}"]),
+                            parameters_map["speed"][section]["test_units"],
                         ),
-                        b=Q_(10.15, "mm"),
-                        D=Q_(365, "mm"),
                         oil_flow_journal_bearing_de=Q_(31.515, "l/min"),
                         oil_flow_journal_bearing_nde=Q_(22.67, "l/min"),
                         oil_flow_thrust_bearing_nde=Q_(126.729, "l/min"),
                         oil_inlet_temperature=Q_(41.544, "degC"),
                         oil_outlet_temperature_de=Q_(49.727, "degC"),
                         oil_outlet_temperature_nde=Q_(50.621, "degC"),
-                        casing_area=5.5,
                         **kwargs,
                     )
                 )
-
-            print(first_section_test_points)
