@@ -69,7 +69,6 @@ logger.critical(
 )
 
 if __name__ == "__main__" or __name__ == "test_script":
-
     if DEBUG_MODE or __name__ == "test_script":
         AT_sheet["H35"].value = "Calcular"
 
@@ -260,7 +259,6 @@ if __name__ == "__main__" or __name__ == "test_script":
         P_AT_Buf = []
 
         for i in range(N):
-
             speed_AT = Q_(Dados_AT[i, 11].value, AT_sheet.range("R6").value)
             N_ratio = speed_FD / speed_AT
 
@@ -401,7 +399,6 @@ if __name__ == "__main__" or __name__ == "test_script":
         points_converted_reyn = []
 
         for i in range(N):
-
             if curve_shape == "Yes":
                 P_exp_flow = imp_exp.point(
                     flow_v=P_AT[i].flow_v * N_ratio, speed=speed_FD
@@ -692,7 +689,6 @@ if __name__ == "__main__" or __name__ == "test_script":
 
         N_ratio = speed_FD / speed_TP
         if TP_sheet["C23"].value == "Yes":
-
             P_TPconv = reynolds_corr(
                 P_AT=P_TP,
                 P_FD=P_FD,
@@ -702,7 +698,6 @@ if __name__ == "__main__" or __name__ == "test_script":
             TP_sheet["H29"].value = P_TPconv.eff.m
 
         else:
-
             P_TPconv = ccp.Point(
                 suc=P_FD.suc,
                 eff=P_TP.eff,
@@ -752,7 +747,6 @@ if __name__ == "__main__" or __name__ == "test_script":
         data = np.array(CF_sheet[i, 2:9].value)
 
         while len(data[data == None]) == 0:
-
             Units = CF_sheet["C4:J4"].value
 
             gas = int(float(data[6]))

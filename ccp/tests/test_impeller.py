@@ -96,9 +96,7 @@ def imp1():
 
 
 def test_impeller_new_suction(imp1):
-    new_suc = State(
-        p=Q_(0.2, "MPa"), T=301.58, fluid={"n2": 1 - 1e-15, "co2": 1e-15}
-    )
+    new_suc = State(p=Q_(0.2, "MPa"), T=301.58, fluid={"n2": 1 - 1e-15, "co2": 1e-15})
     imp2 = Impeller.convert_from(imp1, suc=new_suc, find="speed")
     p0 = imp1[0]
     new_p0 = imp2[0]
@@ -187,9 +185,7 @@ def test_impeller_disch_state(imp2):
 
 
 def test_impeller2_new_suction(imp2):
-    new_suc = State(
-        p=Q_(0.2, "MPa"), T=301.58, fluid={"n2": 1 - 1e-15, "co2": 1e-15}
-    )
+    new_suc = State(p=Q_(0.2, "MPa"), T=301.58, fluid={"n2": 1 - 1e-15, "co2": 1e-15})
     imp2_new = Impeller.convert_from(imp2, suc=new_suc, find="speed")
     p0 = imp2[0]
     new_p0 = imp2_new[0]

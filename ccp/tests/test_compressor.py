@@ -288,7 +288,6 @@ def straight_through():
 
 
 def test_straight_through(straight_through):
-
     # flange test
     p0f = straight_through.points_flange_t[0]
     assert_allclose(p0f.suc.fluid["CO2"], 0.80218)
@@ -423,9 +422,7 @@ def back_to_back():
     }
 
     suc_sp_sec1 = State(p=Q_(47.39, "bar"), T=Q_(40, "degC"), fluid=fluid_sp)
-    disch_sp_sec1 = State(
-        p=Q_(136.27, "bar"), T=Q_(123.7, "degC"), fluid=fluid_sp
-    )
+    disch_sp_sec1 = State(p=Q_(136.27, "bar"), T=Q_(123.7, "degC"), fluid=fluid_sp)
     guarantee_point_sec1 = Point(
         suc=suc_sp_sec1,
         disch=disch_sp_sec1,
@@ -435,9 +432,7 @@ def back_to_back():
         D=Q_(365, "mm"),
     )
     suc_sp_sec2 = State(p=Q_(135.38, "bar"), T=Q_(40, "degC"), fluid=fluid_sp)
-    disch_sp_sec2 = State(
-        p=Q_(250.44, "bar"), T=Q_(86.7, "degC"), fluid=fluid_sp
-    )
+    disch_sp_sec2 = State(p=Q_(250.44, "bar"), T=Q_(86.7, "degC"), fluid=fluid_sp)
     guarantee_point_sec2 = Point(
         suc=suc_sp_sec2,
         disch=disch_sp_sec2,

@@ -67,14 +67,12 @@ logger.critical(f"python: {sys.version}")
 logger.critical(f"ccp: {ccp.__version__full}")
 
 if __name__ == "__main__" or __name__ == "test_script":
-
     if DEBUG_MODE or __name__ == "test_script":
         AT_sheet["Z13"].value = "Calcular"
 
     global P_FD_eff, P2_FD_eff
 
     if AT_sheet["Z13"].value != None:
-
         AT_sheet["Z13"].value = None
         AT_sheet["Z9"].value = "Calculando..."
 
@@ -428,7 +426,6 @@ if __name__ == "__main__" or __name__ == "test_script":
         P_AT_M1d = []
 
         for i in range(N):
-
             speed_AT = Q_(Dados_AT_1[i, 16].value, AT_sheet.range("W6").value)
             N_ratio = speed_FD / speed_AT
 
@@ -804,7 +801,6 @@ if __name__ == "__main__" or __name__ == "test_script":
             Results_AT[i, 17].value = P_AT_rotor[i].power.to("kW").magnitude / min_Pow
 
             if AT_sheet["C25"].value == "Yes":
-
                 HL_FD = Q_(
                     ((sucFD.T() + dischFD.T()).to("degC").magnitude * 0.8 / 2 - 25)
                     * 1.166
@@ -877,7 +873,6 @@ if __name__ == "__main__" or __name__ == "test_script":
             Results2_AT[i, 17].value = P2_AT[i].power.to("kW").magnitude / min_Pow2
 
             if AT_sheet["C25"].value == "Yes":
-
                 HL2_FD = Q_(
                     ((suc2FD.T() + disch2FD.T()).to("degC").magnitude * 0.8 / 2 - 25)
                     * 1.166
@@ -1269,7 +1264,6 @@ if __name__ == "__main__" or __name__ == "test_script":
         # P_TPconv = Imp_TP._calc_from_speed(point=P_TP,new_speed=P_FD.speed)
 
         if TP_sheet["C23"].value == "Yes":
-
             P_TPconv = reynolds_corr(
                 P_AT=P_TP,
                 P_FD=P_FD,
@@ -1279,7 +1273,6 @@ if __name__ == "__main__" or __name__ == "test_script":
             TP_sheet["H37"].value = P_TPconv.eff.m
 
         else:
-
             N_ratio = speed_FD / speed_TP
 
             P_TPconv = ccp.Point(
@@ -1388,7 +1381,6 @@ if __name__ == "__main__" or __name__ == "test_script":
         )
 
         if TP_sheet["C23"].value == "Yes":
-
             P2_TPconv = reynolds_corr(
                 P_AT=P2_TP,
                 P_FD=P2_FD,
@@ -1396,7 +1388,6 @@ if __name__ == "__main__" or __name__ == "test_script":
             )
             TP_sheet["M37"].value = P2_TPconv.eff.m
         else:
-
             N2_ratio = speed_FD / speed2_TP
 
             P2_TPconv = ccp.Point(
@@ -1457,7 +1448,6 @@ if __name__ == "__main__" or __name__ == "test_script":
         data = np.array(CF_sheet[i, 2:8].value)
 
         while len(data[data == None]) == 0:
-
             # if len(data[data==None])==0:
 
             D = Q_(float(data[0]), Units[0])

@@ -160,7 +160,6 @@ class Impeller:
 
     @check_units
     def __init__(self, points):
-
         self.points = deepcopy(points)
 
         curves = []

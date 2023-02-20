@@ -260,7 +260,6 @@ class Point:
         return False
 
     def __repr__(self):
-
         return (
             f"{self.__class__.__name__}(suc={self.suc},"
             f' speed=Q_("{self.speed:.0f~P}"),'
