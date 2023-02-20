@@ -32,11 +32,9 @@ from scipy.optimize import newton
 
 
 if __name__ == "__main__":
-
     global P_FD_eff, P2_FD_eff
 
     def reynolds_corr(P_AT, P_FD, rug=None):
-
         ReAT = P_AT.reynolds
         ReFD = P_FD.reynolds
 
@@ -86,7 +84,6 @@ if __name__ == "__main__":
 
         return P_AT_reyn
 
-
     AT_sheet["T7"].value = None
     TP_sheet["R19"].value = None
     FD_sheet["A1"].value = None
@@ -101,7 +98,6 @@ if __name__ == "__main__":
     Open_file = True
 
     while Open_file:
-
         wb = xw.Book(
             FileName
         )  # connect to an existing file in the current working directory
@@ -119,12 +115,10 @@ if __name__ == "__main__":
             AT_sheet["T11"].value = "OFF"
 
         if AT_sheet["T7"].value != None:
-
             AT_sheet["T7"].value = None
             AT_sheet["T11"].value = "Calculando..."
 
             if FD_sheet["AN5"].value == "Yes":
-
                 FD_sheet = wb.sheets["DataSheet"]
                 ### Reading and writing SECTION 1 from the FD sheet
 
@@ -547,7 +541,6 @@ if __name__ == "__main__":
             P_AT_Buf = []
 
             for i in range(N):
-
                 gas = int(Dados_AT_LK[i, 0].value)
 
                 GasesT = TG_sheet.range(
@@ -733,7 +726,6 @@ if __name__ == "__main__":
             Results2_AT = Results2_AT[0:N, :]
 
             for i in range(N):
-
                 if AT_sheet["C23"].value == "Yes":
                     rug = AT_sheet["D24"].value
 
@@ -829,7 +821,6 @@ if __name__ == "__main__":
                     )
 
                 else:
-
                     P_ATconv.append(
                         ccp.Point(
                             suc=P_FD.suc,
@@ -911,7 +902,6 @@ if __name__ == "__main__":
                 Results_AT[i, 17].value = P_AT[i].power.to("kW").magnitude / min_Pow
 
                 if AT_sheet["C25"].value == "Yes":
-
                     HL_FD = Q_(
                         ((sucFD.T() + dischFD.T()).to("degC").magnitude * 0.8 / 2 - 25)
                         * 1.166
@@ -979,7 +969,6 @@ if __name__ == "__main__":
                 Results2_AT[i, 17].value = P2_AT[i].power.to("kW").magnitude / min_Pow2
 
                 if AT_sheet["C25"].value == "Yes":
-
                     HL2_FD = Q_(
                         (
                             (suc2FD.T() + disch2FD.T()).to("degC").magnitude * 0.8 / 2
@@ -1048,7 +1037,6 @@ if __name__ == "__main__":
                 aux = aux1 + f * (aux2 - aux1)
                 AT_sheet["G32:AB32"].value = aux
             else:
-
                 AT_sheet["G32:AB32"].value = [None] * len(Results_AT[0, :].value)
 
             if len(IdG2) == 1:
@@ -1063,7 +1051,6 @@ if __name__ == "__main__":
                 aux = aux1 + f * (aux2 - aux1)
                 AT_sheet["G47:AB47"].value = aux
             else:
-
                 AT_sheet["G47:AB47"].value = [None] * len(Results2_AT[0, :].value)
 
             AT_sheet["T11"].value = "READY!"
@@ -1077,7 +1064,6 @@ if __name__ == "__main__":
             TP_sheet["R23"].value = "Calculando..."
 
             if FD_sheet["AN5"].value == "Yes":
-
                 FD_sheet = wb.sheets["DataSheet"]
 
                 ### Reading and writing SECTION 1 from the FD sheet
@@ -1429,7 +1415,6 @@ if __name__ == "__main__":
                 )
 
             else:
-
                 P_TPconv = ccp.Point(
                     suc=P_FD.suc,
                     eff=P_TP.eff,
@@ -1462,7 +1447,6 @@ if __name__ == "__main__":
             TP_sheet["H33"].value = P_TP.power.to("kW").magnitude / min_Pow
 
             if TP_sheet["C25"].value == "Yes":
-
                 HL_FD = Q_(
                     ((sucFD.T() + dischFD.T()).to("degC").magnitude * 0.8 / 2 - 25)
                     * 1.166
@@ -1619,7 +1603,6 @@ if __name__ == "__main__":
                 )
 
             else:
-
                 P2_TPconv = ccp.Point(
                     suc=P2_FD.suc,
                     eff=P2_TP.eff,
@@ -1664,7 +1647,6 @@ if __name__ == "__main__":
             TP_sheet["M33"].value = P2_TP.power.to("kW").magnitude / min_Pow2
 
             if TP_sheet["C27"].value == "Yes":
-
                 HL_FD = Q_(
                     ((suc2FD.T() + disch2FD.T()).to("degC").magnitude * 0.8 / 2 - 25)
                     * 1.166
@@ -1714,7 +1696,6 @@ if __name__ == "__main__":
             data = np.array(CF_sheet[i, 2:8].value)
 
             while len(data[data == None]) == 0:
-
                 # if len(data[data==None])==0:
 
                 D = Q_(float(data[0]), Units[0])

@@ -18,9 +18,7 @@ def test_raise_1_point():
 def curve0():
     suc = State(p=Q_(1, "bar"), T=300, fluid={"co2": 1 - 1e-15, "n2": 1e-15})
     disch = State(p=Q_(2, "bar"), T=370, fluid={"co2": 1 - 1e-15, "n2": 1e-15})
-    disch1 = State(
-        p=Q_(2.5, "bar"), T=375, fluid={"co2": 1 - 1e-15, "n2": 1e-15}
-    )
+    disch1 = State(p=Q_(2.5, "bar"), T=375, fluid={"co2": 1 - 1e-15, "n2": 1e-15})
     p0 = Point(suc=suc, disch=disch, flow_v=1, speed=1, b=1, D=1)
     p1 = Point(suc=suc, disch=disch1, flow_v=2, speed=1, b=1, D=1)
     return Curve([p0, p1])
@@ -61,15 +59,9 @@ def test_curve_interpolation(curve0):
 def curve1():
     suc = State(p=Q_(1, "bar"), T=300, fluid={"co2": 1 - 1e-15, "n2": 1e-15})
     disch = State(p=Q_(2, "bar"), T=370, fluid={"co2": 1 - 1e-15, "n2": 1e-15})
-    disch1 = State(
-        p=Q_(2.5, "bar"), T=375, fluid={"co2": 1 - 1e-15, "n2": 1e-15}
-    )
-    disch2 = State(
-        p=Q_(2.6, "bar"), T=376, fluid={"co2": 1 - 1e-15, "n2": 1e-15}
-    )
-    disch3 = State(
-        p=Q_(2.7, "bar"), T=377, fluid={"co2": 1 - 1e-15, "n2": 1e-15}
-    )
+    disch1 = State(p=Q_(2.5, "bar"), T=375, fluid={"co2": 1 - 1e-15, "n2": 1e-15})
+    disch2 = State(p=Q_(2.6, "bar"), T=376, fluid={"co2": 1 - 1e-15, "n2": 1e-15})
+    disch3 = State(p=Q_(2.7, "bar"), T=377, fluid={"co2": 1 - 1e-15, "n2": 1e-15})
     p0 = Point(suc=suc, disch=disch, flow_v=1, speed=1, b=1, D=1)
     p1 = Point(suc=suc, disch=disch1, flow_v=2, speed=1, b=1, D=1)
     p2 = Point(suc=suc, disch=disch2, flow_v=3, speed=1, b=1, D=1)

@@ -355,9 +355,7 @@ def point_eff_flow_v_head_speed_suc_1(suc_1):
 
 
 def test_converted_from_find_speed(point_eff_flow_v_head_speed_suc_1):
-    suc_2 = State(
-        p=Q_(0.2, "MPa"), T=301.58, fluid={"n2": 1 - 1e-15, "co2": 1e-15}
-    )
+    suc_2 = State(p=Q_(0.2, "MPa"), T=301.58, fluid={"n2": 1 - 1e-15, "co2": 1e-15})
     point_converted_from_find_speed = Point.convert_from(
         original_point=point_eff_flow_v_head_speed_suc_1, suc=suc_2, find="speed"
     )
@@ -390,9 +388,7 @@ def test_converted_from_find_speed(point_eff_flow_v_head_speed_suc_1):
 
 
 def test_converted_from_find_volume_ratio(point_eff_flow_v_head_speed_suc_1):
-    suc_2 = State(
-        p=Q_(0.2, "MPa"), T=301.58, fluid={"n2": 1 - 1e-15, "co2": 1e-15}
-    )
+    suc_2 = State(p=Q_(0.2, "MPa"), T=301.58, fluid={"n2": 1 - 1e-15, "co2": 1e-15})
     point_converted_from_find_volume_ratio = Point.convert_from(
         original_point=point_eff_flow_v_head_speed_suc_1, suc=suc_2, find="volume_ratio"
     )
@@ -436,9 +432,7 @@ def test_converted_from_find_volume_ratio(point_eff_flow_v_head_speed_suc_1):
 def test_converted_from_find_volume_ratio_with_reynolds_correction(
     point_eff_flow_v_head_speed_suc_1,
 ):
-    suc_2 = State(
-        p=Q_(0.2, "MPa"), T=301.58, fluid={"n2": 1 - 1e-15, "co2": 1e-15}
-    )
+    suc_2 = State(p=Q_(0.2, "MPa"), T=301.58, fluid={"n2": 1 - 1e-15, "co2": 1e-15})
     point_converted_from_find_volume_ratio = Point.convert_from(
         original_point=point_eff_flow_v_head_speed_suc_1,
         suc=suc_2,
@@ -488,9 +482,7 @@ def test_converted_from_find_volume_ratio_with_reynolds_correction(
 
 
 def test_converted_from_find_volume_ratio_mach_plot(point_eff_flow_v_head_speed_suc_1):
-    suc_2 = State(
-        p=Q_(0.2, "MPa"), T=301.58, fluid={"n2": 1 - 1e-15, "co2": 1e-15}
-    )
+    suc_2 = State(p=Q_(0.2, "MPa"), T=301.58, fluid={"n2": 1 - 1e-15, "co2": 1e-15})
     point_converted_from_find_volume_ratio = Point.convert_from(
         original_point=point_eff_flow_v_head_speed_suc_1, suc=suc_2, find="volume_ratio"
     )
@@ -504,9 +496,7 @@ def test_converted_from_find_volume_ratio_mach_plot(point_eff_flow_v_head_speed_
 def test_converted_from_find_volume_ratio_reynolds_plot(
     point_eff_flow_v_head_speed_suc_1,
 ):
-    suc_2 = State(
-        p=Q_(0.2, "MPa"), T=301.58, fluid={"n2": 1 - 1e-15, "co2": 1e-15}
-    )
+    suc_2 = State(p=Q_(0.2, "MPa"), T=301.58, fluid={"n2": 1 - 1e-15, "co2": 1e-15})
     point_converted_from_find_volume_ratio = Point.convert_from(
         original_point=point_eff_flow_v_head_speed_suc_1, suc=suc_2, find="volume_ratio"
     )

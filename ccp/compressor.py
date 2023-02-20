@@ -154,9 +154,7 @@ class StraightThrough(Impeller):
             point.Ts1r = Ts1r
             k_end = k_seal(flow_m=mend, state_up=point.disch, state_down=point.suc)
             self.k_end_seal.append(k_end)
-            suc_rotor = State(
-                p=point.suc.p(), T=point.Ts1r, fluid=point.suc.fluid
-            )
+            suc_rotor = State(p=point.suc.p(), T=point.Ts1r, fluid=point.suc.fluid)
             test_points_rotor.append(
                 Point(
                     suc=suc_rotor,
@@ -500,12 +498,8 @@ class BackToBack(Impeller):
                     ms1f_t * Ts1f_t + mend_t * Tend_t + 0.95 * mseal_t * Tseal_t
                 ) / (ms1f_t + mend_t + 0.95 * mseal_t)
                 Td1r_t = (md1f_t * Td1f_t - mdiv_t * Tdiv_t) / (md1f_t - mdiv_t)
-                suc_sec1_rotor_t = State(
-                    p=ps1f_t, T=Ts1r_t, fluid=point.suc.fluid
-                )
-                disch_sec1_rotor_t = State(
-                    p=pd1f_t, T=Td1r_t, fluid=point.suc.fluid
-                )
+                suc_sec1_rotor_t = State(p=ps1f_t, T=Ts1r_t, fluid=point.suc.fluid)
+                disch_sec1_rotor_t = State(p=pd1f_t, T=Td1r_t, fluid=point.suc.fluid)
 
                 test_points_sec1_rotor[i] = Point(
                     suc=suc_sec1_rotor_t,
@@ -542,7 +536,6 @@ class BackToBack(Impeller):
 
         for i, point in enumerate(test_points_sec1):
             if not point._first_section_discharge_flow_m:
-
                 self.k_end_seal[i] = k_end_seal_mean
                 end_seal_flow_m = flow_m_seal(
                     k_seal=k_end_seal_mean,
@@ -587,12 +580,8 @@ class BackToBack(Impeller):
                 ) / (ms1f_t + mend_t + 0.95 * mseal_t)
                 Td1r_t = (md1f_t * Td1f_t - mdiv_t * Tdiv_t) / (md1f_t - mdiv_t)
 
-                suc_sec1_rotor_t = State(
-                    p=ps1f_t, T=Ts1r_t, fluid=point.suc.fluid
-                )
-                disch_sec1_rotor_t = State(
-                    p=pd1f_t, T=Td1r_t, fluid=point.suc.fluid
-                )
+                suc_sec1_rotor_t = State(p=ps1f_t, T=Ts1r_t, fluid=point.suc.fluid)
+                disch_sec1_rotor_t = State(p=pd1f_t, T=Td1r_t, fluid=point.suc.fluid)
 
                 test_points_sec1_rotor[i] = Point(
                     suc=suc_sec1_rotor_t,
@@ -861,6 +850,7 @@ class BackToBack(Impeller):
 
     def calculate_speed_to_match_discharge_pressure(self):
         """Calculate the speed to match the discharge pressure of the guarantee point."""
+
         def calculate_disch_pressure_delta(x):
             compressor = BackToBack(
                 guarantee_point_sec1=self.guarantee_point_sec1,
