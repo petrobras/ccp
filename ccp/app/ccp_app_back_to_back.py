@@ -18,6 +18,7 @@ st.set_page_config(
     layout="wide",
 )
 
+st.sidebar.image(str(ccp_logo), width=255)
 st.markdown(
     """
 # Performance Test Back-to-Back Compressor
@@ -230,6 +231,10 @@ parameters_map = {
         "label": "First Impeller Diameter",
         "units": ["mm", "m", "ft", "in"],
     },
+    "surface_roughness": {
+        "label": "Surface Roughness",
+        "units": ["mm", "m", "ft", "in"],
+    },
     "casing_area": {
         "label": "Casing Area",
         "units": ["m²", "mm²", "ft²", "in²"],
@@ -266,15 +271,26 @@ with st.expander("Data Sheet"):
     points_gas_columns[0].markdown("Gas Selection")
     points_gas_columns[1].markdown("")
     gas_options = [st.session_state[f"gas_{i}"] for i, gas in enumerate(gas_columns)]
+
+    # fill the gas selection dropdowns with the gases selected
+    def get_index_selected_gas(gas_name):
+        try:
+            index_gas_name = gas_options.index(st.session_state[gas_name])
+        except KeyError:
+            index_gas_name = 0
+        return index_gas_name
+
     gas_name_section_1_point_guarantee = points_gas_columns[2].selectbox(
         "gas_section_1_point_guarantee",
         options=gas_options,
         label_visibility="collapsed",
+        index=get_index_selected_gas("gas_section_1_point_guarantee"),
     )
     gas_name_section_2_point_guarantee = points_gas_columns[3].selectbox(
         "gas_section_2_point_guarantee",
         options=gas_options,
         label_visibility="collapsed",
+        index=get_index_selected_gas("gas_section_2_point_guarantee"),
     )
 
     # build one container with 8 columns for each parameter
@@ -290,6 +306,7 @@ with st.expander("Data Sheet"):
         "efficiency",
         "b",
         "D",
+        "surface_roughness",
         "casing_area",
     ]:
         parameter_container = st.container()
@@ -342,6 +359,23 @@ with st.expander("Test Data"):
                 col.markdown("Units")
             else:
                 col.markdown(f"Point {i - 1}")
+        point_gas = st.container()
+        point_gas_columns = point_gas.columns(number_of_columns, gap="small")
+        for i, col in enumerate(point_gas_columns):
+            if i == 0:
+                col.markdown("Gas Selection")
+            elif i == 1:
+                col.markdown("")
+            else:
+                gas_options = [
+                    st.session_state[f"gas_{i}"] for i, gas in enumerate(gas_columns)
+                ]
+                col.selectbox(
+                    f"gas_section_1_point_{i - 1}",
+                    options=gas_options,
+                    label_visibility="collapsed",
+                    index=get_index_selected_gas(f"gas_section_1_point_{i - 1}"),
+                )
 
         # build one container with 8 columns for each parameter
         for parameter in [
@@ -401,6 +435,25 @@ with st.expander("Test Data"):
                 col.markdown("Units")
             else:
                 col.markdown(f"Point {i - 1}")
+
+        # gas selection
+        point_gas = st.container()
+        point_gas_columns = point_gas.columns(number_of_columns, gap="small")
+        for i, col in enumerate(point_gas_columns):
+            if i == 0:
+                col.markdown("Gas Selection")
+            elif i == 1:
+                col.markdown("")
+            else:
+                gas_options = [
+                    st.session_state[f"gas_{i}"] for i, gas in enumerate(gas_columns)
+                ]
+                col.selectbox(
+                    f"gas_section_2_point_{i - 1}",
+                    options=gas_options,
+                    label_visibility="collapsed",
+                    index=get_index_selected_gas(f"gas_section_2_point_{i - 1}"),
+                )
 
         # build one container with 8 columns for each parameter
         for parameter in [
@@ -606,7 +659,9 @@ if calculate_button:
                         ),
                         parameters_map["suction_temperature"][section]["test_units"],
                     ),
-                    fluid={"CO2": 1},
+                    fluid=get_gas_composition(
+                        st.session_state[f"gas_{section}_point_{i}"]
+                    ),
                 )
                 kwargs["disch"] = ccp.State(
                     p=Q_(
@@ -623,7 +678,9 @@ if calculate_button:
                         ),
                         parameters_map["discharge_temperature"][section]["test_units"],
                     ),
-                    fluid={"CO2": 1},
+                    fluid=get_gas_composition(
+                        st.session_state[f"gas_{section}_point_{i}"]
+                    ),
                 )
                 if (
                     st.session_state[f"casing_delta_T_{section}_point_{i}"]
@@ -782,6 +839,12 @@ if calculate_button:
                     float(st.session_state[f"casing_area_{section}_point_guarantee"]),
                     parameters_map["casing_area"][section]["data_sheet_units"],
                 )
+                kwargs["surface_roughness"] = Q_(
+                    float(
+                        st.session_state[f"surface_roughness_{section}_point_guarantee"]
+                    ),
+                    parameters_map["surface_roughness"][section]["data_sheet_units"],
+                )
 
                 if section == "section_1":
                     first_section_test_points.append(
@@ -930,7 +993,7 @@ with st.expander("Results"):
         ]
         results[f"W{_t} (kW)"] = [
             round(p.power.to("kW").m, 5)
-            for p in getattr(back_to_back, f"points_rotor_sp_{sec}")
+            for p in getattr(back_to_back, f"points_rotor_t_{sec}")
         ]
         results[f"W{_t}/W{_sp}"] = [
             round(
@@ -938,7 +1001,7 @@ with st.expander("Results"):
                 / getattr(back_to_back, f"guarantee_point_{sec}").power.to("kW").m,
                 5,
             )
-            for p in getattr(back_to_back, f"points_rotor_sp_{sec}")
+            for p in getattr(back_to_back, f"points_rotor_t_{sec}")
         ]
         results[f"W{conv} (kW)"] = [
             round(p.power.to("kW").m, 5)
@@ -1090,23 +1153,32 @@ with st.expander("Results"):
                 cell_value = df.loc[row_index, col_index]
                 if cell_value >= lower_limit and cell_value <= higher_limit:
                     styled_df = styled_df.applymap(
-                        lambda x: "background-color: green" if x == cell_value else ""
+                        lambda x: "background-color: #C8E6C9" if x == cell_value else ""
+                    ).applymap(
+                        lambda x: "font-color: #33691E" if x == cell_value else ""
                     )
+
                 else:
                     styled_df = styled_df.applymap(
-                        lambda x: "background-color: red" if x == cell_value else ""
+                        lambda x: "background-color: #FFCDD2" if x == cell_value else ""
+                    ).applymap(
+                        lambda x: "font-color: #FFCDD2" if x == cell_value else ""
                     )
 
                 return styled_df
 
             styled_df_results = df_results.style
+            if variable_speed:
+                power_limit = 1.04
+            else:
+                power_limit = 1.07
             styled_df_results = highlight_cell(
                 styled_df_results,
                 df_results,
                 "Guarantee Point",
                 f"W{conv}/W{_sp}",
                 0.0,
-                1.04,
+                power_limit,
             )
 
             st.dataframe(
@@ -1132,3 +1204,7 @@ with st.expander("Results"):
                 )
             )
             st.plotly_chart(getattr(back_to_back, f"imp_flange_sp_{sec}").head_plot())
+
+            # TODO add overall results
+            # TODO add polytropic head and polytropic efficiency plots
+            # TODO add similarity table plot for interpolated point
