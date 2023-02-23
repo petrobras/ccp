@@ -6,7 +6,7 @@ DEBUG_MODE = False
 
 if filename == "test_2sec_back":  # if the script is run from the test file
     filename = "Beta_2section_back_to_back.xlsm"
-elif DEBUG_MODE:
+if DEBUG_MODE:
     filename = "Beta_2section_back_to_back.xlsm"
 
 import sys
@@ -109,7 +109,11 @@ if __name__ == "__main__" or __name__ == "test_script":
         GasesFD = FD_sheet.range("B69:B85").value
         mol_fracFD = FD_sheet.range("K69:K85").value
 
-        fluid_FD = {GasesFD[i]: mol_fracFD[i] for i in range(len(GasesFD))}
+        fluid_FD = {
+            GasesFD[i]: mol_fracFD[i]
+            for i in range(len(GasesFD))
+            if mol_fracFD[i] is not None
+        }
 
         sucFD = State(fluid=fluid_FD, p=Ps_FD, T=Ts_FD)
 
@@ -189,7 +193,11 @@ if __name__ == "__main__" or __name__ == "test_script":
         GasesFD = FD_sheet.range("B69:B85").value
         mol_frac2_FD = FD_sheet.range("Q69:Q85").value
 
-        fluid2_FD = {GasesFD[i]: mol_frac2_FD[i] for i in range(len(GasesFD))}
+        fluid2_FD = {
+            GasesFD[i]: mol_frac2_FD[i]
+            for i in range(len(GasesFD))
+            if mol_frac2_FD[i] is not None
+        }
 
         suc2FD = State(fluid=fluid2_FD, p=Ps2_FD, T=Ts2_FD)
         suc2FD_eff = suc2FD
