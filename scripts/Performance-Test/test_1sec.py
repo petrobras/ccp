@@ -108,7 +108,11 @@ if __name__ == "__main__" or __name__ == "test_script":
         b = Q_(FD_sheet.range("AQ132").value, "mm")
         GasesFD = FD_sheet.range("B69:B85").value
         mol_fracFD = FD_sheet.range("K69:K85").value
-        fluid_FD = {GasesFD[i]: mol_fracFD[i] for i in range(len(GasesFD))}
+        fluid_FD = {
+            GasesFD[i]: mol_fracFD[i]
+            for i in range(len(GasesFD))
+            if mol_fracFD[i] is not None
+        }
         sucFD = State(fluid=fluid_FD, p=Ps_FD, T=Ts_FD)
 
         if V_test:
@@ -543,7 +547,11 @@ if __name__ == "__main__" or __name__ == "test_script":
         GasesFD = FD_sheet.range("B69:B85").value
         mol_fracFD = FD_sheet.range("K69:K85").value
 
-        fluid_FD = {GasesFD[i]: mol_fracFD[i] for i in range(len(GasesFD))}
+        fluid_FD = {
+            GasesFD[i]: mol_fracFD[i]
+            for i in range(len(GasesFD))
+            if mol_fracFD[i] is not None
+        }
 
         sucFD = State(fluid=fluid_FD, p=Ps_FD, T=Ts_FD)
 
