@@ -451,7 +451,10 @@ class BackToBack(Impeller):
         for point in test_points_sec1:
             if point.div_wall_flow_m:
                 point.first_section_discharge_flow_m = (
-                    point.flow_m + point.div_wall_flow_m
+                    point.flow_m
+                    + point.div_wall_flow_m
+                    + point.balance_line_flow_m
+                    + 0.95 * point.seal_gas_flow_m / 2
                 )
         for i, point in enumerate(test_points_sec1):
             # Here we check for _first_section_discharge_flow_m because we want to use the
