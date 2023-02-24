@@ -845,7 +845,6 @@ if calculate_button:
                     ),
                     parameters_map["surface_roughness"][section]["data_sheet_units"],
                 )
-
                 if section == "section_1":
                     first_section_test_points.append(
                         PointFirstSection(
@@ -1104,7 +1103,12 @@ with st.expander("Results"):
         results[f"W{conv}/W{_sp}"].append(
             round(
                 point_interpolated.power.to("kW").m
-                / getattr(back_to_back, f"guarantee_point_{sec}").power.to("kW").m,
+                / Q_(
+                    float(st.session_state[f"power_{section}_point_guarantee"]),
+                    parameters_map["power"][section]["data_sheet_units"],
+                )
+                .to("kW")
+                .m,
                 5,
             )
         )
