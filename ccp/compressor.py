@@ -834,6 +834,27 @@ class BackToBack(Impeller):
         p_sec1_rotor = self.imp_rotor_sp_sec1.point(flow_m=ms1r_sp, speed=p_sec1.speed)
         p_sec1.power = p_sec1_rotor.power
 
+        # set mach number and mach_diff
+        mach_interpolation = parameter_interpolation(
+            p_sec1.phi,
+            [p.phi for p in self.points_flange_t_sec1],
+            [p.mach for p in self.points_flange_t_sec1],
+        )
+        print("setting mach to ", mach_interpolation)
+        p_sec1.mach = mach_interpolation
+        p_sec1.mach_diff = mach_interpolation - self.guarantee_point_sec1.mach
+
+        # set reynolds number and reynolds_ratio
+        reynolds_interpolation = parameter_interpolation(
+            p_sec1.phi,
+            [p.phi for p in self.points_flange_t_sec1],
+            [p.reynolds for p in self.points_flange_t_sec1],
+        )
+        p_sec1.reynolds = reynolds_interpolation
+        p_sec1.reynolds_ratio = (
+            reynolds_interpolation / self.guarantee_point_sec1.reynolds
+        )
+
         return p_sec1
 
     def point_sec2(self, *args, **kwargs):
@@ -848,6 +869,26 @@ class BackToBack(Impeller):
         )
         ms2r_sp = p_sec2.flow_m - end_seal_flow_m_sp
         p_sec2.power = ms2r_sp * p_sec2.head / p_sec2.eff
+
+        # set mach number and mach_diff
+        mach_interpolation = parameter_interpolation(
+            p_sec2.phi,
+            [p.phi for p in self.points_flange_t_sec2],
+            [p.mach for p in self.points_flange_t_sec2],
+        )
+        p_sec2.mach = mach_interpolation
+        p_sec2.mach_diff = mach_interpolation - self.guarantee_point_sec2.mach
+
+        # set reynolds number and reynolds_ratio
+        reynolds_interpolation = parameter_interpolation(
+            p_sec2.phi,
+            [p.phi for p in self.points_flange_t_sec2],
+            [p.reynolds for p in self.points_flange_t_sec2],
+        )
+        p_sec2.reynolds = reynolds_interpolation
+        p_sec2.reynolds_ratio = (
+            reynolds_interpolation / self.guarantee_point_sec2.reynolds
+        )
 
         return p_sec2
 
@@ -948,3 +989,30 @@ def flow_m_seal(k_seal, state_up, state_down):
     )
 
     return flow_m_seal
+
+
+def parameter_interpolation(phi, phi_values, parameter_values):
+    """Function used to make a linear interpolation for Mach and Reynolds numbers.
+
+    Parameters
+    ----------
+    phi : float
+        Value of phi to interpolate.
+    phi_values : list
+        List of phi values.
+    parameter_values : list
+        List of parameter values (Mach or Reynolds).
+    """
+    phi_0 = [phi_ for phi_ in phi_values if (phi_ - phi) < 0][-1]
+    phi_1 = [phi_ for phi_ in phi_values if (phi_ - phi) > 0][0]
+
+    # get phi_values index
+    idx0 = phi_values.index(phi_0)
+    idx1 = phi_values.index(phi_1)
+    parameter0 = parameter_values[idx0]
+    parameter1 = parameter_values[idx1]
+
+    # do linear interpolation for phi and parameter
+    result = parameter0 + (parameter1 - parameter0) * (phi_1 - phi_0) / (phi_1 - phi_0)
+
+    return result
