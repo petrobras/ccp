@@ -676,11 +676,14 @@ class Point:
             go.Scatter(x=[self.mach.m], y=[self.mach_diff], marker=dict(color="red"))
         )
 
+        # subscripts for t and sp
+        _t = "\u209C"
+        _sp = "\u209B\u209A"
         fig.update_xaxes(
-            title=r"$\text{Machine Mach No. Specified} - Mm_{sp}$",
+            title=f"Machine Mach No. Specified - Mm{_sp}",
         )
         fig.update_yaxes(
-            title=r"$Mm_t - Mm_{sp}$",
+            title=f"Mm{_t} - Mm{_sp}",
         )
         fig.update_layout(showlegend=False)
 
@@ -768,19 +771,22 @@ class Point:
             )
         )
 
+        # subscripts for t and sp
+        _t = "\u209C"
+        _sp = "\u209B\u209A"
         fig.update_xaxes(
             type="log",
             tickformat=".1e",
             tickmode="array",
             tickvals=[10**i for i in range(4, 9)],
-            title=r"$\text{Machine Reynolds No. Specified} - Rem_{sp}$",
+            title=f"Machine Reynolds No. Specified - Rem{_sp}",
         )
         fig.update_yaxes(
             type="log",
             tickformat=".1e",
             tickmode="array",
             tickvals=[10**i for i in range(-3, 3)],
-            title=r"$Rem_t / Rem_{sp}$",
+            title=f"Rem{_t} / Rem{_sp}",
         )
         fig.update_layout(showlegend=False)
 
