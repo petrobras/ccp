@@ -840,7 +840,6 @@ class BackToBack(Impeller):
             [p.phi for p in self.points_flange_t_sec1],
             [p.mach for p in self.points_flange_t_sec1],
         )
-        print("setting mach to ", mach_interpolation)
         p_sec1.mach = mach_interpolation
         p_sec1.mach_diff = mach_interpolation - self.guarantee_point_sec1.mach
 
@@ -853,6 +852,11 @@ class BackToBack(Impeller):
         p_sec1.reynolds = reynolds_interpolation
         p_sec1.reynolds_ratio = (
             reynolds_interpolation / self.guarantee_point_sec1.reynolds
+        )
+
+        # set new volume ratio ratio
+        p_sec1.volume_ratio_ratio = (
+            p_sec1.volume_ratio / self.guarantee_point_sec1.volume_ratio
         )
 
         return p_sec1
@@ -888,6 +892,10 @@ class BackToBack(Impeller):
         p_sec2.reynolds = reynolds_interpolation
         p_sec2.reynolds_ratio = (
             reynolds_interpolation / self.guarantee_point_sec2.reynolds
+        )
+        # set new volume ratio ratio
+        p_sec2.volume_ratio_ratio = (
+            p_sec2.volume_ratio / self.guarantee_point_sec2.volume_ratio
         )
 
         return p_sec2
@@ -1013,6 +1021,6 @@ def parameter_interpolation(phi, phi_values, parameter_values):
     parameter1 = parameter_values[idx1]
 
     # do linear interpolation for phi and parameter
-    result = parameter0 + (parameter1 - parameter0) * (phi_1 - phi_0) / (phi_1 - phi_0)
+    result = parameter0 + (parameter1 - parameter0) * (phi - phi_0) / (phi_1 - phi_0)
 
     return result
