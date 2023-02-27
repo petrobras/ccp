@@ -82,6 +82,10 @@ with st.sidebar.expander("📁 File"):
 
     if st.button("Save session state"):
         session_state_dict = dict(st.session_state)
+        # remove fig keys
+        for key in list(session_state_dict.keys()):
+            if "fig" in key:
+                del session_state_dict[key]
         session_state_json = json.dumps(session_state_dict)
         file_name = f"{st.session_state.session_name}.json" or "session_state.json"
         with open(file_name, "w") as f:
@@ -361,6 +365,29 @@ with st.expander("Data Sheet"):
             key=f"{parameter}_section_2_point_guarantee",
             label_visibility="collapsed",
         )
+
+
+with st.expander("Curves"):
+    # add upload button for each section curve
+    fig_dict = {}
+    for curve in ["head"]:
+        parameter_container = st.container()
+        first_section_col, second_section_col = parameter_container.columns(
+            2, gap="small"
+        )
+        # create upload button for each section
+        for section in ["section_1", "section_2"]:
+            if section == "section_1":
+                section_col = first_section_col
+            else:
+                section_col = second_section_col
+            # create upload button for each section
+            fig_dict[f"fig_{curve}_{section}"] = section_col.file_uploader(
+                f"Upload {curve} curve for {' '.join(section.split('_'))}.",
+                type=["png", "jpg", "jpeg"],
+                key=f"fig_{curve}_{section}",
+            )
+
 
 number_of_test_points = 6
 number_of_columns = number_of_test_points + 2
