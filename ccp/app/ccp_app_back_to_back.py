@@ -3,6 +3,7 @@ import ccp
 import json
 import pandas as pd
 import pickle
+import base64
 from ccp.compressor import PointFirstSection, PointSecondSection, BackToBack
 from pathlib import Path
 
@@ -12,13 +13,31 @@ assets = Path(__file__).parent / "assets"
 ccp_ico = assets / "favicon.ico"
 ccp_logo = assets / "ccp.png"
 
+
 st.set_page_config(
-    page_title="Hello",
+    page_title="ccp",
     page_icon=str(ccp_ico),
     layout="wide",
 )
 
-st.sidebar.image(str(ccp_logo), width=255)
+
+def image_base64(im):
+    with open(im, "rb") as image_file:
+        encoded_string = base64.b64encode(image_file.read()).decode()
+    encoded_image = "data:image/png;base64," + encoded_string
+    html_string = f'<img src="data:image/png;base64,{encoded_string}" style="text-align: center" width="200">'
+    return html_string
+
+
+with st.sidebar.container():
+    st.sidebar.markdown(image_base64(ccp_logo), unsafe_allow_html=True)
+
+title_alignment = """
+<p style="text-align: center; font-weight: bold; font-size:20px;">
+ ccp 
+</p>
+"""
+st.sidebar.markdown(title_alignment, unsafe_allow_html=True)
 st.markdown(
     """
 # Performance Test Back-to-Back Compressor
