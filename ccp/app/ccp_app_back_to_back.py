@@ -890,7 +890,6 @@ if calculate_button:
                             **kwargs,
                         )
                     )
-
     back_to_back = BackToBack(
         guarantee_point_sec1=guarantee_point_section_1,
         guarantee_point_sec2=guarantee_point_section_2,
@@ -904,8 +903,11 @@ if calculate_button:
 
 # if back_to_back is not defined, pickle the saved file
 if back_to_back is None:
-    with open("back_to_back.pkl", "rb") as f:
-        back_to_back = pickle.load(f)
+    try:
+        with open("back_to_back.pkl", "rb") as f:
+            back_to_back = pickle.load(f)
+    except FileNotFoundError:
+        pass
 
 
 with st.expander("Results"):
@@ -918,316 +920,505 @@ with st.expander("Results"):
     tab_results_section_1, tab_results_section_2 = st.tabs(
         ["First Section", "Second Section"]
     )
-
-    for results, section, sec in zip(
-        [results_section_1, results_section_2],
-        ["section_1", "section_2"],
-        ["sec1", "sec2"],
-    ):
-        results[f"φ{_t}"] = [
-            round(p.phi.m, 5) for p in getattr(back_to_back, f"test_points_{sec}")
-        ]
-        results[f"φ{_t} / φ{_sp}"] = [
-            round(p.phi.m / getattr(back_to_back, f"guarantee_point_{sec}").phi.m, 5)
-            for p in getattr(back_to_back, f"test_points_{sec}")
-        ]
-        results["vi / vd"] = [
-            round(p.volume_ratio.m, 5)
-            for p in getattr(back_to_back, f"test_points_{sec}")
-        ]
-        results[f"(vi/vd){_t}/(vi/vd){_sp}"] = [
-            round(
-                p.volume_ratio.m
-                / getattr(back_to_back, f"guarantee_point_{sec}").volume_ratio.m,
-                5,
-            )
-            for p in getattr(back_to_back, f"test_points_{sec}")
-        ]
-        results[f"Mach{_t}"] = [
-            round(p.mach.m, 5) for p in getattr(back_to_back, f"test_points_{sec}")
-        ]
-        results[f"Mach{_t} - Mach{_sp}"] = [
-            round(p.mach.m - getattr(back_to_back, f"guarantee_point_{sec}").mach.m, 5)
-            for p in getattr(back_to_back, f"test_points_{sec}")
-        ]
-        results[f"Re{_t}"] = [
-            round(p.reynolds.m, 5) for p in getattr(back_to_back, f"test_points_{sec}")
-        ]
-        results[f"Re{_t} / Re{_sp}"] = [
-            round(
-                p.reynolds.m
-                / getattr(back_to_back, f"guarantee_point_{sec}").reynolds.m,
-                5,
-            )
-            for p in getattr(back_to_back, f"test_points_{sec}")
-        ]
-        results[f"pd{conv} (bar)"] = [
-            round(p.disch.p("bar").m, 5)
-            for p in getattr(back_to_back, f"points_flange_sp_{sec}")
-        ]
-        results[f"pd{conv}/pd_sp"] = [
-            round(
-                p.disch.p("bar").m
-                / getattr(back_to_back, f"guarantee_point_{sec}").disch.p("bar").m,
-                5,
-            )
-            for p in getattr(back_to_back, f"points_flange_sp_{sec}")
-        ]
-        results[f"Head{_t} (kJ/kg)"] = [
-            round(p.head.to("kJ/kg").m, 5)
-            for p in getattr(back_to_back, f"points_flange_sp_{sec}")
-        ]
-        results[f"Head{_t}/Head{_sp}"] = [
-            round(
-                p.head.to("kJ/kg").m
-                / getattr(back_to_back, f"guarantee_point_{sec}").head.to("kJ/kg").m,
-                5,
-            )
-            for p in getattr(back_to_back, f"test_points_{sec}")
-        ]
-        results[f"Head{conv} (kJ/kg)"] = [
-            round(p.head.to("kJ/kg").m, 5)
-            for p in getattr(back_to_back, f"points_flange_sp_{sec}")
-        ]
-        results[f"Head{conv}/Head{_sp}"] = [
-            round(
-                p.head.to("kJ/kg").m
-                / getattr(back_to_back, f"guarantee_point_{sec}").head.to("kJ/kg").m,
-                5,
-            )
-            for p in getattr(back_to_back, f"points_flange_sp_{sec}")
-        ]
-        results[f"Q{conv} (m3/h)"] = [
-            round(p.flow_v.to("m³/h").m, 5)
-            for p in getattr(back_to_back, f"points_flange_sp_{sec}")
-        ]
-        results[f"Q{conv}/Q{_sp}"] = [
-            round(
-                p.flow_v.to("m³/h").m
-                / getattr(back_to_back, f"guarantee_point_{sec}").flow_v.to("m³/h").m,
-                5,
-            )
-            for p in getattr(back_to_back, f"points_flange_sp_{sec}")
-        ]
-        results[f"W{_t} (kW)"] = [
-            round(p.power.to("kW").m, 5)
-            for p in getattr(back_to_back, f"points_rotor_t_{sec}")
-        ]
-        results[f"W{_t}/W{_sp}"] = [
-            round(
-                p.power.to("kW").m
-                / getattr(back_to_back, f"guarantee_point_{sec}").power.to("kW").m,
-                5,
-            )
-            for p in getattr(back_to_back, f"points_rotor_t_{sec}")
-        ]
-        results[f"W{conv} (kW)"] = [
-            round(p.power.to("kW").m, 5)
-            for p in getattr(back_to_back, f"points_rotor_sp_{sec}")
-        ]
-        results[f"W{conv}/W{_sp}"] = [
-            round(
-                p.power.to("kW").m
-                / getattr(back_to_back, f"guarantee_point_{sec}").power.to("kW").m,
-                5,
-            )
-            for p in getattr(back_to_back, f"points_rotor_sp_{sec}")
-        ]
-        results[f"Eff{_t}"] = [
-            round(p.eff.m, 5) for p in getattr(back_to_back, f"points_flange_t_{sec}")
-        ]
-        results[f"Eff{conv}"] = [
-            round(p.eff.m, 5) for p in getattr(back_to_back, f"points_flange_sp_{sec}")
-        ]
-
+    if back_to_back:
         # create interpolated point with point method
-        point_interpolated = getattr(back_to_back, f"point_{sec}")(
-            flow_v=getattr(back_to_back, f"guarantee_point_{sec}").flow_v,
-            speed=getattr(back_to_back, f"guarantee_point_{sec}").speed,
+        point_interpolated_sec1 = getattr(back_to_back, f"point_sec1")(
+            flow_v=getattr(back_to_back, f"guarantee_point_sec1").flow_v,
+            speed=getattr(back_to_back, f"guarantee_point_sec1").speed,
+        )
+        point_interpolated_sec2 = getattr(back_to_back, f"point_sec2")(
+            flow_v=getattr(back_to_back, f"guarantee_point_sec2").flow_v,
+            speed=getattr(back_to_back, f"guarantee_point_sec2").speed,
         )
 
-        results[f"φ{_t}"].append(round(point_interpolated.phi.m, 5))
-        results[f"φ{_t} / φ{_sp}"].append(
-            round(
-                point_interpolated.phi.m
-                / getattr(back_to_back, f"guarantee_point_{sec}").phi.m,
-                5,
-            )
-        )
-        results["vi / vd"].append(round(point_interpolated.volume_ratio.m, 5))
-        results[f"(vi/vd){_t}/(vi/vd){_sp}"].append(
-            round(
-                point_interpolated.volume_ratio.m
-                / getattr(back_to_back, f"guarantee_point_{sec}").volume_ratio.m,
-                5,
-            )
-        )
-        results[f"Mach{_t}"].append(round(point_interpolated.mach.m, 5))
-        results[f"Mach{_t} - Mach{_sp}"].append(
-            round(
-                point_interpolated.mach.m
-                - getattr(back_to_back, f"guarantee_point_{sec}").mach.m,
-                5,
-            )
-        )
-        results[f"Re{_t}"].append(round(point_interpolated.reynolds.m, 5))
-        results[f"Re{_t} / Re{_sp}"].append(
-            round(
-                point_interpolated.reynolds.m
-                / getattr(back_to_back, f"guarantee_point_{sec}").reynolds.m,
-                5,
-            )
-        )
-        results[f"pd{conv} (bar)"].append(round(point_interpolated.disch.p("bar").m, 5))
-        results[f"pd{conv}/pd_sp"].append(
-            round(
-                point_interpolated.disch.p("bar").m
-                / getattr(back_to_back, f"guarantee_point_{sec}").disch.p("bar").m,
-                5,
-            )
-        )
-        results[f"Head{_t} (kJ/kg)"].append(
-            round(point_interpolated.head.to("kJ/kg").m, 5)
-        )
-        results[f"Head{_t}/Head{_sp}"].append(
-            round(
-                point_interpolated.head.to("kJ/kg").m
-                / getattr(back_to_back, f"guarantee_point_{sec}").head.to("kJ/kg").m,
-                5,
-            )
-        )
-        results[f"Head{conv} (kJ/kg)"].append(
-            round(point_interpolated.head.to("kJ/kg").m, 5)
-        )
-        results[f"Head{conv}/Head{_sp}"].append(
-            round(
-                point_interpolated.head.to("kJ/kg").m
-                / getattr(back_to_back, f"guarantee_point_{sec}").head.to("kJ/kg").m,
-                5,
-            )
-        )
-        results[f"Q{conv} (m3/h)"].append(
-            round(point_interpolated.flow_v.to("m³/h").m, 5)
-        )
-        results[f"Q{conv}/Q{_sp}"].append(
-            round(
-                point_interpolated.flow_v.to("m³/h").m
-                / getattr(back_to_back, f"guarantee_point_{sec}").flow_v.to("m³/h").m,
-                5,
-            )
-        )
-        results[f"W{_t} (kW)"].append(None)
-        results[f"W{_t}/W{_sp}"].append(None)
-        results[f"W{conv} (kW)"].append(round(point_interpolated.power.to("kW").m, 5))
-        results[f"W{conv}/W{_sp}"].append(
-            round(
-                point_interpolated.power.to("kW").m
-                / Q_(
-                    float(st.session_state[f"power_{section}_point_guarantee"]),
-                    parameters_map["power"][section]["data_sheet_units"],
+        for results, section, sec, point_interpolated in zip(
+            [results_section_1, results_section_2],
+            ["section_1", "section_2"],
+            ["sec1", "sec2"],
+            [point_interpolated_sec1, point_interpolated_sec2],
+        ):
+            results[f"φ{_t}"] = [
+                round(p.phi.m, 5) for p in getattr(back_to_back, f"test_points_{sec}")
+            ]
+            results[f"φ{_t} / φ{_sp}"] = [
+                round(
+                    p.phi.m / getattr(back_to_back, f"guarantee_point_{sec}").phi.m, 5
                 )
-                .to("kW")
-                .m,
-                5,
+                for p in getattr(back_to_back, f"test_points_{sec}")
+            ]
+            results["vi / vd"] = [
+                round(p.volume_ratio.m, 5)
+                for p in getattr(back_to_back, f"test_points_{sec}")
+            ]
+            results[f"(vi/vd){_t}/(vi/vd){_sp}"] = [
+                round(
+                    p.volume_ratio.m
+                    / getattr(back_to_back, f"guarantee_point_{sec}").volume_ratio.m,
+                    5,
+                )
+                for p in getattr(back_to_back, f"test_points_{sec}")
+            ]
+            results[f"Mach{_t}"] = [
+                round(p.mach.m, 5) for p in getattr(back_to_back, f"test_points_{sec}")
+            ]
+            results[f"Mach{_t} - Mach{_sp}"] = [
+                round(
+                    p.mach.m - getattr(back_to_back, f"guarantee_point_{sec}").mach.m, 5
+                )
+                for p in getattr(back_to_back, f"test_points_{sec}")
+            ]
+            results[f"Re{_t}"] = [
+                round(p.reynolds.m, 5)
+                for p in getattr(back_to_back, f"test_points_{sec}")
+            ]
+            results[f"Re{_t} / Re{_sp}"] = [
+                round(
+                    p.reynolds.m
+                    / getattr(back_to_back, f"guarantee_point_{sec}").reynolds.m,
+                    5,
+                )
+                for p in getattr(back_to_back, f"test_points_{sec}")
+            ]
+            results[f"pd{conv} (bar)"] = [
+                round(p.disch.p("bar").m, 5)
+                for p in getattr(back_to_back, f"points_flange_sp_{sec}")
+            ]
+            results[f"pd{conv}/pd{_sp}"] = [
+                round(
+                    p.disch.p("bar").m
+                    / getattr(back_to_back, f"guarantee_point_{sec}").disch.p("bar").m,
+                    5,
+                )
+                for p in getattr(back_to_back, f"points_flange_sp_{sec}")
+            ]
+            results[f"Head{_t} (kJ/kg)"] = [
+                round(p.head.to("kJ/kg").m, 5)
+                for p in getattr(back_to_back, f"points_flange_sp_{sec}")
+            ]
+            results[f"Head{_t}/Head{_sp}"] = [
+                round(
+                    p.head.to("kJ/kg").m
+                    / getattr(back_to_back, f"guarantee_point_{sec}")
+                    .head.to("kJ/kg")
+                    .m,
+                    5,
+                )
+                for p in getattr(back_to_back, f"test_points_{sec}")
+            ]
+            results[f"Head{conv} (kJ/kg)"] = [
+                round(p.head.to("kJ/kg").m, 5)
+                for p in getattr(back_to_back, f"points_flange_sp_{sec}")
+            ]
+            results[f"Head{conv}/Head{_sp}"] = [
+                round(
+                    p.head.to("kJ/kg").m
+                    / getattr(back_to_back, f"guarantee_point_{sec}")
+                    .head.to("kJ/kg")
+                    .m,
+                    5,
+                )
+                for p in getattr(back_to_back, f"points_flange_sp_{sec}")
+            ]
+            results[f"Q{conv} (m3/h)"] = [
+                round(p.flow_v.to("m³/h").m, 5)
+                for p in getattr(back_to_back, f"points_flange_sp_{sec}")
+            ]
+            results[f"Q{conv}/Q{_sp}"] = [
+                round(
+                    p.flow_v.to("m³/h").m
+                    / getattr(back_to_back, f"guarantee_point_{sec}")
+                    .flow_v.to("m³/h")
+                    .m,
+                    5,
+                )
+                for p in getattr(back_to_back, f"points_flange_sp_{sec}")
+            ]
+            results[f"W{_t} (kW)"] = [
+                round(p.power.to("kW").m, 5)
+                for p in getattr(back_to_back, f"points_rotor_t_{sec}")
+            ]
+            results[f"W{_t}/W{_sp}"] = [
+                round(
+                    p.power.to("kW").m
+                    / getattr(back_to_back, f"guarantee_point_{sec}").power.to("kW").m,
+                    5,
+                )
+                for p in getattr(back_to_back, f"points_rotor_t_{sec}")
+            ]
+            results[f"W{conv} (kW)"] = [
+                round(p.power.to("kW").m, 5)
+                for p in getattr(back_to_back, f"points_rotor_sp_{sec}")
+            ]
+            results[f"W{conv}/W{_sp}"] = [
+                round(
+                    p.power.to("kW").m
+                    / getattr(back_to_back, f"guarantee_point_{sec}").power.to("kW").m,
+                    5,
+                )
+                for p in getattr(back_to_back, f"points_rotor_sp_{sec}")
+            ]
+            results[f"Eff{_t}"] = [
+                round(p.eff.m, 5)
+                for p in getattr(back_to_back, f"points_flange_t_{sec}")
+            ]
+            results[f"Eff{conv}"] = [
+                round(p.eff.m, 5)
+                for p in getattr(back_to_back, f"points_flange_sp_{sec}")
+            ]
+
+            # interpolate mach based on phi values using the points already appended to results
+
+            # mach_interpolation = parameter_interpolation(
+            #     point_interpolated.phi.m, results[f"φ{_t}"], results[f"Mach{_t}"]
+            # )
+            # reynolds_interpolation = parameter_interpolation(
+            #     point_interpolated.phi.m, results[f"φ{_t}"], results[f"Re{_t}"]
+            # )
+
+            results[f"φ{_t}"].append(round(point_interpolated.phi.m, 5))
+            results[f"φ{_t} / φ{_sp}"].append(
+                round(
+                    point_interpolated.phi.m
+                    / getattr(back_to_back, f"guarantee_point_{sec}").phi.m,
+                    5,
+                )
             )
-        )
-        results[f"Eff{_t}"].append(round(point_interpolated.eff.m, 5))
-        results[f"Eff{conv}"].append(round(point_interpolated.eff.m, 5))
-
-        df_results = pd.DataFrame(results)
-        rename_index = {
-            i: f"Point {i+1}"
-            for i in range(len(getattr(back_to_back, f"points_flange_t_{sec}")))
-        }
-        rename_index[
-            len(getattr(back_to_back, f"points_flange_t_{sec}"))
-        ] = "Guarantee Point"
-
-        df_results.rename(
-            index=rename_index,
-            inplace=True,
-        )
-
-        if section == "section_1":
-            tab_results = tab_results_section_1
-        else:
-            tab_results = tab_results_section_2
-
-        with tab_results:
-
-            def highlight_cell(
-                styled_df, df, row_index, col_index, lower_limit, higher_limit
-            ):
-                """Applies conditional formatting to a specific cell in a pandas DataFrame.
-
-                Args:
-                    df (pandas.DataFrame): The DataFrame to apply conditional formatting to.
-                    row_index (int or str): The row index of the cell to highlight.
-                    col_index (int or str): The column index of the cell to highlight.
-                    lower_limit (float): The lower limit of the value range to highlight in green.
-                    higher_limit (float): The higher limit of the value range to highlight in green.
-
-                Returns:
-                    pandas.io.formats.style.Styler: A styled DataFrame with the specified cell highlighted.
-                """
-                # create a copy of the DataFrame with styling
-
-                # apply conditional formatting to the specific cell
-                cell_value = df.loc[row_index, col_index]
-                if cell_value >= lower_limit and cell_value <= higher_limit:
-                    styled_df = styled_df.applymap(
-                        lambda x: "background-color: #C8E6C9" if x == cell_value else ""
-                    ).applymap(
-                        lambda x: "font-color: #33691E" if x == cell_value else ""
+            results["vi / vd"].append(round(point_interpolated.volume_ratio.m, 5))
+            results[f"(vi/vd){_t}/(vi/vd){_sp}"].append(
+                round(
+                    point_interpolated.volume_ratio.m
+                    / getattr(back_to_back, f"guarantee_point_{sec}").volume_ratio.m,
+                    5,
+                )
+            )
+            results[f"Mach{_t}"].append(round(point_interpolated.mach.m, 5))
+            results[f"Mach{_t} - Mach{_sp}"].append(
+                round(
+                    point_interpolated.mach.m
+                    - getattr(back_to_back, f"guarantee_point_{sec}").mach.m,
+                    5,
+                )
+            )
+            results[f"Re{_t}"].append(round(point_interpolated.reynolds.m, 5))
+            results[f"Re{_t} / Re{_sp}"].append(
+                round(
+                    point_interpolated.reynolds.m
+                    / getattr(back_to_back, f"guarantee_point_{sec}").reynolds.m,
+                    5,
+                )
+            )
+            results[f"pd{conv} (bar)"].append(
+                round(point_interpolated.disch.p("bar").m, 5)
+            )
+            results[f"pd{conv}/pd{_sp}"].append(
+                round(
+                    point_interpolated.disch.p("bar").m
+                    / getattr(back_to_back, f"guarantee_point_{sec}").disch.p("bar").m,
+                    5,
+                )
+            )
+            results[f"Head{_t} (kJ/kg)"].append(
+                round(point_interpolated.head.to("kJ/kg").m, 5)
+            )
+            results[f"Head{_t}/Head{_sp}"].append(
+                round(
+                    point_interpolated.head.to("kJ/kg").m
+                    / getattr(back_to_back, f"guarantee_point_{sec}")
+                    .head.to("kJ/kg")
+                    .m,
+                    5,
+                )
+            )
+            results[f"Head{conv} (kJ/kg)"].append(
+                round(point_interpolated.head.to("kJ/kg").m, 5)
+            )
+            results[f"Head{conv}/Head{_sp}"].append(
+                round(
+                    point_interpolated.head.to("kJ/kg").m
+                    / getattr(back_to_back, f"guarantee_point_{sec}")
+                    .head.to("kJ/kg")
+                    .m,
+                    5,
+                )
+            )
+            results[f"Q{conv} (m3/h)"].append(
+                round(point_interpolated.flow_v.to("m³/h").m, 5)
+            )
+            results[f"Q{conv}/Q{_sp}"].append(
+                round(
+                    point_interpolated.flow_v.to("m³/h").m
+                    / getattr(back_to_back, f"guarantee_point_{sec}")
+                    .flow_v.to("m³/h")
+                    .m,
+                    5,
+                )
+            )
+            results[f"W{_t} (kW)"].append(None)
+            results[f"W{_t}/W{_sp}"].append(None)
+            results[f"W{conv} (kW)"].append(
+                round(point_interpolated.power.to("kW").m, 5)
+            )
+            results[f"W{conv}/W{_sp}"].append(
+                round(
+                    point_interpolated.power.to("kW").m
+                    / Q_(
+                        float(st.session_state[f"power_{section}_point_guarantee"]),
+                        parameters_map["power"][section]["data_sheet_units"],
                     )
+                    .to("kW")
+                    .m,
+                    5,
+                )
+            )
+            results[f"Eff{_t}"].append(round(point_interpolated.eff.m, 5))
+            results[f"Eff{conv}"].append(round(point_interpolated.eff.m, 5))
 
+            # add overall results to both dataframes
+            for key in results.keys():
+                if key == f"pd{conv} (bar)":
+                    results[f"pd{conv} (bar)"].append(
+                        round(
+                            point_interpolated_sec2.disch.p("bar").m,
+                            5,
+                        )
+                    )
+                elif key == f"pd{conv}/pd{_sp}":
+                    results[key].append(
+                        round(
+                            point_interpolated_sec2.disch.p("bar").m
+                            / getattr(back_to_back, f"guarantee_point_sec2")
+                            .disch.p("bar")
+                            .m,
+                            5,
+                        )
+                    )
+                elif key == f"W{conv} (kW)":
+                    results[key].append(
+                        round(
+                            point_interpolated_sec1.power.to("kW").m
+                            + point_interpolated_sec2.power.to("kW").m,
+                            5,
+                        )
+                    )
+                elif key == f"W{conv}/W{_sp}":
+                    results[key].append(
+                        round(
+                            (
+                                point_interpolated_sec1.power.to("kW").m
+                                + point_interpolated_sec2.power.to("kW").m
+                            )
+                            / (
+                                Q_(
+                                    float(
+                                        st.session_state[
+                                            f"power_section_1_point_guarantee"
+                                        ]
+                                    ),
+                                    parameters_map["power"][section][
+                                        "data_sheet_units"
+                                    ],
+                                )
+                                .to("kW")
+                                .m
+                                + Q_(
+                                    float(
+                                        st.session_state[
+                                            f"power_section_2_point_guarantee"
+                                        ]
+                                    ),
+                                    parameters_map["power"][section][
+                                        "data_sheet_units"
+                                    ],
+                                )
+                                .to("kW")
+                                .m
+                            ),
+                            5,
+                        )
+                    )
                 else:
-                    styled_df = styled_df.applymap(
-                        lambda x: "background-color: #FFCDD2" if x == cell_value else ""
-                    ).applymap(
-                        lambda x: "font-color: #FFCDD2" if x == cell_value else ""
+                    results[key].append(None)
+
+            df_results = pd.DataFrame(results)
+            rename_index = {
+                i: f"Point {i+1}"
+                for i in range(len(getattr(back_to_back, f"points_flange_t_{sec}")))
+            }
+            rename_index[
+                len(getattr(back_to_back, f"points_flange_t_{sec}"))
+            ] = "Guarantee Point"
+            rename_index[
+                len(getattr(back_to_back, f"points_flange_t_{sec}")) + 1
+            ] = "Overall"
+
+            df_results.rename(
+                index=rename_index,
+                inplace=True,
+            )
+
+            if section == "section_1":
+                tab_results = tab_results_section_1
+            else:
+                tab_results = tab_results_section_2
+
+            with tab_results:
+
+                def highlight_cell(
+                    styled_df, df, row_index, col_index, lower_limit, higher_limit
+                ):
+                    """Applies conditional formatting to a specific cell in a pandas DataFrame.
+
+                    Args:
+                        df (pandas.DataFrame): The DataFrame to apply conditional formatting to.
+                        row_index (int or str): The row index of the cell to highlight.
+                        col_index (int or str): The column index of the cell to highlight.
+                        lower_limit (float): The lower limit of the value range to highlight in green.
+                        higher_limit (float): The higher limit of the value range to highlight in green.
+
+                    Returns:
+                        pandas.io.formats.style.Styler: A styled DataFrame with the specified cell highlighted.
+                    """
+                    # create a copy of the DataFrame with styling
+
+                    # apply conditional formatting to the specific cell
+                    cell_value = df.loc[row_index, col_index]
+                    if cell_value >= lower_limit and cell_value <= higher_limit:
+                        styled_df = styled_df.applymap(
+                            lambda x: "background-color: #C8E6C9"
+                            if x == cell_value
+                            else ""
+                        ).applymap(
+                            lambda x: "font-color: #33691E" if x == cell_value else ""
+                        )
+
+                    else:
+                        styled_df = styled_df.applymap(
+                            lambda x: "background-color: #FFCDD2"
+                            if x == cell_value
+                            else ""
+                        ).applymap(
+                            lambda x: "font-color: #FFCDD2" if x == cell_value else ""
+                        )
+
+                    return styled_df
+
+                styled_df_results = df_results.style
+
+                mach_limits = point_interpolated.mach_limits()
+                styled_df_results = highlight_cell(
+                    styled_df_results,
+                    df_results,
+                    "Guarantee Point",
+                    f"Mach{_t} - Mach{_sp}",
+                    mach_limits["lower"],
+                    mach_limits["upper"],
+                )
+                reynolds_limits = point_interpolated.reynolds_limits()
+                styled_df_results = highlight_cell(
+                    styled_df_results,
+                    df_results,
+                    "Guarantee Point",
+                    f"Re{_t} / Re{_sp}",
+                    reynolds_limits["lower"],
+                    reynolds_limits["upper"],
+                )
+                styled_df_results = highlight_cell(
+                    styled_df_results,
+                    df_results,
+                    "Guarantee Point",
+                    f"(vi/vd){_t}/(vi/vd){_sp}",
+                    0.95,
+                    1.05,
+                )
+
+                if variable_speed:
+                    power_limit = 1.04
+                    pressure_limit = 1e15
+                else:
+                    power_limit = 1.07
+                    pressure_limit = 1.05
+
+                for _point in ["Guarantee Point", "Overall"]:
+                    # highlight pdconv/pdsp
+                    styled_df_results = highlight_cell(
+                        styled_df_results,
+                        df_results,
+                        _point,
+                        f"pd{conv}/pd{_sp}",
+                        1.0,
+                        pressure_limit,
+                    )
+                    # highlight Wconv/Wsp
+                    styled_df_results = highlight_cell(
+                        styled_df_results,
+                        df_results,
+                        _point,
+                        f"W{conv}/W{_sp}",
+                        0.0,
+                        power_limit,
                     )
 
-                return styled_df
-
-            styled_df_results = df_results.style
-            if variable_speed:
-                power_limit = 1.04
-            else:
-                power_limit = 1.07
-            styled_df_results = highlight_cell(
-                styled_df_results,
-                df_results,
-                "Guarantee Point",
-                f"W{conv}/W{_sp}",
-                0.0,
-                power_limit,
-            )
-
-            st.dataframe(
-                styled_df_results.format(
-                    "{:.2%}",
-                    subset=[
-                        f"φ{_t} / φ{_sp}",
-                        f"pd{conv}/pd_sp",
-                        f"(vi/vd){_t}/(vi/vd){_sp}",
-                        f"Head{_t}/Head{_sp}",
-                        f"Head{conv}/Head{_sp}",
-                        f"Q{conv}/Q{_sp}",
-                        f"W{_t}/W{_sp}",
-                        f"W{conv}/W{_sp}",
-                        f"Eff{_t}",
-                        f"Eff{conv}",
-                    ],
-                ).format(
-                    "{:.4e}",
-                    subset=[
-                        f"Re{_t}",
-                    ],
+                st.dataframe(
+                    styled_df_results.format(
+                        "{:.2%}",
+                        subset=[
+                            f"φ{_t} / φ{_sp}",
+                            f"pd{conv}/pd{_sp}",
+                            f"(vi/vd){_t}/(vi/vd){_sp}",
+                            f"Head{_t}/Head{_sp}",
+                            f"Head{conv}/Head{_sp}",
+                            f"Q{conv}/Q{_sp}",
+                            f"W{_t}/W{_sp}",
+                            f"W{conv}/W{_sp}",
+                            f"Eff{_t}",
+                            f"Eff{conv}",
+                        ],
+                    ).format(
+                        "{:.4e}",
+                        subset=[
+                            f"Re{_t}",
+                        ],
+                    )
                 )
-            )
-            st.plotly_chart(getattr(back_to_back, f"imp_flange_sp_{sec}").head_plot())
 
-            # TODO add overall results
-            # TODO add polytropic head and polytropic efficiency plots
-            # TODO add similarity table plot for interpolated point
+                with st.container():
+                    mach_col, reynolds_col = st.columns(2)
+                    mach_col.plotly_chart(
+                        point_interpolated.plot_mach(), use_container_width=True
+                    )
+                    reynolds_col.plotly_chart(
+                        point_interpolated.plot_reynolds(), use_container_width=True
+                    )
+
+                head_fig = getattr(back_to_back, f"imp_flange_sp_{sec}").head_plot()
+                head_fig.data[0].update(
+                    name="Converted Curve",
+                )
+                head_fig.update_layout(
+                    showlegend=True,
+                    # position legend at the bottom left
+                    legend=dict(
+                        yanchor="bottom",
+                        y=0.01,
+                        xanchor="left",
+                        x=0.01,
+                    ),
+                )
+                eff_fig = getattr(back_to_back, f"imp_flange_sp_{sec}").eff_plot()
+
+                with st.container():
+                    head_col, eff_col = st.columns(2)
+                    head_col.plotly_chart(head_fig, use_container_width=True)
+                    eff_col.plotly_chart(eff_fig, use_container_width=True)
+
+                disch_p_fig = getattr(
+                    back_to_back, f"imp_flange_sp_{sec}"
+                ).disch.p_plot()
+                power_fig = getattr(back_to_back, f"imp_flange_sp_{sec}").power_plot()
+
+                with st.container():
+                    disch_p_col, power_col = st.columns(2)
+                    disch_p_col.plotly_chart(disch_p_fig, use_container_width=True)
+                    power_col.plotly_chart(power_fig, use_container_width=True)
+
+    # TODO add image to the plot background
