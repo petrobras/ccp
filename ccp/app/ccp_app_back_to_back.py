@@ -5,9 +5,11 @@ import pandas as pd
 import pickle
 import base64
 import zipfile
+import plotly.graph_objects as go
 from io import BytesIO
 from PIL import Image
 from ccp.compressor import PointFirstSection, PointSecondSection, BackToBack
+from ccp.config.utilities import r_getattr
 from pathlib import Path
 
 Q_ = ccp.Q_
@@ -178,7 +180,7 @@ length_units = ["m", "mm", "ft", "in"]
 parameters_map = {
     "flow": {
         "label": "Flow",
-        "units": ["kg/h", "lbm/h", "kg/s", "lbm/s", "m3/h", "m3/s"],
+        "units": ["kg/h", "lbm/h", "kg/s", "lbm/s", "m³/h", "m³/s"],
     },
     "suction_pressure": {
         "label": "Suction Pressure",
@@ -242,7 +244,7 @@ parameters_map = {
     },
     "head": {
         "label": "Head",
-        "units": ["kJ/kg", "J/kg", "m", "ft"],
+        "units": ["kJ/kg", "J/kg", "m*g0", "ft"],
     },
     "efficiency": {
         "label": "Efficiency",
@@ -376,31 +378,80 @@ with st.expander("Data Sheet"):
 with st.expander("Curves"):
     # add upload button for each section curve
     fig_dict = {}
+    plot_limits = {}
+
     for curve in ["head"]:
+        st.markdown(f"### {curve.capitalize()} curve")
         parameter_container = st.container()
         first_section_col, second_section_col = parameter_container.columns(
             2, gap="small"
         )
+        plot_limits[curve] = {}
         # create upload button for each section
-        for section in ["section_1", "section_2"]:
-            if section == "section_1":
+        for section in ["sec1", "sec2"]:
+            plot_limits[curve][section] = {}
+            if section == "sec1":
                 section_col = first_section_col
             else:
                 section_col = second_section_col
             # create upload button for each section
             fig_dict[f"fig_{curve}_{section}"] = section_col.file_uploader(
-                f"Upload {curve} curve for {' '.join(section.split('_'))}.",
+                f"Upload {curve} curve for {section}.",
                 type=["png", "jpg", "jpeg"],
                 key=f"fig_{curve}_{section}",
             )
             # change to png format
-            if fig_dict[f"fig_{curve}_{section}"] is not None:
-                # create memory buffer to store the image
-                memory_buffer = BytesIO()
-                img = Image.open(fig_dict[f"fig_{curve}_{section}"])
-                img.save(memory_buffer, format="png")
-                fig_dict[f"fig_{curve}_{section}"] = memory_buffer
-            # TODO add plot limits
+            # if fig_dict[f"fig_{curve}_{section}"] is not None:
+            #     # create memory buffer to store the image
+            #     memory_buffer = BytesIO()
+            #     img = Image.open(fig_dict[f"fig_{curve}_{section}"])
+            #     img.save(memory_buffer, format="png")
+            #     fig_dict[f"fig_{curve}_{section}"] = memory_buffer
+            # # TODO add plot limits
+
+            # add container to x range
+            for axis in ["x", "y"]:
+                with st.container():
+                    (
+                        plot_limit,
+                        units_col,
+                        lower_value_col,
+                        upper_value_col,
+                    ) = section_col.columns(4, gap="small")
+                    plot_limit.markdown(f"{axis} range")
+                    plot_limits[curve][section][f"{axis}"] = {}
+                    plot_limits[curve][section][f"{axis}"][
+                        "lower_limit"
+                    ] = lower_value_col.text_input(
+                        f"Lower limit",
+                        key=f"{axis}_{curve}_{section}_lower",
+                        label_visibility="collapsed",
+                    )
+                    plot_limits[curve][section][f"{axis}"][
+                        "upper_limit"
+                    ] = upper_value_col.text_input(
+                        f"Upper limit",
+                        key=f"{axis}_{curve}_{section}_upper",
+                        label_visibility="collapsed",
+                    )
+                    if axis == "x":
+                        plot_limits[curve][section][f"{axis}"][
+                            "units"
+                        ] = units_col.selectbox(
+                            f"{parameter} units",
+                            options=parameters_map["flow"]["units"],
+                            key=f"{axis}_{curve}_{section}_flow_units",
+                            label_visibility="collapsed",
+                        )
+                    else:
+                        plot_limits[curve][section][f"{axis}"][
+                            "units"
+                        ] = units_col.selectbox(
+                            f"{parameter} units",
+                            options=parameters_map[curve]["units"],
+                            key=f"{axis}_{curve}_{section}_units",
+                            label_visibility="collapsed",
+                        )
 
 number_of_test_points = 6
 number_of_columns = number_of_test_points + 2
@@ -1430,35 +1481,163 @@ with st.expander("Results"):
                         point_interpolated.plot_reynolds(), use_container_width=True
                     )
 
-                head_fig = getattr(back_to_back, f"imp_flange_sp_{sec}").head_plot()
-                head_fig.data[0].update(
-                    name="Converted Curve",
-                )
-                head_fig.update_layout(
-                    showlegend=True,
-                    # position legend at the bottom left
-                    legend=dict(
-                        yanchor="bottom",
-                        y=0.01,
-                        xanchor="left",
-                        x=0.01,
-                    ),
-                )
-                eff_fig = getattr(back_to_back, f"imp_flange_sp_{sec}").eff_plot()
+                def add_background_image(
+                    curve_name=None, section=None, fig=None, image=None
+                ):
+                    """Add png file to plot background
+
+                    Parameters
+                    ----------
+                    curve_name : str
+                        The name of the curve to add the background image to.
+                    section : str
+                        Compressor section.
+                    fig : plotly.graph_objects.Figure
+                        The figure to add the background image to.
+                    image : io.BytesIO
+                        The image to add to the background.
+                    """
+                    encoded_string = base64.b64encode(image.read()).decode()
+                    encoded_image = "data:image/png;base64," + encoded_string
+                    fig.add_layout_image(
+                        dict(
+                            source=encoded_image,
+                            xref="x",
+                            yref="y",
+                            x=plot_limits[curve_name][section]["x"]["lower_limit"],
+                            y=plot_limits[curve_name][section]["y"]["upper_limit"],
+                            sizex=float(
+                                plot_limits[curve_name][section]["x"]["upper_limit"]
+                            )
+                            - float(
+                                plot_limits[curve_name][section]["x"]["lower_limit"]
+                            ),
+                            sizey=float(
+                                plot_limits[curve_name][section]["y"]["upper_limit"]
+                            )
+                            - float(
+                                plot_limits[curve_name][section]["y"]["lower_limit"]
+                            ),
+                            sizing="stretch",
+                            opacity=0.5,
+                            layer="below",
+                        )
+                    )
+                    return fig
+
+                plots_dict = {}
+                for curve in ["head", "eff", "disch.p", "power"]:
+                    flow_v_units = (
+                        plot_limits.get(curve, {})
+                        .get(sec, {})
+                        .get("x", {})
+                        .get("units")
+                    )
+                    curve_units = (
+                        plot_limits.get(curve, {})
+                        .get(sec, {})
+                        .get("y", {})
+                        .get("units")
+                    )
+
+                    kwargs = {}
+                    if flow_v_units is not None and flow_v_units != "":
+                        kwargs["flow_v_units"] = flow_v_units
+                    if curve_units is not None and curve_units != "":
+                        kwargs[f"{curve}_units"] = curve_units
+
+                    plots_dict[curve] = r_getattr(
+                        getattr(back_to_back, f"imp_flange_sp_{sec}"), f"{curve}_plot"
+                    )(
+                        **kwargs,
+                    )
+
+                    plots_dict[curve] = r_getattr(point_interpolated, f"{curve}_plot")(
+                        fig=plots_dict[curve],
+                        **kwargs,
+                    )
+
+                    plots_dict[curve].data[0].update(
+                        name="Converted Curve",
+                    )
+
+                    plots_dict[curve].update_layout(
+                        showlegend=True,
+                        # position legend at the bottom left
+                        legend=dict(
+                            yanchor="bottom",
+                            y=0.01,
+                            xanchor="left",
+                            x=0.01,
+                        ),
+                    )
+
+                    x_lower = (
+                        plot_limits.get(curve, {})
+                        .get(sec, {})
+                        .get("x", {})
+                        .get("lower_limit")
+                    )
+                    x_upper = (
+                        plot_limits.get(curve, {})
+                        .get(sec, {})
+                        .get("x", {})
+                        .get("upper_limit")
+                    )
+                    y_lower = (
+                        plot_limits.get(curve, {})
+                        .get(sec, {})
+                        .get("y", {})
+                        .get("lower_limit")
+                    )
+                    y_upper = (
+                        plot_limits.get(curve, {})
+                        .get(sec, {})
+                        .get("y", {})
+                        .get("upper_limit")
+                    )
+
+                    if (
+                        x_lower is not None
+                        and x_lower != ""
+                        and x_upper is not None
+                        and x_upper != ""
+                        and y_lower is not None
+                        and y_lower != ""
+                        and y_upper is not None
+                        and y_upper != ""
+                    ):
+                        plots_dict[curve].update_layout(
+                            xaxis_range=(
+                                plot_limits[curve][sec]["x"]["lower_limit"],
+                                plot_limits[curve][sec]["x"]["upper_limit"],
+                            ),
+                            yaxis_range=(
+                                plot_limits[curve][sec]["y"]["lower_limit"],
+                                plot_limits[curve][sec]["y"]["upper_limit"],
+                            ),
+                        )
+
+                    if fig_dict.get(f"fig_{curve}_{sec}") is not None:
+                        plots_dict[curve] = add_background_image(
+                            curve_name=curve,
+                            fig=plots_dict[curve],
+                            section=sec,
+                            image=fig_dict[f"fig_{curve}_{sec}"],
+                        )
 
                 with st.container():
                     head_col, eff_col = st.columns(2)
-                    head_col.plotly_chart(head_fig, use_container_width=True)
-                    eff_col.plotly_chart(eff_fig, use_container_width=True)
-
-                disch_p_fig = getattr(
-                    back_to_back, f"imp_flange_sp_{sec}"
-                ).disch.p_plot()
-                power_fig = getattr(back_to_back, f"imp_flange_sp_{sec}").power_plot()
+                    head_col.plotly_chart(plots_dict["head"], use_container_width=True)
+                    eff_col.plotly_chart(plots_dict["eff"], use_container_width=True)
 
                 with st.container():
                     disch_p_col, power_col = st.columns(2)
-                    disch_p_col.plotly_chart(disch_p_fig, use_container_width=True)
-                    power_col.plotly_chart(power_fig, use_container_width=True)
+                    disch_p_col.plotly_chart(
+                        plots_dict["disch.p"], use_container_width=True
+                    )
+                    power_col.plotly_chart(
+                        plots_dict["power"], use_container_width=True
+                    )
 
     # TODO add image to the plot background
