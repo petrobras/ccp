@@ -808,6 +808,11 @@ class BackToBack(Impeller):
             self.points_flange_sp_sec1[-1].first_section_discharge_flow_m = (
                 mdiv_sp + ms1r_sp
             )
+            # change points_flange power to real power calculated in rotor point
+            for p_flange, p_rotor in zip(
+                self.points_flange_sp_sec1, self.points_rotor_sp_sec1
+            ):
+                p_flange.power = p_rotor.power
         self.imp_flange_sp_sec1 = Impeller(self.points_flange_sp_sec1)
 
     def point_sec1(self, *args, **kwargs):
