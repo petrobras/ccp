@@ -4,6 +4,9 @@ import json
 import pandas as pd
 import pickle
 import base64
+import zipfile
+from io import BytesIO
+from PIL import Image
 from ccp.compressor import PointFirstSection, PointSecondSection, BackToBack
 from pathlib import Path
 
@@ -82,6 +85,9 @@ with st.sidebar.expander("📁 File"):
 
     if st.button("Save session state"):
         session_state_dict = dict(st.session_state)
+
+        # create a zip file to add the data to
+        session_state_zip = zipfile.ZipFile(f"{st.session_state.session_name}.ccp", "w")
         # remove fig keys
         for key in list(session_state_dict.keys()):
             if "fig" in key:
@@ -387,7 +393,14 @@ with st.expander("Curves"):
                 type=["png", "jpg", "jpeg"],
                 key=f"fig_{curve}_{section}",
             )
-
+            # change to png format
+            if fig_dict[f"fig_{curve}_{section}"] is not None:
+                # create memory buffer to store the image
+                memory_buffer = BytesIO()
+                img = Image.open(fig_dict[f"fig_{curve}_{section}"])
+                img.save(memory_buffer, format="png")
+                fig_dict[f"fig_{curve}_{section}"] = memory_buffer
+            # TODO add plot limits
 
 number_of_test_points = 6
 number_of_columns = number_of_test_points + 2
