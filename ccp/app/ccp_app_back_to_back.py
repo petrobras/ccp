@@ -180,7 +180,7 @@ length_units = ["m", "mm", "ft", "in"]
 parameters_map = {
     "flow": {
         "label": "Flow",
-        "units": ["kg/h", "lbm/h", "kg/s", "lbm/s", "m³/h", "m³/s"],
+        "units": ["m³/h", "m³/s", "kg/h", "lbm/h", "kg/s", "lbm/s"],
     },
     "suction_pressure": {
         "label": "Suction Pressure",
@@ -401,12 +401,12 @@ with st.expander("Curves"):
                 key=f"fig_{curve}_{section}",
             )
             # change to png format
-            # if fig_dict[f"fig_{curve}_{section}"] is not None:
-            #     # create memory buffer to store the image
-            #     memory_buffer = BytesIO()
-            #     img = Image.open(fig_dict[f"fig_{curve}_{section}"])
-            #     img.save(memory_buffer, format="png")
-            #     fig_dict[f"fig_{curve}_{section}"] = memory_buffer
+            if fig_dict[f"fig_{curve}_{section}"] is not None:
+                # create memory buffer to store the image
+                memory_buffer = BytesIO()
+                img = Image.open(fig_dict[f"fig_{curve}_{section}"])
+                img.save(memory_buffer, format="png")
+                fig_dict[f"fig_{curve}_{section}"] = memory_buffer
             # # TODO add plot limits
 
             # add container to x range
@@ -1545,7 +1545,7 @@ with st.expander("Results"):
                         kwargs["flow_v_units"] = flow_v_units
                     if curve_units is not None and curve_units != "":
                         kwargs[f"{curve}_units"] = curve_units
-
+                    print(f"kwargs: {kwargs}")
                     plots_dict[curve] = r_getattr(
                         getattr(back_to_back, f"imp_flange_sp_{sec}"), f"{curve}_plot"
                     )(
