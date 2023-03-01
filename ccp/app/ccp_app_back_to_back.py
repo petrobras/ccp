@@ -84,15 +84,18 @@ with st.sidebar.expander("📁 File"):
         session_state_dict = dict(st.session_state)
 
         # create a zip file to add the data to
-        session_state_zip = zipfile.ZipFile(f"{st.session_state.session_name}.ccp", "w")
-        # remove fig keys
-        for key in list(session_state_dict.keys()):
-            if "fig" in key:
-                del session_state_dict[key]
-        session_state_json = json.dumps(session_state_dict)
-        file_name = f"{st.session_state.session_name}.json" or "session_state.json"
-        with open(file_name, "w") as f:
-            f.write(session_state_json)
+        file_name = f"{st.session_state.session_name}.ccp"
+        session_state_dict_copy = session_state_dict.copy()
+        with zipfile.ZipFile(file_name, "w") as my_zip:
+            # first save figures
+            for key, value in session_state_dict.items():
+                if isinstance(value, st.runtime.uploaded_file_manager.UploadedFile):
+                    my_zip.writestr(f"{key}.png", value.getvalue())
+                    del session_state_dict_copy[key]
+            # then save the rest of the session state
+            session_state_json = json.dumps(session_state_dict_copy)
+            my_zip.writestr("session_state.json", session_state_json)
+
         st.download_button(
             label="Download session state",
             data=session_state_json,
@@ -392,17 +395,9 @@ with st.expander("Curves"):
             # create upload button for each section
             fig_dict[f"fig_{curve}_{section}"] = section_col.file_uploader(
                 f"Upload {curve} curve for {section}.",
-                type=["png", "jpg", "jpeg"],
+                type=["png"],
                 key=f"fig_{curve}_{section}",
             )
-            # change to png format
-            if fig_dict[f"fig_{curve}_{section}"] is not None:
-                # create memory buffer to store the image
-                memory_buffer = BytesIO()
-                img = Image.open(fig_dict[f"fig_{curve}_{section}"])
-                img.save(memory_buffer, format="png")
-                fig_dict[f"fig_{curve}_{section}"] = memory_buffer
-            # # TODO add plot limits
 
             # add container to x range
             for axis in ["x", "y"]:
@@ -1152,15 +1147,6 @@ with st.expander("Results"):
                 for p in getattr(back_to_back, f"points_flange_sp_{sec}")
             ]
 
-            # interpolate mach based on phi values using the points already appended to results
-
-            # mach_interpolation = parameter_interpolation(
-            #     point_interpolated.phi.m, results[f"φ{_t}"], results[f"Mach{_t}"]
-            # )
-            # reynolds_interpolation = parameter_interpolation(
-            #     point_interpolated.phi.m, results[f"φ{_t}"], results[f"Re{_t}"]
-            # )
-
             results[f"φ{_t}"].append(round(point_interpolated.phi.m, 5))
             results[f"φ{_t} / φ{_sp}"].append(
                 round(
@@ -1540,7 +1526,6 @@ with st.expander("Results"):
                         kwargs["flow_v_units"] = flow_v_units
                     if curve_units is not None and curve_units != "":
                         kwargs[f"{curve}_units"] = curve_units
-                    print(f"kwargs: {kwargs}")
                     plots_dict[curve] = r_getattr(
                         getattr(back_to_back, f"imp_flange_sp_{sec}"), f"{curve}_plot"
                     )(
