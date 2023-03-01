@@ -286,7 +286,7 @@ class Impeller:
         # handle case where we only have one curve and can't interpolate
         if len(speeds) == 1:
             current_curve = self.curves[0]
-            if speed is not None and np.allclose(speed, current_curve.speed):
+            if speed is not None and not np.allclose(speed, current_curve.speed):
                 raise ValueError(
                     f"Can only interpolate for speed={current_curve.speed}"
                 )
