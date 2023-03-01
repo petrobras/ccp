@@ -71,17 +71,12 @@ with st.sidebar.expander("📁 File"):
     if submitted and file is not None:
         st.write("Loaded!")
         session_state_data = json.load(file)
+        session_state_data_copy = session_state_data.copy()
         # remove keys that cannot be set with st.session_state.update
-        for key in [
-            "FormSubmitter:my_form-Load",
-            "FormSubmitter:my_form-Load Data",
-            "my_form",
-        ]:
-            try:
-                del session_state_data[key]
-            except KeyError:
-                pass
-        st.session_state.update(session_state_data)
+        for key in session_state_data.keys():
+            if key.startswith(("FormSubmitter", "my_form", "fig")):
+                del session_state_data_copy[key]
+        st.session_state.update(session_state_data_copy)
         st.session_state.session_name = file.name.replace(".json", "")
         st.experimental_rerun()
 
