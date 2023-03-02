@@ -352,7 +352,7 @@ def test_straight_through(straight_through):
 
 
 def test_straight_through_calculate_speed(straight_through):
-    straight_through.calculate_speed_to_match_discharge_pressure()
+    straight_through = straight_through.calculate_speed_to_match_discharge_pressure()
     point_sp = straight_through.point(
         speed=straight_through.speed,
         flow_m=straight_through.guarantee_point.flow_m,
@@ -847,7 +847,7 @@ def test_back_to_back(back_to_back):
     assert_allclose(p0f_sp.suc.p(), 13350788.401188, rtol=1e-5)
     assert_allclose(p0f_sp.head, 30603.247711, rtol=1e-6)
     assert_allclose(p0f_sp.eff, 0.47459, rtol=1e-6)
-    assert_allclose(p0f_sp.power, 3423577.541135, 1e-4)
+    assert_allclose(p0f_sp.power, 3358381.8332365, 1e-4)
 
     # rotor specified sec1
     p0r_sp = back_to_back.points_rotor_sp_sec1[0]
@@ -970,7 +970,7 @@ def test_back_to_back_with_reynolds_correction(back_to_back):
     assert_allclose(p0f_sp.suc.p(), 13413110.609268, rtol=1e-5)
     assert_allclose(p0f_sp.head, 30836.456326, rtol=1e-6)
     assert_allclose(p0f_sp.eff, 0.478206, rtol=1e-6)
-    assert_allclose(p0f_sp.power, 3440848.856175, 1e-4)
+    assert_allclose(p0f_sp.power, 3375713.294289, 1e-4)
 
     # rotor specified sec1
     p0r_sp = back_to_back.points_rotor_sp_sec1[0]
@@ -1022,7 +1022,7 @@ def test_back_to_back_with_reynolds_correction(back_to_back):
 
 def test_back_to_back_calculate_speed(back_to_back):
     back_to_back = BackToBack(**back_to_back, reynolds_correction=True)
-    back_to_back.calculate_speed_to_match_discharge_pressure()
+    back_to_back = back_to_back.calculate_speed_to_match_discharge_pressure()
     point_sp = back_to_back.point_sec2(
         speed=back_to_back.speed,
         flow_m=back_to_back.guarantee_point_sec2.flow_m,
