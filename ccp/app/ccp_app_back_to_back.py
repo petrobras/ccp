@@ -5,9 +5,6 @@ import pandas as pd
 import pickle
 import base64
 import zipfile
-import plotly.graph_objects as go
-from io import BytesIO
-from PIL import Image
 from ccp.compressor import PointFirstSection, PointSecondSection, BackToBack
 from ccp.config.utilities import r_getattr
 from pathlib import Path
@@ -54,6 +51,12 @@ def get_session():
     # if file is being loaded, session_name is set with the file name
     if "session_name" not in st.session_state:
         st.session_state.session_name = ""
+    if "back_to_back" not in st.session_state:
+        st.session_state.back_to_back = ""
+    for sec in ["sec1", "sec2"]:
+        for curve in ["head", "power", "eff", "disch.p"]:
+            if f"fig_{curve}_{sec}" not in st.session_state:
+                st.session_state[f"fig_{curve}_{sec}"] = ""
 
 
 get_session()
@@ -70,14 +73,29 @@ with st.sidebar.expander("📁 File"):
 
     if submitted and file is not None:
         st.write("Loaded!")
-        session_state_data = json.load(file)
+        # open file with zip
+
+        with zipfile.ZipFile(file) as my_zip:
+            for name in my_zip.namelist():
+                if name.endswith(".json"):
+                    session_state_data = json.loads(my_zip.read(name))
+
+            # extract figures and back_to_back objects
+            for name in my_zip.namelist():
+                if name.endswith(".png"):
+                    session_state_data[name.split(".")[0]] = my_zip.read(name)
+                elif name.endswith(".pkl"):
+                    session_state_data[name.split(".")[0]] = pickle.loads(
+                        my_zip.read(name)
+                    )
+
         session_state_data_copy = session_state_data.copy()
         # remove keys that cannot be set with st.session_state.update
         for key in session_state_data.keys():
-            if key.startswith(("FormSubmitter", "my_form", "fig")):
+            if key.startswith(("FormSubmitter", "my_form", "uploaded")):
                 del session_state_data_copy[key]
         st.session_state.update(session_state_data_copy)
-        st.session_state.session_name = file.name.replace(".json", "")
+        st.session_state.session_name = file.name.replace(".ccp", "")
         st.experimental_rerun()
 
     if st.button("Save session state"):
@@ -89,8 +107,14 @@ with st.sidebar.expander("📁 File"):
         with zipfile.ZipFile(file_name, "w") as my_zip:
             # first save figures
             for key, value in session_state_dict.items():
-                if isinstance(value, st.runtime.uploaded_file_manager.UploadedFile):
-                    my_zip.writestr(f"{key}.png", value.getvalue())
+                if isinstance(
+                    value, (bytes, st.runtime.uploaded_file_manager.UploadedFile)
+                ):
+                    if key.startswith("fig"):
+                        my_zip.writestr(f"{key}.png", value)
+                    del session_state_dict_copy[key]
+                if isinstance(value, BackToBack):
+                    my_zip.writestr(f"{key}.pkl", pickle.dumps(value))
                     del session_state_dict_copy[key]
             # then save the rest of the session state
             session_state_json = json.dumps(session_state_dict_copy)
@@ -375,8 +399,9 @@ with st.expander("Data Sheet"):
 
 with st.expander("Curves"):
     # add upload button for each section curve
-    fig_dict = {}
+    # check if fig_dict was created when loading state. Otherwise, create it
     plot_limits = {}
+    fig_dict_uploaded = {}
 
     for curve in ["head"]:
         st.markdown(f"### {curve.capitalize()} curve")
@@ -393,11 +418,18 @@ with st.expander("Curves"):
             else:
                 section_col = second_section_col
             # create upload button for each section
-            fig_dict[f"fig_{curve}_{section}"] = section_col.file_uploader(
+            fig_dict_uploaded[
+                f"uploaded_fig_{curve}_{section}"
+            ] = section_col.file_uploader(
                 f"Upload {curve} curve for {section}.",
                 type=["png"],
-                key=f"fig_{curve}_{section}",
+                key=f"uploaded_fig_{curve}_{section}",
             )
+
+            if fig_dict_uploaded[f"uploaded_fig_{curve}_{section}"] is not None:
+                st.session_state[f"fig_{curve}_{section}"] = fig_dict_uploaded[
+                    f"uploaded_fig_{curve}_{section}"
+                ].read()
 
             # add container to x range
             for axis in ["x", "y"]:
@@ -978,17 +1010,15 @@ if calculate_button:
         test_points_sec2=second_section_test_points,
         reynolds_correction=reynolds_correction,
     )
-    # pickle back_to_back object
-    with open("back_to_back.pkl", "wb") as f:
-        pickle.dump(back_to_back, f)
+    # add back_to_back object to session state
+    st.session_state["back_to_back"] = back_to_back
 
 # if back_to_back is not defined, pickle the saved file
-if back_to_back is None:
-    try:
-        with open("back_to_back.pkl", "rb") as f:
-            back_to_back = pickle.load(f)
-    except FileNotFoundError:
-        pass
+if (
+    st.session_state["back_to_back"] is not None
+    and st.session_state["back_to_back"] != ""
+):
+    back_to_back = st.session_state["back_to_back"]
 
 
 with st.expander("Results"):
@@ -1478,7 +1508,7 @@ with st.expander("Results"):
                     image : io.BytesIO
                         The image to add to the background.
                     """
-                    encoded_string = base64.b64encode(image.read()).decode()
+                    encoded_string = base64.b64encode(image).decode()
                     encoded_image = "data:image/png;base64," + encoded_string
                     fig.add_layout_image(
                         dict(
@@ -1598,12 +1628,17 @@ with st.expander("Results"):
                             ),
                         )
 
-                    if fig_dict.get(f"fig_{curve}_{sec}") is not None:
+                    if (
+                        st.session_state.get(f"fig_{curve}_{sec}") is not None
+                        and st.session_state.get(f"fig_{curve}_{sec}") != ""
+                    ):
+                        print(curve, sec)
+                        print(st.session_state[f"fig_{curve}_{sec}"])
                         plots_dict[curve] = add_background_image(
                             curve_name=curve,
                             fig=plots_dict[curve],
                             section=sec,
-                            image=fig_dict[f"fig_{curve}_{sec}"],
+                            image=st.session_state[f"fig_{curve}_{sec}"],
                         )
 
                 with st.container():
