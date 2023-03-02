@@ -68,7 +68,7 @@ with st.sidebar.expander("📁 File"):
     )
 
     with st.form("my_form", clear_on_submit=True):
-        file = st.file_uploader("Load Data")
+        file = st.file_uploader("Load Data", type=["ccp"])
         submitted = st.form_submit_button("Load")
 
     if submitted and file is not None:
@@ -1605,8 +1605,16 @@ if (
                         )
 
                         plots_dict[curve].data[0].update(
-                            name="Converted Curve",
+                            name=f"Converted Curve {back_to_back.speed.to('rpm').m:.0f} RPM",
                         )
+                        if curve == "discharge_pressure":
+                            plots_dict[curve].data[1].update(
+                                name=f"Flow: {point_interpolated.flow_v.to(flow_v_units):.~2f}, {curve}: {r_getattr(point_interpolated, curve_plot_method)(curve_units):.~2f}"
+                            )
+                        else:
+                            plots_dict[curve].data[1].update(
+                                name=f"Flow: {point_interpolated.flow_v.to(flow_v_units):.~2f}, {curve}: {r_getattr(point_interpolated, curve_plot_method).to(curve_units):.~2f}"
+                            )
 
                         plots_dict[curve].update_layout(
                             showlegend=True,
@@ -1669,8 +1677,6 @@ if (
                             st.session_state.get(f"fig_{curve}_{sec}") is not None
                             and st.session_state.get(f"fig_{curve}_{sec}") != ""
                         ):
-                            print(curve, sec)
-                            print(st.session_state[f"fig_{curve}_{sec}"])
                             plots_dict[curve] = add_background_image(
                                 curve_name=curve,
                                 fig=plots_dict[curve],
