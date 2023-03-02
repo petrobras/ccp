@@ -756,6 +756,11 @@ class BackToBack(Impeller):
                 D=point_r_sp.D,
             )
             self.points_flange_sp_sec2.append(point_sp)
+        # change points_flange power to real power calculated in rotor point
+        for p_flange, p_rotor in zip(
+            self.points_flange_sp_sec2, self.points_rotor_sp_sec2
+        ):
+            p_flange.power = p_rotor.power
 
         self.imp_flange_sp_sec2 = Impeller(self.points_flange_sp_sec2)
 
