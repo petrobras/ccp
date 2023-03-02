@@ -54,7 +54,7 @@ def get_session():
     if "back_to_back" not in st.session_state:
         st.session_state.back_to_back = ""
     for sec in ["sec1", "sec2"]:
-        for curve in ["head", "power", "eff", "disch.p"]:
+        for curve in ["head", "power", "eff", "discharge_pressure"]:
             if f"fig_{curve}_{sec}" not in st.session_state:
                 st.session_state[f"fig_{curve}_{sec}"] = ""
 
@@ -268,9 +268,9 @@ parameters_map = {
         "label": "Head",
         "units": ["kJ/kg", "J/kg", "m*g0", "ft"],
     },
-    "efficiency": {
+    "eff": {
         "label": "Efficiency",
-        "units": ["%", "decimal"],
+        "units": [""],
     },
     "power": {
         "label": "Gas Power",
@@ -356,7 +356,7 @@ with st.expander("Data Sheet"):
         "power",
         "speed",
         "head",
-        "efficiency",
+        "eff",
         "b",
         "D",
         "surface_roughness",
@@ -403,8 +403,8 @@ with st.expander("Curves"):
     plot_limits = {}
     fig_dict_uploaded = {}
 
-    for curve in ["head"]:
-        st.markdown(f"### {curve.capitalize()} curve")
+    for curve in ["head", "eff", "discharge_pressure", "power"]:
+        st.markdown(f"### {parameters_map[curve]['label']}")
         parameter_container = st.container()
         first_section_col, second_section_col = parameter_container.columns(
             2, gap="small"
@@ -424,6 +424,7 @@ with st.expander("Curves"):
                 f"Upload {curve} curve for {section}.",
                 type=["png"],
                 key=f"uploaded_fig_{curve}_{section}",
+                label_visibility="collapsed",
             )
 
             if fig_dict_uploaded[f"uploaded_fig_{curve}_{section}"] is not None:
@@ -1021,638 +1022,676 @@ if (
     back_to_back = st.session_state["back_to_back"]
 
 
-with st.expander("Results"):
-    _t = "\u209C"
-    _sp = "\u209B\u209A"
-    conv = "\u1D9C" + "\u1D52" + "\u207F" + "\u1D5B"
+if (
+    st.session_state["back_to_back"] is not None
+    and st.session_state["back_to_back"] != ""
+):
+    with st.expander("Results"):
+        _t = "\u209C"
+        _sp = "\u209B\u209A"
+        conv = "\u1D9C" + "\u1D52" + "\u207F" + "\u1D5B"
 
-    results_section_1 = {}
-    results_section_2 = {}
-    tab_results_section_1, tab_results_section_2 = st.tabs(
-        ["First Section", "Second Section"]
-    )
-    if back_to_back:
-        # create interpolated point with point method
-        point_interpolated_sec1 = getattr(back_to_back, f"point_sec1")(
-            flow_v=getattr(back_to_back, f"guarantee_point_sec1").flow_v,
-            speed=getattr(back_to_back, f"guarantee_point_sec1").speed,
+        results_section_1 = {}
+        results_section_2 = {}
+        tab_results_section_1, tab_results_section_2 = st.tabs(
+            ["First Section", "Second Section"]
         )
-        point_interpolated_sec2 = getattr(back_to_back, f"point_sec2")(
-            flow_v=getattr(back_to_back, f"guarantee_point_sec2").flow_v,
-            speed=getattr(back_to_back, f"guarantee_point_sec2").speed,
-        )
+        if back_to_back:
+            # create interpolated point with point method
+            point_interpolated_sec1 = getattr(back_to_back, f"point_sec1")(
+                flow_v=getattr(back_to_back, f"guarantee_point_sec1").flow_v,
+                speed=getattr(back_to_back, f"guarantee_point_sec1").speed,
+            )
+            point_interpolated_sec2 = getattr(back_to_back, f"point_sec2")(
+                flow_v=getattr(back_to_back, f"guarantee_point_sec2").flow_v,
+                speed=getattr(back_to_back, f"guarantee_point_sec2").speed,
+            )
 
-        for results, section, sec, point_interpolated in zip(
-            [results_section_1, results_section_2],
-            ["section_1", "section_2"],
-            ["sec1", "sec2"],
-            [point_interpolated_sec1, point_interpolated_sec2],
-        ):
-            results[f"φ{_t}"] = [
-                round(p.phi.m, 5) for p in getattr(back_to_back, f"test_points_{sec}")
-            ]
-            results[f"φ{_t} / φ{_sp}"] = [
-                round(
-                    p.phi.m / getattr(back_to_back, f"guarantee_point_{sec}").phi.m, 5
-                )
-                for p in getattr(back_to_back, f"test_points_{sec}")
-            ]
-            results["vi / vd"] = [
-                round(p.volume_ratio.m, 5)
-                for p in getattr(back_to_back, f"test_points_{sec}")
-            ]
-            results[f"(vi/vd){_t}/(vi/vd){_sp}"] = [
-                round(
-                    p.volume_ratio.m
-                    / getattr(back_to_back, f"guarantee_point_{sec}").volume_ratio.m,
-                    5,
-                )
-                for p in getattr(back_to_back, f"test_points_{sec}")
-            ]
-            results[f"Mach{_t}"] = [
-                round(p.mach.m, 5) for p in getattr(back_to_back, f"test_points_{sec}")
-            ]
-            results[f"Mach{_t} - Mach{_sp}"] = [
-                round(
-                    p.mach.m - getattr(back_to_back, f"guarantee_point_{sec}").mach.m, 5
-                )
-                for p in getattr(back_to_back, f"test_points_{sec}")
-            ]
-            results[f"Re{_t}"] = [
-                round(p.reynolds.m, 5)
-                for p in getattr(back_to_back, f"test_points_{sec}")
-            ]
-            results[f"Re{_t} / Re{_sp}"] = [
-                round(
-                    p.reynolds.m
-                    / getattr(back_to_back, f"guarantee_point_{sec}").reynolds.m,
-                    5,
-                )
-                for p in getattr(back_to_back, f"test_points_{sec}")
-            ]
-            results[f"pd{conv} (bar)"] = [
-                round(p.disch.p("bar").m, 5)
-                for p in getattr(back_to_back, f"points_flange_sp_{sec}")
-            ]
-            results[f"pd{conv}/pd{_sp}"] = [
-                round(
-                    p.disch.p("bar").m
-                    / getattr(back_to_back, f"guarantee_point_{sec}").disch.p("bar").m,
-                    5,
-                )
-                for p in getattr(back_to_back, f"points_flange_sp_{sec}")
-            ]
-            results[f"Head{_t} (kJ/kg)"] = [
-                round(p.head.to("kJ/kg").m, 5)
-                for p in getattr(back_to_back, f"points_flange_sp_{sec}")
-            ]
-            results[f"Head{_t}/Head{_sp}"] = [
-                round(
-                    p.head.to("kJ/kg").m
-                    / getattr(back_to_back, f"guarantee_point_{sec}")
-                    .head.to("kJ/kg")
-                    .m,
-                    5,
-                )
-                for p in getattr(back_to_back, f"test_points_{sec}")
-            ]
-            results[f"Head{conv} (kJ/kg)"] = [
-                round(p.head.to("kJ/kg").m, 5)
-                for p in getattr(back_to_back, f"points_flange_sp_{sec}")
-            ]
-            results[f"Head{conv}/Head{_sp}"] = [
-                round(
-                    p.head.to("kJ/kg").m
-                    / getattr(back_to_back, f"guarantee_point_{sec}")
-                    .head.to("kJ/kg")
-                    .m,
-                    5,
-                )
-                for p in getattr(back_to_back, f"points_flange_sp_{sec}")
-            ]
-            results[f"Q{conv} (m3/h)"] = [
-                round(p.flow_v.to("m³/h").m, 5)
-                for p in getattr(back_to_back, f"points_flange_sp_{sec}")
-            ]
-            results[f"Q{conv}/Q{_sp}"] = [
-                round(
-                    p.flow_v.to("m³/h").m
-                    / getattr(back_to_back, f"guarantee_point_{sec}")
-                    .flow_v.to("m³/h")
-                    .m,
-                    5,
-                )
-                for p in getattr(back_to_back, f"points_flange_sp_{sec}")
-            ]
-            results[f"W{_t} (kW)"] = [
-                round(p.power.to("kW").m, 5)
-                for p in getattr(back_to_back, f"points_rotor_t_{sec}")
-            ]
-            results[f"W{_t}/W{_sp}"] = [
-                round(
-                    p.power.to("kW").m
-                    / getattr(back_to_back, f"guarantee_point_{sec}").power.to("kW").m,
-                    5,
-                )
-                for p in getattr(back_to_back, f"points_rotor_t_{sec}")
-            ]
-            results[f"W{conv} (kW)"] = [
-                round(p.power.to("kW").m, 5)
-                for p in getattr(back_to_back, f"points_rotor_sp_{sec}")
-            ]
-            results[f"W{conv}/W{_sp}"] = [
-                round(
-                    p.power.to("kW").m
-                    / getattr(back_to_back, f"guarantee_point_{sec}").power.to("kW").m,
-                    5,
-                )
-                for p in getattr(back_to_back, f"points_rotor_sp_{sec}")
-            ]
-            results[f"Eff{_t}"] = [
-                round(p.eff.m, 5)
-                for p in getattr(back_to_back, f"points_flange_t_{sec}")
-            ]
-            results[f"Eff{conv}"] = [
-                round(p.eff.m, 5)
-                for p in getattr(back_to_back, f"points_flange_sp_{sec}")
-            ]
+            for results, section, sec, point_interpolated in zip(
+                [results_section_1, results_section_2],
+                ["section_1", "section_2"],
+                ["sec1", "sec2"],
+                [point_interpolated_sec1, point_interpolated_sec2],
+            ):
+                results[f"φ{_t}"] = [
+                    round(p.phi.m, 5)
+                    for p in getattr(back_to_back, f"test_points_{sec}")
+                ]
+                results[f"φ{_t} / φ{_sp}"] = [
+                    round(
+                        p.phi.m / getattr(back_to_back, f"guarantee_point_{sec}").phi.m,
+                        5,
+                    )
+                    for p in getattr(back_to_back, f"test_points_{sec}")
+                ]
+                results["vi / vd"] = [
+                    round(p.volume_ratio.m, 5)
+                    for p in getattr(back_to_back, f"test_points_{sec}")
+                ]
+                results[f"(vi/vd){_t}/(vi/vd){_sp}"] = [
+                    round(
+                        p.volume_ratio.m
+                        / getattr(
+                            back_to_back, f"guarantee_point_{sec}"
+                        ).volume_ratio.m,
+                        5,
+                    )
+                    for p in getattr(back_to_back, f"test_points_{sec}")
+                ]
+                results[f"Mach{_t}"] = [
+                    round(p.mach.m, 5)
+                    for p in getattr(back_to_back, f"test_points_{sec}")
+                ]
+                results[f"Mach{_t} - Mach{_sp}"] = [
+                    round(
+                        p.mach.m
+                        - getattr(back_to_back, f"guarantee_point_{sec}").mach.m,
+                        5,
+                    )
+                    for p in getattr(back_to_back, f"test_points_{sec}")
+                ]
+                results[f"Re{_t}"] = [
+                    round(p.reynolds.m, 5)
+                    for p in getattr(back_to_back, f"test_points_{sec}")
+                ]
+                results[f"Re{_t} / Re{_sp}"] = [
+                    round(
+                        p.reynolds.m
+                        / getattr(back_to_back, f"guarantee_point_{sec}").reynolds.m,
+                        5,
+                    )
+                    for p in getattr(back_to_back, f"test_points_{sec}")
+                ]
+                results[f"pd{conv} (bar)"] = [
+                    round(p.disch.p("bar").m, 5)
+                    for p in getattr(back_to_back, f"points_flange_sp_{sec}")
+                ]
+                results[f"pd{conv}/pd{_sp}"] = [
+                    round(
+                        p.disch.p("bar").m
+                        / getattr(back_to_back, f"guarantee_point_{sec}")
+                        .disch.p("bar")
+                        .m,
+                        5,
+                    )
+                    for p in getattr(back_to_back, f"points_flange_sp_{sec}")
+                ]
+                results[f"Head{_t} (kJ/kg)"] = [
+                    round(p.head.to("kJ/kg").m, 5)
+                    for p in getattr(back_to_back, f"points_flange_sp_{sec}")
+                ]
+                results[f"Head{_t}/Head{_sp}"] = [
+                    round(
+                        p.head.to("kJ/kg").m
+                        / getattr(back_to_back, f"guarantee_point_{sec}")
+                        .head.to("kJ/kg")
+                        .m,
+                        5,
+                    )
+                    for p in getattr(back_to_back, f"test_points_{sec}")
+                ]
+                results[f"Head{conv} (kJ/kg)"] = [
+                    round(p.head.to("kJ/kg").m, 5)
+                    for p in getattr(back_to_back, f"points_flange_sp_{sec}")
+                ]
+                results[f"Head{conv}/Head{_sp}"] = [
+                    round(
+                        p.head.to("kJ/kg").m
+                        / getattr(back_to_back, f"guarantee_point_{sec}")
+                        .head.to("kJ/kg")
+                        .m,
+                        5,
+                    )
+                    for p in getattr(back_to_back, f"points_flange_sp_{sec}")
+                ]
+                results[f"Q{conv} (m3/h)"] = [
+                    round(p.flow_v.to("m³/h").m, 5)
+                    for p in getattr(back_to_back, f"points_flange_sp_{sec}")
+                ]
+                results[f"Q{conv}/Q{_sp}"] = [
+                    round(
+                        p.flow_v.to("m³/h").m
+                        / getattr(back_to_back, f"guarantee_point_{sec}")
+                        .flow_v.to("m³/h")
+                        .m,
+                        5,
+                    )
+                    for p in getattr(back_to_back, f"points_flange_sp_{sec}")
+                ]
+                results[f"W{_t} (kW)"] = [
+                    round(p.power.to("kW").m, 5)
+                    for p in getattr(back_to_back, f"points_rotor_t_{sec}")
+                ]
+                results[f"W{_t}/W{_sp}"] = [
+                    round(
+                        p.power.to("kW").m
+                        / getattr(back_to_back, f"guarantee_point_{sec}")
+                        .power.to("kW")
+                        .m,
+                        5,
+                    )
+                    for p in getattr(back_to_back, f"points_rotor_t_{sec}")
+                ]
+                results[f"W{conv} (kW)"] = [
+                    round(p.power.to("kW").m, 5)
+                    for p in getattr(back_to_back, f"points_rotor_sp_{sec}")
+                ]
+                results[f"W{conv}/W{_sp}"] = [
+                    round(
+                        p.power.to("kW").m
+                        / getattr(back_to_back, f"guarantee_point_{sec}")
+                        .power.to("kW")
+                        .m,
+                        5,
+                    )
+                    for p in getattr(back_to_back, f"points_rotor_sp_{sec}")
+                ]
+                results[f"Eff{_t}"] = [
+                    round(p.eff.m, 5)
+                    for p in getattr(back_to_back, f"points_flange_t_{sec}")
+                ]
+                results[f"Eff{conv}"] = [
+                    round(p.eff.m, 5)
+                    for p in getattr(back_to_back, f"points_flange_sp_{sec}")
+                ]
 
-            results[f"φ{_t}"].append(round(point_interpolated.phi.m, 5))
-            results[f"φ{_t} / φ{_sp}"].append(
-                round(
-                    point_interpolated.phi.m
-                    / getattr(back_to_back, f"guarantee_point_{sec}").phi.m,
-                    5,
-                )
-            )
-            results["vi / vd"].append(round(point_interpolated.volume_ratio.m, 5))
-            results[f"(vi/vd){_t}/(vi/vd){_sp}"].append(
-                round(
-                    point_interpolated.volume_ratio.m
-                    / getattr(back_to_back, f"guarantee_point_{sec}").volume_ratio.m,
-                    5,
-                )
-            )
-            results[f"Mach{_t}"].append(round(point_interpolated.mach.m, 5))
-            results[f"Mach{_t} - Mach{_sp}"].append(
-                round(
-                    point_interpolated.mach.m
-                    - getattr(back_to_back, f"guarantee_point_{sec}").mach.m,
-                    5,
-                )
-            )
-            results[f"Re{_t}"].append(round(point_interpolated.reynolds.m, 5))
-            results[f"Re{_t} / Re{_sp}"].append(
-                round(
-                    point_interpolated.reynolds.m
-                    / getattr(back_to_back, f"guarantee_point_{sec}").reynolds.m,
-                    5,
-                )
-            )
-            results[f"pd{conv} (bar)"].append(
-                round(point_interpolated.disch.p("bar").m, 5)
-            )
-            results[f"pd{conv}/pd{_sp}"].append(
-                round(
-                    point_interpolated.disch.p("bar").m
-                    / getattr(back_to_back, f"guarantee_point_{sec}").disch.p("bar").m,
-                    5,
-                )
-            )
-            results[f"Head{_t} (kJ/kg)"].append(
-                round(point_interpolated.head.to("kJ/kg").m, 5)
-            )
-            results[f"Head{_t}/Head{_sp}"].append(
-                round(
-                    point_interpolated.head.to("kJ/kg").m
-                    / getattr(back_to_back, f"guarantee_point_{sec}")
-                    .head.to("kJ/kg")
-                    .m,
-                    5,
-                )
-            )
-            results[f"Head{conv} (kJ/kg)"].append(
-                round(point_interpolated.head.to("kJ/kg").m, 5)
-            )
-            results[f"Head{conv}/Head{_sp}"].append(
-                round(
-                    point_interpolated.head.to("kJ/kg").m
-                    / getattr(back_to_back, f"guarantee_point_{sec}")
-                    .head.to("kJ/kg")
-                    .m,
-                    5,
-                )
-            )
-            results[f"Q{conv} (m3/h)"].append(
-                round(point_interpolated.flow_v.to("m³/h").m, 5)
-            )
-            results[f"Q{conv}/Q{_sp}"].append(
-                round(
-                    point_interpolated.flow_v.to("m³/h").m
-                    / getattr(back_to_back, f"guarantee_point_{sec}")
-                    .flow_v.to("m³/h")
-                    .m,
-                    5,
-                )
-            )
-            results[f"W{_t} (kW)"].append(None)
-            results[f"W{_t}/W{_sp}"].append(None)
-            results[f"W{conv} (kW)"].append(
-                round(point_interpolated.power.to("kW").m, 5)
-            )
-            results[f"W{conv}/W{_sp}"].append(
-                round(
-                    point_interpolated.power.to("kW").m
-                    / Q_(
-                        float(st.session_state[f"power_{section}_point_guarantee"]),
-                        parameters_map["power"][section]["data_sheet_units"],
+                results[f"φ{_t}"].append(round(point_interpolated.phi.m, 5))
+                results[f"φ{_t} / φ{_sp}"].append(
+                    round(
+                        point_interpolated.phi.m
+                        / getattr(back_to_back, f"guarantee_point_{sec}").phi.m,
+                        5,
                     )
-                    .to("kW")
-                    .m,
-                    5,
                 )
-            )
-            results[f"Eff{_t}"].append(round(point_interpolated.eff.m, 5))
-            results[f"Eff{conv}"].append(round(point_interpolated.eff.m, 5))
+                results["vi / vd"].append(round(point_interpolated.volume_ratio.m, 5))
+                results[f"(vi/vd){_t}/(vi/vd){_sp}"].append(
+                    round(
+                        point_interpolated.volume_ratio.m
+                        / getattr(
+                            back_to_back, f"guarantee_point_{sec}"
+                        ).volume_ratio.m,
+                        5,
+                    )
+                )
+                results[f"Mach{_t}"].append(round(point_interpolated.mach.m, 5))
+                results[f"Mach{_t} - Mach{_sp}"].append(
+                    round(
+                        point_interpolated.mach.m
+                        - getattr(back_to_back, f"guarantee_point_{sec}").mach.m,
+                        5,
+                    )
+                )
+                results[f"Re{_t}"].append(round(point_interpolated.reynolds.m, 5))
+                results[f"Re{_t} / Re{_sp}"].append(
+                    round(
+                        point_interpolated.reynolds.m
+                        / getattr(back_to_back, f"guarantee_point_{sec}").reynolds.m,
+                        5,
+                    )
+                )
+                results[f"pd{conv} (bar)"].append(
+                    round(point_interpolated.disch.p("bar").m, 5)
+                )
+                results[f"pd{conv}/pd{_sp}"].append(
+                    round(
+                        point_interpolated.disch.p("bar").m
+                        / getattr(back_to_back, f"guarantee_point_{sec}")
+                        .disch.p("bar")
+                        .m,
+                        5,
+                    )
+                )
+                results[f"Head{_t} (kJ/kg)"].append(
+                    round(point_interpolated.head.to("kJ/kg").m, 5)
+                )
+                results[f"Head{_t}/Head{_sp}"].append(
+                    round(
+                        point_interpolated.head.to("kJ/kg").m
+                        / getattr(back_to_back, f"guarantee_point_{sec}")
+                        .head.to("kJ/kg")
+                        .m,
+                        5,
+                    )
+                )
+                results[f"Head{conv} (kJ/kg)"].append(
+                    round(point_interpolated.head.to("kJ/kg").m, 5)
+                )
+                results[f"Head{conv}/Head{_sp}"].append(
+                    round(
+                        point_interpolated.head.to("kJ/kg").m
+                        / getattr(back_to_back, f"guarantee_point_{sec}")
+                        .head.to("kJ/kg")
+                        .m,
+                        5,
+                    )
+                )
+                results[f"Q{conv} (m3/h)"].append(
+                    round(point_interpolated.flow_v.to("m³/h").m, 5)
+                )
+                results[f"Q{conv}/Q{_sp}"].append(
+                    round(
+                        point_interpolated.flow_v.to("m³/h").m
+                        / getattr(back_to_back, f"guarantee_point_{sec}")
+                        .flow_v.to("m³/h")
+                        .m,
+                        5,
+                    )
+                )
+                results[f"W{_t} (kW)"].append(None)
+                results[f"W{_t}/W{_sp}"].append(None)
+                results[f"W{conv} (kW)"].append(
+                    round(point_interpolated.power.to("kW").m, 5)
+                )
+                results[f"W{conv}/W{_sp}"].append(
+                    round(
+                        point_interpolated.power.to("kW").m
+                        / Q_(
+                            float(st.session_state[f"power_{section}_point_guarantee"]),
+                            parameters_map["power"][section]["data_sheet_units"],
+                        )
+                        .to("kW")
+                        .m,
+                        5,
+                    )
+                )
+                results[f"Eff{_t}"].append(round(point_interpolated.eff.m, 5))
+                results[f"Eff{conv}"].append(round(point_interpolated.eff.m, 5))
 
-            # add overall results to both dataframes
-            for key in results.keys():
-                if key == f"pd{conv} (bar)":
-                    results[f"pd{conv} (bar)"].append(
-                        round(
-                            point_interpolated_sec2.disch.p("bar").m,
-                            5,
+                # add overall results to both dataframes
+                for key in results.keys():
+                    if key == f"pd{conv} (bar)":
+                        results[f"pd{conv} (bar)"].append(
+                            round(
+                                point_interpolated_sec2.disch.p("bar").m,
+                                5,
+                            )
                         )
-                    )
-                elif key == f"pd{conv}/pd{_sp}":
-                    results[key].append(
-                        round(
-                            point_interpolated_sec2.disch.p("bar").m
-                            / getattr(back_to_back, f"guarantee_point_sec2")
-                            .disch.p("bar")
-                            .m,
-                            5,
+                    elif key == f"pd{conv}/pd{_sp}":
+                        results[key].append(
+                            round(
+                                point_interpolated_sec2.disch.p("bar").m
+                                / getattr(back_to_back, f"guarantee_point_sec2")
+                                .disch.p("bar")
+                                .m,
+                                5,
+                            )
                         )
-                    )
-                elif key == f"W{conv} (kW)":
-                    results[key].append(
-                        round(
-                            point_interpolated_sec1.power.to("kW").m
-                            + point_interpolated_sec2.power.to("kW").m,
-                            5,
-                        )
-                    )
-                elif key == f"W{conv}/W{_sp}":
-                    results[key].append(
-                        round(
-                            (
+                    elif key == f"W{conv} (kW)":
+                        results[key].append(
+                            round(
                                 point_interpolated_sec1.power.to("kW").m
-                                + point_interpolated_sec2.power.to("kW").m
+                                + point_interpolated_sec2.power.to("kW").m,
+                                5,
                             )
-                            / (
-                                Q_(
-                                    float(
-                                        st.session_state[
-                                            f"power_section_1_point_guarantee"
-                                        ]
-                                    ),
-                                    parameters_map["power"][section][
-                                        "data_sheet_units"
-                                    ],
-                                )
-                                .to("kW")
-                                .m
-                                + Q_(
-                                    float(
-                                        st.session_state[
-                                            f"power_section_2_point_guarantee"
-                                        ]
-                                    ),
-                                    parameters_map["power"][section][
-                                        "data_sheet_units"
-                                    ],
-                                )
-                                .to("kW")
-                                .m
-                            ),
-                            5,
                         )
-                    )
-                else:
-                    results[key].append(None)
-
-            df_results = pd.DataFrame(results)
-            rename_index = {
-                i: f"Point {i+1}"
-                for i in range(len(getattr(back_to_back, f"points_flange_t_{sec}")))
-            }
-            rename_index[
-                len(getattr(back_to_back, f"points_flange_t_{sec}"))
-            ] = "Guarantee Point"
-            rename_index[
-                len(getattr(back_to_back, f"points_flange_t_{sec}")) + 1
-            ] = "Overall"
-
-            df_results.rename(
-                index=rename_index,
-                inplace=True,
-            )
-
-            if section == "section_1":
-                tab_results = tab_results_section_1
-            else:
-                tab_results = tab_results_section_2
-
-            with tab_results:
-
-                def highlight_cell(
-                    styled_df, df, row_index, col_index, lower_limit, higher_limit
-                ):
-                    """Applies conditional formatting to a specific cell in a pandas DataFrame.
-
-                    Args:
-                        df (pandas.DataFrame): The DataFrame to apply conditional formatting to.
-                        row_index (int or str): The row index of the cell to highlight.
-                        col_index (int or str): The column index of the cell to highlight.
-                        lower_limit (float): The lower limit of the value range to highlight in green.
-                        higher_limit (float): The higher limit of the value range to highlight in green.
-
-                    Returns:
-                        pandas.io.formats.style.Styler: A styled DataFrame with the specified cell highlighted.
-                    """
-                    # create a copy of the DataFrame with styling
-
-                    # apply conditional formatting to the specific cell
-                    cell_value = df.loc[row_index, col_index]
-                    if cell_value >= lower_limit and cell_value <= higher_limit:
-                        styled_df = styled_df.applymap(
-                            lambda x: "background-color: #C8E6C9"
-                            if x == cell_value
-                            else ""
-                        ).applymap(
-                            lambda x: "font-color: #33691E" if x == cell_value else ""
+                    elif key == f"W{conv}/W{_sp}":
+                        results[key].append(
+                            round(
+                                (
+                                    point_interpolated_sec1.power.to("kW").m
+                                    + point_interpolated_sec2.power.to("kW").m
+                                )
+                                / (
+                                    Q_(
+                                        float(
+                                            st.session_state[
+                                                f"power_section_1_point_guarantee"
+                                            ]
+                                        ),
+                                        parameters_map["power"][section][
+                                            "data_sheet_units"
+                                        ],
+                                    )
+                                    .to("kW")
+                                    .m
+                                    + Q_(
+                                        float(
+                                            st.session_state[
+                                                f"power_section_2_point_guarantee"
+                                            ]
+                                        ),
+                                        parameters_map["power"][section][
+                                            "data_sheet_units"
+                                        ],
+                                    )
+                                    .to("kW")
+                                    .m
+                                ),
+                                5,
+                            )
                         )
-
                     else:
-                        styled_df = styled_df.applymap(
-                            lambda x: "background-color: #FFCDD2"
-                            if x == cell_value
-                            else ""
-                        ).applymap(
-                            lambda x: "font-color: #FFCDD2" if x == cell_value else ""
-                        )
+                        results[key].append(None)
 
-                    return styled_df
+                df_results = pd.DataFrame(results)
+                rename_index = {
+                    i: f"Point {i+1}"
+                    for i in range(len(getattr(back_to_back, f"points_flange_t_{sec}")))
+                }
+                rename_index[
+                    len(getattr(back_to_back, f"points_flange_t_{sec}"))
+                ] = "Guarantee Point"
+                rename_index[
+                    len(getattr(back_to_back, f"points_flange_t_{sec}")) + 1
+                ] = "Overall"
 
-                styled_df_results = df_results.style
-
-                mach_limits = point_interpolated.mach_limits()
-                styled_df_results = highlight_cell(
-                    styled_df_results,
-                    df_results,
-                    "Guarantee Point",
-                    f"Mach{_t} - Mach{_sp}",
-                    mach_limits["lower"],
-                    mach_limits["upper"],
-                )
-                reynolds_limits = point_interpolated.reynolds_limits()
-                styled_df_results = highlight_cell(
-                    styled_df_results,
-                    df_results,
-                    "Guarantee Point",
-                    f"Re{_t} / Re{_sp}",
-                    reynolds_limits["lower"],
-                    reynolds_limits["upper"],
-                )
-                styled_df_results = highlight_cell(
-                    styled_df_results,
-                    df_results,
-                    "Guarantee Point",
-                    f"(vi/vd){_t}/(vi/vd){_sp}",
-                    0.95,
-                    1.05,
+                df_results.rename(
+                    index=rename_index,
+                    inplace=True,
                 )
 
-                if variable_speed:
-                    power_limit = 1.04
-                    pressure_limit = 1e15
+                if section == "section_1":
+                    tab_results = tab_results_section_1
                 else:
-                    power_limit = 1.07
-                    pressure_limit = 1.05
+                    tab_results = tab_results_section_2
 
-                for _point in ["Guarantee Point", "Overall"]:
-                    # highlight pdconv/pdsp
+                with tab_results:
+
+                    def highlight_cell(
+                        styled_df, df, row_index, col_index, lower_limit, higher_limit
+                    ):
+                        """Applies conditional formatting to a specific cell in a pandas DataFrame.
+
+                        Args:
+                            df (pandas.DataFrame): The DataFrame to apply conditional formatting to.
+                            row_index (int or str): The row index of the cell to highlight.
+                            col_index (int or str): The column index of the cell to highlight.
+                            lower_limit (float): The lower limit of the value range to highlight in green.
+                            higher_limit (float): The higher limit of the value range to highlight in green.
+
+                        Returns:
+                            pandas.io.formats.style.Styler: A styled DataFrame with the specified cell highlighted.
+                        """
+                        # create a copy of the DataFrame with styling
+
+                        # apply conditional formatting to the specific cell
+                        cell_value = df.loc[row_index, col_index]
+                        if cell_value >= lower_limit and cell_value <= higher_limit:
+                            styled_df = styled_df.applymap(
+                                lambda x: "background-color: #C8E6C9"
+                                if x == cell_value
+                                else ""
+                            ).applymap(
+                                lambda x: "font-color: #33691E"
+                                if x == cell_value
+                                else ""
+                            )
+
+                        else:
+                            styled_df = styled_df.applymap(
+                                lambda x: "background-color: #FFCDD2"
+                                if x == cell_value
+                                else ""
+                            ).applymap(
+                                lambda x: "font-color: #FFCDD2"
+                                if x == cell_value
+                                else ""
+                            )
+
+                        return styled_df
+
+                    styled_df_results = df_results.style
+
+                    mach_limits = point_interpolated.mach_limits()
                     styled_df_results = highlight_cell(
                         styled_df_results,
                         df_results,
-                        _point,
-                        f"pd{conv}/pd{_sp}",
-                        1.0,
-                        pressure_limit,
+                        "Guarantee Point",
+                        f"Mach{_t} - Mach{_sp}",
+                        mach_limits["lower"],
+                        mach_limits["upper"],
                     )
-                    # highlight Wconv/Wsp
+                    reynolds_limits = point_interpolated.reynolds_limits()
                     styled_df_results = highlight_cell(
                         styled_df_results,
                         df_results,
-                        _point,
-                        f"W{conv}/W{_sp}",
-                        0.0,
-                        power_limit,
+                        "Guarantee Point",
+                        f"Re{_t} / Re{_sp}",
+                        reynolds_limits["lower"],
+                        reynolds_limits["upper"],
+                    )
+                    styled_df_results = highlight_cell(
+                        styled_df_results,
+                        df_results,
+                        "Guarantee Point",
+                        f"(vi/vd){_t}/(vi/vd){_sp}",
+                        0.95,
+                        1.05,
                     )
 
-                st.dataframe(
-                    styled_df_results.format(
-                        "{:.2%}",
-                        subset=[
-                            f"φ{_t} / φ{_sp}",
+                    if variable_speed:
+                        power_limit = 1.04
+                        pressure_limit = 1e15
+                    else:
+                        power_limit = 1.07
+                        pressure_limit = 1.05
+
+                    for _point in ["Guarantee Point", "Overall"]:
+                        # highlight pdconv/pdsp
+                        styled_df_results = highlight_cell(
+                            styled_df_results,
+                            df_results,
+                            _point,
                             f"pd{conv}/pd{_sp}",
-                            f"(vi/vd){_t}/(vi/vd){_sp}",
-                            f"Head{_t}/Head{_sp}",
-                            f"Head{conv}/Head{_sp}",
-                            f"Q{conv}/Q{_sp}",
-                            f"W{_t}/W{_sp}",
+                            1.0,
+                            pressure_limit,
+                        )
+                        # highlight Wconv/Wsp
+                        styled_df_results = highlight_cell(
+                            styled_df_results,
+                            df_results,
+                            _point,
                             f"W{conv}/W{_sp}",
-                            f"Eff{_t}",
-                            f"Eff{conv}",
-                        ],
-                    ).format(
-                        "{:.4e}",
-                        subset=[
-                            f"Re{_t}",
-                        ],
-                    )
-                )
-
-                with st.container():
-                    mach_col, reynolds_col = st.columns(2)
-                    mach_col.plotly_chart(
-                        point_interpolated.plot_mach(), use_container_width=True
-                    )
-                    reynolds_col.plotly_chart(
-                        point_interpolated.plot_reynolds(), use_container_width=True
-                    )
-
-                def add_background_image(
-                    curve_name=None, section=None, fig=None, image=None
-                ):
-                    """Add png file to plot background
-
-                    Parameters
-                    ----------
-                    curve_name : str
-                        The name of the curve to add the background image to.
-                    section : str
-                        Compressor section.
-                    fig : plotly.graph_objects.Figure
-                        The figure to add the background image to.
-                    image : io.BytesIO
-                        The image to add to the background.
-                    """
-                    encoded_string = base64.b64encode(image).decode()
-                    encoded_image = "data:image/png;base64," + encoded_string
-                    fig.add_layout_image(
-                        dict(
-                            source=encoded_image,
-                            xref="x",
-                            yref="y",
-                            x=plot_limits[curve_name][section]["x"]["lower_limit"],
-                            y=plot_limits[curve_name][section]["y"]["upper_limit"],
-                            sizex=float(
-                                plot_limits[curve_name][section]["x"]["upper_limit"]
-                            )
-                            - float(
-                                plot_limits[curve_name][section]["x"]["lower_limit"]
-                            ),
-                            sizey=float(
-                                plot_limits[curve_name][section]["y"]["upper_limit"]
-                            )
-                            - float(
-                                plot_limits[curve_name][section]["y"]["lower_limit"]
-                            ),
-                            sizing="stretch",
-                            opacity=0.5,
-                            layer="below",
-                        )
-                    )
-                    return fig
-
-                plots_dict = {}
-                for curve in ["head", "eff", "disch.p", "power"]:
-                    flow_v_units = (
-                        plot_limits.get(curve, {})
-                        .get(sec, {})
-                        .get("x", {})
-                        .get("units")
-                    )
-                    curve_units = (
-                        plot_limits.get(curve, {})
-                        .get(sec, {})
-                        .get("y", {})
-                        .get("units")
-                    )
-
-                    kwargs = {}
-                    if flow_v_units is not None and flow_v_units != "":
-                        kwargs["flow_v_units"] = flow_v_units
-                    if curve_units is not None and curve_units != "":
-                        kwargs[f"{curve}_units"] = curve_units
-                    plots_dict[curve] = r_getattr(
-                        getattr(back_to_back, f"imp_flange_sp_{sec}"), f"{curve}_plot"
-                    )(
-                        **kwargs,
-                    )
-
-                    plots_dict[curve] = r_getattr(point_interpolated, f"{curve}_plot")(
-                        fig=plots_dict[curve],
-                        **kwargs,
-                    )
-
-                    plots_dict[curve].data[0].update(
-                        name="Converted Curve",
-                    )
-
-                    plots_dict[curve].update_layout(
-                        showlegend=True,
-                        # position legend at the bottom left
-                        legend=dict(
-                            yanchor="bottom",
-                            y=0.01,
-                            xanchor="left",
-                            x=0.01,
-                        ),
-                    )
-
-                    x_lower = (
-                        plot_limits.get(curve, {})
-                        .get(sec, {})
-                        .get("x", {})
-                        .get("lower_limit")
-                    )
-                    x_upper = (
-                        plot_limits.get(curve, {})
-                        .get(sec, {})
-                        .get("x", {})
-                        .get("upper_limit")
-                    )
-                    y_lower = (
-                        plot_limits.get(curve, {})
-                        .get(sec, {})
-                        .get("y", {})
-                        .get("lower_limit")
-                    )
-                    y_upper = (
-                        plot_limits.get(curve, {})
-                        .get(sec, {})
-                        .get("y", {})
-                        .get("upper_limit")
-                    )
-
-                    if (
-                        x_lower is not None
-                        and x_lower != ""
-                        and x_upper is not None
-                        and x_upper != ""
-                        and y_lower is not None
-                        and y_lower != ""
-                        and y_upper is not None
-                        and y_upper != ""
-                    ):
-                        plots_dict[curve].update_layout(
-                            xaxis_range=(
-                                plot_limits[curve][sec]["x"]["lower_limit"],
-                                plot_limits[curve][sec]["x"]["upper_limit"],
-                            ),
-                            yaxis_range=(
-                                plot_limits[curve][sec]["y"]["lower_limit"],
-                                plot_limits[curve][sec]["y"]["upper_limit"],
-                            ),
+                            0.0,
+                            power_limit,
                         )
 
-                    if (
-                        st.session_state.get(f"fig_{curve}_{sec}") is not None
-                        and st.session_state.get(f"fig_{curve}_{sec}") != ""
+                    st.dataframe(
+                        styled_df_results.format(
+                            "{:.2%}",
+                            subset=[
+                                f"φ{_t} / φ{_sp}",
+                                f"pd{conv}/pd{_sp}",
+                                f"(vi/vd){_t}/(vi/vd){_sp}",
+                                f"Head{_t}/Head{_sp}",
+                                f"Head{conv}/Head{_sp}",
+                                f"Q{conv}/Q{_sp}",
+                                f"W{_t}/W{_sp}",
+                                f"W{conv}/W{_sp}",
+                                f"Eff{_t}",
+                                f"Eff{conv}",
+                            ],
+                        ).format(
+                            "{:.4e}",
+                            subset=[
+                                f"Re{_t}",
+                            ],
+                        )
+                    )
+
+                    with st.container():
+                        mach_col, reynolds_col = st.columns(2)
+                        mach_col.plotly_chart(
+                            point_interpolated.plot_mach(), use_container_width=True
+                        )
+                        reynolds_col.plotly_chart(
+                            point_interpolated.plot_reynolds(), use_container_width=True
+                        )
+
+                    def add_background_image(
+                        curve_name=None, section=None, fig=None, image=None
                     ):
-                        print(curve, sec)
-                        print(st.session_state[f"fig_{curve}_{sec}"])
-                        plots_dict[curve] = add_background_image(
-                            curve_name=curve,
+                        """Add png file to plot background
+
+                        Parameters
+                        ----------
+                        curve_name : str
+                            The name of the curve to add the background image to.
+                        section : str
+                            Compressor section.
+                        fig : plotly.graph_objects.Figure
+                            The figure to add the background image to.
+                        image : io.BytesIO
+                            The image to add to the background.
+                        """
+                        encoded_string = base64.b64encode(image).decode()
+                        encoded_image = "data:image/png;base64," + encoded_string
+                        fig.add_layout_image(
+                            dict(
+                                source=encoded_image,
+                                xref="x",
+                                yref="y",
+                                x=plot_limits[curve_name][section]["x"]["lower_limit"],
+                                y=plot_limits[curve_name][section]["y"]["upper_limit"],
+                                sizex=float(
+                                    plot_limits[curve_name][section]["x"]["upper_limit"]
+                                )
+                                - float(
+                                    plot_limits[curve_name][section]["x"]["lower_limit"]
+                                ),
+                                sizey=float(
+                                    plot_limits[curve_name][section]["y"]["upper_limit"]
+                                )
+                                - float(
+                                    plot_limits[curve_name][section]["y"]["lower_limit"]
+                                ),
+                                sizing="stretch",
+                                opacity=0.5,
+                                layer="below",
+                            )
+                        )
+                        return fig
+
+                    plots_dict = {}
+                    for curve in ["head", "eff", "discharge_pressure", "power"]:
+                        flow_v_units = (
+                            plot_limits.get(curve, {})
+                            .get(sec, {})
+                            .get("x", {})
+                            .get("units")
+                        )
+                        curve_units = (
+                            plot_limits.get(curve, {})
+                            .get(sec, {})
+                            .get("y", {})
+                            .get("units")
+                        )
+
+                        kwargs = {}
+                        if flow_v_units is not None and flow_v_units != "":
+                            kwargs["flow_v_units"] = flow_v_units
+                        if curve_units is not None and curve_units != "":
+                            if curve == "discharge_pressure":
+                                kwargs["p_units"] = curve_units
+                            else:
+                                kwargs[f"{curve}_units"] = curve_units
+
+                        if curve == "discharge_pressure":
+                            curve_plot_method = "disch.p"
+                        else:
+                            curve_plot_method = curve
+
+                        plots_dict[curve] = r_getattr(
+                            getattr(back_to_back, f"imp_flange_sp_{sec}"),
+                            f"{curve_plot_method}_plot",
+                        )(
+                            **kwargs,
+                        )
+                        plots_dict[curve] = r_getattr(
+                            point_interpolated, f"{curve_plot_method}_plot"
+                        )(
                             fig=plots_dict[curve],
-                            section=sec,
-                            image=st.session_state[f"fig_{curve}_{sec}"],
+                            **kwargs,
                         )
 
-                with st.container():
-                    head_col, eff_col = st.columns(2)
-                    head_col.plotly_chart(plots_dict["head"], use_container_width=True)
-                    eff_col.plotly_chart(plots_dict["eff"], use_container_width=True)
+                        plots_dict[curve].data[0].update(
+                            name="Converted Curve",
+                        )
 
-                with st.container():
-                    disch_p_col, power_col = st.columns(2)
-                    disch_p_col.plotly_chart(
-                        plots_dict["disch.p"], use_container_width=True
-                    )
-                    power_col.plotly_chart(
-                        plots_dict["power"], use_container_width=True
-                    )
+                        plots_dict[curve].update_layout(
+                            showlegend=True,
+                            # position legend at the bottom left
+                            legend=dict(
+                                yanchor="bottom",
+                                y=0.01,
+                                xanchor="left",
+                                x=0.01,
+                            ),
+                        )
 
-    # TODO add image to the plot background
+                        x_lower = (
+                            plot_limits.get(curve, {})
+                            .get(sec, {})
+                            .get("x", {})
+                            .get("lower_limit")
+                        )
+                        x_upper = (
+                            plot_limits.get(curve, {})
+                            .get(sec, {})
+                            .get("x", {})
+                            .get("upper_limit")
+                        )
+                        y_lower = (
+                            plot_limits.get(curve, {})
+                            .get(sec, {})
+                            .get("y", {})
+                            .get("lower_limit")
+                        )
+                        y_upper = (
+                            plot_limits.get(curve, {})
+                            .get(sec, {})
+                            .get("y", {})
+                            .get("upper_limit")
+                        )
+
+                        if (
+                            x_lower is not None
+                            and x_lower != ""
+                            and x_upper is not None
+                            and x_upper != ""
+                            and y_lower is not None
+                            and y_lower != ""
+                            and y_upper is not None
+                            and y_upper != ""
+                        ):
+                            plots_dict[curve].update_layout(
+                                xaxis_range=(
+                                    plot_limits[curve][sec]["x"]["lower_limit"],
+                                    plot_limits[curve][sec]["x"]["upper_limit"],
+                                ),
+                                yaxis_range=(
+                                    plot_limits[curve][sec]["y"]["lower_limit"],
+                                    plot_limits[curve][sec]["y"]["upper_limit"],
+                                ),
+                            )
+
+                        if (
+                            st.session_state.get(f"fig_{curve}_{sec}") is not None
+                            and st.session_state.get(f"fig_{curve}_{sec}") != ""
+                        ):
+                            print(curve, sec)
+                            print(st.session_state[f"fig_{curve}_{sec}"])
+                            plots_dict[curve] = add_background_image(
+                                curve_name=curve,
+                                fig=plots_dict[curve],
+                                section=sec,
+                                image=st.session_state[f"fig_{curve}_{sec}"],
+                            )
+
+                    with st.container():
+                        head_col, eff_col = st.columns(2)
+                        head_col.plotly_chart(
+                            plots_dict["head"], use_container_width=True
+                        )
+                        eff_col.plotly_chart(
+                            plots_dict["eff"], use_container_width=True
+                        )
+
+                    with st.container():
+                        disch_p_col, power_col = st.columns(2)
+                        disch_p_col.plotly_chart(
+                            plots_dict["discharge_pressure"], use_container_width=True
+                        )
+                        power_col.plotly_chart(
+                            plots_dict["power"], use_container_width=True
+                        )
