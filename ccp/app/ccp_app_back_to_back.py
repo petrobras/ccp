@@ -27,12 +27,21 @@ def image_base64(im):
     with open(im, "rb") as image_file:
         encoded_string = base64.b64encode(image_file.read()).decode()
     encoded_image = "data:image/png;base64," + encoded_string
-    html_string = f'<img src="data:image/png;base64,{encoded_string}" style="text-align: center" width="200">'
+    html_string = f'<img src="data:image/png;base64,{encoded_string}" style="text-align: center" width="250">'
     return html_string
 
 
 with st.sidebar.container():
     st.sidebar.markdown(image_base64(ccp_logo), unsafe_allow_html=True)
+
+# remove streamlit menu
+hide_streamlit_style = """
+<style>
+#MainMenu {visibility: hidden;}
+footer {visibility: hidden;}
+</style>
+"""
+st.markdown(hide_streamlit_style, unsafe_allow_html=True)
 
 title_alignment = """
 <p style="text-align: center; font-weight: bold; font-size:20px;">
@@ -68,7 +77,7 @@ with st.sidebar.expander("📁 File"):
     )
 
     with st.form("my_form", clear_on_submit=True):
-        file = st.file_uploader("Load Data", type=["ccp"])
+        file = st.file_uploader("📂 Open File", type=["ccp"])
         submitted = st.form_submit_button("Load")
 
     if submitted and file is not None:
@@ -98,7 +107,7 @@ with st.sidebar.expander("📁 File"):
         st.session_state.session_name = file.name.replace(".ccp", "")
         st.experimental_rerun()
 
-    if st.button("Save session state"):
+    if st.button("💾 Save"):
         session_state_dict = dict(st.session_state)
 
         # create a zip file to add the data to
@@ -121,7 +130,7 @@ with st.sidebar.expander("📁 File"):
             my_zip.writestr("session_state.json", session_state_json)
 
         st.download_button(
-            label="Download session state",
+            label="💾 Save As",
             data=session_state_json,
             file_name=file_name,
             mime="application/json",
@@ -1609,11 +1618,19 @@ if (
                         )
                         if curve == "discharge_pressure":
                             plots_dict[curve].data[1].update(
-                                name=f"Flow: {point_interpolated.flow_v.to(flow_v_units):.~2f}, {curve}: {r_getattr(point_interpolated, curve_plot_method)(curve_units):.~2f}"
+                                name=f"Flow: {point_interpolated.flow_v.to(flow_v_units):.~2f}, {curve.capitalize()}: {r_getattr(point_interpolated, curve_plot_method)(curve_units):.~2f}".replace(
+                                    "m ** 3 / h", "m³/h"
+                                ).replace(
+                                    "Discharge_pressure", "Disch. p"
+                                )
                             )
                         else:
                             plots_dict[curve].data[1].update(
-                                name=f"Flow: {point_interpolated.flow_v.to(flow_v_units):.~2f}, {curve}: {r_getattr(point_interpolated, curve_plot_method).to(curve_units):.~2f}"
+                                name=f"Flow: {point_interpolated.flow_v.to(flow_v_units):.~2f}, {curve.capitalize()}: {r_getattr(point_interpolated, curve_plot_method).to(curve_units):.~2f}".replace(
+                                    "m ** 3 / h", "m³/h"
+                                ).replace(
+                                    "Discharge_pressure", "Disch. p"
+                                )
                             )
 
                         plots_dict[curve].update_layout(
