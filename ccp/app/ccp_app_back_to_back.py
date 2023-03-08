@@ -686,7 +686,7 @@ first_section_test_points = []
 second_section_test_points = []
 kwargs = {}
 
-if calculate_button:
+if calculate_button or calculate_speed_button:
     # TODO implement st.progress
     print("calculating")
     # calculate guarantee point for first and second section
@@ -1036,6 +1036,10 @@ if calculate_button:
         test_points_sec2=second_section_test_points,
         reynolds_correction=reynolds_correction,
     )
+
+    if calculate_speed_button:
+        back_to_back = back_to_back.calculate_speed_to_match_discharge_pressure()
+
     # add back_to_back object to session state
     st.session_state["back_to_back"] = back_to_back
 
@@ -1065,11 +1069,11 @@ if (
             # create interpolated point with point method
             point_interpolated_sec1 = getattr(back_to_back, f"point_sec1")(
                 flow_v=getattr(back_to_back, f"guarantee_point_sec1").flow_v,
-                speed=getattr(back_to_back, f"guarantee_point_sec1").speed,
+                speed=back_to_back.speed,
             )
             point_interpolated_sec2 = getattr(back_to_back, f"point_sec2")(
                 flow_v=getattr(back_to_back, f"guarantee_point_sec2").flow_v,
-                speed=getattr(back_to_back, f"guarantee_point_sec2").speed,
+                speed=back_to_back.speed,
             )
 
             for results, section, sec, point_interpolated in zip(
