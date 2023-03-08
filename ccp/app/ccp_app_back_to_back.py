@@ -636,7 +636,22 @@ with st.expander("Test Data"):
 
 # add calculate button
 back_to_back = None
-calculate_button = st.button("Calculate", type="primary", use_container_width=True)
+
+with st.container():
+    calculate_col, calculate_speed_col = st.columns([1, 1])
+    calculate_button = calculate_col.button(
+        "Calculate",
+        type="primary",
+        use_container_width=True,
+        # help="Calculate results using the data sheet speed.",
+        # for now help breaks the button width. See streamlit issue #6161
+    )
+    calculate_speed_button = calculate_speed_col.button(
+        "Calculate Speed",
+        type="primary",
+        use_container_width=True,
+        # help="Calculate speed to match the second section discharge pressure.",
+    )
 
 
 def get_gas_composition(gas_name):
@@ -672,6 +687,7 @@ second_section_test_points = []
 kwargs = {}
 
 if calculate_button:
+    # TODO implement st.progress
     print("calculating")
     # calculate guarantee point for first and second section
     kwargs_guarantee_section_1 = {}
