@@ -5,6 +5,7 @@ import pandas as pd
 import pickle
 import base64
 import zipfile
+import time
 from ccp.compressor import PointFirstSection, PointSecondSection, BackToBack
 from ccp.config.utilities import r_getattr
 from pathlib import Path
@@ -51,7 +52,7 @@ title_alignment = """
 st.sidebar.markdown(title_alignment, unsafe_allow_html=True)
 st.markdown(
     """
-# Performance Test Back-to-Back Compressor
+## Performance Test Back-to-Back Compressor
 """
 )
 
@@ -687,8 +688,8 @@ second_section_test_points = []
 kwargs = {}
 
 if calculate_button or calculate_speed_button:
-    # TODO implement st.progress
-    print("calculating")
+    progress_value = 0
+    progress_bar = st.progress(progress_value, text="Calculating...")
     # calculate guarantee point for first and second section
     kwargs_guarantee_section_1 = {}
     kwargs_guarantee_section_2 = {}
@@ -764,6 +765,9 @@ if calculate_button or calculate_speed_button:
             parameters_map["D"][section]["data_sheet_units"],
         )
 
+    time.sleep(0.1)
+    progress_value += 5
+    progress_bar.progress(progress_value, text="Calculating guarantee points...")
     guarantee_point_section_1 = ccp.Point(
         **kwargs_guarantee_section_1,
     )
@@ -1003,6 +1007,9 @@ if calculate_button or calculate_speed_button:
                     ),
                     parameters_map["surface_roughness"][section]["data_sheet_units"],
                 )
+                time.sleep(0.1)
+                progress_value += 2
+                progress_bar.progress(progress_value, text="Calculating test points...")
                 if section == "section_1":
                     first_section_test_points.append(
                         PointFirstSection(
@@ -1029,6 +1036,9 @@ if calculate_button or calculate_speed_button:
                             **kwargs,
                         )
                     )
+    time.sleep(0.1)
+    progress_value += 10
+    progress_bar.progress(progress_value, text="Converting points...")
     back_to_back = BackToBack(
         guarantee_point_sec1=guarantee_point_section_1,
         guarantee_point_sec2=guarantee_point_section_2,
@@ -1038,7 +1048,13 @@ if calculate_button or calculate_speed_button:
     )
 
     if calculate_speed_button:
+        time.sleep(0.1)
+        progress_value += 10
+        progress_bar.progress(progress_value, text="Finding speed...")
         back_to_back = back_to_back.calculate_speed_to_match_discharge_pressure()
+
+    time.sleep(0.1)
+    progress_bar.progress(100, text="Done!")
 
     # add back_to_back object to session state
     st.session_state["back_to_back"] = back_to_back
