@@ -40,6 +40,12 @@ hide_streamlit_style = """
 <style>
 #MainMenu {visibility: hidden;}
 footer {visibility: hidden;}
+[data-testid=stVerticalBlock]{
+    gap: 0.75rem;
+}
+[data-testid=stHorizontalBlock]{
+    gap: 0.5rem;
+}
 </style>
 """
 st.markdown(hide_streamlit_style, unsafe_allow_html=True)
