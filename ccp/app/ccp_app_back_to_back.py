@@ -79,13 +79,15 @@ get_session()
 
 # Create a Streamlit sidebar with a file uploader to load a session state file
 with st.sidebar.expander("📁 File"):
-    st.session_state.session_name = st.text_input(
-        "Session name", value=st.session_state.session_name
-    )
+    with st.form("my_form", clear_on_submit=False):
+        st.session_state.session_name = st.text_input(
+            "Session name",
+            value=st.session_state.session_name,
+        )
 
-    with st.form("my_form", clear_on_submit=True):
         file = st.file_uploader("📂 Open File", type=["ccp"])
         submitted = st.form_submit_button("Load")
+        save_button = st.form_submit_button("💾 Save")
 
     if submitted and file is not None:
         st.write("Loaded!")
@@ -114,7 +116,7 @@ with st.sidebar.expander("📁 File"):
         st.session_state.session_name = file.name.replace(".ccp", "")
         st.experimental_rerun()
 
-    if st.button("💾 Save"):
+    if save_button:
         session_state_dict = dict(st.session_state)
 
         # create a zip file to add the data to
