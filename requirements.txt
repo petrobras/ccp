@@ -1,0 +1,9 @@
+numpy
+scipy
+CoolProp
+pint>=0.18
+plotly>=4.7.0
+toml>=0.10.1
+openpyxl
+tqdm
+ctREFPROP
