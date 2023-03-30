@@ -146,6 +146,10 @@ with st.sidebar.expander("📁 File"):
         )
 
 
+def check_correct_separator(input):
+    if "," in input:
+        st.error("Please use '.' as decimal separator")
+
 # Gas selection
 fluid_list = []
 for fluid in ccp.fluid_list.keys():
@@ -200,7 +204,7 @@ with st.expander("Gas Selection"):
                 key=f"gas_{i}_molar_fraction_{j}",
                 label_visibility="collapsed",
             )
-
+            check_correct_separator(gas_compositions_table[f"gas_{i}"][f"molar_fraction_{j}"])
 
 # add container with 4 columns and 2 rows
 with st.sidebar.expander("⚙️ Options"):
@@ -406,6 +410,7 @@ with st.expander("Data Sheet"):
             key=f"{parameter}_section_1_point_guarantee",
             label_visibility="collapsed",
         )
+        check_correct_separator(parameters_map[parameter]["section_1"]["point_guarantee"])
         parameters_map[parameter]["section_2"]["point_guarantee"][
             "value"
         ] = second_section_col.text_input(
@@ -413,6 +418,7 @@ with st.expander("Data Sheet"):
             key=f"{parameter}_section_2_point_guarantee",
             label_visibility="collapsed",
         )
+        check_correct_separator(parameters_map[parameter]["section_2"]["point_guarantee"])
 
 
 with st.expander("Curves"):
@@ -468,6 +474,7 @@ with st.expander("Curves"):
                         key=f"{axis}_{curve}_{section}_lower",
                         label_visibility="collapsed",
                     )
+                    check_correct_separator(plot_limits[curve][section][f"{axis}"]["lower_limit"])
                     plot_limits[curve][section][f"{axis}"][
                         "upper_limit"
                     ] = upper_value_col.text_input(
@@ -475,6 +482,7 @@ with st.expander("Curves"):
                         key=f"{axis}_{curve}_{section}_upper",
                         label_visibility="collapsed",
                     )
+                    check_correct_separator(plot_limits[curve][section][f"{axis}"]["upper_limit"])
                     if axis == "x":
                         plot_limits[curve][section][f"{axis}"][
                             "units"
@@ -572,6 +580,11 @@ with st.expander("Test Data"):
                         key=f"{parameter}_section_1_point_{i - 1}",
                         label_visibility="collapsed",
                     )
+                    check_correct_separator(
+                        parameters_map[parameter]["section_1"][f"point_{i - 1}"][
+                            "value"
+                        ]
+                    )
 
     with tab_section_2:
         # add title
@@ -641,6 +654,11 @@ with st.expander("Test Data"):
                         f"{parameter} value.",
                         key=f"{parameter}_section_2_point_{i - 1}",
                         label_visibility="collapsed",
+                    )
+                    check_correct_separator(
+                        parameters_map[parameter]["section_2"][f"point_{i - 1}"][
+                            "value"
+                        ]
                     )
 
 # add calculate button
