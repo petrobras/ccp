@@ -1,6 +1,8 @@
 import pytest
 import numpy as np
 from numpy.testing import assert_allclose
+from tempfile import tempdir
+from pathlib import Path
 from ccp.compressor import (
     StraightThrough,
     Point1Sec,
@@ -1028,3 +1030,13 @@ def test_back_to_back_calculate_speed(back_to_back):
         flow_m=back_to_back.guarantee_point_sec2.flow_m,
     )
     assert_allclose(point_sp.disch.p(), back_to_back.guarantee_point_sec2.disch.p())
+
+def test_save_and_load(back_to_back):
+    back_to_back = BackToBack(**back_to_back, reynolds_correction=True)
+
+    file = Path(tempdir) / "back_to_back.toml"
+    back_to_back.save(file)
+
+    back_to_back_loaded = BackToBack.load(file)
+
+    assert back_to_back == back_to_back_loaded

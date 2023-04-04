@@ -1,3 +1,5 @@
+import io
+
 import streamlit as st
 import ccp
 import json
@@ -92,7 +94,6 @@ with st.sidebar.expander("📁 File"):
     if submitted and file is not None:
         st.write("Loaded!")
         # open file with zip
-
         with zipfile.ZipFile(file) as my_zip:
             for name in my_zip.namelist():
                 if name.endswith(".json"):
