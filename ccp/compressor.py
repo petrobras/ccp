@@ -2,6 +2,7 @@
 from copy import copy
 
 import ccp
+import toml
 from ccp.impeller import Impeller
 from ccp.point import Point, flow_from_phi
 from ccp.state import State
@@ -819,6 +820,57 @@ class BackToBack(Impeller):
             ):
                 p_flange.power = p_rotor.power
         self.imp_flange_sp_sec1 = Impeller(self.points_flange_sp_sec1)
+
+    def save(self, file):
+        """Save compressor as .toml file.
+
+        Parameters
+        ----------
+        file : str
+            File name.
+        """
+        with open(file, mode="w") as f:
+            dict_to_save = {
+                "reynolds_correction": self.reynolds_correction,
+                "speed": str(self.speed),
+            }
+            # add points to file
+            dict_to_save[
+                "guarantee_point_sec1"
+            ] = self.guarantee_point_sec1._dict_to_save()
+            dict_to_save[
+                "guarantee_point_sec2"
+            ] = self.guarantee_point_sec2._dict_to_save()
+            dict_to_save["test_points_sec1"] = {
+                f"Point{i}": point._dict_to_save()
+                for i, point in enumerate(self.test_points_sec1)
+            }
+            dict_to_save["test_points_sec2"] = {
+                f"Point{i}": point._dict_to_save()
+                for i, point in enumerate(self.test_points_sec2)
+            }
+            toml.dump(dict_to_save, f)
+
+    @classmethod
+    def load(cls, file):
+        """Load compressor from .toml file.
+
+        Parameters
+        ----------
+        file : str
+            File name.
+        """
+        parameters = toml.load(file)
+        kwargs = {}
+        for k, v in parameters.items():
+            if "guarantee_point" in k:
+                kwargs[k] = Point(**Point._dict_from_load(v))
+            elif "test_points" in k:
+                kwargs[k] = [Point(**Point._dict_from_load(v)) for v in v.values()]
+            else:
+                kwargs[k] = v
+
+        return cls(**kwargs)
 
     def point_sec1(self, *args, **kwargs):
         # calculate flange point from impeller object
