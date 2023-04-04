@@ -114,6 +114,25 @@ class Point1Sec(Point):
         self.oil_outlet_temperature_de = oil_outlet_temperature_de
         self.oil_outlet_temperature_nde = oil_outlet_temperature_nde
 
+    def _dict_to_save(self):
+        """Returns a dict that will be saved to a toml file."""
+        dict_to_save = super()._dict_to_save()
+        for param in [
+            "balance_line_flow_m",
+            "seal_gas_flow_m",
+            "seal_gas_temperature",
+            "oil_flow_journal_bearing_de",
+            "oil_flow_journal_bearing_nde",
+            "oil_flow_thrust_bearing_nde",
+            "oil_inlet_temperature",
+            "oil_outlet_temperature_de",
+            "oil_outlet_temperature_nde",
+        ]:
+            if getattr(self, param):
+                dict_to_save[param] = str(getattr(self, param))
+
+        return dict_to_save
+
 
 class StraightThrough(Impeller):
     """Straight Through compressor"""
@@ -406,6 +425,38 @@ class PointFirstSection(Point):
         self.div_wall_downstream_state.update(
             p=self.div_wall_downstream_state.p(), h=self.div_wall_upstream_state.h()
         )
+
+    def _dict_to_save(self):
+        """Returns a dict that will be saved to a toml file."""
+        dict_to_save = super()._dict_to_save()
+        parameters = [
+            "balance_line_flow_m",
+            "first_section_discharge_flow_m",
+            "div_wall_flow_m",
+        ]
+        for parameter in parameters:
+            if getattr(self, "_" + parameter) is not None:
+                dict_to_save[parameter] = str(getattr(self, "_" + parameter))
+
+        parameters = [
+            "seal_gas_flow_m",
+            "seal_gas_temperature",
+            "end_seal_upstream_temperature",
+            "end_seal_upstream_pressure",
+            "div_wall_upstream_temperature",
+            "div_wall_upstream_pressure",
+            "oil_flow_journal_bearing_de",
+            "oil_flow_journal_bearing_nde",
+            "oil_flow_thrust_bearing_nde",
+            "oil_inlet_temperature",
+            "oil_outlet_temperature_de",
+            "oil_outlet_temperature_nde",
+        ]
+        for parameter in parameters:
+            if getattr(self, parameter) is not None:
+                dict_to_save[parameter] = str(getattr(self, parameter))
+
+        return dict_to_save
 
 
 class PointSecondSection(Point1Sec):
@@ -865,8 +916,10 @@ class BackToBack(Impeller):
         for k, v in parameters.items():
             if "guarantee_point" in k:
                 kwargs[k] = Point(**Point._dict_from_load(v))
-            elif "test_points" in k:
-                kwargs[k] = [Point(**Point._dict_from_load(v)) for v in v.values()]
+            elif "test_points_sec1" in k:
+                kwargs[k] = [PointFirstSection(**Point._dict_from_load(v)) for v in v.values()]
+            elif "test_points_sec2" in k:
+                kwargs[k] = [PointSecondSection(**Point._dict_from_load(v)) for v in v.values()]
             else:
                 kwargs[k] = v
 
