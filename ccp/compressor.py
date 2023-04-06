@@ -872,6 +872,35 @@ class BackToBack(Impeller):
                 p_flange.power = p_rotor.power
         self.imp_flange_sp_sec1 = Impeller(self.points_flange_sp_sec1)
 
+    def __eq__(self, other):
+        if isinstance(other, self.__class__):
+            if (
+                self.reynolds_correction == other.reynolds_correction
+                and self.speed == other.speed
+                and self.guarantee_point_sec1 == other.guarantee_point_sec1
+                and self.guarantee_point_sec2 == other.guarantee_point_sec2
+            ):
+                test_points_sec1_other = sorted(
+                    other.test_points_sec1, key=lambda x: x.flow_v
+                )
+                test_points_sec1_self = sorted(
+                    self.test_points_sec1, key=lambda x: x.flow_v
+                )
+                test_points_sec2_other = sorted(
+                    other.test_points_sec2, key=lambda x: x.flow_v
+                )
+                test_points_sec2_self = sorted(
+                    self.test_points_sec2, key=lambda x: x.flow_v
+                )
+                if len(test_points_sec1_self) == len(test_points_sec1_other) and len(
+                    test_points_sec2_self
+                ) == len(test_points_sec2_other):
+                    if (
+                        test_points_sec1_self == test_points_sec1_other
+                        and test_points_sec2_self == test_points_sec2_other
+                    ):
+                        return True
+
     def save(self, file):
         """Save compressor as .toml file.
 
@@ -912,14 +941,19 @@ class BackToBack(Impeller):
             File name.
         """
         parameters = toml.load(file)
-        kwargs = {}
+        kwargs = {"speed": Q_(parameters.pop("speed", None))}
+
         for k, v in parameters.items():
             if "guarantee_point" in k:
                 kwargs[k] = Point(**Point._dict_from_load(v))
             elif "test_points_sec1" in k:
-                kwargs[k] = [PointFirstSection(**Point._dict_from_load(v)) for v in v.values()]
+                kwargs[k] = [
+                    PointFirstSection(**Point._dict_from_load(v)) for v in v.values()
+                ]
             elif "test_points_sec2" in k:
-                kwargs[k] = [PointSecondSection(**Point._dict_from_load(v)) for v in v.values()]
+                kwargs[k] = [
+                    PointSecondSection(**Point._dict_from_load(v)) for v in v.values()
+                ]
             else:
                 kwargs[k] = v
 
