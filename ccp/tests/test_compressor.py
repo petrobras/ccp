@@ -1031,6 +1031,7 @@ def test_back_to_back_calculate_speed(back_to_back):
     )
     assert_allclose(point_sp.disch.p(), back_to_back.guarantee_point_sec2.disch.p())
 
+
 def test_save_and_load(back_to_back):
     back_to_back = BackToBack(**back_to_back, reynolds_correction=True)
 
