@@ -1,12 +1,11 @@
 import io
-
 import streamlit as st
 import ccp
 import json
 import pandas as pd
-import pickle
 import base64
 import zipfile
+import toml
 import time
 from ccp.compressor import PointFirstSection, PointSecondSection, BackToBack
 from ccp.config.utilities import r_getattr
@@ -103,9 +102,11 @@ with st.sidebar.expander("📁 File"):
             for name in my_zip.namelist():
                 if name.endswith(".png"):
                     session_state_data[name.split(".")[0]] = my_zip.read(name)
-                elif name.endswith(".pkl"):
-                    session_state_data[name.split(".")[0]] = pickle.loads(
-                        my_zip.read(name)
+                elif name.endswith(".toml"):
+                    # create file object to read the toml file
+                    back_to_back_file = io.StringIO(my_zip.read(name).decode("utf-8"))
+                    session_state_data[name.split(".")[0]] = BackToBack.load(
+                        back_to_back_file
                     )
 
         session_state_data_copy = session_state_data.copy()
@@ -133,7 +134,7 @@ with st.sidebar.expander("📁 File"):
                         my_zip.writestr(f"{key}.png", value)
                     del session_state_dict_copy[key]
                 if isinstance(value, BackToBack):
-                    my_zip.writestr(f"{key}.pkl", pickle.dumps(value))
+                    my_zip.writestr(f"{key}.toml", toml.dumps(value._dict_to_save()))
                     del session_state_dict_copy[key]
             # then save the rest of the session state
             session_state_json = json.dumps(session_state_dict_copy)
@@ -150,6 +151,7 @@ with st.sidebar.expander("📁 File"):
 def check_correct_separator(input):
     if "," in input:
         st.error("Please use '.' as decimal separator")
+
 
 # Gas selection
 fluid_list = []
@@ -205,7 +207,9 @@ with st.expander("Gas Selection"):
                 key=f"gas_{i}_molar_fraction_{j}",
                 label_visibility="collapsed",
             )
-            check_correct_separator(gas_compositions_table[f"gas_{i}"][f"molar_fraction_{j}"])
+            check_correct_separator(
+                gas_compositions_table[f"gas_{i}"][f"molar_fraction_{j}"]
+            )
 
 # add container with 4 columns and 2 rows
 with st.sidebar.expander("⚙️ Options"):
@@ -411,7 +415,9 @@ with st.expander("Data Sheet"):
             key=f"{parameter}_section_1_point_guarantee",
             label_visibility="collapsed",
         )
-        check_correct_separator(parameters_map[parameter]["section_1"]["point_guarantee"])
+        check_correct_separator(
+            parameters_map[parameter]["section_1"]["point_guarantee"]
+        )
         parameters_map[parameter]["section_2"]["point_guarantee"][
             "value"
         ] = second_section_col.text_input(
@@ -419,7 +425,9 @@ with st.expander("Data Sheet"):
             key=f"{parameter}_section_2_point_guarantee",
             label_visibility="collapsed",
         )
-        check_correct_separator(parameters_map[parameter]["section_2"]["point_guarantee"])
+        check_correct_separator(
+            parameters_map[parameter]["section_2"]["point_guarantee"]
+        )
 
 
 with st.expander("Curves"):
@@ -475,7 +483,9 @@ with st.expander("Curves"):
                         key=f"{axis}_{curve}_{section}_lower",
                         label_visibility="collapsed",
                     )
-                    check_correct_separator(plot_limits[curve][section][f"{axis}"]["lower_limit"])
+                    check_correct_separator(
+                        plot_limits[curve][section][f"{axis}"]["lower_limit"]
+                    )
                     plot_limits[curve][section][f"{axis}"][
                         "upper_limit"
                     ] = upper_value_col.text_input(
@@ -483,7 +493,9 @@ with st.expander("Curves"):
                         key=f"{axis}_{curve}_{section}_upper",
                         label_visibility="collapsed",
                     )
-                    check_correct_separator(plot_limits[curve][section][f"{axis}"]["upper_limit"])
+                    check_correct_separator(
+                        plot_limits[curve][section][f"{axis}"]["upper_limit"]
+                    )
                     if axis == "x":
                         plot_limits[curve][section][f"{axis}"][
                             "units"
