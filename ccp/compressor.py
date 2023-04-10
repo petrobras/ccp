@@ -249,6 +249,64 @@ class StraightThrough(Impeller):
 
         super().__init__(self.points_flange_sp)
 
+    def save(self, file):
+        """Save compressor as .toml file.
+
+        Parameters
+        ----------
+        file : str
+            File name.
+        """
+        with open(file, mode="w") as f:
+            dict_to_save = {
+                "reynolds_correction": self.reynolds_correction,
+                "speed": str(self.speed),
+            }
+            # add points to file
+            dict_to_save["guarantee_point"] = self.guarantee_point._dict_to_save()
+
+            dict_to_save["test_points"] = {
+                f"Point{i}": point._dict_to_save()
+                for i, point in enumerate(self.test_points)
+            }
+            toml.dump(dict_to_save, f)
+
+    @classmethod
+    def load(cls, file):
+        """Load compressor from .toml file.
+
+        Parameters
+        ----------
+        file : str
+            File name.
+        """
+        parameters = toml.load(file)
+        kwargs = {"speed": Q_(parameters.pop("speed", None))}
+        # guarantee_point, test_points, speed=None, reynolds_correction=False
+
+        for k, v in parameters.items():
+            if "guarantee_point" in k:
+                kwargs[k] = Point(**Point._dict_from_load(v))
+            elif "test_points" in k:
+                kwargs[k] = [Point1Sec(**Point._dict_from_load(v)) for v in v.values()]
+            else:
+                kwargs[k] = v
+
+        return cls(**kwargs)
+
+    def __eq__(self, other):
+        if isinstance(other, self.__class__):
+            if (
+                self.reynolds_correction == other.reynolds_correction
+                and self.speed == other.speed
+                and self.guarantee_point == other.guarantee_point
+            ):
+                test_points_other = sorted(other.test_points, key=lambda x: x.flow_v)
+                test_points_self = sorted(self.test_points, key=lambda x: x.flow_v)
+                if len(test_points_self) == len(test_points_other):
+                    if test_points_self == test_points_other:
+                        return True
+
     def calculate_speed_to_match_discharge_pressure(self):
         """Calculate the speed to match the discharge pressure of the guarantee point."""
 

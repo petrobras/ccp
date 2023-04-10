@@ -362,6 +362,15 @@ def test_straight_through_calculate_speed(straight_through):
     assert_allclose(point_sp.disch.p(), straight_through.guarantee_point.disch.p())
 
 
+def test_save_and_load_straight(straight_through):
+    file = Path(tempdir) / "straight_through.toml"
+    straight_through.save(file)
+
+    straight_through_loaded = StraightThrough.load(file)
+
+    assert straight_through == straight_through_loaded
+
+
 def test_point2sec():
     p = PointFirstSection(
         flow_m=Q_(4.325, "kg/s"),
