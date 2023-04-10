@@ -249,6 +249,20 @@ class StraightThrough(Impeller):
 
         super().__init__(self.points_flange_sp)
 
+    def _dict_to_save(self):
+        dict_to_save = {
+            "reynolds_correction": self.reynolds_correction,
+            "speed": str(self.speed),
+        }
+        # add points to file
+        dict_to_save["guarantee_point"] = self.guarantee_point._dict_to_save()
+
+        dict_to_save["test_points"] = {
+            f"Point{i}": point._dict_to_save()
+            for i, point in enumerate(self.test_points)
+        }
+        return dict_to_save
+
     def save(self, file):
         """Save compressor as .toml file.
 
@@ -258,18 +272,7 @@ class StraightThrough(Impeller):
             File name.
         """
         with open(file, mode="w") as f:
-            dict_to_save = {
-                "reynolds_correction": self.reynolds_correction,
-                "speed": str(self.speed),
-            }
-            # add points to file
-            dict_to_save["guarantee_point"] = self.guarantee_point._dict_to_save()
-
-            dict_to_save["test_points"] = {
-                f"Point{i}": point._dict_to_save()
-                for i, point in enumerate(self.test_points)
-            }
-            toml.dump(dict_to_save, f)
+            toml.dump(self._dict_to_save(), f)
 
     @classmethod
     def load(cls, file):
@@ -959,6 +962,24 @@ class BackToBack(Impeller):
                     ):
                         return True
 
+    def _dict_to_save(self):
+        dict_to_save = {
+            "reynolds_correction": self.reynolds_correction,
+            "speed": str(self.speed),
+        }
+        # add points to file
+        dict_to_save["guarantee_point_sec1"] = self.guarantee_point_sec1._dict_to_save()
+        dict_to_save["guarantee_point_sec2"] = self.guarantee_point_sec2._dict_to_save()
+        dict_to_save["test_points_sec1"] = {
+            f"Point{i}": point._dict_to_save()
+            for i, point in enumerate(self.test_points_sec1)
+        }
+        dict_to_save["test_points_sec2"] = {
+            f"Point{i}": point._dict_to_save()
+            for i, point in enumerate(self.test_points_sec2)
+        }
+        return dict_to_save
+
     def save(self, file):
         """Save compressor as .toml file.
 
@@ -968,26 +989,7 @@ class BackToBack(Impeller):
             File name.
         """
         with open(file, mode="w") as f:
-            dict_to_save = {
-                "reynolds_correction": self.reynolds_correction,
-                "speed": str(self.speed),
-            }
-            # add points to file
-            dict_to_save[
-                "guarantee_point_sec1"
-            ] = self.guarantee_point_sec1._dict_to_save()
-            dict_to_save[
-                "guarantee_point_sec2"
-            ] = self.guarantee_point_sec2._dict_to_save()
-            dict_to_save["test_points_sec1"] = {
-                f"Point{i}": point._dict_to_save()
-                for i, point in enumerate(self.test_points_sec1)
-            }
-            dict_to_save["test_points_sec2"] = {
-                f"Point{i}": point._dict_to_save()
-                for i, point in enumerate(self.test_points_sec2)
-            }
-            toml.dump(dict_to_save, f)
+            toml.dump(self._dict_to_save, f)
 
     @classmethod
     def load(cls, file):
