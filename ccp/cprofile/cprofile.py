@@ -114,5 +114,6 @@ def create_ccp_points():
 
 if __name__ == "__main__":
     func = sys.argv[1]
-    file_name = generate_label(func)
-    cProfile.run(func + "()", file_name)
+    func_path = os.path.abspath(func)
+    file_name = generate_label(func_path)
+    cProfile.run(func_path + "()", file_name)
