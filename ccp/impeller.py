@@ -354,8 +354,9 @@ class Impeller:
             For now only 'speed' is implemented, which means that, based on volume ratio,
             we calculate new values of speed for each curve and the respective discharge
             condition.
-        speed : float, pint.Quantity, optional
-            Desired speed. If find="speed", this should be None.
+        speed : float, pint.Quantity, str, optional
+            Desired speed. If find="speed", this can be None or 'same' to keep the same
+            speed values available in the original_impeller.
 
         Returns
         -------
@@ -369,7 +370,7 @@ class Impeller:
                 converter_args = [(p, suc, find) for p in curve]
                 converted_points = pool.map(converter, converter_args)
 
-                if speed is None:
+                if speed is None or speed == "same":
                     speed_mean = np.mean([p.speed.magnitude for p in converted_points])
                 else:
                     speed_mean = speed
@@ -386,7 +387,16 @@ class Impeller:
 
                 all_converted_points += converted_points
 
-        return cls(all_converted_points)
+        converted_impeller = cls(all_converted_points)
+        if speed == 'same':
+            all_converted_points = []
+            for curve in original_impeller.curves:
+                converted_curve = converted_impeller.curve(curve.speed)
+                all_converted_points += converted_curve.points
+
+            converted_impeller = cls(all_converted_points)
+
+        return converted_impeller
 
     def _calc_new_points(self):
         """Calculate new dimensional points based on the suction condition."""
