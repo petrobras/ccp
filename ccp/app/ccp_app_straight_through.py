@@ -2,9 +2,10 @@ import ccp
 import streamlit as st
 import json
 import pandas as pd
-import pickle
+import io
 import base64
 import zipfile
+import toml
 import time
 from ccp.compressor import Point1Sec, StraightThrough
 from ccp.config.utilities import r_getattr
@@ -101,9 +102,13 @@ with st.sidebar.expander("📁 File"):
             for name in my_zip.namelist():
                 if name.endswith(".png"):
                     session_state_data[name.split(".")[0]] = my_zip.read(name)
-                elif name.endswith(".pkl"):
-                    session_state_data[name.split(".")[0]] = pickle.loads(
-                        my_zip.read(name)
+                elif name.endswith(".toml"):
+                    # create file object to read the toml file
+                    straight_through_file = io.StringIO(
+                        my_zip.read(name).decode("utf-8")
+                    )
+                    session_state_data[name.split(".")[0]] = StraightThrough.load(
+                        straight_through_file
                     )
 
         session_state_data_copy = session_state_data.copy()
@@ -131,7 +136,7 @@ with st.sidebar.expander("📁 File"):
                         my_zip.writestr(f"{key}.png", value)
                     del session_state_dict_copy[key]
                 if isinstance(value, StraightThrough):
-                    my_zip.writestr(f"{key}.pkl", pickle.dumps(value))
+                    my_zip.writestr(f"{key}.toml", toml.dumps(value._dict_to_save()))
                     del session_state_dict_copy[key]
             # then save the rest of the session state
             session_state_json = json.dumps(session_state_dict_copy)
@@ -442,7 +447,6 @@ number_of_test_points = 6
 number_of_columns = number_of_test_points + 2
 
 with st.expander("Test Data"):
-
     # add title
     number_of_columns = number_of_test_points + 2
     # build container with 8 columns
