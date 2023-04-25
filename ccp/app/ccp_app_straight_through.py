@@ -235,6 +235,7 @@ def main():
         "flow": {
             "label": "Flow",
             "units": ["m³/h", "m³/s", "kg/h", "lbm/h", "kg/s", "lbm/s"],
+            "help": "Flow can be mass flow or volumetric flow depending on the selected unit.",
         },
         "suction_pressure": {
             "label": "Suction Pressure",
@@ -255,6 +256,7 @@ def main():
         "casing_delta_T": {
             "label": "Casing ΔT",
             "units": temperature_units,
+            "help": "Temperature difference between the casing and the ambient temperature.",
         },
         "speed": {
             "label": "Speed",
@@ -295,6 +297,7 @@ def main():
         "surface_roughness": {
             "label": "Surface Roughness",
             "units": ["mm", "m", "ft", "in"],
+            "help": "Mean surface roughness of the gas path.",
         },
         "casing_area": {
             "label": "Casing Area",
@@ -371,7 +374,10 @@ def main():
                 values_col,
             ) = parameter_container.columns(3, gap="small")
 
-            parameters_col.markdown(f"{parameters_map[parameter]['label']}")
+            parameters_col.markdown(
+                f"{parameters_map[parameter]['label']}",
+                help=f"{parameters_map[parameter].get('help', '')}",
+            )
 
             parameters_map[parameter]["points"][
                 "data_sheet_units"
@@ -510,7 +516,10 @@ def main():
             )
             for i, col in enumerate(parameter_columns):
                 if i == 0:
-                    col.markdown(f"{parameters_map[parameter]['label']}")
+                    col.markdown(
+                        f"{parameters_map[parameter]['label']}",
+                        help=f"{parameters_map[parameter].get('help', '')}",
+                    )
                 elif i == 1:
                     parameters_map[parameter]["points"]["test_units"] = col.selectbox(
                         f"{parameter} units",

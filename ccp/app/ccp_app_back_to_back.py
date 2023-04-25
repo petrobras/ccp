@@ -243,6 +243,7 @@ def main():
         "flow": {
             "label": "Flow",
             "units": ["m³/h", "m³/s", "kg/h", "lbm/h", "kg/s", "lbm/s"],
+            "help": "Flow can be mass flow or volumetric flow depending on the selected unit.",
         },
         "suction_pressure": {
             "label": "Suction Pressure",
@@ -263,6 +264,7 @@ def main():
         "casing_delta_T": {
             "label": "Casing ΔT",
             "units": temperature_units,
+            "help": "Temperature difference between the casing and the ambient temperature.",
         },
         "speed": {
             "label": "Speed",
@@ -275,26 +277,32 @@ def main():
         "end_seal_upstream_pressure": {
             "label": "Pressure Upstream End Seal",
             "units": pressure_units,
+            "help": "Second section suction pressure.",
         },
         "end_seal_upstream_temperature": {
             "label": "Temperature Upstream End Seal",
             "units": temperature_units,
+            "help": "Second section suction temperature.",
         },
         "div_wall_flow_m": {
             "label": "Division Wall Flow",
             "units": flow_m_units,
+            "help": "Flow through the division wall if measured. Otherwise it is calculated from the First Section Discharge Flow.",
         },
         "div_wall_upstream_pressure": {
             "label": "Pressure Upstream Division Wall",
             "units": pressure_units,
+            "help": "Second section discharge pressure.",
         },
         "div_wall_upstream_temperature": {
             "label": "Temperature Upstream Division Wall",
             "units": temperature_units,
+            "help": "Second section discharge temperature.",
         },
         "first_section_discharge_flow_m": {
             "label": "First Section Discharge Flow",
             "units": flow_m_units,
+            "help": "If the Division Wall Flow is not measured, we use this value to calculate it.",
         },
         "seal_gas_flow_m": {
             "label": "Seal Gas Flow",
@@ -327,6 +335,7 @@ def main():
         "surface_roughness": {
             "label": "Surface Roughness",
             "units": ["mm", "m", "ft", "in"],
+            "help": "Mean surface roughness of the gas path.",
         },
         "casing_area": {
             "label": "Casing Area",
@@ -412,7 +421,10 @@ def main():
                 second_section_col,
             ) = parameter_container.columns(4, gap="small")
 
-            parameters_col.markdown(f"{parameters_map[parameter]['label']}")
+            parameters_col.markdown(
+                f"{parameters_map[parameter]['label']}",
+                help=f"{parameters_map[parameter].get('help', '')}",
+            )
 
             # use same units for section 1 and 2 in data sheet
             parameters_map[parameter]["section_1"]["data_sheet_units"] = parameters_map[
@@ -590,7 +602,10 @@ def main():
 
                 for i, col in enumerate(parameter_columns):
                     if i == 0:
-                        col.markdown(f"{parameters_map[parameter]['label']}")
+                        col.markdown(
+                            f"{parameters_map[parameter]['label']}",
+                            help=f"{parameters_map[parameter].get('help', '')}",
+                        )
                     elif i == 1:
                         parameters_map[parameter]["section_1"][
                             "test_units"
@@ -666,7 +681,10 @@ def main():
                 )
                 for i, col in enumerate(parameter_columns):
                     if i == 0:
-                        col.markdown(f"{parameters_map[parameter]['label']}")
+                        col.markdown(
+                            f"{parameters_map[parameter]['label']}",
+                            help=f"{parameters_map[parameter].get('help', '')}",
+                        )
                     elif i == 1:
                         parameters_map[parameter]["section_2"][
                             "test_units"
