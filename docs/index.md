@@ -6,6 +6,66 @@ The code uses
 [REFPROP](https://www.nist.gov/srd/refprop)
 for the gas properties calculations.
 
+::::{grid} 2
+:gutter: 2
+
+:::{grid-item-card} 
+:class-body: text-center
+:link: getting_started/overview
+:link-type: doc
+```{image} /_static/img/getting_started.svg
+:height: 50
+```
+### Getting Started 
+
+New to ccp? Check out the getting started guides. They contain an
+introduction to ccp main concepts and links to additional tutorials.
+:::
+
+:::{grid-item-card} 
+:class-body: text-center
+:link: user_guide/user_guide
+:link-type: doc
+```{image} /_static/img/user_guide.svg
+:height: 50
+```
+### User Guide
+
+The user guide provides in-depth information on the
+key concepts of ccp with useful background information and explanation.
+:::
+
+:::{grid-item-card} 
+:class-body: text-center
+:link: references/api
+:link-type: doc
+```{image} /_static/img/api.svg
+:height: 50
+```
+### API Reference
+
+The api reference contains a detailed description of the functions,
+modules, and objects included in ccp. The reference describes how the
+methods work and which parameters can be used.
+:::
+
+:::{grid-item-card} 
+:class-body: text-center
+:link: contributing
+:link-type: doc
+```{image} /_static/img/contributor.svg
+:height: 50
+```
+### Contributor's Guide
+Saw a typo in the documentation? Want to improve
+existing functionalities? The contributing guidelines will guide
+you through the process of improving ccp.
+
+:::
+
+::::
+
+
 ```{toctree}
 :maxdepth: 1
 :caption: Getting Started
@@ -16,25 +76,10 @@ getting_started/installation
 ```{toctree}
 ---
 maxdepth: 1
-caption: Tutorial
+caption: User Guide
 ---
-tutorials/tutorial
-```
+user_guide/user_guide
 
-```{toctree}
----
-maxdepth: 1
-caption: Discussions
----
-discussions/polytropic_methods
-```
-
-```{toctree}
----
-maxdepth: 1
-caption: How-To Guides
----
-how_to_guides/engauge
 ```
 
 ```{toctree}
@@ -43,4 +88,12 @@ maxdepth: 1
 caption: References
 ---
 references/references
+```
+
+```{toctree}
+---
+maxdepth: 1
+caption: Contributing
+---
+contributing 
 ```
