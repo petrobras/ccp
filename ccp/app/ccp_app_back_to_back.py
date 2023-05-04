@@ -30,6 +30,9 @@ def main():
     assets = Path(__file__).parent / "assets"
     ccp_ico = assets / "favicon.ico"
     ccp_logo = assets / "ccp.png"
+    css_path = assets / "style.css"
+    with open(css_path, "r") as f:
+        css = f.read()
 
     st.set_page_config(
         page_title="ccp",
@@ -47,20 +50,7 @@ def main():
     with st.sidebar.container():
         st.sidebar.markdown(image_base64(ccp_logo), unsafe_allow_html=True)
 
-    # remove streamlit menu
-    hide_streamlit_style = """
-    <style>
-    #MainMenu {visibility: hidden;}
-    footer {visibility: hidden;}
-    [data-testid=stVerticalBlock]{
-        gap: 0.75rem;
-    }
-    [data-testid=stHorizontalBlock]{
-        gap: 0.5rem;
-    }
-    </style>
-    """
-    st.markdown(hide_streamlit_style, unsafe_allow_html=True)
+    st.markdown(f"<style>{css}</style>", unsafe_allow_html=True)
 
     title_alignment = """
     <p style="text-align: center; font-weight: bold; font-size:20px;">
