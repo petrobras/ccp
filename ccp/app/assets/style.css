@@ -1,0 +1,8 @@
+#MainMenu {visibility: hidden;}
+footer {visibility: hidden;}
+[data-testid=stVerticalBlock]{
+    gap: 0.5rem;
+}
+[data-testid=stHorizontalBlock]{
+    gap: 0.25rem;
+}
