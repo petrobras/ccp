@@ -1,11 +1,11 @@
-# Feedback and Contribution
+## Feedback and Contribution
 
 We welcome any contribution via [ccp issue tracker](https://github.com/petrobras/ccp/issues).
 These include bug reports, problems on the documentation, feedback, enhancement proposals etc.
 You can use the repository [Discussions](https://github.com/petrobras/ccp/discussions)
 section for questions and further information.
 
-# Code style: Black
+## Code style: Black
 
 To format our code we use [Black](https://black.readthedocs.io/en/stable/), which is the *"uncompromising Python
 code formatter"*. You can configure your development environment to use Black before a commit. More information on how
@@ -13,7 +13,7 @@ to set this is given at [Black's documentation](https://black.readthedocs.io/en/
 
 (git-configuration)=
 
-# How to contribute to ccp using git
+## How to contribute to ccp using git
 
 Git is a version control system (VCS) for tracking changes in code during software development.
 To download the ccp source code and contribute to its development,
@@ -24,7 +24,7 @@ which explains how to download and contribute to ccp.
 To use git to contribute to ccp project, follow the steps below:
 *For Windows users: commands provided here can be executed using Git Bash instead of Git GUI.*
 
-## Step 1: Make your copy (fork) of ccp
+### Step 1: Make your copy (fork) of ccp
 
 Go to <https://github.com/petrobras/ccp>
 In the top-right corner of the page, click Fork, to fork it to your GitHub account.
@@ -37,7 +37,7 @@ cd ccp
 git remote add upstream https://github.com/petrobras/ccp.git
 ```
 
-## Step 2: Keep in sync with changes in ccp
+### Step 2: Keep in sync with changes in ccp
 
 Setup your local repository, so it pulls from upstream by default:
 
@@ -71,7 +71,7 @@ The part {code}`fetch = +refs/pull/*/head:refs/remotes/upstream/pr/*` will make 
 
 (setup-environment)=
 
-## Step 3: Set up development environment
+### Step 3: Set up development environment
 
 To set up a development environment you can [create a conda environment](https://docs.conda.io/projects/conda/en/latest/user-guide/tasks/manage-environments.html)
 or a virtualenv:
@@ -88,14 +88,14 @@ and then install ccp in editable mode with development dependencies:
 pip install -e ".[dev]"
 ```
 
-## Step 4: Make a new feature branch
+### Step 4: Make a new feature branch
 
 ```
 git fetch upstream
 git checkout -b my-new-feature upstream/master
 ```
 
-## Step 5: Testing the code
+### Step 5: Testing the code
 
 We use pytest to test the code. Unit tests are placed in the `~/ccp/ccp/tests` folder. We also test our docstrings to
 assure that the examples are working.
@@ -108,7 +108,7 @@ pytest
 Code is only merged to master if tests pass. This is checked by services GitHub Actions, so make sure
 tests are passing before pushing your code to github.
 
-## Step 6: Push changes to your git repository
+### Step 6: Push changes to your git repository
 
 After a complete working set of related changes are made:
 
@@ -124,11 +124,11 @@ The following blog posts have some good information on how to write commit messa
 
 [On commit messages](https://who-t.blogspot.com/2009/12/on-commit-messages.html)
 
-## Step 7: Push changes to the main repo
+### Step 7: Push changes to the main repo
 
 To create a Pull Request (PR), refer to [the github PR guide](https://help.github.com/articles/about-pull-requests/).
 
-# Docstrings for class and methods
+## Docstrings for class and methods
 
 A new method must have a docstring presenting a summary for what the method does.
 ccp' docstrings follows the Numpy [docstring style](https://numpydoc.readthedocs.io/en/latest/format.html).
@@ -212,7 +212,7 @@ def foo():
     return fig
 ```
 
-# Documentation
+## Documentation
 
 We use [sphinx](http://www.sphinx-doc.org/en/master/) to generate the project's documentation. We keep the source
 files at ~/ccp/docs, and the website is hosted
@@ -246,7 +246,7 @@ python -m http.server
 
 After that you can access your local server (<http://0.0.0.0:8000/>) and see the generated docs.
 
-# Making new releases
+## Making new releases
 
 To make a new release we need only to create a tag using git and push to GitHub:
 

@@ -79,7 +79,6 @@ maxdepth: 1
 caption: User Guide
 ---
 user_guide/user_guide
-
 ```
 
 ```{toctree}
@@ -87,7 +86,7 @@ user_guide/user_guide
 maxdepth: 1
 caption: References
 ---
-references/references
+references/api
 ```
 
 ```{toctree}
@@ -95,5 +94,5 @@ references/references
 maxdepth: 1
 caption: Contributing
 ---
-contributing 
+contributing
 ```
