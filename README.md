@@ -4,9 +4,7 @@
 [![License](https://img.shields.io/pypi/l/ccp-performance.svg)](https://github.com/raphaeltimbo/ccp/blob/master/LICENSE)
 [![code style black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
 
-ccp is a python library for calculation of centrifugal compressor performance. It is based on the book of [Ludtke04] and uses CoolProp REFPROP for the gas properties calculations.
-
-Online documentation is available at [here](https://ccp-centrifugal-compressor-performance.readthedocs.io/en/latest/).
+ccp is a python library for calculation of centrifugal compressor performance. It uses CoolProp/REFPROP for the gas properties calculations.
 
 ```python
 import ccp
@@ -56,3 +54,13 @@ imp = ccp.Impeller([point0, point1])
 imp.head_plot()
 imp.disch.T_plot()
 ```
+
+# Documentation 
+Access the documentation [here](https://ccp-centrifugal-compressor-performance.readthedocs.io/en/stable/).
+
+# Questions
+If you have any questions, you can use the [Discussions](https://github.com/petrobras/ccp/discussions) area in the repository.
+
+# Contributing to ccp
+ROSS is a community-driven project. If you want to contribute to the project, please
+check [CONTRIBUTING.md](https://github.com/petrobras/ccp/blob/master/CONTRIBUTING.md). 

@@ -55,6 +55,11 @@ setup(
     long_description_content_type="text/markdown",
     author="Raphael Timbó",
     author_email="raphaelts@petrobras.com.br",
+    project_urls={
+        "Documentation": "https://ccp-centrifugal-compressor-performance.readthedocs.io/en/stable/",
+        "Bug Tracker": "https://github.com/petrobras/ccp/issues",
+        "Source Code": "https://github.com/petrobras/ccp",
+    },
     package_data={"ccp.config": ["new_units.txt"], "ccp.tests.data": ["*"]},
     python_requires=">=3.6",
     install_requires=REQUIRES,
