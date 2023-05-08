@@ -5,7 +5,7 @@ set /p continuar="Deseja continuar? [y/n]"
 if /i "%continuar%" neq "y" goto end
 git init
 git restore .
-git remote add codigo https://codigo.petrobras.com.br/equipamentos-dinamicos/ccp.git
-git pull codigo master
+git remote add upstream https://github.com.br/petrobras/ccp.git
+git pull upstream main
 pause
 :end
