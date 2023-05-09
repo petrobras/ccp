@@ -62,5 +62,5 @@ Access the documentation [here](https://ccp-centrifugal-compressor-performance.r
 If you have any questions, you can use the [Discussions](https://github.com/petrobras/ccp/discussions) area in the repository.
 
 # Contributing to ccp
-ROSS is a community-driven project. If you want to contribute to the project, please
+ccp is a community-driven project. If you want to contribute to the project, please
 check [CONTRIBUTING.md](https://github.com/petrobras/ccp/blob/master/CONTRIBUTING.md). 
