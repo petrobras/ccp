@@ -1,6 +1,9 @@
+import numpy as np
+import pandas as pd
 import pytest
 from pathlib import Path
 from numpy.testing import assert_allclose
+from pandas.testing import assert_frame_equal
 import ccp
 
 Q_ = ccp.Q_
@@ -50,3 +53,28 @@ def test_impeller_lp_sec1_from_csv(impeller_lp_sec1_from_csv):
     assert_allclose(p0.head.to("kJ/kg"), 82.7824137)
     assert_allclose(p0.eff, 0.789412, rtol=1e-5)
     assert_allclose(p0.power.to("kW"), 1431.03994)
+
+
+def test_fluctuation():
+    assert_allclose(ccp.data_io.fluctuation(np.array([1, 2, 3, 4, 5])), 133.333333)
+    assert_allclose(ccp.data_io.fluctuation(np.array([1, 1, 1, 1, 1])), 0.0)
+
+
+def test_fluctuation_data():
+    df = pd.DataFrame({"a": [1, 2, 3, 4], "b": [4, 5, 6, 7]})
+    assert_frame_equal(
+        ccp.data_io.fluctuation_data(df),
+        pd.DataFrame(
+            {"a": [100.0, 66.66666666666667], "b": [40.0, 33.333333333333336]}
+        ),
+    )
+
+
+def test_filter_data():
+    df = pd.DataFrame({"a": [1, 2, 3, 4], "b": [4, 5, 6, 7]})
+    assert_frame_equal(
+        ccp.data_io.fluctuation_data(df),
+        pd.DataFrame(
+            {"a": [100.0, 66.66666666666667], "b": [40.0, 33.333333333333336]}
+        ),
+    )
