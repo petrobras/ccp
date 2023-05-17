@@ -63,7 +63,7 @@ class ImpellerPlotFunction:
     def __call__(self, *args, flow_v=None, speed=None, plot_kws=None, **kwargs):
         """Plot parameter versus volumetric flow.
 
-        You can plot an specific point in the plot giving its flow_v and speed.
+        You can plot a specific point in the plot giving its flow_v and speed.
 
         You can choose units with the arguments flow_v_units='...' and
         {attr}_units='...'. For the speed you can use speed_units='...'.
@@ -78,7 +78,7 @@ class ImpellerPlotFunction:
             Flow units used for the plot. Default is m³/s.
         {attr}_units : str, optional
             Units for the parameter being plotted (e.g. for a head plot we could use
-            head_units='J/kg' or head_units='J/g'. Default is SI.
+            head_units='J/kg' or head_units='J/g'). Default is SI.
         speed_units : str, optional
             Speed units for the plot. Default is 'rad/s'.
 
@@ -114,6 +114,96 @@ class ImpellerPlotFunction:
         flow_v_units = kwargs.get("flow_v_units", p0.flow_v.units)
 
         for curve in impeller_object.curves:
+            fig = r_getattr(curve, attr + "_plot")(fig=fig, plot_kws=plot_kws, **kwargs)
+
+        if speed:
+            current_curve = impeller_object.curve(speed=speed)
+            fig = r_getattr(current_curve, attr + "_plot")(
+                fig=fig, plot_kws=plot_kws, **kwargs
+            )
+            if flow_v:
+                current_point = impeller_object.point(flow_v=flow_v, speed=speed)
+                fig = r_getattr(current_point, attr + "_plot")(
+                    fig=fig, plot_kws=plot_kws, **kwargs
+                )
+
+        # extra x range
+        flow_values = [p.flow_v.to(flow_v_units) for p in impeller_object.points]
+        min_flow = min(flow_values)
+        max_flow = max(flow_values)
+        delta = 0.05 * (max_flow - min_flow)
+        fig.update_layout(xaxis=dict(range=[min_flow - delta, max_flow + delta]))
+
+        return fig
+
+
+def impeller_plot_function(impeller_object, attr):
+    return ImpellerPlotFunction(impeller_object, attr)
+
+
+class CompareImpellerPlotFunction:
+    def __init__(self, impeller_object, other_impeller_object, attr):
+        self.impeller_object = impeller_object
+        self.other_impeller_object = other_impeller_object
+        self.attr = attr
+
+    @check_units
+    def __call__(self, *args, flow_v=None, speed=None, plot_kws=None, **kwargs):
+        """Plot parameter versus volumetric flow.
+
+        You can plot a specific point in the plot giving its flow_v and speed.
+
+        You can choose units with the arguments flow_v_units='...' and
+        {attr}_units='...'. For the speed you can use speed_units='...'.
+
+        Parameters
+        ----------
+        flow_v : pint.Quantity, float, optional
+            Volumetric flow (m³/s) for a specific point in the plot.
+        speed : pint.Quantity, float, optional
+            Speed (rad/s) for a specific point in the plot.
+        flow_v_units : str, optional
+            Flow units used for the plot. Default is m³/s.
+        {attr}_units : str, optional
+            Units for the parameter being plotted (e.g. for a head plot we could use
+            head_units='J/kg' or head_units='J/g'). Default is SI.
+        speed_units : str, optional
+            Speed units for the plot. Default is 'rad/s'.
+
+        Returns
+        -------
+        fig : plotly.Figure
+            Plotly figure that can be customized.
+
+        Examples
+        --------
+        >>> import ccp
+        >>> imp = ccp.impeller_example()
+        >>> fig = imp.plot_head(
+        ...    flow_v=5.5,
+        ...    speed=900,
+        ...    flow_v_units='m³/h',
+        ...    head_units='j/kg',
+        ...    speed_units='RPM'
+        ... )
+
+        """
+        impeller_object = self.impeller_object
+        other_impeller_object = self.other_impeller_object
+        attr = self.attr
+        fig = kwargs.pop("fig", None)
+
+        if fig is None:
+            fig = go.Figure()
+
+        if plot_kws is None:
+            plot_kws = {}
+
+        p0 = impeller_object.points[0]
+        flow_v_units = kwargs.get("flow_v_units", p0.flow_v.units)
+
+        for curve in impeller_object.curves:
+            other_curve = other_impeller_object.curve(speed=curve.speed)
             fig = r_getattr(curve, attr + "_plot")(fig=fig, plot_kws=plot_kws, **kwargs)
 
         if speed:
@@ -388,7 +478,7 @@ class Impeller:
                 all_converted_points += converted_points
 
         converted_impeller = cls(all_converted_points)
-        if speed == 'same':
+        if speed == "same":
             all_converted_points = []
             for curve in original_impeller.curves:
                 converted_curve = converted_impeller.curve(curve.speed)
