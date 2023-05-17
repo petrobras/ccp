@@ -70,6 +70,14 @@ def test_fluctuation_data():
     )
 
 
+def test_mean_data():
+    df = pd.DataFrame({"a": [1, 2, 3, 4], "b": [4, 5, 6, 7]})
+    assert_frame_equal(
+        ccp.data_io.mean_data(df),
+        pd.DataFrame({"a": [2.0, 3.0], "b": [5.0, 6.0]}),
+    )
+
+
 def test_filter_data():
     df = pd.DataFrame({"a": [1, 2, 3, 4], "b": [4, 5, 6, 7]})
     assert_frame_equal(

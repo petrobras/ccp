@@ -77,11 +77,58 @@ def fluctuation_data(df, window=3):
     return fluctuation_df
 
 
+def mean_data(df, window=3):
+    """Calculate the mean of dataframe columns.
+
+    The mean is calculated using a rolling window.
+
+    Parameters
+    ----------
+    df : pandas.DataFrame
+        Dataframe with data to be filtered.
+    window : int, optional
+        Window size for rolling calculation. The default is 3.
+
+    Returns
+    -------
+    pandas.DataFrame
+        Dataframe with mean values.
+
+
+    Examples
+    --------
+    >>> import pandas as pd
+    >>> df = pd.DataFrame({'a': [1, 2, 3], 'b': [4, 5, 6]})
+    >>> fluctuation_data(df)
+         a    b
+    0  0.0  0.0
+    1  0.0  0.0
+    2  0.0  0.0
+    >>> df = pd.DataFrame({'a': [1, 2, 3], 'b': [4, 5, 6]})
+    >>> fluctuation_data(df, window=2)
+            a    b
+    0     0.0  0.0
+    1  1000.0  0.0
+    2  1000.0  0.0
+    """
+    mean_df = (
+        df.apply(pd.to_numeric)
+        .rolling(
+            window=window,
+        )
+        .mean()
+    )
+    mean_df = mean_df[window - 1 :]
+    mean_df.reset_index(drop=True, inplace=True)
+    return mean_df
+
+
 def filter_data(df, window=3, data_type=None):
     """Filter data according to fluctuation values.
 
     This function filters the data according to the fluctuation values of the
-    columns. Default values for maximum fluctuation are based on ASME PTC 10-1997.
+    columns and returns the mean value for set of values defined by the window size.
+    Default values for maximum fluctuation are based on ASME PTC 10-1997.
 
     Parameters
     ----------
