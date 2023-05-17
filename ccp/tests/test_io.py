@@ -1,6 +1,9 @@
+import numpy as np
+import pandas as pd
 import pytest
 from pathlib import Path
 from numpy.testing import assert_allclose
+from pandas.testing import assert_frame_equal
 import ccp
 
 Q_ = ccp.Q_
@@ -50,3 +53,39 @@ def test_impeller_lp_sec1_from_csv(impeller_lp_sec1_from_csv):
     assert_allclose(p0.head.to("kJ/kg"), 82.7824137)
     assert_allclose(p0.eff, 0.789412, rtol=1e-5)
     assert_allclose(p0.power.to("kW"), 1431.03994)
+
+
+def test_fluctuation():
+    assert_allclose(ccp.data_io.fluctuation(np.array([1, 2, 3, 4, 5])), 133.333333)
+    assert_allclose(ccp.data_io.fluctuation(np.array([1, 1, 1, 1, 1])), 0.0)
+
+
+def test_fluctuation_data():
+    df = pd.DataFrame({"a": [1, 2, 3, 4], "b": [4, 5, 6, 7]})
+    assert_frame_equal(
+        ccp.data_io.fluctuation_data(df),
+        pd.DataFrame(
+            {"a": [100.0, 66.66666666666667], "b": [40.0, 33.333333333333336]}
+        ),
+    )
+
+
+def test_mean_data():
+    df = pd.DataFrame({"a": [1, 2, 3, 4], "b": [4, 5, 6, 7]})
+    assert_frame_equal(
+        ccp.data_io.mean_data(df),
+        pd.DataFrame({"a": [2.0, 3.0], "b": [5.0, 6.0]}),
+    )
+
+
+def test_filter_data():
+    df = pd.DataFrame(
+        {
+            "a": [1, 2, 3, 4, 4.01, 4.02, 5, 6.01, 6.02, 6.04, 6.05],
+            "b": [4, 5, 6, 7, 7.01, 7.02, 8, 9, 10, 11, 12],
+        }
+    )
+    assert_frame_equal(
+        ccp.data_io.filter_data(df, data_type={"a": "pressure", "b": "temperature"}),
+        pd.DataFrame(index=pd.Index([3]), data={"a": [4.01], "b": [7.01]}),
+    )
