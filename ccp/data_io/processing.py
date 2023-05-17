@@ -123,7 +123,14 @@ def mean_data(df, window=3):
     return mean_df
 
 
-def filter_data(df, window=3, data_type=None):
+def filter_data(
+    df,
+    window=3,
+    data_type=None,
+    temperature_fluctuation=0.5,
+    pressure_fluctuation=2,
+    speed_fluctuation=0.5,
+):
     """Filter data according to fluctuation values.
 
     This function filters the data according to the fluctuation values of the
@@ -134,17 +141,22 @@ def filter_data(df, window=3, data_type=None):
     ----------
     df : pandas.DataFrame
         Dataframe with data to be filtered.
-
     window : int, optional
         Window size for rolling calculation, meaning how many rolls will be used
         to calculate the fluctuation.
         The default is 3.
-
     data_type : dict
-        Dictionary with data types or maximum fluctuation values for each column.
-        If the data_type is passed, the default maximum fluctuation values will
-        be used.
+        Dictionary with data types for each column.
         Values for data_type can be: "pressure", "temperature", "speed".
+    temperature_fluctuation : float, optional
+        Maximum fluctuation for temperature data.
+        The default is 0.5.
+    pressure_fluctuation : float, optional
+        Maximum fluctuation for pressure data.
+        The default is 2.
+    speed_fluctuation : float, optional
+        Maximum fluctuation for speed data.
+        The default is 0.5.
 
     Returns
     -------
@@ -158,13 +170,21 @@ def filter_data(df, window=3, data_type=None):
     >>> data_type = {'a': 'pressure', 'b': 'temperature'}
     >>> filter_data(df, window=3, data_type=data_type)
     """
-    # default values for maximum fluctuation as per ASME PTC 10-1997
-    maximum_fluctuation_values = {
-        "pressure": 2,
-        "temperature": 0.5,
-        "speed": 0.5,
-        None: None,
-    }
     fluctuation_df = fluctuation_data(df, window=window)
-    # TODO: Finish filtering based on maximum fluctuation values
-    pass
+    mean_df = mean_data(df, window=window)
+    # filter mean_df based on fluctuation_df max values
+    for column in fluctuation_df.columns:
+        if data_type[column] == "pressure":
+            max_fluctuation = pressure_fluctuation
+        elif data_type[column] == "temperature":
+            max_fluctuation = temperature_fluctuation
+        elif data_type[column] == "speed":
+            max_fluctuation = speed_fluctuation
+        else:
+            raise ValueError(
+                f"Invalid data type for column {column}. "
+                "Valid data types are: pressure, temperature and speed."
+            )
+        mean_df.loc[fluctuation_df[column] > max_fluctuation, column] = None
+    mean_df = mean_df.dropna()
+    return mean_df

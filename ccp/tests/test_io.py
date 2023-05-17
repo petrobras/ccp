@@ -79,10 +79,13 @@ def test_mean_data():
 
 
 def test_filter_data():
-    df = pd.DataFrame({"a": [1, 2, 3, 4], "b": [4, 5, 6, 7]})
+    df = pd.DataFrame(
+        {
+            "a": [1, 2, 3, 4, 4.01, 4.02, 5, 6.01, 6.02, 6.04, 6.05],
+            "b": [4, 5, 6, 7, 7.01, 7.02, 8, 9, 10, 11, 12],
+        }
+    )
     assert_frame_equal(
-        ccp.data_io.fluctuation_data(df),
-        pd.DataFrame(
-            {"a": [100.0, 66.66666666666667], "b": [40.0, 33.333333333333336]}
-        ),
+        ccp.data_io.filter_data(df, data_type={"a": "pressure", "b": "temperature"}),
+        pd.DataFrame(index=pd.Index([3]), data={"a": [4.01], "b": [7.01]}),
     )
