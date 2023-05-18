@@ -388,7 +388,7 @@ class Impeller:
                 all_converted_points += converted_points
 
         converted_impeller = cls(all_converted_points)
-        if speed == 'same':
+        if speed == "same":
             all_converted_points = []
             for curve in original_impeller.curves:
                 converted_curve = converted_impeller.curve(curve.speed)
@@ -982,6 +982,37 @@ class Impeller:
         ]
 
         return cls(points)
+
+    def save_isis_csv(self, file, parameter):
+        """Save curves to a csv with isis format.
+
+        Parameters
+        ----------
+        file : str or pathlib.Path
+            Filename to which the data is saved.
+        parameter : str
+            Parameter name. Can be "head", "eff", "power", "pressure_ratio" or "disch_T".
+
+        Examples
+        --------
+        >>> impeller.save_isis_csv("head.csv", parameter="head", number_of_points=8)
+        """
+        # create dict with curves
+        curves_dict = {}
+        for curve in self.curves:
+            curves_dict[curve.speed.m] = {
+                "flow": getattr(self, "flow_v").m,
+                f"{parameter}": getattr(self, parameter).m,
+            }
+
+        with open(file, mode="w", newline="") as f:
+            for idx, (key, values) in enumerate(curves_dict.items(), start=1):
+                f.write(f"curva{idx} {key}\n")
+                for flow, head in zip(values["flow"], values["head"]):
+                    f.write(f"{flow} {head}\n")
+                f.write("\n")  # empty line after each curve
+
+        # TODO: implement tests
 
     def save_hysys_csv(self, curve_dir):
         """Save curve to a csv with hysys format.
