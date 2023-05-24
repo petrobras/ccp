@@ -983,7 +983,7 @@ class Impeller:
 
         return cls(points)
 
-    def save_isis_csv(self, file, parameter):
+    def save_isis_txt(self, file, parameter):
         """Save curves to a csv with isis format.
 
         Parameters
@@ -995,21 +995,26 @@ class Impeller:
 
         Examples
         --------
-        >>> impeller.save_isis_csv("head.csv", parameter="head")
+        >>> impeller.save_isis_txt("head.txt", parameter="head")
         """
         # create dict with curves
+
+        parameters_units = {
+            "head": "kJ/kg",
+            "eff": "dimensionless",
+        }
         curves_dict = {}
         for curve in self.curves:
-            curves_dict[curve.speed.m] = {
+            curves_dict[round(curve.speed.to("RPM").m)] = {
                 "flow": getattr(curve, "flow_v").m,
-                f"{parameter}": getattr(curve, parameter).m,
+                f"{parameter}": getattr(curve, parameter).to(parameters_units[parameter]).m,
             }
 
         with open(file, mode="w", newline="") as f:
             for idx, (key, values) in enumerate(curves_dict.items(), start=1):
                 f.write(f"curva{idx} {key}\n")
                 for flow, param in zip(values["flow"], values[parameter]):
-                    f.write(f"{flow} {param}\n")
+                    f.write(f"{flow:.5f} {param:.5f}\n")
                 f.write("\n")  # empty line after each curve
 
     def save_hysys_csv(self, curve_dir):
