@@ -1001,7 +1001,7 @@ class Impeller:
 
         parameters_units = {
             "head": "kJ/kg",
-            "eff": "dimensionless",
+            "eff": "percent",
         }
         curves_dict = {}
         for curve in self.curves:
