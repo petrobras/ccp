@@ -83,7 +83,7 @@ setup(
             "sphinx-rtd-theme",
         ],
     },
-    py_modules=[],
+    packages=find_packages(),
     license="Apache License 2.0",
     classifiers=[
         # Trove classifiers
