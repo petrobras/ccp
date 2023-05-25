@@ -966,7 +966,7 @@ class Impeller:
          flow_units_head: str
              Flow units used when extracting data with engauge for head curves.
              Only needed when flow units for head curve differs from other curves.
-        flow_units_eff: str
+         flow_units_eff: str
              Flow units used when extracting data with engauge for efficiency curves.
              Only needed when flow units for efficiency curve differs from other curves.
          flow_units_power: str
@@ -997,7 +997,7 @@ class Impeller:
          eff_interpolation_method : str, optional
              Interpolation method from scipy. Can be interp1d or UnivariateSpline.
              Default is interp1d.
-         power_inte![](../../AppData/Local/Temp/logo.png)rpolation_method : str, optional
+         power_interpolation_method : str, optional
              Interpolation method from scipy. Can be interp1d or UnivariateSpline.
              Default is interp1d.
         """
