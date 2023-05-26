@@ -60,6 +60,7 @@ setup(
         "Bug Tracker": "https://github.com/petrobras/ccp/issues",
         "Source Code": "https://github.com/petrobras/ccp",
     },
+    include_package_data=True,
     package_data={"ccp.config": ["new_units.txt"], "ccp.tests.data": ["*"]},
     python_requires=">=3.6",
     install_requires=REQUIRES,
