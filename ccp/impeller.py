@@ -18,6 +18,7 @@ from ccp import Q_, State, Point, Curve
 from ccp.config.units import check_units
 from ccp.config.utilities import r_getattr, r_setattr
 from ccp.data_io.read_csv import read_data_from_engauge_csv
+from ccp.plotly_theme import tableau_colors
 
 
 class ImpellerStateParameter:
@@ -63,7 +64,7 @@ class ImpellerPlotFunction:
     def __call__(self, *args, flow_v=None, speed=None, plot_kws=None, **kwargs):
         """Plot parameter versus volumetric flow.
 
-        You can plot an specific point in the plot giving its flow_v and speed.
+        You can plot a specific point in the plot giving its flow_v and speed.
 
         You can choose units with the arguments flow_v_units='...' and
         {attr}_units='...'. For the speed you can use speed_units='...'.
@@ -78,7 +79,7 @@ class ImpellerPlotFunction:
             Flow units used for the plot. Default is m³/s.
         {attr}_units : str, optional
             Units for the parameter being plotted (e.g. for a head plot we could use
-            head_units='J/kg' or head_units='J/g'. Default is SI.
+            head_units='J/kg' or head_units='J/g'). Default is SI.
         speed_units : str, optional
             Speed units for the plot. Default is 'rad/s'.
 
@@ -141,6 +142,107 @@ def impeller_plot_function(impeller_object, attr):
     return ImpellerPlotFunction(impeller_object, attr)
 
 
+class CompareImpellerPlotFunction:
+    def __init__(self, impeller_object, attr):
+        self.impeller_object = impeller_object
+        self.attr = attr
+
+    @check_units
+    def __call__(
+        self, other_impeller, flow_v=None, speed=None, plot_kws=None, **kwargs
+    ):
+        """Plot parameter versus volumetric flow.
+
+        You can plot a specific point in the plot giving its flow_v and speed.
+
+        You can choose units with the arguments flow_v_units='...' and
+        {attr}_units='...'. For the speed you can use speed_units='...'.
+
+        Parameters
+        ----------
+        flow_v : pint.Quantity, float, optional
+            Volumetric flow (m³/s) for a specific point in the plot.
+        speed : pint.Quantity, float, optional
+            Speed (rad/s) for a specific point in the plot.
+        flow_v_units : str, optional
+            Flow units used for the plot. Default is m³/s.
+        {attr}_units : str, optional
+            Units for the parameter being plotted (e.g. for a head plot we could use
+            head_units='J/kg' or head_units='J/g'). Default is SI.
+        speed_units : str, optional
+            Speed units for the plot. Default is 'rad/s'.
+
+        Returns
+        -------
+        fig : plotly.Figure
+            Plotly figure that can be customized.
+
+        Examples
+        --------
+        >>> import ccp
+        >>> imp = ccp.impeller_example()
+        >>> fig = imp.plot_head(
+        ...    flow_v=5.5,
+        ...    speed=900,
+        ...    flow_v_units='m³/h',
+        ...    head_units='j/kg',
+        ...    speed_units='RPM'
+        ... )
+
+        """
+        impeller_object = self.impeller_object
+        attr = self.attr
+        fig = kwargs.pop("fig", None)
+
+        if fig is None:
+            fig = go.Figure()
+
+        if plot_kws is None:
+            plot_kws = {}
+
+        p0 = impeller_object.points[0]
+        flow_v_units = kwargs.get("flow_v_units", p0.flow_v.units)
+
+        for curve, color in zip(impeller_object.curves, tableau_colors):
+            other_curve = other_impeller.curve(speed=curve.speed)
+            fig = r_getattr(other_curve, attr + "_plot")(
+                fig=fig, plot_kws=plot_kws, **kwargs
+            )
+            # change line to dash
+            fig.data[-1].update(
+                line=dict(dash="dash", color=color),
+                showlegend=False,
+            )
+
+        for curve, color in zip(impeller_object.curves, tableau_colors):
+            fig = r_getattr(curve, attr + "_plot")(fig=fig, plot_kws=plot_kws, **kwargs)
+            fig.data[-1].update(line=dict(color=color))
+
+        if speed:
+            current_curve = impeller_object.curve(speed=speed)
+            fig = r_getattr(current_curve, attr + "_plot")(
+                fig=fig, plot_kws=plot_kws, **kwargs
+            )
+            if flow_v:
+                current_point = impeller_object.point(flow_v=flow_v, speed=speed)
+                fig = r_getattr(current_point, attr + "_plot")(
+                    fig=fig, plot_kws=plot_kws, **kwargs
+                )
+
+        # extra x range
+        flow_values = [p.flow_v.to(flow_v_units) for p in impeller_object.points]
+        min_flow = min(flow_values)
+        max_flow = max(flow_values)
+        delta = 0.05 * (max_flow - min_flow)
+        fig.update_layout(xaxis=dict(range=[min_flow - delta, max_flow + delta]))
+
+        return fig
+
+
+def compare_impeller_plot_function(impeller_object, attr):
+    return CompareImpellerPlotFunction(impeller_object, attr)
+
+
 class Impeller:
     """An impeller with a performance map.
 
@@ -197,7 +299,10 @@ class Impeller:
                 units = param.units
                 r_setattr(self, attr, Q_(values, units))
 
-            r_setattr(self, attr + "_plot", impeller_plot_function(self, attr))
+            r_setattr(self, f"{attr}_plot", impeller_plot_function(self, attr))
+            r_setattr(
+                self, f"{attr}_compare", compare_impeller_plot_function(self, attr)
+            )
 
     def __getitem__(self, item):
         return self.points.__getitem__(item)
@@ -844,72 +949,72 @@ class Impeller:
     ):
         """Convert points from csv generated by engauge to csv with 6 points at same flow for use on hysys.
 
-         The csv files should be generated with engauge with the following procedure:
-         First, copy the image of the curve to your clipboard, then inside engauge digitizer:
-             - Edit -> Paste as new
-             - Name each curve with their respective speed value;
-             - On Axis Point -> add 3 reference points
-             - Select the curve (e.g. 10322 would be the curve for 10322 RPM)
-             - Select the points using the segment fill tool;
-             - Select the next curve and points...
-             - Settings -> Export Setup -> Select:
-             - Raws X's and Y's ; One curve on each line
-         Files should be saved with the following convention:
-             - <curve-name>-head.csv
-             - <curve-name>-eff.csv
+        The csv files should be generated with engauge with the following procedure:
+        First, copy the image of the curve to your clipboard, then inside engauge digitizer:
+            - Edit -> Paste as new
+            - Name each curve with their respective speed value;
+            - On Axis Point -> add 3 reference points
+            - Select the curve (e.g. 10322 would be the curve for 10322 RPM)
+            - Select the points using the segment fill tool;
+            - Select the next curve and points...
+            - Settings -> Export Setup -> Select:
+            - Raws X's and Y's ; One curve on each line
+        Files should be saved with the following convention:
+            - <curve-name>-head.csv
+            - <curve-name>-eff.csv
 
-         suc : ccp.State
-             Suction state.
-         curve_path : pathlib.Path
-             Path to the curves.
-         curve_name : str
-             Name for head and efficiency curve.
-             Curves should have names <curve_name>-head.csv and <curve-name>-eff.csv.
-         b : float, pint.Quantity
-             Impeller width (m).
-         D : float, pint.Quantity
-             Impeller diameter (m).
-         number_of_points : int
-             Number of points that will be interpolated.
-         flow_units : str
-             Flow units used when extracting data with engauge.
-         flow_units_head: str
-             Flow units used when extracting data with engauge for head curves.
-             Only needed when flow units for head curve differs from other curves.
+        suc : ccp.State
+            Suction state.
+        curve_path : pathlib.Path
+            Path to the curves.
+        curve_name : str
+            Name for head and efficiency curve.
+            Curves should have names <curve_name>-head.csv and <curve-name>-eff.csv.
+        b : float, pint.Quantity
+            Impeller width (m).
+        D : float, pint.Quantity
+            Impeller diameter (m).
+        number_of_points : int
+            Number of points that will be interpolated.
+        flow_units : str
+            Flow units used when extracting data with engauge.
+        flow_units_head: str
+            Flow units used when extracting data with engauge for head curves.
+            Only needed when flow units for head curve differs from other curves.
         flow_units_eff: str
-             Flow units used when extracting data with engauge for efficiency curves.
-             Only needed when flow units for efficiency curve differs from other curves.
-         flow_units_power: str
-             Flow units used when extracting data with engauge for power curves.
-             Only needed when flow units for power curve differs from other curves.
-         flow_units_pressure_ratio: str
-             Flow units used when extracting data with engauge for pressure ratio curves.
-             Only needed when flow units for power curve differs from other curves.
-         flow_units_disch_T: str
-             Flow units used when extracting data with engauge for discharge temperature curves.
-             Only needed when flow units for efficiency curve differs from other curves.
-         head_units : str
-             Head units used when extracting data with engauge.
-             If the curve head units are in meter you can use: head_units="m*g0".
-         eff_units : str
-             Dimensionless.
-         power_units : str
-             Power units used when extracting data with engauge.
-         pressure_ratio_units : str
-             Pressure ratio units used when extracting data with engauge.
-         disch_T_units : str
-             Discharge temperature units used when extracting data with engauge.
-         speed_units : str
-             Speed units used when extracting data with engauge.
-         head_interpolation_method : str, optional
-             Interpolation method from scipy. Can be interp1d or UnivariateSpline.
-             Default is interp1d.
-         eff_interpolation_method : str, optional
-             Interpolation method from scipy. Can be interp1d or UnivariateSpline.
-             Default is interp1d.
-         power_inte![](../../AppData/Local/Temp/logo.png)rpolation_method : str, optional
-             Interpolation method from scipy. Can be interp1d or UnivariateSpline.
-             Default is interp1d.
+            Flow units used when extracting data with engauge for efficiency curves.
+            Only needed when flow units for efficiency curve differs from other curves.
+        flow_units_power: str
+            Flow units used when extracting data with engauge for power curves.
+            Only needed when flow units for power curve differs from other curves.
+        flow_units_pressure_ratio: str
+            Flow units used when extracting data with engauge for pressure ratio curves.
+            Only needed when flow units for power curve differs from other curves.
+        flow_units_disch_T: str
+            Flow units used when extracting data with engauge for discharge temperature curves.
+            Only needed when flow units for efficiency curve differs from other curves.
+        head_units : str
+            Head units used when extracting data with engauge.
+            If the curve head units are in meter you can use: head_units="m*g0".
+        eff_units : str
+            Dimensionless.
+        power_units : str
+            Power units used when extracting data with engauge.
+        pressure_ratio_units : str
+            Pressure ratio units used when extracting data with engauge.
+        disch_T_units : str
+            Discharge temperature units used when extracting data with engauge.
+        speed_units : str
+            Speed units used when extracting data with engauge.
+        head_interpolation_method : str, optional
+            Interpolation method from scipy. Can be interp1d or UnivariateSpline.
+            Default is interp1d.
+        eff_interpolation_method : str, optional
+            Interpolation method from scipy. Can be interp1d or UnivariateSpline.
+            Default is interp1d.
+        power_interpolation_method : str, optional
+            Interpolation method from scipy. Can be interp1d or UnivariateSpline.
+            Default is interp1d.
         """
         curves_path_dict = {}
 
@@ -1007,7 +1112,9 @@ class Impeller:
         for curve in self.curves:
             curves_dict[round(curve.speed.to("RPM").m)] = {
                 "flow": getattr(curve, "flow_v").m,
-                f"{parameter}": getattr(curve, parameter).to(parameters_units[parameter]).m,
+                f"{parameter}": getattr(curve, parameter)
+                .to(parameters_units[parameter])
+                .m,
             }
 
         with open(file, mode="w", newline="") as f:
