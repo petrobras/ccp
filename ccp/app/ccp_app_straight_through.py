@@ -19,6 +19,7 @@ sentry_sdk.init(
     # of transactions for performance monitoring.
     # We recommend adjusting this value in production.
     traces_sample_rate=1.0,
+    auto_enabling_integrations=False,
 )
 
 
@@ -216,7 +217,7 @@ def main():
 
     # parameters with name and label
     flow_m_units = ["kg/h", "lbm/h", "kg/s", "lbm/s"]
-    pressure_units = ["bar", "psi", "Pa", "kPa", "MPa"]
+    pressure_units = ["bar", "psi", "Pa", "kPa", "MPa", "kgf/cm²", "mm*H2O*g0"]
     temperature_units = ["degK", "degC", "degF", "degR"]
     speed_units = ["rpm", "Hz"]
     length_units = ["m", "mm", "ft", "in"]
@@ -293,6 +294,40 @@ def main():
             "label": "Casing Area",
             "units": ["m²", "mm²", "ft²", "in²"],
         },
+        "outer_diameter_fo": {
+            "label": "Outer Diameter",
+            "units": ["mm", "m", "ft", "in"],
+            "help": "Outer diameter of orifice plate.",
+        },
+        "inner_diameter_fo": {
+            "label": "Inner Diameter",
+            "units": ["mm", "m", "ft", "in"],
+            "help": "Inner diameter of orifice plate.",
+        },
+        "upstream_pressure_fo": {
+            "label": "Upstream Pressure",
+            "units": pressure_units,
+            "help": "Upstream pressure of orifice plate.",
+        },
+        "upstream_temperature_fo": {
+            "label": "Upstream Temperature",
+            "units": temperature_units,
+            "help": "Upstream temperature of orifice plate.",
+        },
+        "pressure_drop_fo": {
+            "label": "Pressure Drop",
+            "units": pressure_units,
+            "help": "Pressure drop across orifice plate.",
+        },
+        "tappings_fo": {
+            "label": "Tappings",
+            "units": ["flange", "corner", "D D/2"],
+            "help": "Pressure tappings type.",
+        },
+        "mass_flow_fo": {
+            "label": "Mass Flow (Result)",
+            "units": ["kg/h", "lbm/h", "kg/s", "lbm/s"],
+        },
     }
 
     # add dict to store the values for guarantee and test points
@@ -301,15 +336,26 @@ def main():
     points_list = ["point_guarantee"] + [
         f"point_{i}" for i in range(1, number_of_test_points + 1)
     ]
+    points_fo_list = [f"point_fo_{i}" for i in range(1, number_of_test_points + 1)]
+
     for parameter in parameters_map:
-        parameters_map[parameter]["points"] = {
-            "data_sheet_units": None,
-            "test_units": None,
-        }
-        for point in points_list:
-            parameters_map[parameter]["points"][point] = {
-                "value": None,
+        if not parameter.endswith("_fo"):
+            parameters_map[parameter]["points"] = {
+                "data_sheet_units": None,
+                "test_units": None,
             }
+            for point in points_list:
+                parameters_map[parameter]["points"][point] = {
+                    "value": None,
+                }
+        else:
+            parameters_map[parameter]["points_fo"] = {
+                "test_fo_units": None,
+            }
+            for point in points_fo_list:
+                parameters_map[parameter]["points_fo"][point] = {
+                    "value": None,
+                }
 
     with st.expander("Data Sheet"):
         # build container with 8 columns
@@ -374,7 +420,7 @@ def main():
             ] = units_col.selectbox(
                 f"{parameter} units",
                 options=parameters_map[parameter]["units"],
-                key=f"{parameter}_units_point_guarantee",  #############################
+                key=f"{parameter}_units_point_guarantee",
                 label_visibility="collapsed",
             )
             parameters_map[parameter]["points"]["point_guarantee"][
@@ -526,11 +572,176 @@ def main():
                         label_visibility="collapsed",
                     )
 
+    with st.expander("Flowrate Calculation"):
+        # add title
+        number_of_columns = number_of_test_points + 2
+        # build container with 8 columns
+        points_title = st.container()
+        points_title_columns = points_title.columns(number_of_columns, gap="small")
+        for i, col in enumerate(points_title_columns):
+            if i == 0:
+                col.markdown("")
+            elif i == 1:
+                col.markdown("Units")
+            else:
+                col.markdown(f"Point {i - 1}")
+
+        # gas selection
+        point_gas = st.container()
+        point_gas_columns = point_gas.columns(number_of_columns, gap="small")
+        for i, col in enumerate(point_gas_columns):
+            if i == 0:
+                col.markdown("Gas Selection")
+            elif i == 1:
+                col.markdown("")
+            else:
+                gas_options = [
+                    st.session_state[f"gas_{i}"] for i, gas in enumerate(gas_columns)
+                ]
+                col.selectbox(
+                    f"gas_fo_{i - 1}",
+                    options=gas_options,
+                    label_visibility="collapsed",
+                    key=f"gas_fo_{i - 1}",
+                    index=get_index_selected_gas(f"gas_fo_{i - 1}"),
+                )
+
+        # build one container with 8 columns for each parameter
+        for parameter in [
+            "outer_diameter_fo",
+            "inner_diameter_fo",
+            "upstream_pressure_fo",
+            "upstream_temperature_fo",
+            "pressure_drop_fo",
+            "tappings_fo",
+            "mass_flow_fo",
+        ]:
+            parameter_container = st.container()
+            parameter_columns = parameter_container.columns(
+                number_of_columns, gap="small"
+            )
+            for i, col in enumerate(parameter_columns):
+                if i == 0:
+                    col.markdown(
+                        f"{parameters_map[parameter]['label']}",
+                        help=f"{parameters_map[parameter].get('help', '')}",
+                    )
+                elif i == 1:
+                    if parameter == "tappings_fo":
+                        pass
+                    else:
+                        parameters_map[parameter]["points_fo"][
+                            "test_fo_units"
+                        ] = col.selectbox(
+                            f"{parameter} units",
+                            options=parameters_map[parameter]["units"],
+                            key=f"{parameter}_units",
+                            label_visibility="collapsed",
+                        )
+                else:
+                    if parameter == "tappings_fo":
+                        parameters_map[parameter]["points_fo"][
+                            "test_fo_units"
+                        ] = col.selectbox(
+                            f"{parameter} value",
+                            options=parameters_map[parameter]["units"],
+                            key=f"{parameter}_{i - 1}",
+                            label_visibility="collapsed",
+                        )
+                    else:
+                        # elif parameter != "mass_flow_fo":
+                        parameters_map[parameter]["points_fo"][f"point_fo_{i - 1}"][
+                            "value"
+                        ] = col.text_input(
+                            f"{parameter} value.",
+                            key=f"{parameter}_{i - 1}",
+                            label_visibility="collapsed",
+                        )
+
     # add calculate button
     straight_through = None
 
+    def fo_calc():
+        global missed_points
+        kwargs = {}
+        missed_points = []
+
+        for i, col in enumerate(parameter_columns):
+            if i > 1:
+                if (
+                    st.session_state[f"outer_diameter_fo_{i-1}"] == ""
+                    or st.session_state[f"inner_diameter_fo_{i-1}"] == ""
+                    or st.session_state[f"upstream_pressure_fo_{i-1}"] == ""
+                    or st.session_state[f"upstream_temperature_fo_{i-1}"] == ""
+                    or st.session_state[f"pressure_drop_fo_{i-1}"] == ""
+                ):
+                    missed_points.append(i - 1)
+                    parameters_map["mass_flow_fo"]["points_fo"][f"point_fo_{i - 1}"][
+                        "value"
+                    ] = ""
+                    st.session_state[f"mass_flow_fo_{i-1}"] = ""
+                    continue
+                else:
+
+                    kwargs["state"] = ccp.State(
+                        p=Q_(
+                            float(st.session_state[f"upstream_pressure_fo_{i-1}"]),
+                            parameters_map["upstream_pressure_fo"]["points_fo"][
+                                "test_fo_units"
+                            ],
+                        ),
+                        T=Q_(
+                            float(st.session_state[f"upstream_temperature_fo_{i-1}"]),
+                            parameters_map["upstream_temperature_fo"]["points_fo"][
+                                "test_fo_units"
+                            ],
+                        ),
+                        fluid=get_gas_composition(st.session_state[f"gas_fo_{i-1}"]),
+                    )
+
+                    kwargs["delta_p"] = Q_(
+                        float(st.session_state[f"pressure_drop_fo_{i-1}"]),
+                        parameters_map["pressure_drop_fo"]["points_fo"][
+                            "test_fo_units"
+                        ],
+                    )
+
+                    kwargs["D"] = Q_(
+                        float(st.session_state[f"outer_diameter_fo_{i-1}"]),
+                        parameters_map["outer_diameter_fo"]["points_fo"][
+                            "test_fo_units"
+                        ],
+                    )
+
+                    kwargs["d"] = Q_(
+                        float(st.session_state[f"inner_diameter_fo_{i-1}"]),
+                        parameters_map["inner_diameter_fo"]["points_fo"][
+                            "test_fo_units"
+                        ],
+                    )
+
+                    kwargs["tappings"] = st.session_state[f"tappings_fo_{i-1}"]
+
+                    fo_temp = ccp.FlowOrifice(**kwargs)
+                    parameters_map["mass_flow_fo"]["points_fo"][f"point_fo_{i - 1}"][
+                        "value"
+                    ] = fo_temp.qm.to(
+                        parameters_map["mass_flow_fo"]["points_fo"]["test_fo_units"]
+                    ).m
+                    st.session_state[f"mass_flow_fo_{i-1}"] = str(
+                        round(
+                            parameters_map["mass_flow_fo"]["points_fo"][
+                                f"point_fo_{i - 1}"
+                            ]["value"],
+                            5,
+                        )
+                    )
+                st.session_state.missed_points = missed_points
+
     with st.container():
-        calculate_col, calculate_speed_col = st.columns([1, 1])
+        calculate_col, calculate_speed_col, calculate_flowrate_col = st.columns(
+            [1, 1, 1]
+        )
         calculate_button = calculate_col.button(
             "Calculate",
             type="primary",
@@ -543,6 +754,13 @@ def main():
             type="primary",
             use_container_width=True,
             # help="Calculate speed to match the discharge pressure.",
+        )
+        calculate_flowrate = calculate_flowrate_col.button(
+            "Calculate Flowrate",
+            type="primary",
+            use_container_width=True,
+            on_click=fo_calc,
+            # help="Calculate flowrate with orifice plate data.",
         )
 
     def get_gas_composition(gas_name):
@@ -570,6 +788,21 @@ def main():
                         gas_composition[component] = molar_fraction
 
         return gas_composition
+
+    if calculate_flowrate:
+        calculate_flowrate = False
+        progress_value = 0
+        progress_bar = st.progress(progress_value, text="Calculating...")
+
+        if "missed_points" not in st.session_state:
+            st.session_state["missed_points"] = []
+
+        for i in range(len(st.session_state["missed_points"])):
+            st.warning(
+                f"Missing data for point {st.session_state['missed_points'][i]}!"
+            )
+        time.sleep(0.1)
+        progress_bar.progress(100, text="Done!")
 
     # create test points
     test_points = []
