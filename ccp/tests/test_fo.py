@@ -4,21 +4,23 @@ from numpy.testing import assert_allclose
 
 Q_ = ccp.Q_
 
-
 @pytest.fixture
-def fo0():
-    n2 = ccp.State(
-        p=Q_(9.85, "bar"), T=Q_(145, "degC"), fluid={"n2": 1 - 1e-15, "o2": 1e-15}
-    )
-    qm = Q_(71281, "kg/hr")
-    delta_p = Q_(9.85 - 4, "bar")
-    D = Q_(0.3032, "m")
+def fo1():
+    fluid = {'R134A': 0.018, 'R1234ZE': 31.254, 'N2': 67.588, "o2":1.14}
+    D = Q_(250, 'mm')
+    d = Q_(170, 'mm')
+    p1 = Q_(10, 'bar')
+    T1 = Q_(40, 'degC')
+    delta_p = Q_(0.1, 'bar')
+    state = ccp.State(p=p1, T=T1, fluid=fluid)
 
-    return ccp.FlowOrifice(n2, delta_p, qm, D)
+    return ccp.FlowOrifice(state, delta_p, D, d)
+
+def test_flow_orifice(fo1):
+
+    assert_allclose(fo1.qm.to('kg/h').m, 36408.6871553386)
 
 
-def test_flow_orifice(fo0):
-    assert_allclose(fo0.d.magnitude, 0.10960820617559523)
-    fo0.D = 0.5
-    fo0.update()
-    assert_allclose(fo0.d.magnitude, 0.11028294814259916)
+
+
+
