@@ -19,7 +19,7 @@ class FlowOrifice:
         self.state = state
         self.delta_p = delta_p
         self.D = D
-        self.d = d.to('m')
+        self.d = d
         self.tappings = tappings
 
         if tappings == "corner" or tappings == "D D/2" or tappings == "flange":
