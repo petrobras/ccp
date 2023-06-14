@@ -16,6 +16,39 @@ class FlowOrifice:
         tappings="flange",
         qm=None,
     ):
+        """Flow orifice.
+
+        Parameters
+        ----------
+        state : ccp.State
+            State of the fluid.
+        delta_p : float, pint.Quantity
+            Pressure drop across the orifice.
+        D : float, pint.Quantity
+            Pipe diameter (m).
+        d : float, pint.Quantity
+            Orifice diameter (m).
+        tappings : str, optional
+            Tappings of the orifice.
+            Default is "flange".
+        qm : float, Quantity, optional
+            Mass flow rate (kg/s).
+
+        Examples
+        --------
+        >>> import ccp
+        >>> Q_ = ccp.Q_
+        >>> fluid = {"R134A": 0.018, "R1234ZE": 31.254, "N2": 67.588, "o2": 1.14}
+        >>> D = Q_(250, "mm")
+        >>> d = Q_(170, "mm")
+        >>> p1 = Q_(10, "bar")
+        >>> T1 = Q_(40, "degC")
+        >>> delta_p = Q_(0.1, "bar")
+        >>> state = ccp.State(p=p1, T=T1, fluid=fluid)
+        >>> fo = ccp.FlowOrifice(state, delta_p, D, d)
+        >>> fo.qm.to("kg/h")
+        <Quantity(36408.68715534, 'kilogram / hour')>
+        """
         self.state = state
         self.delta_p = delta_p
         self.D = D
