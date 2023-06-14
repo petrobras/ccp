@@ -14,7 +14,7 @@ class FlowOrifice:
         D=None,
         d=None,
         tappings="flange",
-        qm = None,
+        qm=None,
     ):
         self.state = state
         self.delta_p = delta_p
@@ -28,7 +28,7 @@ class FlowOrifice:
             raise ValueError('tappings must be "corner", "D D/2" or "flange"')
 
         if qm is None:
-            self.qm = getattr(self,"calc_flow")()
+            self.qm = getattr(self, "calc_flow")()
         else:
             self.qm = qm
 
@@ -61,7 +61,6 @@ class FlowOrifice:
             L1 = L2 = Q_(0.0254, "m") / D
 
         M2 = 2 * L2 / (1 - beta)
-
 
         def update_Reyn(Reyn):
 
@@ -102,4 +101,3 @@ class FlowOrifice:
         newton(update_Reyn, 1e8, tol=1e-5)
 
         return qm.to("kg/s")
-
