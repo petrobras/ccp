@@ -43,7 +43,7 @@ def fo2():
 
 
 @pytest.fixture
-def fo2():
+def fo3():
     """fo1 with no units to assure unit conversion works"""
     fluid = {
         "R134A": 0.018,
