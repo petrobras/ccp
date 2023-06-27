@@ -133,8 +133,13 @@ def filter_data(
 ):
     """Filter data according to fluctuation values.
 
-    This function filters the data according to the fluctuation values of the
-    columns and returns the mean value for set of values defined by the window size.
+    This function performs two filters:
+        1. Remove rows where the speed is zero.
+        2. Remove rows where the fluctuation of the data is higher than the
+        maximum fluctuation defined by the user.
+
+    After filtering, it returns the mean value for set of values defined by
+    the window size.
     Default values for maximum fluctuation are based on ASME PTC 10-1997.
 
     Parameters
@@ -173,13 +178,15 @@ def filter_data(
     fluctuation_df = fluctuation_data(df, window=window)
     mean_df = mean_data(df, window=window)
     # filter mean_df based on fluctuation_df max values
-    for column in fluctuation_df.columns:
-        if data_type[column] == "pressure":
+    for column, property_type in data_type.items():
+        if property_type == "pressure":
             max_fluctuation = pressure_fluctuation
-        elif data_type[column] == "temperature":
+        elif property_type == "temperature":
             max_fluctuation = temperature_fluctuation
-        elif data_type[column] == "speed":
+        elif property_type == "speed":
             max_fluctuation = speed_fluctuation
+            # remove speed values below 1
+            mean_df.loc[mean_df[column] < 1, column] = None
         else:
             raise ValueError(
                 f"Invalid data type for column {column}. "
