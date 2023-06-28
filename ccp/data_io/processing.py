@@ -73,7 +73,6 @@ def fluctuation_data(df, window=3):
         .fillna(0.0)
     )
     fluctuation_df = fluctuation_df[window - 1 :]
-    fluctuation_df.reset_index(drop=True, inplace=True)
     return fluctuation_df
 
 
@@ -119,7 +118,6 @@ def mean_data(df, window=3):
         .mean()
     )
     mean_df = mean_df[window - 1 :]
-    mean_df.reset_index(drop=True, inplace=True)
     return mean_df
 
 

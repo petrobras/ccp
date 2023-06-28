@@ -338,6 +338,12 @@ class Impeller:
             Point in the performance map.
         """
 
+        # check if speed and flow are defined
+        if speed is None:
+            raise ValueError("Speed must be defined.")
+        if flow_v is None and flow_m is None:
+            raise ValueError("Either flow_v or flow_m must be defined.")
+
         current_curve = self.curve(speed)
         if flow_m:
             flow_v = current_curve.points[0].suc.v() * flow_m
@@ -563,8 +569,8 @@ class Impeller:
         power_curves=None,
         pressure_ratio_curves=None,
         disch_T_curves=None,
-        b=None,
-        D=None,
+        b=Q_(0.005, "m"),
+        D=Q_(0.5, "m"),
         number_of_points=10,
         flow_units="m**3/s",
         flow_units_head=None,
@@ -808,8 +814,8 @@ class Impeller:
         suc,
         head_curves,
         eff_curves,
-        b=None,
-        D=None,
+        b=Q_(0.005, "m"),
+        D=Q_(0.5, "m"),
         number_of_points=10,
         flow_units="m**3/s",
         head_units="J/kg",
@@ -926,8 +932,8 @@ class Impeller:
         suc,
         curve_name,
         curve_path,
-        b=None,
-        D=None,
+        b=Q_(0.005, "m"),
+        D=Q_(0.5, "m"),
         number_of_points=10,
         flow_units="m**3/s",
         flow_units_head=None,
