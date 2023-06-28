@@ -338,6 +338,12 @@ class Impeller:
             Point in the performance map.
         """
 
+        # check if speed and flow are defined
+        if speed is None:
+            raise ValueError("Speed must be defined.")
+        if flow_v is None and flow_m is None:
+            raise ValueError("Either flow_v or flow_m must be defined.")
+
         current_curve = self.curve(speed)
         if flow_m:
             flow_v = current_curve.points[0].suc.v() * flow_m
