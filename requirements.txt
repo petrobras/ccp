@@ -1,5 +1,6 @@
 numpy
 scipy
+pandas>=0.23
 CoolProp
 pint>=0.18
 plotly>=4.7.0
