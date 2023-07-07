@@ -611,9 +611,9 @@ class Impeller:
         power_curves : dict
             Dict with power/flow values.
         b : float, pint.Quantity
-            Impeller width (m).
+            Impeller width at the outer blade diameter (m).
         D : float, pint.Quantity
-            Impeller diameter (m).
+            Impeller outer diameter (m).
         number_of_points : int
             Number of points that will be interpolated.
         flow_units : str
@@ -846,9 +846,9 @@ class Impeller:
         eff_curve : dict
             Dict with head/flow values.
         b : float, pint.Quantity
-            Impeller width (m).
+            Impeller width at the outer blade diameter (m).
         D : float, pint.Quantity
-            Impeller diameter (m).
+            Impeller outer diameter (m).
         number_of_points : int
             Number of points that will be interpolated.
         flow_units : str
@@ -977,9 +977,9 @@ class Impeller:
             Name for head and efficiency curve.
             Curves should have names <curve_name>-head.csv and <curve-name>-eff.csv.
         b : float, pint.Quantity
-            Impeller width (m).
+            Impeller width at the outer blade diameter (m).
         D : float, pint.Quantity
-            Impeller diameter (m).
+            Impeller outer diameter (m).
         number_of_points : int
             Number of points that will be interpolated.
         flow_units : str

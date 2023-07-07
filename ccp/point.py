@@ -34,12 +34,10 @@ class Point:
         Suction state, polytropic efficiency and volume ratio.
     suc, pres_ratio, disch_T : ccp.State, float, pint.Quantity or float
         Suction state, pressure ration and discharge temperature.
-    b : pint.Quantity, optional
-        Impeller width (m).
-        This value is used to calculate the machine Mach and Reynolds numbers.
-    D : pint.Quantity, optional
-        Impeller diameter (m).
-        This value is used to calculate the machine Mach and Reynolds numbers.
+    b : float, pint.Quantity
+        Impeller width at the outer blade diameter (m).
+    D : float, pint.Quantity
+        Impeller outer diameter (m).
     surface_roughness : pint.Quantity, optional
         Gas passage mean surface roughness (m).
         Used in the reynolds correction calculation.
@@ -93,10 +91,10 @@ class Point:
         Polytropic head coefficient (dimensionless).
     volume_ratio : pint.Quantity
         Volume ratio - suc.v() / disch.v() (dimensionless).
-    b : pint.Quantity
-        Impeller width (m).
-    D : pint.Quantity
-        Impeller diameter (m).
+    b : float, pint.Quantity
+        Impeller width at the outer blade diameter (m).
+    D : float, pint.Quantity
+        Impeller outer diameter (m).
     casing_area : pint.Quantity
         Compressor case area used to calculate case heat loss (m²).
     casing_temperature : pint.Quantity
@@ -1707,8 +1705,8 @@ def u_calc(D, speed):
 
     Parameters
     ----------
-    D : pint.Quantity, float
-        Impeller diameter (m).
+    D : float, pint.Quantity
+        Impeller outer diameter (m).
     speed : pint.Quantity, float
         Impeller speed (rad/s).
 
@@ -1731,8 +1729,8 @@ def psi(head, speed, D):
         Polytropic head (J/kg).
     speed : pint.Quantity, float
         Impeller speed (rad/s).
-    D : pint.Quantity, float
-        Impeller diameter.
+    D : float, pint.Quantity
+        Impeller outer diameter (m).
 
     Returns
     -------
@@ -1771,8 +1769,8 @@ def speed_from_psi(D, head, psi):
 
     Parameters
     ----------
-    D : pint.Quantity, float
-        Impeller diameter.
+    D : float, pint.Quantity
+        Impeller outer diameter (m).
     head : pint.Quantity, float
         Polytropic head.
     psi : pint.Quantity, float
@@ -1792,7 +1790,22 @@ def speed_from_psi(D, head, psi):
 
 @check_units
 def phi(flow_v, speed, D):
-    """Flow coefficient."""
+    """Flow coefficient.
+
+    Parameters
+    ----------
+    flow_v : float, pint.Quantity
+        Impeller flow (m³/s).
+    speed : float, pint.Quantity
+        Impeller speed (rad/s).
+    D : float, pint.Quantity
+        Impeller outer diameter (m).
+
+    Returns
+    -------
+    phi : pint.Quantity
+        Flow coefficient (dimensionless).
+    """
     u = u_calc(D, speed)
 
     phi = flow_v * 4 / (np.pi * D**2 * u)
@@ -1810,6 +1823,17 @@ def phi3(flow_v, speed, D, b):
     ----------
     flow_v : float, pint.Quantity
         Impeller exit flow (m³/s).
+    speed : float, pint.Quantity
+        Impeller speed (rad/s).
+    D : float, pint.Quantity
+        Impeller outer diameter (m).
+    b : float, pint.Quantity
+        Impeller width at the outer blade diameter (m).
+
+    Returns
+    -------
+    phi : pint.Quantity
+        Discharge flow coefficient (dimensionless).
     """
     u = u_calc(D, speed)
 
@@ -1824,8 +1848,8 @@ def flow_from_phi(D, phi, speed):
 
     Parameters
     ----------
-    D : pint.Quantity, float
-        Impeller diameter (m).
+    D : float, pint.Quantity
+        Impeller outer diameter (m).
     phi : pint.Quantity, float
         Flow coefficient (m³/s).
     speed : pint.Quantity, float
@@ -1848,8 +1872,8 @@ def head_from_psi(D, psi, speed):
 
     Parameters
     ----------
-    D : pint.Quantity, float
-        Impeller diameter (m).
+    D : float, pint.Quantity
+        Impeller outer diameter (m).
     psi : pint.Quantity, float
         Head coefficient.
     speed : pint.Quantity, float
@@ -1948,10 +1972,10 @@ def reynolds(suc, speed, b, D):
         Suction state.
     speed : pint.Quantity, float
         Impeller speed (rad/s).
-    b : pint.Quantity, float
-        Impeller width (m).
-    D : pint.Quantity, float
-        Impeller diameter (m).
+    b : float, pint.Quantity
+        Impeller width at the outer blade diameter (m).
+    D : float, pint.Quantity
+        Impeller outer diameter (m).
 
     Returns
     -------
@@ -1974,8 +1998,8 @@ def mach(suc, speed, D):
         Suction state.
     speed : pint.Quantity, float
         Impeller speed (rad/s).
-    D : pint.Quantity, float
-        Impeller diameter (m).
+    D : float, pint.Quantity
+        Impeller outer diameter (m).
 
     Returns
     -------
