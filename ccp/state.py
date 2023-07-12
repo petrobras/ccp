@@ -666,6 +666,13 @@ class State(CP.AbstractState):
                 f"Could not define state with {args_dict} and {self.fluid}"
             ) from e
 
+    def get_coolprop_state(self):
+        """Return a CoolProp state object."""
+        EOS = self.EOS
+        if EOS is None:
+            EOS = ccp.config.EOS
+        return CP.AbstractState(EOS, self._fluid)
+
     def plot_envelope(
         self, T_units="degK", p_units="Pa", dew_point_margin=20, fig=None, **kwargs
     ):
