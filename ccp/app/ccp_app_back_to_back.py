@@ -568,6 +568,7 @@ def main():
                         options=gas_options,
                         label_visibility="collapsed",
                         index=get_index_selected_gas(f"gas_section_1_point_{i - 1}"),
+                        key=f"gas_section_1_point_{i - 1}",
                     )
 
             # build one container with 8 columns for each parameter
@@ -655,6 +656,7 @@ def main():
                         options=gas_options,
                         label_visibility="collapsed",
                         index=get_index_selected_gas(f"gas_section_2_point_{i - 1}"),
+                        key=f"gas_section_2_point_{i - 1}",
                     )
 
             # build one container with 8 columns for each parameter
