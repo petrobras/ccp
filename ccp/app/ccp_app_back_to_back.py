@@ -218,8 +218,12 @@ def main():
     with st.sidebar.expander("⚙️ Options"):
         reynolds_correction = st.checkbox("Reynolds Correction", value=True)
         casing_heat_loss = st.checkbox("Casing Heat Loss", value=True)
-        calculate_leakages = st.checkbox("Calculate Leakages", value=True)
-        seal_gas_flow = st.checkbox("Seal Gas Flow", value=True)
+        calculate_leakages = st.checkbox(
+            "Calculate Leakages", value=True, disabled=True, help="Not yet implemented"
+        )
+        seal_gas_flow = st.checkbox(
+            "Seal Gas Flow", value=True, disabled=True, help="Not yet implemented"
+        )
         variable_speed = st.checkbox("Variable Speed", value=True)
 
     # parameters with name and label
