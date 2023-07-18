@@ -854,6 +854,13 @@ def main():
 
         for section in ["section_1", "section_2"]:
             for i in range(1, number_of_test_points + 1):
+                time.sleep(0.1)
+                progress_value += 1
+                progress_bar.progress(
+                    progress_value,
+                    text=f"Calculating test point: {section} point {i}...",
+                )
+
                 kwargs = {}
                 # check if at least flow, suction pressure and suction temperature are filled
                 if (
