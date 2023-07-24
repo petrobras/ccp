@@ -13,6 +13,9 @@ from ccp.compressor import Point1Sec, StraightThrough
 from ccp.config.utilities import r_getattr
 from pathlib import Path
 
+# import everything that is common to ccp_app_straight_through and ccp_app_back_to_back
+from common import *
+
 sentry_sdk.init(
     dsn="https://8fd0e79dffa94dbb9747bf64e7e55047@o348313.ingest.sentry.io/4505046640623616",
     # Set traces_sample_rate to 1.0 to capture 100%
@@ -214,121 +217,6 @@ def main():
         calculate_leakages = st.checkbox("Calculate Leakages", value=True)
         seal_gas_flow = st.checkbox("Seal Gas Flow", value=True)
         variable_speed = st.checkbox("Variable Speed", value=True)
-
-    # parameters with name and label
-    flow_m_units = ["kg/h", "lbm/h", "kg/s", "lbm/s"]
-    pressure_units = ["bar", "psi", "Pa", "kPa", "MPa", "kgf/cm²", "mm*H2O*g0"]
-    temperature_units = ["degK", "degC", "degF", "degR"]
-    speed_units = ["rpm", "Hz"]
-    length_units = ["m", "mm", "ft", "in"]
-
-    parameters_map = {
-        "flow": {
-            "label": "Flow",
-            "units": ["m³/h", "m³/s", "kg/h", "lbm/h", "kg/s", "lbm/s"],
-            "help": "Flow can be mass flow or volumetric flow depending on the selected unit.",
-        },
-        "suction_pressure": {
-            "label": "Suction Pressure",
-            "units": pressure_units,
-        },
-        "suction_temperature": {
-            "label": "Suction Temperature",
-            "units": temperature_units,
-        },
-        "discharge_pressure": {
-            "label": "Discharge Pressure",
-            "units": pressure_units,
-        },
-        "discharge_temperature": {
-            "label": "Discharge Temperature",
-            "units": temperature_units,
-        },
-        "casing_delta_T": {
-            "label": "Casing ΔT",
-            "units": temperature_units,
-            "help": "Temperature difference between the casing and the ambient temperature.",
-        },
-        "speed": {
-            "label": "Speed",
-            "units": speed_units,
-        },
-        "balance_line_flow_m": {
-            "label": "Balance Line Flow",
-            "units": flow_m_units,
-        },
-        "seal_gas_flow_m": {
-            "label": "Seal Gas Flow",
-            "units": flow_m_units,
-        },
-        "seal_gas_temperature": {
-            "label": "Seal Gas Temperature",
-            "units": temperature_units,
-        },
-        "head": {
-            "label": "Head",
-            "units": ["kJ/kg", "J/kg", "m*g0", "ft"],
-        },
-        "eff": {
-            "label": "Efficiency",
-            "units": [""],
-        },
-        "power": {
-            "label": "Gas Power",
-            "units": ["kW", "hp", "W", "Btu/h", "MW"],
-        },
-        "b": {
-            "label": "First Impeller Width",
-            "units": ["mm", "m", "ft", "in"],
-        },
-        "D": {
-            "label": "First Impeller Diameter",
-            "units": ["mm", "m", "ft", "in"],
-        },
-        "surface_roughness": {
-            "label": "Surface Roughness",
-            "units": ["mm", "m", "ft", "in"],
-            "help": "Mean surface roughness of the gas path.",
-        },
-        "casing_area": {
-            "label": "Casing Area",
-            "units": ["m²", "mm²", "ft²", "in²"],
-        },
-        "outer_diameter_fo": {
-            "label": "Outer Diameter",
-            "units": ["mm", "m", "ft", "in"],
-            "help": "Outer diameter of orifice plate.",
-        },
-        "inner_diameter_fo": {
-            "label": "Inner Diameter",
-            "units": ["mm", "m", "ft", "in"],
-            "help": "Inner diameter of orifice plate.",
-        },
-        "upstream_pressure_fo": {
-            "label": "Upstream Pressure",
-            "units": pressure_units,
-            "help": "Upstream pressure of orifice plate.",
-        },
-        "upstream_temperature_fo": {
-            "label": "Upstream Temperature",
-            "units": temperature_units,
-            "help": "Upstream temperature of orifice plate.",
-        },
-        "pressure_drop_fo": {
-            "label": "Pressure Drop",
-            "units": pressure_units,
-            "help": "Pressure drop across orifice plate.",
-        },
-        "tappings_fo": {
-            "label": "Tappings",
-            "units": ["flange", "corner", "D D/2"],
-            "help": "Pressure tappings type.",
-        },
-        "mass_flow_fo": {
-            "label": "Mass Flow (Result)",
-            "units": ["kg/h", "lbm/h", "kg/s", "lbm/s"],
-        },
-    }
 
     # add dict to store the values for guarantee and test points
     # in the parameters_map
