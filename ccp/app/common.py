@@ -1,4 +1,7 @@
 """Module to keep everything that is common to ccp_app_straight_through and ccp_app_back_to_back."""
+import io
+import pandas as pd
+
 # parameters with name and label
 flow_m_units = ["kg/h", "kg/min", "kg/s", "lbm/h", "lbm/min", "lbm/s"]
 flow_v_units = ["m³/h", "m³/min", "m³/s"]
@@ -145,3 +148,13 @@ parameters_map = {
         "units": ["kg/h", "lbm/h", "kg/s", "lbm/s"],
     },
 }
+
+
+def to_excel(df):
+    """Function to convert pandas dataframe to excel file to be downloaded."""
+    output = io.BytesIO()
+    writer = pd.ExcelWriter(output, engine="xlsxwriter")
+    df.to_excel(writer, sheet_name="Sheet1")
+    writer.save()
+    processed_data = output.getvalue()
+    return processed_data

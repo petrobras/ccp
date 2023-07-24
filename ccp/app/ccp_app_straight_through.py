@@ -1315,6 +1315,15 @@ def main():
                     )
                 )
 
+                table_excel = to_excel(styled_df_results)
+                st.download_button(
+                    "Download Results Table",
+                    data=table_excel,
+                    file_name="results.xlsx",
+                    mime="application/vnd.ms-excel",
+                    use_container_width=True,
+                )
+
                 with st.container():
                     mach_col, reynolds_col = st.columns(2)
                     mach_col.plotly_chart(

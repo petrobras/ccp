@@ -43,10 +43,6 @@ def main():
         layout="wide",
     )
 
-    @st.experimental_memo
-    def convert_df(_df):
-        return _df.to_excel(index=False).encode("utf-8")
-
     def image_base64(im):
         with open(im, "rb") as image_file:
             encoded_string = base64.b64encode(image_file.read()).decode()
@@ -1586,12 +1582,13 @@ def main():
                             )
                         )
 
-                        table_excel = convert_df(styled_df_results)
+                        table_excel = to_excel(styled_df_results)
                         st.download_button(
                             "Download Results Table",
                             data=table_excel,
-                            file_name="results_table.xlsx",
-                            mime="application/vnd.ms-excel"
+                            file_name=f"{sec}.xlsx",
+                            mime="application/vnd.ms-excel",
+                            use_container_width=True,
                         )
 
                         with st.container():
