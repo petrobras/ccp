@@ -13,6 +13,9 @@ from ccp.compressor import PointFirstSection, PointSecondSection, BackToBack
 from ccp.config.utilities import r_getattr
 from pathlib import Path
 
+# import everything that is common to ccp_app_straight_through and ccp_app_back_to_back
+from common import *
+
 
 sentry_sdk.init(
     dsn="https://8fd0e79dffa94dbb9747bf64e7e55047@o348313.ingest.sentry.io/4505046640623616",
@@ -229,117 +232,6 @@ def main():
             "Seal Gas Flow", value=True, disabled=True, help="Not yet implemented"
         )
         variable_speed = st.checkbox("Variable Speed", value=True)
-
-    # parameters with name and label
-    flow_m_units = ["kg/h", "lbm/h", "kg/s", "lbm/s"]
-    pressure_units = ["bar", "psi", "Pa", "kPa", "MPa"]
-    temperature_units = ["degK", "degC", "degF", "degR"]
-    speed_units = ["rpm", "Hz"]
-    length_units = ["m", "mm", "ft", "in"]
-
-    parameters_map = {
-        "flow": {
-            "label": "Flow",
-            "units": ["m³/h", "m³/s", "kg/h", "lbm/h", "kg/s", "lbm/s"],
-            "help": "Flow can be mass flow or volumetric flow depending on the selected unit.",
-        },
-        "suction_pressure": {
-            "label": "Suction Pressure",
-            "units": pressure_units,
-        },
-        "suction_temperature": {
-            "label": "Suction Temperature",
-            "units": temperature_units,
-        },
-        "discharge_pressure": {
-            "label": "Discharge Pressure",
-            "units": pressure_units,
-        },
-        "discharge_temperature": {
-            "label": "Discharge Temperature",
-            "units": temperature_units,
-        },
-        "casing_delta_T": {
-            "label": "Casing ΔT",
-            "units": temperature_units,
-            "help": "Temperature difference between the casing and the ambient temperature.",
-        },
-        "speed": {
-            "label": "Speed",
-            "units": speed_units,
-        },
-        "balance_line_flow_m": {
-            "label": "Balance Line Flow",
-            "units": flow_m_units,
-        },
-        "end_seal_upstream_pressure": {
-            "label": "Pressure Upstream End Seal",
-            "units": pressure_units,
-            "help": "Second section suction pressure.",
-        },
-        "end_seal_upstream_temperature": {
-            "label": "Temperature Upstream End Seal",
-            "units": temperature_units,
-            "help": "Second section suction temperature.",
-        },
-        "div_wall_flow_m": {
-            "label": "Division Wall Flow",
-            "units": flow_m_units,
-            "help": "Flow through the division wall if measured. Otherwise it is calculated from the First Section Discharge Flow.",
-        },
-        "div_wall_upstream_pressure": {
-            "label": "Pressure Upstream Division Wall",
-            "units": pressure_units,
-            "help": "Second section discharge pressure.",
-        },
-        "div_wall_upstream_temperature": {
-            "label": "Temperature Upstream Division Wall",
-            "units": temperature_units,
-            "help": "Second section discharge temperature.",
-        },
-        "first_section_discharge_flow_m": {
-            "label": "First Section Discharge Flow",
-            "units": flow_m_units,
-            "help": "If the Division Wall Flow is not measured, we use this value to calculate it.",
-        },
-        "seal_gas_flow_m": {
-            "label": "Seal Gas Flow",
-            "units": flow_m_units,
-        },
-        "seal_gas_temperature": {
-            "label": "Seal Gas Temperature",
-            "units": temperature_units,
-        },
-        "head": {
-            "label": "Head",
-            "units": ["kJ/kg", "J/kg", "m*g0", "ft"],
-        },
-        "eff": {
-            "label": "Efficiency",
-            "units": [""],
-        },
-        "power": {
-            "label": "Gas Power",
-            "units": ["kW", "hp", "W", "Btu/h", "MW"],
-        },
-        "b": {
-            "label": "First Impeller Width",
-            "units": ["mm", "m", "ft", "in"],
-        },
-        "D": {
-            "label": "First Impeller Diameter",
-            "units": ["mm", "m", "ft", "in"],
-        },
-        "surface_roughness": {
-            "label": "Surface Roughness",
-            "units": ["mm", "m", "ft", "in"],
-            "help": "Mean surface roughness of the gas path.",
-        },
-        "casing_area": {
-            "label": "Casing Area",
-            "units": ["m²", "mm²", "ft²", "in²"],
-        },
-    }
 
     # add dict to each section to store the values for guarantee and test points
     # in the parameters_map
