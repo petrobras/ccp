@@ -173,7 +173,7 @@ def main():
 
     with st.expander("Gas Selection", expanded=st.session_state.expander_state):
         gas_compositions_table = {}
-        gas_columns = st.columns(5)
+        gas_columns = st.columns(6)
         for i, gas_column in enumerate(gas_columns):
             gas_compositions_table[f"gas_{i}"] = {}
 
