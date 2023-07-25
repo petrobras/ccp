@@ -73,6 +73,8 @@ def main():
             st.session_state.session_name = ""
         if "straight_through" not in st.session_state:
             st.session_state.straight_through = ""
+        if "expander_state" not in st.session_state:
+            st.session_state.expander_state = False
         for curve in ["head", "power", "eff", "discharge_pressure"]:
             if f"fig_{curve}" not in st.session_state:
                 st.session_state[f"fig_{curve}"] = ""
@@ -120,6 +122,7 @@ def main():
                     del session_state_data_copy[key]
             st.session_state.update(session_state_data_copy)
             st.session_state.session_name = file.name.replace(".ccp", "")
+            st.session_state.expander_state = True
             st.experimental_rerun()
 
         if save_button:
@@ -163,7 +166,7 @@ def main():
     fluid_list = sorted(fluid_list)
     fluid_list.insert(0, "")
 
-    with st.expander("Gas Selection"):
+    with st.expander("Gas Selection", expanded=st.session_state.expander_state):
         gas_compositions_table = {}
         gas_columns = st.columns(5)
         for i, gas_column in enumerate(gas_columns):
@@ -245,7 +248,7 @@ def main():
                     "value": None,
                 }
 
-    with st.expander("Data Sheet"):
+    with st.expander("Data Sheet", expanded=st.session_state.expander_state):
         # build container with 8 columns
         points_title = st.container()
         points_title_columns = points_title.columns(3, gap="small")
@@ -319,7 +322,7 @@ def main():
                 label_visibility="collapsed",
             )
 
-    with st.expander("Curves"):
+    with st.expander("Curves", expanded=st.session_state.expander_state):
         # add upload button for curve
         # check if fig_dict was created when loading state. Otherwise, create it
         plot_limits = {}
@@ -387,7 +390,7 @@ def main():
     number_of_test_points = 6
     number_of_columns = number_of_test_points + 2
 
-    with st.expander("Test Data"):
+    with st.expander("Test Data", expanded=st.session_state.expander_state):
         # add title
         number_of_columns = number_of_test_points + 2
         # build container with 8 columns
@@ -460,7 +463,7 @@ def main():
                         label_visibility="collapsed",
                     )
 
-    with st.expander("Flowrate Calculation"):
+    with st.expander("Flowrate Calculation", expanded=st.session_state.expander_state):
         # add title
         number_of_columns = number_of_test_points + 2
         # build container with 8 columns

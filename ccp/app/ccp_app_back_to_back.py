@@ -73,6 +73,8 @@ def main():
             st.session_state.session_name = ""
         if "back_to_back" not in st.session_state:
             st.session_state.back_to_back = ""
+        if "expander_state" not in st.session_state:
+            st.session_state.expander_state = False
         for sec in ["sec1", "sec2"]:
             for curve in ["head", "power", "eff", "discharge_pressure"]:
                 if f"fig_{curve}_{sec}" not in st.session_state:
@@ -120,6 +122,7 @@ def main():
                     del session_state_data_copy[key]
             st.session_state.update(session_state_data_copy)
             st.session_state.session_name = file.name.replace(".ccp", "")
+            st.session_state.expander_state = True
             st.experimental_rerun()
 
         if save_button:
@@ -167,7 +170,7 @@ def main():
     fluid_list = sorted(fluid_list)
     fluid_list.insert(0, "")
 
-    with st.expander("Gas Selection"):
+    with st.expander("Gas Selection", expanded=st.session_state.expander_state):
         gas_compositions_table = {}
         gas_columns = st.columns(5)
         for i, gas_column in enumerate(gas_columns):
@@ -246,7 +249,7 @@ def main():
                     "value": None,
                 }
 
-    with st.expander("Data Sheet"):
+    with st.expander("Data Sheet", expanded=st.session_state.expander_state):
         # build container with 8 columns
         points_title = st.container()
         points_title_columns = points_title.columns(4, gap="small")
@@ -342,7 +345,7 @@ def main():
                 parameters_map[parameter]["section_2"]["point_guarantee"]
             )
 
-    with st.expander("Curves"):
+    with st.expander("Curves", expanded=st.session_state.expander_state):
         # add upload button for each section curve
         # check if fig_dict was created when loading state. Otherwise, create it
         plot_limits = {}
@@ -430,7 +433,7 @@ def main():
     number_of_test_points = 6
     number_of_columns = number_of_test_points + 2
 
-    with st.expander("Test Data"):
+    with st.expander("Test Data", expanded=st.session_state.expander_state):
         tab_section_1, tab_section_2 = st.tabs(["First Section", "Second Section"])
         # build container with 8 columns
         with tab_section_1:
