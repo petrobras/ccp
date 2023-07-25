@@ -11,6 +11,7 @@ import sentry_sdk
 import logging
 from ccp.compressor import Point1Sec, StraightThrough
 from ccp.config.utilities import r_getattr
+from ccp.config.units import ureg
 from pathlib import Path
 
 # import everything that is common to ccp_app_straight_through and ccp_app_back_to_back
@@ -220,6 +221,27 @@ def main():
         calculate_leakages = st.checkbox("Calculate Leakages", value=True)
         seal_gas_flow = st.checkbox("Seal Gas Flow", value=True)
         variable_speed = st.checkbox("Variable Speed", value=True)
+                # add text input for the ambient pressure
+        st.text("Ambient Pressure")
+        ambient_pressure_magnitude_col, ambient_pressure_unit_col = st.columns(2)
+        with ambient_pressure_magnitude_col:
+            ambient_pressure_magnitude = st.text_input(
+                "Ambient Pressure",
+                value=1.01325,
+                key="ambient_pressure_magnitude",
+                label_visibility="collapsed",
+            )
+        with ambient_pressure_unit_col:
+            ambient_pressure_unit = st.selectbox(
+                "Unit",
+                options=pressure_units,
+                index=pressure_units.index("bar"),
+                key="ambient_pressure_unit",
+                label_visibility="collapsed",
+            )
+        ambient_pressure = Q_(float(ambient_pressure_magnitude), ambient_pressure_unit).to("bar")
+        ureg.define(f"barg = 1 * bar; offset: {ambient_pressure.magnitude}")
+
 
     # add dict to store the values for guarantee and test points
     # in the parameters_map
