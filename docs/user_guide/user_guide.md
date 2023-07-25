@@ -5,4 +5,5 @@
 tutorial
 engauge
 polytropic_methods
+factory_test
 ```
