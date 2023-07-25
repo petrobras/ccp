@@ -10,3 +10,4 @@ tqdm
 ctREFPROP
 sentry-sdk
 streamlit>=1.21.0
+xlsxwriter
