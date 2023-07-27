@@ -374,7 +374,7 @@ def main():
 
         for curve in ["head", "eff", "discharge_pressure", "power"]:
             st.markdown(f"### {parameters_map[curve]['label']}")
-            parameter_container = st.container()
+            parameter_container = st.empty()
             first_section_col, second_section_col = parameter_container.columns(
                 2, gap="small"
             )
