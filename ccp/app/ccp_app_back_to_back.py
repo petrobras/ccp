@@ -250,7 +250,9 @@ def main():
                 key="ambient_pressure_unit",
                 label_visibility="collapsed",
             )
-        ambient_pressure = Q_(float(ambient_pressure_magnitude), ambient_pressure_unit).to("bar")
+        ambient_pressure = Q_(
+            float(ambient_pressure_magnitude), ambient_pressure_unit
+        ).to("bar")
         ureg.define(f"barg = 1 * bar; offset: {ambient_pressure.magnitude}")
 
     # add dict to each section to store the values for guarantee and test points
@@ -1829,6 +1831,23 @@ def main():
                             power_col.plotly_chart(
                                 plots_dict["power"], use_container_width=True
                             )
+
+    # this part will only show if we start streamlit with --client.toolbarMode developer
+    if st.config.get_option("client.toolbarMode") == "developer":
+        with st.expander("Session State"):
+            session_state_copy = {}
+            for key, value in st.session_state.items():
+                session_state_copy[key] = value
+
+            # remove session state keys that start with fig_
+            for key in list(session_state_copy.keys()):
+                if key.startswith("fig_"):
+                    del session_state_copy[key]
+
+            # sort
+            session_state_copy = dict(sorted(session_state_copy.items()))
+
+            st.write(session_state_copy)
 
 
 if __name__ == "__main__":
