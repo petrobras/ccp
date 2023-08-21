@@ -376,7 +376,7 @@ def main():
 
         for curve in ["head", "eff", "discharge_pressure", "power"]:
             st.markdown(f"### {parameters_map[curve]['label']}")
-            parameter_container = st.container()
+            parameter_container = st.empty()
             first_section_col, second_section_col = parameter_container.columns(
                 2, gap="small"
             )
@@ -1831,6 +1831,23 @@ def main():
                             power_col.plotly_chart(
                                 plots_dict["power"], use_container_width=True
                             )
+
+    # this part will only show if we start streamlit with --client.toolbarMode developer
+    if st.config.get_option("client.toolbarMode") == "developer":
+        with st.expander("Session State"):
+            session_state_copy = {}
+            for key, value in st.session_state.items():
+                session_state_copy[key] = value
+
+            # remove session state keys that start with fig_
+            for key in list(session_state_copy.keys()):
+                if key.startswith("fig_"):
+                    del session_state_copy[key]
+
+            # sort
+            session_state_copy = dict(sorted(session_state_copy.items()))
+
+            st.write(session_state_copy)
 
 
 if __name__ == "__main__":
