@@ -443,6 +443,22 @@ class Point:
         self.disch = State(p=disch_p, T=disch_T, fluid=suc.fluid)
         self._calc_from_disch_flow_m_speed_suc()
 
+    def _calc_from_disch_T_flow_v_head_speed_suc(self):
+        suc = self.suc
+        disch_T = self.disch_T
+        head = self.head
+
+        self.disch = disch_from_suc_disch_T_head(suc, disch_T, head)
+        self._calc_from_disch_flow_v_speed_suc()
+
+    def _calc_from_disch_T_flow_m_head_speed_suc(self):
+        suc = self.suc
+        disch_T = self.disch_T
+        head = self.head
+
+        self.disch = disch_from_suc_disch_T_head(suc, disch_T, head)
+        self._calc_from_disch_flow_m_speed_suc()
+
     @classmethod
     @check_units
     def convert_from(
@@ -1958,6 +1974,41 @@ def disch_from_suc_disch_p_eff(suc, disch_p, eff, polytropic_method=None):
         return (new_eff - eff).magnitude
 
     newton(update_state, disch.T().magnitude)
+
+    return disch
+
+
+def disch_from_suc_disch_T_head(suc, disch_T, head, polytropic_method=None):
+    """Calculate discharge state from suction, discharge temperature and head.
+
+    Parameters
+    ----------
+    suc : ccp.State
+        Suction state.
+    disch_T : pint.Quantity, float
+        Discharge temperature (degK).
+    head : pint.Quantity, float
+        Polytropic head (J/kg).
+
+    Returns
+    -------
+    disch : ccp.State
+        Discharge state.
+    """
+    # consider first an isentropic compression
+    if polytropic_method is None:
+        polytropic_method = ccp.config.POLYTROPIC_METHOD
+
+    disch = ccp.State(T=disch_T, s=suc.s(), fluid=suc.fluid)
+    head_calc_func = globals()[f"head_pol_{polytropic_method}"]
+
+    def update_state(x):
+        disch.update(T=disch_T, p=x)
+        new_head = head_calc_func(suc, disch)
+
+        return (new_head - head).magnitude
+
+    newton(update_state, disch.p().magnitude)
 
     return disch
 
