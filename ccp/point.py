@@ -215,9 +215,11 @@ class Point:
                 .replace(">", "")
                 .replace("<", "")
                 .replace("Quantity", "Q_")
-                .replace('State', 'ccp.State')
+                .replace("State", "ccp.State")
             )
-            raise ValueError(f"Could not calculate point with ccp.Point(**{kwargs_repr}).")
+            raise ValueError(
+                f"Could not calculate point with ccp.Point(**{kwargs_repr})."
+            )
 
         self.reynolds = reynolds(self.suc, self.speed, self.b, self.D)
         self.mach = mach(self.suc, self.speed, self.D)
@@ -2015,7 +2017,7 @@ def disch_from_suc_disch_T_head(suc, disch_T, head, polytropic_method=None):
 
         return (new_head - head).magnitude
 
-    newton(update_state, disch.p().magnitude)
+    newton(update_state, disch.p().magnitude, tol=1e-7)
 
     return disch
 
