@@ -32,9 +32,7 @@ def generate_label(caller):
 
 
 def state():
-    State(
-        rho=0.9280595769591103, p=Q_(1, "bar"), fluid={"Methane": 0.5, "Ethane": 0.5}
-    )
+    State(rho=0.9280595769591103, p=Q_(1, "bar"), fluid={"Methane": 0.5, "Ethane": 0.5})
 
 
 def impeller():

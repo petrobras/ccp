@@ -221,7 +221,7 @@ def main():
         calculate_leakages = st.checkbox("Calculate Leakages", value=True)
         seal_gas_flow = st.checkbox("Seal Gas Flow", value=True)
         variable_speed = st.checkbox("Variable Speed", value=True)
-                # add text input for the ambient pressure
+        # add text input for the ambient pressure
         st.text("Ambient Pressure")
         ambient_pressure_magnitude_col, ambient_pressure_unit_col = st.columns(2)
         with ambient_pressure_magnitude_col:
@@ -239,9 +239,10 @@ def main():
                 key="ambient_pressure_unit",
                 label_visibility="collapsed",
             )
-        ambient_pressure = Q_(float(ambient_pressure_magnitude), ambient_pressure_unit).to("bar")
+        ambient_pressure = Q_(
+            float(ambient_pressure_magnitude), ambient_pressure_unit
+        ).to("bar")
         ureg.define(f"barg = 1 * bar; offset: {ambient_pressure.magnitude}")
-
 
     # add dict to store the values for guarantee and test points
     # in the parameters_map
@@ -595,7 +596,6 @@ def main():
                     st.session_state[f"mass_flow_fo_{i-1}"] = ""
                     continue
                 else:
-
                     kwargs["state"] = ccp.State(
                         p=Q_(
                             float(st.session_state[f"upstream_pressure_fo_{i-1}"]),

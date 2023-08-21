@@ -62,7 +62,6 @@ def fo3():
 
 
 def test_flow_orifice(fo1, fo2, fo3):
-
     assert_allclose(fo1.qm.to("kg/h").m, 36408.6871553386)
     assert_allclose(fo2.qm.to("kg/h").m, 36408.6871553386)
     assert_allclose(fo3.qm.to("kg/h").m, 36408.6871553386)

@@ -250,7 +250,9 @@ def main():
                 key="ambient_pressure_unit",
                 label_visibility="collapsed",
             )
-        ambient_pressure = Q_(float(ambient_pressure_magnitude), ambient_pressure_unit).to("bar")
+        ambient_pressure = Q_(
+            float(ambient_pressure_magnitude), ambient_pressure_unit
+        ).to("bar")
         ureg.define(f"barg = 1 * bar; offset: {ambient_pressure.magnitude}")
 
     # add dict to each section to store the values for guarantee and test points

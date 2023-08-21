@@ -66,7 +66,6 @@ class FlowOrifice:
             self.qm = qm
 
     def calc_flow(self):
-
         D = self.D
         d = self.d
         delta_p = self.delta_p
@@ -96,7 +95,6 @@ class FlowOrifice:
         M2 = 2 * L2 / (1 - beta)
 
         def update_Reyn(Reyn):
-
             global qm
 
             Reyn = Q_(Reyn, "dimensionless")
