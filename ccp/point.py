@@ -209,8 +209,15 @@ class Point:
 
         try:
             getattr(self, "_calc_from_" + kwargs_str)()
-        except ValueError as e:
-            raise ValueError(f"Could not calculate point with {kwargs_dict}.")
+        except (ValueError, RuntimeError) as e:
+            kwargs_repr = (
+                str(kwargs_dict)
+                .replace(">", "")
+                .replace("<", "")
+                .replace("Quantity", "Q_")
+                .replace('State', 'ccp.State')
+            )
+            raise ValueError(f"Could not calculate point with ccp.Point(**{kwargs_repr}).")
 
         self.reynolds = reynolds(self.suc, self.speed, self.b, self.D)
         self.mach = mach(self.suc, self.speed, self.D)
