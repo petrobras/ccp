@@ -1031,6 +1031,13 @@ class Impeller:
                     param_path
                 )
 
+        if len(curves_path_dict) != 2:
+            raise ValueError(
+                f"There should be 2 curves, currently we have: \n"
+                f" {[curve.removesuffix('_curves') for curve in curves_path_dict.keys()]}\n"
+                "Please check the file names and path and try again."
+            )
+
         return cls.load_from_dict(
             suc=suc,
             b=b,
