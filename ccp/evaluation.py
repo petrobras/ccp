@@ -15,7 +15,6 @@ class Evaluation:
         data,
         operation_fluid=None,
         window=3,
-        data_type=None,
         data_units=None,
         temperature_fluctuation=0.5,
         pressure_fluctuation=2,
@@ -40,9 +39,6 @@ class Evaluation:
             Window size for rolling calculation, meaning how many rolls will be used
             to calculate the fluctuation.
             The default is 3.
-        data_type : dict
-            Dictionary with data types for each column.
-            Values for data_type can be: "pressure", "temperature", "speed".
         data_units : dict
             Dictionary with data units for each column.
         temperature_fluctuation : float, optional
@@ -64,7 +60,13 @@ class Evaluation:
         self.data = data
         self.operation_fluid = operation_fluid
         self.window = window
-        self.data_type = data_type
+        self.data_type = {
+            "ps": "pressure",
+            "Ts": "temperature",
+            "pd": "pressure",
+            "Td": "temperature",
+            "speed": "speed",
+        }
         self.data_units = data_units
         self.temperature_fluctuation = temperature_fluctuation
         self.pressure_fluctuation = pressure_fluctuation
@@ -74,7 +76,7 @@ class Evaluation:
         df = self.data.copy()
         df = filter_data(
             df,
-            data_type=data_type,
+            data_type=self.data_type,
             window=window,
             temperature_fluctuation=temperature_fluctuation,
             pressure_fluctuation=pressure_fluctuation,
@@ -82,22 +84,29 @@ class Evaluation:
         )
 
         # create density column
+        df["v_s"] = 0
         for i, row in df.iterrows():
             # create state
             state = State(
-                p=Q_(row.ps, data_units["pressure"]),
-                T=Q_(row.Ts, data_units["temperature"]),
+                p=Q_(row.ps, data_units["ps"]),
+                T=Q_(row.Ts, data_units["Ts"]),
                 fluid=operation_fluid,
             )
-            df["v_s"] = state.v()
+            df.loc[i, "v_s"] = state.v().m
 
         # check if flow_v or flow_m is in the DataFrame
         if "flow_v" in df.columns:
             # create flow_m column
-            df["flow_m"] = df["flow_v"] * df["v_s"]
+            df["flow_m"] = (
+                Q_(df["flow_v"].array, self.data_units["flow_v"])
+                * Q_(df["v_s"].array, "m³/kg")
+            ).m
         elif "flow_m" in df.columns:
             # create flow_v column
-            df["flow_v"] = df["flow_m"] / df["v_s"]
+            df["flow_v"] = (
+                Q_(df["flow_m"].array, self.data_units["flow_m"])
+                / Q_(df["v_s"].array, "m³/kg")
+            ).m
         else:
             raise ValueError("Flow rate not found in the DataFrame.")
 
@@ -108,8 +117,8 @@ class Evaluation:
         imp = self.impellers[0]
         mean = df.mean()
         suc_new = State(
-            p=Q_(mean.ps, data_units["pressure"]),
-            T=Q_(mean.Ts, data_units["temperature"]),
+            p=Q_(mean.ps, data_units["ps"]),
+            T=Q_(mean.Ts, data_units["Ts"]),
             fluid=operation_fluid,
         )
         imp_new = Impeller.convert_from(imp, suc=suc_new, speed="same")
@@ -125,15 +134,15 @@ class Evaluation:
             # calculate point
             arg_dict = {
                 "flow_m": row.flow_m,
-                "speed": Q_(row.speed, "rpm"),
+                "speed": Q_(row.speed, self.data_units["speed"]),
                 "suc": State(
-                    p=Q_(row.ps, "bar"),
-                    T=Q_(row.Ts, "degC"),
+                    p=Q_(row.ps, self.data_units["ps"]),
+                    T=Q_(row.Ts, self.data_units["Ts"]),
                     fluid=operation_fluid,
                 ),
                 "disch": State(
-                    p=Q_(row.pd, "bar"),
-                    T=Q_(row.Td, "degC"),
+                    p=Q_(row.pd, self.data_units["pd"]),
+                    T=Q_(row.Td, self.data_units["Td"]),
                     fluid=operation_fluid,
                 ),
                 "imp_new": imp_new,
@@ -187,6 +196,8 @@ class Evaluation:
             # calculate seconds from i sample to start. Remember that i here is the index which is datetime
             sample_time = i - df.index[0]
             df.loc[i, "timescale"] = sample_time.seconds / total_time.seconds
+
+        self.df = df
 
 
 def create_points_parallel(x):
