@@ -36,7 +36,7 @@ class State(CP.AbstractState):
     rho : float, pint.Quantity
         Specific mass
     fluid : dict
-        Dictionary with constituent and composition.
+        Dictionary with constituent and composition (mole fraction).
         (e.g.: fluid={'Oxygen': 0.2096, 'Nitrogen': 0.7812, 'Argon': 0.0092})
     EOS : str, optional
         String with REFPROP, HEOS, PR or SRK.
