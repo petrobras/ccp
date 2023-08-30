@@ -14,6 +14,8 @@ class FlowOrifice:
         D=None,
         d=None,
         tappings="flange",
+        flow_v=None,
+        flow_m=None,
         qm=None,
     ):
         """Flow orifice.
@@ -60,10 +62,15 @@ class FlowOrifice:
         else:
             raise ValueError('tappings must be "corner", "D D/2" or "flange"')
 
-        if qm is None:
-            self.qm = getattr(self, "calc_flow")()
+        if flow_m is None and flow_v is None and qm is None:
+            self.flow_m = getattr(self, "calc_flow")()
+            # keep qm as attribute for backward compatibility
+            self.qm = self.flow_m
+            self.flow_v = self.flow_m * state.v()
         else:
+            self.flow_m = flow_m
             self.qm = qm
+            self.flow_v = flow_v
 
     def calc_flow(self):
         D = self.D
@@ -95,8 +102,6 @@ class FlowOrifice:
         M2 = 2 * L2 / (1 - beta)
 
         def update_Reyn(Reyn):
-            global qm
-
             Reyn = Q_(Reyn, "dimensionless")
             # calc C
             C = (
@@ -116,7 +121,7 @@ class FlowOrifice:
             if D < Q_(71.12, "mm"):
                 C += 0.011 * (0.75 - beta) * (2.8 - D / Q_(25.4, "mm"))
 
-            qm = (
+            self.flow_m= (
                 C
                 / (np.sqrt(1 - beta**4))
                 * e
@@ -125,10 +130,10 @@ class FlowOrifice:
                 * np.sqrt(2 * delta_p * rho)
             )
 
-            Reyn_qm = (4 * qm / (mu * np.pi * D)).to("dimensionless").magnitude
+            Reyn_qm = (4 * self.flow_m / (mu * np.pi * D)).to("dimensionless").magnitude
 
             return abs(Reyn_qm - Reyn.magnitude)
 
         newton(update_Reyn, 1e8, tol=1e-5)
 
-        return qm.to("kg/s")
+        return self.flow_m.to("kg/s")
