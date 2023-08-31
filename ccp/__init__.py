@@ -139,6 +139,7 @@ from .curve import Curve
 from .impeller import Impeller, impeller_example
 from .fo import FlowOrifice
 from .similarity import check_similarity
+from .evaluation import Evaluation
 
 __all__ = [
     "State",
@@ -149,4 +150,5 @@ __all__ = [
     "fluid_list",
     "check_similarity",
     "impeller_example",
+    "Evaluation",
 ]
