@@ -481,6 +481,18 @@ class Point:
     ):
         """Convert point from an original point.
 
+        The procedure to convert a point considering that the volume ratio will be the same,
+        follows the following steps:
+        1. Assume that eff_converted = eff_original and psi_converted = psi_original
+        2. Assume that volume ratio will be the same to keep similarity
+        3. Calculate discharge volume based on suction state and volume ratio
+        4. Calculate discharge state using newton method to find the discharge pressure.
+        Criterion for convergence is the polytropic efficiency.
+        5. Calculate head based on the new discharge state
+        6. Calculate speed based on head and psi
+
+        This procedure is followed whe we have find="speed".
+
         Parameters
         ----------
         original_point : ccp.Point
