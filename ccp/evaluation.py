@@ -1,11 +1,15 @@
 """Module for performance evaluation based on historical data."""
 import multiprocessing
+import zipfile
+import toml
+import pandas as pd
 from .data_io import filter_data
 from .state import State
 from .point import Point
 from .impeller import Impeller
 from . import Q_
 from sklearn.cluster import KMeans
+from tqdm.auto import tqdm
 
 
 class Evaluation:
@@ -146,7 +150,9 @@ class Evaluation:
                 T=Q_(cluster_series.Ts_center, data_units["Ts"]),
                 fluid=self.operation_fluid,
             )
-            imp_new = Impeller.convert_from(self.impellers[0], suc=suc_new, speed='same')
+            imp_new = Impeller.convert_from(
+                self.impellers[0], suc=suc_new, speed="same"
+            )
             self.impellers_new.append(imp_new)
 
         # create args list for parallel processing
@@ -170,7 +176,7 @@ class Evaluation:
                     T=Q_(row.Td, self.data_units["Td"]),
                     fluid=operation_fluid,
                 ),
-                "imp_new": self.impellers_new[int(row.cluster)]
+                "imp_new": self.impellers_new[int(row.cluster)],
             }
 
             args_list.append(arg_dict)
@@ -223,6 +229,64 @@ class Evaluation:
             df.loc[i, "timescale"] = sample_time.seconds / total_time.seconds
 
         self.df = df
+
+    def save(self, path):
+        # TODO add run method to class so that loading won't trigger run
+        # create zip file and save dataframe as parquet and impellers
+        with zipfile.ZipFile(path, "w") as zip_file:
+            zip_file.writestr("df.parquet", self.df.to_parquet())
+            for i, imp in enumerate(self.impellers):
+                zip_file.writestr(f"imp_{i}.toml", toml.dumps(imp._dict_to_save()))
+            for i, imp in enumerate(self.impellers_new):
+                zip_file.writestr(f"imp_new_{i}.toml", toml.dumps(imp._dict_to_save()))
+            # create dict with arguments and save to toml
+            args_dict = {
+                "operation_fluid": self.operation_fluid,
+                "data_units": self.data_units,
+                "window": self.window,
+                "temperature_fluctuation": self.temperature_fluctuation,
+                "pressure_fluctuation": self.pressure_fluctuation,
+                "speed_fluctuation": self.speed_fluctuation,
+            }
+            zip_file.writestr("args.toml", toml.dumps(args_dict))
+
+    @classmethod
+    def load(cls, path):
+        # TODO test save and load
+        with zipfile.ZipFile(path, "r") as zip_file:
+            # load args
+            args_dict = toml.loads(zip_file.read("args.toml"))
+            # load dataframe
+            df = pd.read_parquet(zip_file.open("df.parquet"))
+            # load impellers
+            impellers = []
+            for i in range(len(zip_file.filelist)):
+                if zip_file.filelist[i].filename.startswith("imp_"):
+                    impellers.append(
+                        Impeller._load_from_dict(
+                            toml.loads(zip_file.read(zip_file.filelist[i].filename))
+                        )
+                    )
+            # load impellers_new
+            impellers_new = []
+            for i in range(len(zip_file.filelist)):
+                if zip_file.filelist[i].filename.startswith("imp_new_"):
+                    impellers_new.append(
+                        Impeller._load_from_dict(
+                            toml.loads(zip_file.read(zip_file.filelist[i].filename))
+                        )
+                    )
+            evaluation = cls(
+                df=df,
+                impellers=impellers,
+                operation_fluid=args_dict["operation_fluid"],
+                data_units=args_dict["data_units"],
+                window=args_dict["window"],
+                temperature_fluctuation=args_dict["temperature_fluctuation"],
+                pressure_fluctuation=args_dict["pressure_fluctuation"],
+                speed_fluctuation=args_dict["speed_fluctuation"],
+            )
+            evaluation.impellers_new = impellers_new
 
 
 def create_points_parallel(x):
