@@ -5,6 +5,7 @@ from .state import State
 from .point import Point
 from .impeller import Impeller
 from . import Q_
+from sklearn.cluster import KMeans
 
 
 class Evaluation:
@@ -85,6 +86,7 @@ class Evaluation:
 
         # create density column
         df["v_s"] = 0
+        df["speed_sound"] = 0
         for i, row in df.iterrows():
             # create state
             state = State(
@@ -93,6 +95,7 @@ class Evaluation:
                 fluid=operation_fluid,
             )
             df.loc[i, "v_s"] = state.v().m
+            df.loc[i, "speed_sound"] = state.speed_sound().m
 
         # check if flow_v or flow_m is in the DataFrame
         if "flow_v" in df.columns:
@@ -110,19 +113,41 @@ class Evaluation:
         else:
             raise ValueError("Flow rate not found in the DataFrame.")
 
-        # convert impeller considering mean data
-        # for now use only one impeller
-        # TODO create clusters based on mach and vs/vd and select best impeller for each cluster
-        # TODO convert impeller for each cluster
-        imp = self.impellers[0]
-        mean = df.mean()
-        suc_new = State(
-            p=Q_(mean.ps, data_units["ps"]),
-            T=Q_(mean.Ts, data_units["Ts"]),
-            fluid=operation_fluid,
-        )
-        imp_new = Impeller.convert_from(imp, suc=suc_new, speed="same")
-        self.impellers_new = [imp_new]
+        # create clusters based on speed_sound, ps and Ts
+        data = df[["speed_sound", "ps", "Ts"]]
+        # normalize
+        data_mean = data.mean()
+        data_std = data.std()
+        data_norm = (data - data_mean) / data_std
+
+        # Using sklearn
+        kmeans = KMeans(n_clusters=5)
+        kmeans.fit(data_norm)
+
+        # Format results as a DataFrame
+        df["cluster"] = kmeans.labels_
+        for i in range(kmeans.n_clusters):
+            df.loc[df["cluster"] == i, "speed_sound_center"] = (
+                kmeans.cluster_centers_[i][0] * data_std["speed_sound"]
+            ) + data_mean["speed_sound"]
+            df.loc[df["cluster"] == i, "ps_center"] = (
+                kmeans.cluster_centers_[i][1] * data_std["ps"]
+            ) + data_mean["ps"]
+            df.loc[df["cluster"] == i, "Ts_center"] = (
+                kmeans.cluster_centers_[i][0] * data_std["Ts"]
+            ) + data_mean["Ts"]
+
+        self.impellers_new = []
+
+        for i in range(kmeans.n_clusters):
+            cluster_series = df[df["cluster"] == 0].iloc[0]
+            suc_new = State(
+                p=Q_(cluster_series.ps_center, data_units["ps"]),
+                T=Q_(cluster_series.Ts_center, data_units["Ts"]),
+                fluid=self.operation_fluid,
+            )
+            imp_new = Impeller.convert_from(self.impellers[0], suc=suc_new, speed='same')
+            self.impellers_new.append(imp_new)
 
         # create args list for parallel processing
         # loop
@@ -145,7 +170,7 @@ class Evaluation:
                     T=Q_(row.Td, self.data_units["Td"]),
                     fluid=operation_fluid,
                 ),
-                "imp_new": imp_new,
+                "imp_new": self.impellers_new[int(row.cluster)]
             }
 
             args_list.append(arg_dict)
