@@ -243,7 +243,6 @@ class Evaluation:
         self.df = df
 
     def save(self, path):
-        # TODO add run method to class so that loading won't trigger run
         # create zip file and save dataframe as parquet and impellers
         with zipfile.ZipFile(path, "w") as zip_file:
             zip_file.writestr("data.parquet", self.data.to_parquet())
@@ -266,7 +265,6 @@ class Evaluation:
 
     @classmethod
     def load(cls, path):
-        # TODO test save and load
         with zipfile.ZipFile(path, "r") as zip_file:
             # load args
             args_dict = toml.loads(zip_file.read("args.toml"))
