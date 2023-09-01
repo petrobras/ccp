@@ -1,11 +1,15 @@
 """Module for performance evaluation based on historical data."""
 import multiprocessing
+import zipfile
+import toml
+import pandas as pd
 from .data_io import filter_data
 from .state import State
 from .point import Point
 from .impeller import Impeller
 from . import Q_
 from sklearn.cluster import KMeans
+from tqdm.auto import tqdm
 
 
 class Evaluation:
@@ -21,6 +25,8 @@ class Evaluation:
         pressure_fluctuation=2,
         speed_fluctuation=0.5,
         impellers=None,
+        verbose=False,
+        **kwargs,
     ):
         """Initialize the evaluation class.
 
@@ -53,6 +59,8 @@ class Evaluation:
             The default is 0.5.
         impellers : list
             List of impellers with design curves.
+        verbose : bool, optional
+            If True, shows progress bar.
 
         Returns
         -------
@@ -74,14 +82,22 @@ class Evaluation:
         self.speed_fluctuation = speed_fluctuation
         self.impellers = impellers
 
+        # check if we are loading from a zip file where the impellers are available
+        if kwargs.get("impellers_new") is None:
+            self._run()
+        else:
+            self.impellers_new = kwargs.get("impellers_new")
+            self.df = kwargs.get("df")
+
+    def _run(self):
         df = self.data.copy()
         df = filter_data(
             df,
             data_type=self.data_type,
-            window=window,
-            temperature_fluctuation=temperature_fluctuation,
-            pressure_fluctuation=pressure_fluctuation,
-            speed_fluctuation=speed_fluctuation,
+            window=self.window,
+            temperature_fluctuation=self.temperature_fluctuation,
+            pressure_fluctuation=self.pressure_fluctuation,
+            speed_fluctuation=self.speed_fluctuation,
         )
 
         # create density column
@@ -90,9 +106,9 @@ class Evaluation:
         for i, row in df.iterrows():
             # create state
             state = State(
-                p=Q_(row.ps, data_units["ps"]),
-                T=Q_(row.Ts, data_units["Ts"]),
-                fluid=operation_fluid,
+                p=Q_(row.ps, self.data_units["ps"]),
+                T=Q_(row.Ts, self.data_units["Ts"]),
+                fluid=self.operation_fluid,
             )
             df.loc[i, "v_s"] = state.v().m
             df.loc[i, "speed_sound"] = state.speed_sound().m
@@ -142,11 +158,13 @@ class Evaluation:
         for i in range(kmeans.n_clusters):
             cluster_series = df[df["cluster"] == 0].iloc[0]
             suc_new = State(
-                p=Q_(cluster_series.ps_center, data_units["ps"]),
-                T=Q_(cluster_series.Ts_center, data_units["Ts"]),
+                p=Q_(cluster_series.ps_center, self.data_units["ps"]),
+                T=Q_(cluster_series.Ts_center, self.data_units["Ts"]),
                 fluid=self.operation_fluid,
             )
-            imp_new = Impeller.convert_from(self.impellers[0], suc=suc_new, speed='same')
+            imp_new = Impeller.convert_from(
+                self.impellers[0], suc=suc_new, speed="same"
+            )
             self.impellers_new.append(imp_new)
 
         # create args list for parallel processing
@@ -163,14 +181,14 @@ class Evaluation:
                 "suc": State(
                     p=Q_(row.ps, self.data_units["ps"]),
                     T=Q_(row.Ts, self.data_units["Ts"]),
-                    fluid=operation_fluid,
+                    fluid=self.operation_fluid,
                 ),
                 "disch": State(
                     p=Q_(row.pd, self.data_units["pd"]),
                     T=Q_(row.Td, self.data_units["Td"]),
-                    fluid=operation_fluid,
+                    fluid=self.operation_fluid,
                 ),
-                "imp_new": self.impellers_new[int(row.cluster)]
+                "imp_new": self.impellers_new[int(row.cluster)],
             }
 
             args_list.append(arg_dict)
@@ -223,6 +241,68 @@ class Evaluation:
             df.loc[i, "timescale"] = sample_time.seconds / total_time.seconds
 
         self.df = df
+
+    def save(self, path):
+        # create zip file and save dataframe as parquet and impellers
+        with zipfile.ZipFile(path, "w") as zip_file:
+            zip_file.writestr("data.parquet", self.data.to_parquet())
+            zip_file.writestr("df.parquet", self.df.to_parquet())
+            for i, imp in enumerate(self.impellers):
+                zip_file.writestr(f"imp_{i}.toml", toml.dumps(imp._dict_to_save()))
+            for i, imp in enumerate(self.impellers_new):
+                zip_file.writestr(f"imp_new_{i}.toml", toml.dumps(imp._dict_to_save()))
+            # create dict with arguments and save to toml
+            args_dict = {
+                "data": self.data,
+                "operation_fluid": self.operation_fluid,
+                "data_units": self.data_units,
+                "window": self.window,
+                "temperature_fluctuation": self.temperature_fluctuation,
+                "pressure_fluctuation": self.pressure_fluctuation,
+                "speed_fluctuation": self.speed_fluctuation,
+            }
+            zip_file.writestr("args.toml", toml.dumps(args_dict))
+
+    @classmethod
+    def load(cls, path):
+        with zipfile.ZipFile(path, "r") as zip_file:
+            # load args
+            args_dict = toml.loads(zip_file.read("args.toml"))
+            # load initial data
+            data = pd.read_parquet(zip_file.open("data.parquet"))
+            # load dataframe
+            df = pd.read_parquet(zip_file.open("df.parquet"))
+            # load impellers
+            impellers = []
+            for i in range(len(zip_file.filelist)):
+                if zip_file.filelist[i].filename.startswith("imp_"):
+                    impellers.append(
+                        Impeller._load_from_dict(
+                            toml.loads(zip_file.read(zip_file.filelist[i].filename))
+                        )
+                    )
+            # load impellers_new
+            impellers_new = []
+            for i in range(len(zip_file.filelist)):
+                if zip_file.filelist[i].filename.startswith("imp_new_"):
+                    impellers_new.append(
+                        Impeller._load_from_dict(
+                            toml.loads(zip_file.read(zip_file.filelist[i].filename))
+                        )
+                    )
+            evaluation = cls(
+                data=data,
+                impellers=impellers,
+                operation_fluid=args_dict["operation_fluid"],
+                data_units=args_dict["data_units"],
+                window=args_dict["window"],
+                temperature_fluctuation=args_dict["temperature_fluctuation"],
+                pressure_fluctuation=args_dict["pressure_fluctuation"],
+                speed_fluctuation=args_dict["speed_fluctuation"],
+                impellers_new=impellers_new,
+                df=df,
+            )
+            evaluation.impellers_new = impellers_new
 
 
 def create_points_parallel(x):
