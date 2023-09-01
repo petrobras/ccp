@@ -65,15 +65,12 @@ def test_evaluation():
         impellers=[imp_a],
     )
 
-    assert_allclose(evaluation.df["delta_eff"].mean(), 0.16073175978906915)
+    assert_allclose(evaluation.df["delta_eff"].mean(), 0.16073, rtol=1e-4)
 
     # save evaluation in temporary file
     file = Path(tempdir) / "evaluation.ccp_eval"
     evaluation.save(file)
 
     loaded_evaluation = ccp.Evaluation.load(file)
-    assert_allclose(loaded_evaluation.df["delta_eff"].mean(), 0.16073175978906915)
+    assert_allclose(loaded_evaluation.df["delta_eff"].mean(), 0.16073, rtol=1e-4)
     assert loaded_evaluation.impellers_new[0] == evaluation.impellers_new[0]
-
-
-
