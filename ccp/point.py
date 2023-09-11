@@ -228,7 +228,7 @@ class Point:
                 if k in reasonable_ranges:
                     if (
                         not reasonable_ranges[k][0]
-                        <= kwargs_dict[k]
+                        <= kwargs_dict[k].m
                         <= reasonable_ranges[k][1]
                     ):
                         # add this to the out of range dict
