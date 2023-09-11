@@ -184,6 +184,12 @@ class Point:
 
         kwargs_list = []
         kwargs_dict = {}
+        reasonable_ranges = {
+            "eff": (0.3, 1.0),
+            "head": (0, 1e15),
+            "disch_p": (0, 1e15),
+        }
+        out_of_range_dict = {}
 
         for k in [
             "suc",
@@ -217,8 +223,20 @@ class Point:
                 .replace("Quantity", "Q_")
                 .replace("State", "ccp.State")
             )
+            # check if some kwargs are out of reasonable range
+            for k in kwargs_dict:
+                if k in reasonable_ranges:
+                    if (
+                        not reasonable_ranges[k][0]
+                        <= kwargs_dict[k]
+                        <= reasonable_ranges[k][1]
+                    ):
+                        # add this to the out of range dict
+                        out_of_range_dict[k] = kwargs_dict[k]
+
             raise ValueError(
-                f"Could not calculate point with ccp.Point(**{kwargs_repr})."
+                f"Could not calculate point with ccp.Point(**{kwargs_repr}).\n"
+                f"The following kwargs seems out of reasonable range: {out_of_range_dict}."
             )
 
         self.reynolds = reynolds(self.suc, self.speed, self.b, self.D)
