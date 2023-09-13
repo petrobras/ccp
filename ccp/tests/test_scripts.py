@@ -25,10 +25,13 @@ for row in range(45):
 
 """
 import ccp
-import xlwings as xl
 from numpy.testing import assert_allclose
 from pathlib import Path
 import runpy
+import pytest
+
+xlwings = pytest.importorskip("xlwings")  # skip if xlwings not installed or linux
+
 
 ccp_path = Path(ccp.__file__).parent.parent
 script_1sec = ccp_path / "scripts/Performance-Test/test_1sec.py"
