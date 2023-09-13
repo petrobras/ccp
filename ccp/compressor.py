@@ -1220,8 +1220,16 @@ def parameter_interpolation(phi, phi_values, parameter_values):
     parameter_values : list
         List of parameter values (Mach or Reynolds).
     """
-    phi_0 = [phi_ for phi_ in phi_values if (phi_ - phi) < 0][-1]
-    phi_1 = [phi_ for phi_ in phi_values if (phi_ - phi) > 0][0]
+
+    if phi < min(phi_values):
+        phi_0 = phi_values[0]
+        phi_1 = phi_values[1]
+    elif phi > max(phi_values):
+        phi_0 = phi_values[-2]
+        phi_1 = phi_values[-1]
+    else:
+        phi_0 = [phi_ for phi_ in phi_values if (phi_ - phi) < 0][-1]
+        phi_1 = [phi_ for phi_ in phi_values if (phi_ - phi) > 0][0]
 
     # get phi_values index
     idx0 = phi_values.index(phi_0)
