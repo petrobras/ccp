@@ -3,6 +3,7 @@ import multiprocessing
 import zipfile
 import toml
 import pandas as pd
+import io
 from .data_io import filter_data
 from .state import State
 from .point import Point
@@ -253,7 +254,6 @@ class Evaluation:
                 zip_file.writestr(f"imp_new_{i}.toml", toml.dumps(imp._dict_to_save()))
             # create dict with arguments and save to toml
             args_dict = {
-                "data": self.data,
                 "operation_fluid": self.operation_fluid,
                 "data_units": self.data_units,
                 "window": self.window,
@@ -267,7 +267,8 @@ class Evaluation:
     def load(cls, path):
         with zipfile.ZipFile(path, "r") as zip_file:
             # load args
-            args_dict = toml.loads(zip_file.read("args.toml"))
+            # create file object to read the toml file
+            args_dict = toml.loads(zip_file.read("args.toml").decode("utf-8"))
             # load initial data
             data = pd.read_parquet(zip_file.open("data.parquet"))
             # load dataframe
@@ -276,20 +277,18 @@ class Evaluation:
             impellers = []
             for i in range(len(zip_file.filelist)):
                 if zip_file.filelist[i].filename.startswith("imp_"):
-                    impellers.append(
-                        Impeller._load_from_dict(
-                            toml.loads(zip_file.read(zip_file.filelist[i].filename))
-                        )
+                    imp_file = io.StringIO(
+                        zip_file.read(zip_file.filelist[i].filename).decode("utf-8")
                     )
+                    impellers.append(Impeller.load(imp_file))
             # load impellers_new
             impellers_new = []
             for i in range(len(zip_file.filelist)):
                 if zip_file.filelist[i].filename.startswith("imp_new_"):
-                    impellers_new.append(
-                        Impeller._load_from_dict(
-                            toml.loads(zip_file.read(zip_file.filelist[i].filename))
-                        )
+                    imp_file = io.StringIO(
+                        zip_file.read(zip_file.filelist[i].filename).decode("utf-8")
                     )
+                    impellers_new.append(Impeller.load(imp_file))
             evaluation = cls(
                 data=data,
                 impellers=impellers,
@@ -303,6 +302,8 @@ class Evaluation:
                 df=df,
             )
             evaluation.impellers_new = impellers_new
+
+            return evaluation
 
 
 def create_points_parallel(x):

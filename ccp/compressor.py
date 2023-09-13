@@ -989,7 +989,7 @@ class BackToBack(Impeller):
             File name.
         """
         with open(file, mode="w") as f:
-            toml.dump(self._dict_to_save, f)
+            toml.dump(self._dict_to_save(), f)
 
     @classmethod
     def load(cls, file):

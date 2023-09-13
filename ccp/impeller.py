@@ -1013,11 +1013,14 @@ class Impeller:
 
         with open(file, mode="w") as f:
             # add points to file
-            dict_to_save = {
-                f"Point{i}": point._dict_to_save()
-                for i, point in enumerate(self.points)
-            }
+            dict_to_save = self._dict_to_save()
             toml.dump(dict_to_save, f)
+
+    def _dict_to_save(self):
+        dict_to_save = {
+            f"Point{i}": point._dict_to_save() for i, point in enumerate(self.points)
+        }
+        return dict_to_save
 
     @classmethod
     def load(cls, file):
