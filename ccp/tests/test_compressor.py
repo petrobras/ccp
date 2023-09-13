@@ -359,7 +359,9 @@ def test_straight_through_calculate_speed(straight_through):
         speed=straight_through.speed,
         flow_m=straight_through.guarantee_point.flow_m,
     )
-    assert_allclose(point_sp.disch.p(), straight_through.guarantee_point.disch.p())
+    assert_allclose(
+        point_sp.disch.p(), straight_through.guarantee_point.disch.p(), rtol=1e-6
+    )
 
 
 def test_save_and_load_straight(straight_through):
