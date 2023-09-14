@@ -11,7 +11,7 @@ from pathlib import Path
 import numpy as np
 import plotly.graph_objects as go
 from openpyxl import Workbook
-from scipy.interpolate import interp1d, UnivariateSpline
+from scipy.interpolate import interp1d, UnivariateSpline, PchipInterpolator
 from scipy.optimize import fsolve
 
 from ccp import Q_, State, Point, Curve
@@ -584,11 +584,6 @@ class Impeller:
         disch_T_units="degK",
         power_units="W",
         speed_units="RPM",
-        head_interpolation_method="interp1d",
-        eff_interpolation_method="interp1d",
-        power_interpolation_method="interp1d",
-        pressure_ratio_interpolation_method="interp1d",
-        disch_T_interpolation_method="interp1d",
     ):
         """Create points from dict object.
 
@@ -646,15 +641,6 @@ class Impeller:
             Discharge temperature units used in the dict.
         speed_units : str
             Speed units used in the dict.
-        head_interpolation_method : str, optional
-            Interpolation method from scipy. Can be interp1d or UnivariateSpline.
-            Default is interp1d.
-        eff_interpolation_method : str, optional
-            Interpolation method from scipy. Can be interp1d or UnivariateSpline.
-            Default is interp1d.
-        power_interpolation_method : str, optional
-            Interpolation method from scipy. Can be interp1d or UnivariateSpline.
-            Default is interp1d.
         """
         # define if we have volume or mass flow
         args = locals().copy()
@@ -676,9 +662,6 @@ class Impeller:
                 curves[curve_name] = v
 
         parameters = list(curves)
-        interpolation_methods = [
-            args[f"{param}_interpolation_method"] for param in parameters
-        ]
         speeds = list(curves[parameters[0]])
 
         for param in parameters:
@@ -703,9 +686,9 @@ class Impeller:
                     ]
 
         # create interpolated curves
-        curves_interpolated = {"interp1d": {}, "UnivariateSpline": {}}
+        curves_interpolated = {}
         # dict to hold interpolated values for specific x values
-        points_interpolated = {"interp1d": {}, "UnivariateSpline": {}}
+        points_interpolated = {}
 
         for speed in speeds:
             min_x = 0
@@ -745,49 +728,24 @@ class Impeller:
             points_x = np.linspace(min_x, max_x, number_of_points)
 
             for curve in curves:
-                curves_interpolated["interp1d"][curve] = {}
-                points_interpolated["interp1d"][curve] = {}
+                curves_interpolated[curve] = {}
+                points_interpolated[curve] = {}
 
-                curves_interpolated["interp1d"][curve][speed] = interp1d(
+                curves_interpolated[curve][speed] = PchipInterpolator(
                     curves[curve][speed]["x"],
                     curves[curve][speed]["y"],
-                    kind=3,
-                    fill_value="extrapolate",
+                    extrapolate=True,
                 )
-                points_interpolated["interp1d"][curve][speed] = curves_interpolated[
-                    "interp1d"
-                ][curve][speed](points_x)
-
-                curves_interpolated["UnivariateSpline"][curve] = {}
-                points_interpolated["UnivariateSpline"][curve] = {}
-                curves_interpolated["UnivariateSpline"][curve][
-                    speed
-                ] = UnivariateSpline(
-                    curves[curve][speed]["x"],
-                    curves[curve][speed]["y"],
+                points_interpolated[curve][speed] = curves_interpolated[curve][speed](
+                    points_x
                 )
-                points_interpolated["UnivariateSpline"][curve][
-                    speed
-                ] = curves_interpolated["UnivariateSpline"][curve][speed](points_x)
-
-                error = max(
-                    1
-                    - (
-                        points_interpolated["interp1d"][curve][speed]
-                        / points_interpolated["UnivariateSpline"][curve][speed]
-                    )
-                )
-                if error > 0.1:
-                    warnings.warn(
-                        f"{curve.capitalize()} interpolation error in speed {speed} {speed_units}.\n"
-                    )
 
             args_list = []
 
             for flow, param0, param1 in zip(
                 points_x,
-                points_interpolated[interpolation_methods[0]][parameters[0]][speed],
-                points_interpolated[interpolation_methods[1]][parameters[1]][speed],
+                points_interpolated[parameters[0]][speed],
+                points_interpolated[parameters[1]][speed],
             ):
                 arg_dict = {
                     "suc": suc,
@@ -947,11 +905,6 @@ class Impeller:
         pressure_ratio_units="dimensionless",
         disch_T_units="degK",
         speed_units="RPM",
-        head_interpolation_method="interp1d",
-        eff_interpolation_method="interp1d",
-        power_interpolation_method="interp1d",
-        pressure_ratio_interpolation_method="interp1d",
-        disch_T_interpolation_method="interp1d",
     ):
         """Convert points from csv generated by engauge to csv with 6 points at same flow for use on hysys.
 
@@ -1012,15 +965,6 @@ class Impeller:
             Discharge temperature units used when extracting data with engauge.
         speed_units : str
             Speed units used when extracting data with engauge.
-        head_interpolation_method : str, optional
-            Interpolation method from scipy. Can be interp1d or UnivariateSpline.
-            Default is interp1d.
-        eff_interpolation_method : str, optional
-            Interpolation method from scipy. Can be interp1d or UnivariateSpline.
-            Default is interp1d.
-        power_interpolation_method : str, optional
-            Interpolation method from scipy. Can be interp1d or UnivariateSpline.
-            Default is interp1d.
         """
         curves_path_dict = {}
 
@@ -1055,11 +999,6 @@ class Impeller:
             speed_units=speed_units,
             pressure_ratio_units=pressure_ratio_units,
             disch_T_units=disch_T_units,
-            head_interpolation_method=head_interpolation_method,
-            eff_interpolation_method=eff_interpolation_method,
-            power_interpolation_method=power_interpolation_method,
-            pressure_ratio_interpolation_method=pressure_ratio_interpolation_method,
-            disch_T_interpolation_method=disch_T_interpolation_method,
             **curves_path_dict,
         )
 
@@ -1074,11 +1013,14 @@ class Impeller:
 
         with open(file, mode="w") as f:
             # add points to file
-            dict_to_save = {
-                f"Point{i}": point._dict_to_save()
-                for i, point in enumerate(self.points)
-            }
+            dict_to_save = self._dict_to_save()
             toml.dump(dict_to_save, f)
+
+    def _dict_to_save(self):
+        dict_to_save = {
+            f"Point{i}": point._dict_to_save() for i, point in enumerate(self.points)
+        }
+        return dict_to_save
 
     @classmethod
     def load(cls, file):
