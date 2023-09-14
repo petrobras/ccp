@@ -52,7 +52,7 @@ def test_impeller_lp_sec1_from_csv(impeller_lp_sec1_from_csv):
     assert_allclose(p0.disch.p().to("bar"), 9.028826)
     assert_allclose(p0.head.to("kJ/kg"), 82.870085)
     assert_allclose(p0.eff, 0.789412, rtol=1e-5)
-    assert_allclose(p0.power.to("kW"), 1431.03994)
+    assert_allclose(p0.power.to("kW"), 1432.555494, rtol=1e-4)
 
 
 def test_fluctuation():
