@@ -164,7 +164,7 @@ class Evaluation:
                 fluid=self.operation_fluid,
             )
             imp_new = Impeller.convert_from(
-                self.impellers[0], suc=suc_new, speed="same"
+                self.impellers, suc=suc_new, speed="same"
             )
             self.impellers_new.append(imp_new)
 
