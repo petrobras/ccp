@@ -10,7 +10,7 @@ pip install ccp-performance
 
 To run `ccp` you need to have `REFPROP` in your computer, and an environment variable called `RPPREFIX` pointing to the `REFPROP` path.
 
-If you have set a `RPPREFIX` environment variable set, or maybe want to point to a different path, you can do that before importing ccp with:
+If you have not set a `RPPREFIX` environment variable set, you can do the following before importing ccp:
 
 ```{code-block} python
 import os
