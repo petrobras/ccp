@@ -4,6 +4,7 @@ import zipfile
 import toml
 import pandas as pd
 import io
+import pickle
 from .data_io import filter_data
 from .state import State
 from .point import Point
@@ -85,6 +86,7 @@ class Evaluation:
 
         # check if we are loading from a zip file where the impellers are available
         if kwargs.get("impellers_new") is None:
+            print('running')
             self._run()
         else:
             self.impellers_new = kwargs.get("impellers_new")
@@ -250,9 +252,12 @@ class Evaluation:
             zip_file.writestr("data.parquet", self.data.to_parquet())
             zip_file.writestr("df.parquet", self.df.to_parquet())
             for i, imp in enumerate(self.impellers):
-                zip_file.writestr(f"imp_{i}.toml", toml.dumps(imp._dict_to_save()))
+                # write pickle file to zip
+                with zip_file.open(f"imp_{i}.pickle", "w") as pickle_file:
+                    pickle.dump(imp, pickle_file)
             for i, imp in enumerate(self.impellers_new):
-                zip_file.writestr(f"imp_new_{i}.toml", toml.dumps(imp._dict_to_save()))
+                with zip_file.open(f"imp_new_{i}.pickle", "w") as pickle_file:
+                    pickle.dump(imp, pickle_file)
             # create dict with arguments and save to toml
             args_dict = {
                 "operation_fluid": self.operation_fluid,
@@ -277,19 +282,15 @@ class Evaluation:
             # load impellers
             impellers = []
             for i in range(len(zip_file.filelist)):
-                if zip_file.filelist[i].filename.startswith("imp_"):
-                    imp_file = io.StringIO(
-                        zip_file.read(zip_file.filelist[i].filename).decode("utf-8")
-                    )
-                    impellers.append(Impeller.load(imp_file))
+                if zip_file.filelist[i].filename.startswith("imp_") and "new" not in zip_file.filelist[i].filename:
+                    with zip_file.open(zip_file.filelist[i].filename, "rb") as pickle_file:
+                        impellers.append(pickle.load(pickle_file))
             # load impellers_new
             impellers_new = []
             for i in range(len(zip_file.filelist)):
                 if zip_file.filelist[i].filename.startswith("imp_new_"):
-                    imp_file = io.StringIO(
-                        zip_file.read(zip_file.filelist[i].filename).decode("utf-8")
-                    )
-                    impellers_new.append(Impeller.load(imp_file))
+                    with zip_file.open(zip_file.filelist[i].filename, "rb") as pickle_file:
+                        impellers_new.append(pickle.load(pickle_file))
             evaluation = cls(
                 data=data,
                 impellers=impellers,
