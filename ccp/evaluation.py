@@ -138,7 +138,7 @@ class Evaluation:
         data_norm = (data - data_mean) / data_std
 
         # Using sklearn
-        kmeans = KMeans(n_clusters=5)
+        kmeans = KMeans(n_clusters=5, n_init="auto")
         kmeans.fit(data_norm)
 
         # Format results as a DataFrame
@@ -156,16 +156,15 @@ class Evaluation:
 
         self.impellers_new = []
 
-        for i in range(kmeans.n_clusters):
+        print("Converting curves")
+        for i in tqdm(range(kmeans.n_clusters)):
             cluster_series = df[df["cluster"] == 0].iloc[0]
             suc_new = State(
                 p=Q_(cluster_series.ps_center, self.data_units["ps"]),
                 T=Q_(cluster_series.Ts_center, self.data_units["Ts"]),
                 fluid=self.operation_fluid,
             )
-            imp_new = Impeller.convert_from(
-                self.impellers, suc=suc_new, speed="same"
-            )
+            imp_new = Impeller.convert_from(self.impellers, suc=suc_new, speed="same")
             self.impellers_new.append(imp_new)
 
         # create args list for parallel processing
@@ -195,8 +194,10 @@ class Evaluation:
             args_list.append(arg_dict)
 
         with multiprocessing.Pool() as pool:
-            points += pool.map(create_points_parallel, args_list)
-            expected_points += pool.map(get_interpolated_point, args_list)
+            print("Calculating points...")
+            points += tqdm(pool.imap(create_points_parallel, args_list))
+            print("Calculating expected points...")
+            expected_points += tqdm(pool.imap(get_interpolated_point, args_list))
 
         # loop
         df["eff"] = 0
@@ -308,10 +309,17 @@ class Evaluation:
 
 def create_points_parallel(x):
     del x["imp_new"]
-    return Point(**x)
+    try:
+        p = Point(**x)
+    except:
+        print("Error for point with args:", x)
+    return p
 
 
 def get_interpolated_point(x):
-    imp_new = x["imp_new"]
-    expected_point = imp_new.point(flow_m=x["flow_m"], speed=x["speed"])
+    try:
+        imp_new = x["imp_new"]
+        expected_point = imp_new.point(flow_m=x["flow_m"], speed=x["speed"])
+    except:
+        print("Error for expected point with args:", x)
     return expected_point
