@@ -11,7 +11,11 @@ import sentry_sdk
 import logging
 from ccp.compressor import Point1Sec, StraightThrough
 from ccp.config.utilities import r_getattr
+from ccp.config.units import ureg
 from pathlib import Path
+
+# import everything that is common to ccp_app_straight_through and ccp_app_back_to_back
+from common import *
 
 sentry_sdk.init(
     dsn="https://8fd0e79dffa94dbb9747bf64e7e55047@o348313.ingest.sentry.io/4505046640623616",
@@ -70,6 +74,8 @@ def main():
             st.session_state.session_name = ""
         if "straight_through" not in st.session_state:
             st.session_state.straight_through = ""
+        if "expander_state" not in st.session_state:
+            st.session_state.expander_state = False
         for curve in ["head", "power", "eff", "discharge_pressure"]:
             if f"fig_{curve}" not in st.session_state:
                 st.session_state[f"fig_{curve}"] = ""
@@ -117,6 +123,7 @@ def main():
                     del session_state_data_copy[key]
             st.session_state.update(session_state_data_copy)
             st.session_state.session_name = file.name.replace(".ccp", "")
+            st.session_state.expander_state = True
             st.experimental_rerun()
 
         if save_button:
@@ -160,9 +167,9 @@ def main():
     fluid_list = sorted(fluid_list)
     fluid_list.insert(0, "")
 
-    with st.expander("Gas Selection"):
+    with st.expander("Gas Selection", expanded=st.session_state.expander_state):
         gas_compositions_table = {}
-        gas_columns = st.columns(5)
+        gas_columns = st.columns(6)
         for i, gas_column in enumerate(gas_columns):
             gas_compositions_table[f"gas_{i}"] = {}
 
@@ -214,121 +221,28 @@ def main():
         calculate_leakages = st.checkbox("Calculate Leakages", value=True)
         seal_gas_flow = st.checkbox("Seal Gas Flow", value=True)
         variable_speed = st.checkbox("Variable Speed", value=True)
-
-    # parameters with name and label
-    flow_m_units = ["kg/h", "lbm/h", "kg/s", "lbm/s"]
-    pressure_units = ["bar", "psi", "Pa", "kPa", "MPa", "kgf/cm²", "mm*H2O*g0"]
-    temperature_units = ["degK", "degC", "degF", "degR"]
-    speed_units = ["rpm", "Hz"]
-    length_units = ["m", "mm", "ft", "in"]
-
-    parameters_map = {
-        "flow": {
-            "label": "Flow",
-            "units": ["m³/h", "m³/s", "kg/h", "lbm/h", "kg/s", "lbm/s"],
-            "help": "Flow can be mass flow or volumetric flow depending on the selected unit.",
-        },
-        "suction_pressure": {
-            "label": "Suction Pressure",
-            "units": pressure_units,
-        },
-        "suction_temperature": {
-            "label": "Suction Temperature",
-            "units": temperature_units,
-        },
-        "discharge_pressure": {
-            "label": "Discharge Pressure",
-            "units": pressure_units,
-        },
-        "discharge_temperature": {
-            "label": "Discharge Temperature",
-            "units": temperature_units,
-        },
-        "casing_delta_T": {
-            "label": "Casing ΔT",
-            "units": temperature_units,
-            "help": "Temperature difference between the casing and the ambient temperature.",
-        },
-        "speed": {
-            "label": "Speed",
-            "units": speed_units,
-        },
-        "balance_line_flow_m": {
-            "label": "Balance Line Flow",
-            "units": flow_m_units,
-        },
-        "seal_gas_flow_m": {
-            "label": "Seal Gas Flow",
-            "units": flow_m_units,
-        },
-        "seal_gas_temperature": {
-            "label": "Seal Gas Temperature",
-            "units": temperature_units,
-        },
-        "head": {
-            "label": "Head",
-            "units": ["kJ/kg", "J/kg", "m*g0", "ft"],
-        },
-        "eff": {
-            "label": "Efficiency",
-            "units": [""],
-        },
-        "power": {
-            "label": "Gas Power",
-            "units": ["kW", "hp", "W", "Btu/h", "MW"],
-        },
-        "b": {
-            "label": "First Impeller Width",
-            "units": ["mm", "m", "ft", "in"],
-        },
-        "D": {
-            "label": "First Impeller Diameter",
-            "units": ["mm", "m", "ft", "in"],
-        },
-        "surface_roughness": {
-            "label": "Surface Roughness",
-            "units": ["mm", "m", "ft", "in"],
-            "help": "Mean surface roughness of the gas path.",
-        },
-        "casing_area": {
-            "label": "Casing Area",
-            "units": ["m²", "mm²", "ft²", "in²"],
-        },
-        "outer_diameter_fo": {
-            "label": "Outer Diameter",
-            "units": ["mm", "m", "ft", "in"],
-            "help": "Outer diameter of orifice plate.",
-        },
-        "inner_diameter_fo": {
-            "label": "Inner Diameter",
-            "units": ["mm", "m", "ft", "in"],
-            "help": "Inner diameter of orifice plate.",
-        },
-        "upstream_pressure_fo": {
-            "label": "Upstream Pressure",
-            "units": pressure_units,
-            "help": "Upstream pressure of orifice plate.",
-        },
-        "upstream_temperature_fo": {
-            "label": "Upstream Temperature",
-            "units": temperature_units,
-            "help": "Upstream temperature of orifice plate.",
-        },
-        "pressure_drop_fo": {
-            "label": "Pressure Drop",
-            "units": pressure_units,
-            "help": "Pressure drop across orifice plate.",
-        },
-        "tappings_fo": {
-            "label": "Tappings",
-            "units": ["flange", "corner", "D D/2"],
-            "help": "Pressure tappings type.",
-        },
-        "mass_flow_fo": {
-            "label": "Mass Flow (Result)",
-            "units": ["kg/h", "lbm/h", "kg/s", "lbm/s"],
-        },
-    }
+        # add text input for the ambient pressure
+        st.text("Ambient Pressure")
+        ambient_pressure_magnitude_col, ambient_pressure_unit_col = st.columns(2)
+        with ambient_pressure_magnitude_col:
+            ambient_pressure_magnitude = st.text_input(
+                "Ambient Pressure",
+                value=1.01325,
+                key="ambient_pressure_magnitude",
+                label_visibility="collapsed",
+            )
+        with ambient_pressure_unit_col:
+            ambient_pressure_unit = st.selectbox(
+                "Unit",
+                options=pressure_units,
+                index=pressure_units.index("bar"),
+                key="ambient_pressure_unit",
+                label_visibility="collapsed",
+            )
+        ambient_pressure = Q_(
+            float(ambient_pressure_magnitude), ambient_pressure_unit
+        ).to("bar")
+        ureg.define(f"barg = 1 * bar; offset: {ambient_pressure.magnitude}")
 
     # add dict to store the values for guarantee and test points
     # in the parameters_map
@@ -357,7 +271,7 @@ def main():
                     "value": None,
                 }
 
-    with st.expander("Data Sheet"):
+    with st.expander("Data Sheet", expanded=st.session_state.expander_state):
         # build container with 8 columns
         points_title = st.container()
         points_title_columns = points_title.columns(3, gap="small")
@@ -431,7 +345,7 @@ def main():
                 label_visibility="collapsed",
             )
 
-    with st.expander("Curves"):
+    with st.expander("Curves", expanded=st.session_state.expander_state):
         # add upload button for curve
         # check if fig_dict was created when loading state. Otherwise, create it
         plot_limits = {}
@@ -499,7 +413,7 @@ def main():
     number_of_test_points = 6
     number_of_columns = number_of_test_points + 2
 
-    with st.expander("Test Data"):
+    with st.expander("Test Data", expanded=st.session_state.expander_state):
         # add title
         number_of_columns = number_of_test_points + 2
         # build container with 8 columns
@@ -572,7 +486,7 @@ def main():
                         label_visibility="collapsed",
                     )
 
-    with st.expander("Flowrate Calculation"):
+    with st.expander("Flowrate Calculation", expanded=st.session_state.expander_state):
         # add title
         number_of_columns = number_of_test_points + 2
         # build container with 8 columns
@@ -682,7 +596,6 @@ def main():
                     st.session_state[f"mass_flow_fo_{i-1}"] = ""
                     continue
                 else:
-
                     kwargs["state"] = ccp.State(
                         p=Q_(
                             float(st.session_state[f"upstream_pressure_fo_{i-1}"]),
@@ -1425,6 +1338,15 @@ def main():
                             f"Re{_t}",
                         ],
                     )
+                )
+
+                table_excel = to_excel(styled_df_results)
+                st.download_button(
+                    "Download Results Table",
+                    data=table_excel,
+                    file_name="results.xlsx",
+                    mime="application/vnd.ms-excel",
+                    use_container_width=True,
                 )
 
                 with st.container():

@@ -34,12 +34,10 @@ class Point:
         Suction state, polytropic efficiency and volume ratio.
     suc, pres_ratio, disch_T : ccp.State, float, pint.Quantity or float
         Suction state, pressure ration and discharge temperature.
-    b : pint.Quantity, optional
-        Impeller width (m).
-        This value is used to calculate the machine Mach and Reynolds numbers.
-    D : pint.Quantity, optional
-        Impeller diameter (m).
-        This value is used to calculate the machine Mach and Reynolds numbers.
+    b : float, pint.Quantity
+        Impeller width at the outer blade diameter (m).
+    D : float, pint.Quantity
+        Impeller outer diameter (m).
     surface_roughness : pint.Quantity, optional
         Gas passage mean surface roughness (m).
         Used in the reynolds correction calculation.
@@ -93,10 +91,10 @@ class Point:
         Polytropic head coefficient (dimensionless).
     volume_ratio : pint.Quantity
         Volume ratio - suc.v() / disch.v() (dimensionless).
-    b : pint.Quantity
-        Impeller width (m).
-    D : pint.Quantity
-        Impeller diameter (m).
+    b : float, pint.Quantity
+        Impeller width at the outer blade diameter (m).
+    D : float, pint.Quantity
+        Impeller outer diameter (m).
     casing_area : pint.Quantity
         Compressor case area used to calculate case heat loss (m²).
     casing_temperature : pint.Quantity
@@ -186,6 +184,12 @@ class Point:
 
         kwargs_list = []
         kwargs_dict = {}
+        reasonable_ranges = {
+            "eff": (0.3, 1.0),
+            "head": (0, 1e15),
+            "disch_p": (0, 1e15),
+        }
+        out_of_range_dict = {}
 
         for k in [
             "suc",
@@ -211,8 +215,29 @@ class Point:
 
         try:
             getattr(self, "_calc_from_" + kwargs_str)()
-        except ValueError as e:
-            raise ValueError(f"Could not calculate point with {kwargs_dict}.")
+        except (ValueError, RuntimeError) as e:
+            kwargs_repr = (
+                str(kwargs_dict)
+                .replace(">", "")
+                .replace("<", "")
+                .replace("Quantity", "Q_")
+                .replace("State", "ccp.State")
+            )
+            # check if some kwargs are out of reasonable range
+            for k in kwargs_dict:
+                if k in reasonable_ranges:
+                    if (
+                        not reasonable_ranges[k][0]
+                        <= kwargs_dict[k].m
+                        <= reasonable_ranges[k][1]
+                    ):
+                        # add this to the out of range dict
+                        out_of_range_dict[k] = kwargs_dict[k]
+
+            raise ValueError(
+                f"Could not calculate point with ccp.Point(**{kwargs_repr}).\n"
+                f"The following kwargs seems out of reasonable range: {out_of_range_dict}."
+            )
 
         self.reynolds = reynolds(self.suc, self.speed, self.b, self.D)
         self.mach = mach(self.suc, self.speed, self.D)
@@ -445,6 +470,22 @@ class Point:
         self.disch = State(p=disch_p, T=disch_T, fluid=suc.fluid)
         self._calc_from_disch_flow_m_speed_suc()
 
+    def _calc_from_disch_T_flow_v_head_speed_suc(self):
+        suc = self.suc
+        disch_T = self.disch_T
+        head = self.head
+
+        self.disch = disch_from_suc_disch_T_head(suc, disch_T, head)
+        self._calc_from_disch_flow_v_speed_suc()
+
+    def _calc_from_disch_T_flow_m_head_speed_suc(self):
+        suc = self.suc
+        disch_T = self.disch_T
+        head = self.head
+
+        self.disch = disch_from_suc_disch_T_head(suc, disch_T, head)
+        self._calc_from_disch_flow_m_speed_suc()
+
     @classmethod
     @check_units
     def convert_from(
@@ -457,6 +498,18 @@ class Point:
         **kwargs,
     ):
         """Convert point from an original point.
+
+        The procedure to convert a point considering that the volume ratio will be the same,
+        follows the following steps:
+        1. Assume that eff_converted = eff_original and psi_converted = psi_original
+        2. Assume that volume ratio will be the same to keep similarity
+        3. Calculate discharge volume based on suction state and volume ratio
+        4. Calculate discharge state using newton method to find the discharge pressure.
+        Criterion for convergence is the polytropic efficiency.
+        5. Calculate head based on the new discharge state
+        6. Calculate speed based on head and psi
+
+        This procedure is followed whe we have find="speed".
 
         Parameters
         ----------
@@ -1707,8 +1760,8 @@ def u_calc(D, speed):
 
     Parameters
     ----------
-    D : pint.Quantity, float
-        Impeller diameter (m).
+    D : float, pint.Quantity
+        Impeller outer diameter (m).
     speed : pint.Quantity, float
         Impeller speed (rad/s).
 
@@ -1731,8 +1784,8 @@ def psi(head, speed, D):
         Polytropic head (J/kg).
     speed : pint.Quantity, float
         Impeller speed (rad/s).
-    D : pint.Quantity, float
-        Impeller diameter.
+    D : float, pint.Quantity
+        Impeller outer diameter (m).
 
     Returns
     -------
@@ -1771,8 +1824,8 @@ def speed_from_psi(D, head, psi):
 
     Parameters
     ----------
-    D : pint.Quantity, float
-        Impeller diameter.
+    D : float, pint.Quantity
+        Impeller outer diameter (m).
     head : pint.Quantity, float
         Polytropic head.
     psi : pint.Quantity, float
@@ -1792,7 +1845,22 @@ def speed_from_psi(D, head, psi):
 
 @check_units
 def phi(flow_v, speed, D):
-    """Flow coefficient."""
+    """Flow coefficient.
+
+    Parameters
+    ----------
+    flow_v : float, pint.Quantity
+        Impeller flow (m³/s).
+    speed : float, pint.Quantity
+        Impeller speed (rad/s).
+    D : float, pint.Quantity
+        Impeller outer diameter (m).
+
+    Returns
+    -------
+    phi : pint.Quantity
+        Flow coefficient (dimensionless).
+    """
     u = u_calc(D, speed)
 
     phi = flow_v * 4 / (np.pi * D**2 * u)
@@ -1810,6 +1878,17 @@ def phi3(flow_v, speed, D, b):
     ----------
     flow_v : float, pint.Quantity
         Impeller exit flow (m³/s).
+    speed : float, pint.Quantity
+        Impeller speed (rad/s).
+    D : float, pint.Quantity
+        Impeller outer diameter (m).
+    b : float, pint.Quantity
+        Impeller width at the outer blade diameter (m).
+
+    Returns
+    -------
+    phi : pint.Quantity
+        Discharge flow coefficient (dimensionless).
     """
     u = u_calc(D, speed)
 
@@ -1824,8 +1903,8 @@ def flow_from_phi(D, phi, speed):
 
     Parameters
     ----------
-    D : pint.Quantity, float
-        Impeller diameter (m).
+    D : float, pint.Quantity
+        Impeller outer diameter (m).
     phi : pint.Quantity, float
         Flow coefficient (m³/s).
     speed : pint.Quantity, float
@@ -1848,8 +1927,8 @@ def head_from_psi(D, psi, speed):
 
     Parameters
     ----------
-    D : pint.Quantity, float
-        Impeller diameter (m).
+    D : float, pint.Quantity
+        Impeller outer diameter (m).
     psi : pint.Quantity, float
         Head coefficient.
     speed : pint.Quantity, float
@@ -1938,6 +2017,41 @@ def disch_from_suc_disch_p_eff(suc, disch_p, eff, polytropic_method=None):
     return disch
 
 
+def disch_from_suc_disch_T_head(suc, disch_T, head, polytropic_method=None):
+    """Calculate discharge state from suction, discharge temperature and head.
+
+    Parameters
+    ----------
+    suc : ccp.State
+        Suction state.
+    disch_T : pint.Quantity, float
+        Discharge temperature (degK).
+    head : pint.Quantity, float
+        Polytropic head (J/kg).
+
+    Returns
+    -------
+    disch : ccp.State
+        Discharge state.
+    """
+    # consider first an isentropic compression
+    if polytropic_method is None:
+        polytropic_method = ccp.config.POLYTROPIC_METHOD
+
+    disch = ccp.State(T=disch_T, s=suc.s(), fluid=suc.fluid)
+    head_calc_func = globals()[f"head_pol_{polytropic_method}"]
+
+    def update_state(x):
+        disch.update(T=disch_T, p=x)
+        new_head = head_calc_func(suc, disch)
+
+        return (new_head - head).magnitude
+
+    newton(update_state, disch.p().magnitude, tol=1e-7)
+
+    return disch
+
+
 @check_units
 def reynolds(suc, speed, b, D):
     """Calculate the Reynolds number.
@@ -1948,10 +2062,10 @@ def reynolds(suc, speed, b, D):
         Suction state.
     speed : pint.Quantity, float
         Impeller speed (rad/s).
-    b : pint.Quantity, float
-        Impeller width (m).
-    D : pint.Quantity, float
-        Impeller diameter (m).
+    b : float, pint.Quantity
+        Impeller width at the outer blade diameter (m).
+    D : float, pint.Quantity
+        Impeller outer diameter (m).
 
     Returns
     -------
@@ -1974,8 +2088,8 @@ def mach(suc, speed, D):
         Suction state.
     speed : pint.Quantity, float
         Impeller speed (rad/s).
-    D : pint.Quantity, float
-        Impeller diameter (m).
+    D : float, pint.Quantity
+        Impeller outer diameter (m).
 
     Returns
     -------

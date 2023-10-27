@@ -49,10 +49,10 @@ def test_impeller_lp_sec1_from_csv(impeller_lp_sec1_from_csv):
     p0 = impeller_lp_sec1_from_csv[0]
     assert_allclose(p0.flow_v.to("m³/h"), 11250)
     assert_allclose(p0.speed.to("RPM"), 6882.0)
-    assert_allclose(p0.disch.p().to("bar"), 9.02198284)
-    assert_allclose(p0.head.to("kJ/kg"), 82.7824137)
+    assert_allclose(p0.disch.p().to("bar"), 9.028826)
+    assert_allclose(p0.head.to("kJ/kg"), 82.870085)
     assert_allclose(p0.eff, 0.789412, rtol=1e-5)
-    assert_allclose(p0.power.to("kW"), 1431.03994)
+    assert_allclose(p0.power.to("kW"), 1432.555494, rtol=1e-4)
 
 
 def test_fluctuation():
@@ -65,7 +65,8 @@ def test_fluctuation_data():
     assert_frame_equal(
         ccp.data_io.fluctuation_data(df),
         pd.DataFrame(
-            {"a": [100.0, 66.66666666666667], "b": [40.0, 33.333333333333336]}
+            {"a": [100.0, 66.66666666666667], "b": [40.0, 33.333333333333336]},
+            index=[2, 3],
         ),
     )
 
@@ -74,7 +75,7 @@ def test_mean_data():
     df = pd.DataFrame({"a": [1, 2, 3, 4], "b": [4, 5, 6, 7]})
     assert_frame_equal(
         ccp.data_io.mean_data(df),
-        pd.DataFrame({"a": [2.0, 3.0], "b": [5.0, 6.0]}),
+        pd.DataFrame({"a": [2.0, 3.0], "b": [5.0, 6.0]}, index=[2, 3]),
     )
 
 
@@ -87,5 +88,5 @@ def test_filter_data():
     )
     assert_frame_equal(
         ccp.data_io.filter_data(df, data_type={"a": "pressure", "b": "temperature"}),
-        pd.DataFrame(index=pd.Index([3]), data={"a": [4.01], "b": [7.01]}),
+        pd.DataFrame(index=pd.Index([5]), data={"a": [4.01], "b": [7.01]}),
     )

@@ -1,5 +1,6 @@
 numpy
 scipy
+pandas>=0.23
 CoolProp
 pint>=0.18
 plotly>=4.7.0
@@ -7,3 +8,6 @@ toml>=0.10.1
 openpyxl
 tqdm
 ctREFPROP
+sentry-sdk
+streamlit>=1.21.0
+xlsxwriter

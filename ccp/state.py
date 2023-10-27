@@ -36,7 +36,7 @@ class State(CP.AbstractState):
     rho : float, pint.Quantity
         Specific mass
     fluid : dict
-        Dictionary with constituent and composition.
+        Dictionary with constituent and composition (mole fraction).
         (e.g.: fluid={'Oxygen': 0.2096, 'Nitrogen': 0.7812, 'Argon': 0.0092})
     EOS : str, optional
         String with REFPROP, HEOS, PR or SRK.
@@ -665,6 +665,13 @@ class State(CP.AbstractState):
             raise ValueError(
                 f"Could not define state with {args_dict} and {self.fluid}"
             ) from e
+
+    def get_coolprop_state(self):
+        """Return a CoolProp state object."""
+        EOS = self.EOS
+        if EOS is None:
+            EOS = ccp.config.EOS
+        return CP.AbstractState(EOS, self._fluid)
 
     def plot_envelope(
         self, T_units="degK", p_units="Pa", dew_point_margin=20, fig=None, **kwargs

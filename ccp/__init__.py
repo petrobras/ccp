@@ -95,7 +95,7 @@ _library_path = _path / _shared_library
 if not _library_path.is_file():
     _warnings.warn(f"{_library_path}.\nREFPROP not configured.")
 
-__version__ = "0.3.3"
+__version__ = "0.3.4"
 
 __version__full = (
     f"ccp: {__version__} | "
@@ -139,6 +139,7 @@ from .curve import Curve
 from .impeller import Impeller, impeller_example
 from .fo import FlowOrifice
 from .similarity import check_similarity
+from .evaluation import Evaluation
 
 __all__ = [
     "State",
@@ -149,4 +150,5 @@ __all__ = [
     "fluid_list",
     "check_similarity",
     "impeller_example",
+    "Evaluation",
 ]

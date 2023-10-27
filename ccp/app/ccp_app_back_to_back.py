@@ -11,7 +11,11 @@ import sentry_sdk
 import logging
 from ccp.compressor import PointFirstSection, PointSecondSection, BackToBack
 from ccp.config.utilities import r_getattr
+from ccp.config.units import ureg
 from pathlib import Path
+
+# import everything that is common to ccp_app_straight_through and ccp_app_back_to_back
+from common import *
 
 
 sentry_sdk.init(
@@ -70,6 +74,8 @@ def main():
             st.session_state.session_name = ""
         if "back_to_back" not in st.session_state:
             st.session_state.back_to_back = ""
+        if "expander_state" not in st.session_state:
+            st.session_state.expander_state = False
         for sec in ["sec1", "sec2"]:
             for curve in ["head", "power", "eff", "discharge_pressure"]:
                 if f"fig_{curve}_{sec}" not in st.session_state:
@@ -117,6 +123,7 @@ def main():
                     del session_state_data_copy[key]
             st.session_state.update(session_state_data_copy)
             st.session_state.session_name = file.name.replace(".ccp", "")
+            st.session_state.expander_state = True
             st.experimental_rerun()
 
         if save_button:
@@ -164,9 +171,9 @@ def main():
     fluid_list = sorted(fluid_list)
     fluid_list.insert(0, "")
 
-    with st.expander("Gas Selection"):
+    with st.expander("Gas Selection", expanded=st.session_state.expander_state):
         gas_compositions_table = {}
-        gas_columns = st.columns(5)
+        gas_columns = st.columns(6)
         for i, gas_column in enumerate(gas_columns):
             gas_compositions_table[f"gas_{i}"] = {}
 
@@ -218,120 +225,35 @@ def main():
     with st.sidebar.expander("⚙️ Options"):
         reynolds_correction = st.checkbox("Reynolds Correction", value=True)
         casing_heat_loss = st.checkbox("Casing Heat Loss", value=True)
-        calculate_leakages = st.checkbox("Calculate Leakages", value=True)
-        seal_gas_flow = st.checkbox("Seal Gas Flow", value=True)
+        calculate_leakages = st.checkbox(
+            "Calculate Leakages", value=True, disabled=True, help="Not yet implemented"
+        )
+        seal_gas_flow = st.checkbox(
+            "Seal Gas Flow", value=True, disabled=True, help="Not yet implemented"
+        )
         variable_speed = st.checkbox("Variable Speed", value=True)
-
-    # parameters with name and label
-    flow_m_units = ["kg/h", "lbm/h", "kg/s", "lbm/s"]
-    pressure_units = ["bar", "psi", "Pa", "kPa", "MPa"]
-    temperature_units = ["degK", "degC", "degF", "degR"]
-    speed_units = ["rpm", "Hz"]
-    length_units = ["m", "mm", "ft", "in"]
-
-    parameters_map = {
-        "flow": {
-            "label": "Flow",
-            "units": ["m³/h", "m³/s", "kg/h", "lbm/h", "kg/s", "lbm/s"],
-            "help": "Flow can be mass flow or volumetric flow depending on the selected unit.",
-        },
-        "suction_pressure": {
-            "label": "Suction Pressure",
-            "units": pressure_units,
-        },
-        "suction_temperature": {
-            "label": "Suction Temperature",
-            "units": temperature_units,
-        },
-        "discharge_pressure": {
-            "label": "Discharge Pressure",
-            "units": pressure_units,
-        },
-        "discharge_temperature": {
-            "label": "Discharge Temperature",
-            "units": temperature_units,
-        },
-        "casing_delta_T": {
-            "label": "Casing ΔT",
-            "units": temperature_units,
-            "help": "Temperature difference between the casing and the ambient temperature.",
-        },
-        "speed": {
-            "label": "Speed",
-            "units": speed_units,
-        },
-        "balance_line_flow_m": {
-            "label": "Balance Line Flow",
-            "units": flow_m_units,
-        },
-        "end_seal_upstream_pressure": {
-            "label": "Pressure Upstream End Seal",
-            "units": pressure_units,
-            "help": "Second section suction pressure.",
-        },
-        "end_seal_upstream_temperature": {
-            "label": "Temperature Upstream End Seal",
-            "units": temperature_units,
-            "help": "Second section suction temperature.",
-        },
-        "div_wall_flow_m": {
-            "label": "Division Wall Flow",
-            "units": flow_m_units,
-            "help": "Flow through the division wall if measured. Otherwise it is calculated from the First Section Discharge Flow.",
-        },
-        "div_wall_upstream_pressure": {
-            "label": "Pressure Upstream Division Wall",
-            "units": pressure_units,
-            "help": "Second section discharge pressure.",
-        },
-        "div_wall_upstream_temperature": {
-            "label": "Temperature Upstream Division Wall",
-            "units": temperature_units,
-            "help": "Second section discharge temperature.",
-        },
-        "first_section_discharge_flow_m": {
-            "label": "First Section Discharge Flow",
-            "units": flow_m_units,
-            "help": "If the Division Wall Flow is not measured, we use this value to calculate it.",
-        },
-        "seal_gas_flow_m": {
-            "label": "Seal Gas Flow",
-            "units": flow_m_units,
-        },
-        "seal_gas_temperature": {
-            "label": "Seal Gas Temperature",
-            "units": temperature_units,
-        },
-        "head": {
-            "label": "Head",
-            "units": ["kJ/kg", "J/kg", "m*g0", "ft"],
-        },
-        "eff": {
-            "label": "Efficiency",
-            "units": [""],
-        },
-        "power": {
-            "label": "Gas Power",
-            "units": ["kW", "hp", "W", "Btu/h", "MW"],
-        },
-        "b": {
-            "label": "First Impeller Width",
-            "units": ["mm", "m", "ft", "in"],
-        },
-        "D": {
-            "label": "First Impeller Diameter",
-            "units": ["mm", "m", "ft", "in"],
-        },
-        "surface_roughness": {
-            "label": "Surface Roughness",
-            "units": ["mm", "m", "ft", "in"],
-            "help": "Mean surface roughness of the gas path.",
-        },
-        "casing_area": {
-            "label": "Casing Area",
-            "units": ["m²", "mm²", "ft²", "in²"],
-        },
-    }
+        # add text input for the ambient pressure
+        st.text("Ambient Pressure")
+        ambient_pressure_magnitude_col, ambient_pressure_unit_col = st.columns(2)
+        with ambient_pressure_magnitude_col:
+            ambient_pressure_magnitude = st.text_input(
+                "Ambient Pressure",
+                value=1.01325,
+                key="ambient_pressure_magnitude",
+                label_visibility="collapsed",
+            )
+        with ambient_pressure_unit_col:
+            ambient_pressure_unit = st.selectbox(
+                "Unit",
+                options=pressure_units,
+                index=pressure_units.index("bar"),
+                key="ambient_pressure_unit",
+                label_visibility="collapsed",
+            )
+        ambient_pressure = Q_(
+            float(ambient_pressure_magnitude), ambient_pressure_unit
+        ).to("bar")
+        ureg.define(f"barg = 1 * bar; offset: {ambient_pressure.magnitude}")
 
     # add dict to each section to store the values for guarantee and test points
     # in the parameters_map
@@ -350,7 +272,7 @@ def main():
                     "value": None,
                 }
 
-    with st.expander("Data Sheet"):
+    with st.expander("Data Sheet", expanded=st.session_state.expander_state):
         # build container with 8 columns
         points_title = st.container()
         points_title_columns = points_title.columns(4, gap="small")
@@ -446,7 +368,7 @@ def main():
                 parameters_map[parameter]["section_2"]["point_guarantee"]
             )
 
-    with st.expander("Curves"):
+    with st.expander("Curves", expanded=st.session_state.expander_state):
         # add upload button for each section curve
         # check if fig_dict was created when loading state. Otherwise, create it
         plot_limits = {}
@@ -454,7 +376,7 @@ def main():
 
         for curve in ["head", "eff", "discharge_pressure", "power"]:
             st.markdown(f"### {parameters_map[curve]['label']}")
-            parameter_container = st.container()
+            parameter_container = st.empty()
             first_section_col, second_section_col = parameter_container.columns(
                 2, gap="small"
             )
@@ -534,7 +456,7 @@ def main():
     number_of_test_points = 6
     number_of_columns = number_of_test_points + 2
 
-    with st.expander("Test Data"):
+    with st.expander("Test Data", expanded=st.session_state.expander_state):
         tab_section_1, tab_section_2 = st.tabs(["First Section", "Second Section"])
         # build container with 8 columns
         with tab_section_1:
@@ -564,6 +486,7 @@ def main():
                         options=gas_options,
                         label_visibility="collapsed",
                         index=get_index_selected_gas(f"gas_section_1_point_{i - 1}"),
+                        key=f"gas_section_1_point_{i - 1}",
                     )
 
             # build one container with 8 columns for each parameter
@@ -651,6 +574,7 @@ def main():
                         options=gas_options,
                         label_visibility="collapsed",
                         index=get_index_selected_gas(f"gas_section_2_point_{i - 1}"),
+                        key=f"gas_section_2_point_{i - 1}",
                     )
 
             # build one container with 8 columns for each parameter
@@ -848,6 +772,13 @@ def main():
 
         for section in ["section_1", "section_2"]:
             for i in range(1, number_of_test_points + 1):
+                time.sleep(0.1)
+                progress_value += 1
+                progress_bar.progress(
+                    progress_value,
+                    text=f"Calculating test point: {section} point {i}...",
+                )
+
                 kwargs = {}
                 # check if at least flow, suction pressure and suction temperature are filled
                 if (
@@ -1677,6 +1608,15 @@ def main():
                             )
                         )
 
+                        table_excel = to_excel(styled_df_results)
+                        st.download_button(
+                            "Download Results Table",
+                            data=table_excel,
+                            file_name=f"{sec}.xlsx",
+                            mime="application/vnd.ms-excel",
+                            use_container_width=True,
+                        )
+
                         with st.container():
                             mach_col, reynolds_col = st.columns(2)
                             mach_col.plotly_chart(
@@ -1891,6 +1831,23 @@ def main():
                             power_col.plotly_chart(
                                 plots_dict["power"], use_container_width=True
                             )
+
+    # this part will only show if we start streamlit with --client.toolbarMode developer
+    if st.config.get_option("client.toolbarMode") == "developer":
+        with st.expander("Session State"):
+            session_state_copy = {}
+            for key, value in st.session_state.items():
+                session_state_copy[key] = value
+
+            # remove session state keys that start with fig_
+            for key in list(session_state_copy.keys()):
+                if key.startswith("fig_"):
+                    del session_state_copy[key]
+
+            # sort
+            session_state_copy = dict(sorted(session_state_copy.items()))
+
+            st.write(session_state_copy)
 
 
 if __name__ == "__main__":

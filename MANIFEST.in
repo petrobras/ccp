@@ -1,1 +1,2 @@
 recursive-include ccp/tests/data *
+recursive-include ccp/app *
