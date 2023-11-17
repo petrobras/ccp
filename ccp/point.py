@@ -30,6 +30,8 @@ class Point:
         Suction state, polytropic head and polytropic efficiency.
     suc, head, power : ccp.State, pint.Quantity or float, pint.Quantity or float
         Suction state, polytropic head (J/kg) and gas power (Watt).
+    suc, head, power_shaft, power_losses : ccp.State, pint.Quantity or float, pint.Quantity or float, pint.Quantity or float
+        Suction state, polytropic head (J/kg), shaft power (Watt) and power losses (Watt).
     suc, eff, volume_ratio : ccp.State, float, float
         Suction state, polytropic efficiency and volume ratio.
     suc, pres_ratio, disch_T : ccp.State, float, pint.Quantity or float
@@ -38,6 +40,12 @@ class Point:
         Impeller width at the outer blade diameter (m).
     D : float, pint.Quantity
         Impeller outer diameter (m).
+    power_shaft : float, pint.Quantity
+        Shaft power (Watt), optional.
+    power_losses : float, pint.Quant
+        Mechanical power losses (Watt), optional.
+    torque : float, pint.Quantity
+        load torque (N.m), optional.                                                                                                                                                       (N.m), optional.
     surface_roughness : pint.Quantity, optional
         Gas passage mean surface roughness (m).
         Used in the reynolds correction calculation.
@@ -85,6 +93,12 @@ class Point:
         Polytropic efficiency (dimensionless).
     power : pint.Quantity
         Power (Watt).
+    power_shaft : pint.Quantity
+        Shaft power (Watt) which includes bearing and seal losses.
+    power_losses : pint.Quantity
+        Mechanical power losses (Watt) which includes bearing and seal.
+    torque : pint.Quantity
+        Load torque (N*m) at coupling which includes bearing and seal losses.
     phi : pint.Quantity
         Volume flow coefficient (dimensionless).
     psi : pint.Quantity
@@ -133,6 +147,9 @@ class Point:
         head=None,
         eff=None,
         power=None,
+        power_shaft=None,
+        power_losses=None,
+        torque=None,
         phi=None,
         psi=None,
         volume_ratio=None,
@@ -162,6 +179,9 @@ class Point:
         self.head = head
         self.eff = eff
         self.power = power
+        self.power_shaft = power_shaft
+        self.power_losses = power_losses
+        self.torque = torque
 
         self.phi = phi
         self.psi = psi
@@ -206,6 +226,9 @@ class Point:
             "volume_ratio",
             "pressure_ratio",
             "disch_T",
+            "power_losses",
+            "power_shaft",
+            "torque",
         ]:
             if getattr(self, k) is not None:
                 kwargs_list.append(k)
@@ -258,7 +281,7 @@ class Point:
             for attr in ["p", "T", "h", "s", "rho"]:
                 plot = plot_func(self, ".".join([state, attr]))
                 setattr(getattr(self, state), attr + "_plot", plot)
-        for attr in ["head", "eff", "power"]:
+        for attr in ["head", "eff", "power", "power_shaft", "torque"]:
             plot = plot_func(self, attr)
             setattr(self, attr + "_plot", plot)
 
@@ -269,6 +292,8 @@ class Point:
             f"\nHead: {self.head:.2f~P}"
             f"\nEfficiency: {self.eff:.2f~P}"
             f"\nPower: {self.power:.2f~P}"
+            f"\nShaft Power: {self.power_shaft:.2f~P}"
+            f"\nTorque: {self.torque:.2f~P}"
         )
 
     def __eq__(self, other):
@@ -290,7 +315,8 @@ class Point:
             f' speed=Q_("{self.speed:.0f~P}"),'
             f' flow_v=Q_("{self.flow_v:.2f~P}"),'
             f' head=Q_("{self.head:.0f~P}"),'
-            f' eff=Q_("{self.eff:.3f~P}"))'
+            f' eff=Q_("{self.eff:.3f~P}"),'
+            f' power_losses=Q_("{self.power_losses:.0f~P}"))'
         )
 
     def _calc_from_disch_flow_v_speed_suc(self):
@@ -315,6 +341,20 @@ class Point:
                 )
             )
         self.power = power_calc(self.flow_m, self.head, self.eff)
+        if not self.power_losses:
+            self.power_losses = Q_(0, "watt")
+        self.power_shaft = self.power + self.power_losses
+        self.torque = self.power_shaft / self.speed
+
+    def _calc_from_disch_flow_v_speed_suc_torque(self):
+        self._calc_from_disch_flow_v_speed_suc()
+        self.power_shaft = self.torque * self.speed
+        self.power_losses = self.power_shaft - self.power
+
+    def _calc_from_disch_flow_v_power_losses_speed_suc(self):
+        self._calc_from_disch_flow_v_speed_suc()
+        self.power_shaft = self.power + self.power_losses
+        self.torque = self.power_shaft / self.speed
 
     def _calc_from_disch_flow_m_speed_suc(self):
         self.head = self.head_calc_func(self.suc, self.disch)
@@ -338,6 +378,20 @@ class Point:
         self.power = power_calc(self.flow_m, self.head, self.eff)
         self.phi = phi(self.flow_v, self.speed, self.D)
         self.psi = psi(self.head, self.speed, self.D)
+        if not self.power_losses:
+            self.power_losses = Q_(0, "watt")
+        self.power_shaft = self.power + self.power_losses
+        self.torque = self.power_shaft / self.speed
+
+    def _calc_from_disch_flow_m_speed_suc_torque(self):
+        self._calc_from_disch_flow_m_speed_suc()
+        self.power_shaft = self.torque * self.speed
+        self.power_losses = self.power_shaft - self.power
+
+    def _calc_from_disch_flow_m_power_losses_speed_suc(self):
+        self._calc_from_disch_flow_m_speed_suc()
+        self.power_shaft = self.power + self.power_losses
+        self.torque = self.power_shaft / self.speed
 
     def _calc_from_eff_phi_psi_suc_volume_ratio(self):
         eff = self.eff
@@ -375,6 +429,20 @@ class Point:
         self.flow_v = flow_from_phi(self.D, self.phi, self.speed)
         self.flow_m = self.flow_v * self.suc.rho()
         self.power = power_calc(self.flow_m, self.head, self.eff)
+        if not self.power_losses:
+            self.power_losses = Q_(0, "watt")
+        self.power_shaft = self.power + self.power_losses
+        self.torque = self.power_shaft / self.speed
+
+    def _calc_from_eff_phi_psi_suc_torque_volume_ratio(self):
+        self._calc_from_eff_phi_psi_suc_volume_ratio()
+        self.power_shaft = self.torque * self.speed
+        self.power_losses = self.power_shaft - self.power
+
+    def _calc_from_eff_phi_power_losses_psi_suc_volume_ratio(self):
+        self._calc_from_eff_phi_psi_suc_volume_ratio()
+        self.power_shaft = self.power + self.power_losses
+        self.torque = self.power_shaft / self.speed
 
     def _calc_from_eff_flow_v_head_speed_suc(self):
         eff = self.eff
@@ -387,6 +455,20 @@ class Point:
         self.phi = phi(self.flow_v, self.speed, self.D)
         self.psi = psi(self.head, self.speed, self.D)
         self.volume_ratio = self.suc.v() / self.disch.v()
+        if not self.power_losses:
+            self.power_losses = Q_(0, "watt")
+        self.power_shaft = self.power + self.power_losses
+        self.torque = self.power_shaft / self.speed
+
+    def _calc_from_eff_flow_v_head_speed_suc_torque(self):
+        self._calc_from_eff_flow_v_head_speed_suc()
+        self.power_shaft = self.torque * self.speed
+        self.power_losses = self.power_shaft - self.power
+
+    def _calc_from_eff_flow_v_head_power_losses_speed_suc(self):
+        self._calc_from_eff_flow_v_head_speed_suc()
+        self.power_shaft = self.power + self.power_losses
+        self.torque = self.power_shaft / self.speed
 
     def _calc_from_eff_flow_m_head_speed_suc(self):
         eff = self.eff
@@ -399,6 +481,20 @@ class Point:
         self.phi = phi(self.flow_v, self.speed, self.D)
         self.psi = psi(self.head, self.speed, self.D)
         self.volume_ratio = self.suc.v() / self.disch.v()
+        if not self.power_losses:
+            self.power_losses = Q_(0, "watt")
+        self.power_shaft = self.power + self.power_losses
+        self.torque = self.power_shaft / self.speed
+
+    def _calc_from_eff_flow_m_head_speed_suc_torque(self):
+        self._calc_from_eff_flow_m_head_speed_suc()
+        self.power_shaft = self.torque * self.speed
+        self.power_losses = self.power_shaft - self.power
+
+    def _calc_from_eff_flow_m_head_power_losses_speed_suc(self):
+        self._calc_from_eff_flow_m_head_speed_suc()
+        self.power_shaft = self.power + self.power_losses
+        self.torque = self.power_shaft / self.speed
 
     def _calc_from_eff_phi_psi_speed_suc(self):
         self.head = head_from_psi(self.D, self.psi, self.speed)
@@ -407,6 +503,20 @@ class Point:
         self.flow_m = self.flow_v * self.suc.rho()
         self.power = power_calc(self.flow_m, self.head, self.eff)
         self.volume_ratio = self.suc.v() / self.disch.v()
+        if not self.power_losses:
+            self.power_losses = Q_(0, "watt")
+        self.power_shaft = self.power + self.power_losses
+        self.torque = self.power_shaft / self.speed
+
+    def _calc_from_eff_phi_psi_speed_suc_torque(self):
+        self._calc_from_eff_phi_psi_speed_suc()
+        self.power_shaft = self.torque * self.speed
+        self.power_losses = self.power_shaft - self.power
+
+    def _calc_from_eff_phi_power_losses_psi_speed_suc(self):
+        self._calc_from_eff_phi_psi_speed_suc()
+        self.power_shaft = self.power + self.power_losses
+        self.torque = self.power_shaft / self.speed
 
     def _calc_from_disch_p_eff_flow_v_speed_suc(self):
         eff = self.eff
@@ -419,6 +529,20 @@ class Point:
         self.phi = phi(self.flow_v, self.speed, self.D)
         self.psi = psi(self.head, self.speed, self.D)
         self.volume_ratio = self.suc.v() / self.disch.v()
+        if not self.power_losses:
+            self.power_losses = Q_(0, "watt")
+        self.power_shaft = self.power + self.power_losses
+        self.torque = self.power_shaft / self.speed
+
+    def _calc_from_disch_p_eff_flow_v_speed_suc_torque(self):
+        self._calc_from_disch_p_eff_flow_v_speed_suc()
+        self.power_shaft = self.torque * self.speed
+        self.power_losses = self.power_shaft - self.power
+
+    def _calc_from_disch_p_eff_flow_v_power_losses_speed_suc(self):
+        self._calc_from_disch_p_eff_flow_v_speed_suc()
+        self.power_shaft = self.power + self.power_losses
+        self.torque = self.power_shaft / self.speed
 
     def _calc_from_disch_p_eff_flow_m_speed_suc(self):
         eff = self.eff
@@ -431,6 +555,20 @@ class Point:
         self.phi = phi(self.flow_v, self.speed, self.D)
         self.psi = psi(self.head, self.speed, self.D)
         self.volume_ratio = self.suc.v() / self.disch.v()
+        if not self.power_losses:
+            self.power_losses = Q_(0, "watt")
+        self.power_shaft = self.power + self.power_losses
+        self.torque = self.power_shaft / self.speed
+
+    def _calc_from_disch_p_eff_flow_m_speed_suc_torque(self):
+        self._calc_from_disch_p_eff_flow_m_speed_suc()
+        self.power_shaft = self.torque * self.speed
+        self.power_losses = self.power_shaft - self.power
+
+    def _calc_from_disch_p_eff_flow_m_power_losses_speed_suc(self):
+        self._calc_from_disch_p_eff_flow_m_speed_suc()
+        self.power_shaft = self.power + self.power_losses
+        self.torque = self.power_shaft / self.speed
 
     def _calc_from_flow_v_head_power_speed_suc(self):
         suc = self.suc
@@ -442,6 +580,20 @@ class Point:
         self.phi = phi(self.flow_v, self.speed, self.D)
         self.psi = psi(self.head, self.speed, self.D)
         self.volume_ratio = self.suc.v() / self.disch.v()
+        if not self.power_losses:
+            self.power_losses = Q_(0, "watt")
+        self.power_shaft = self.power + self.power_losses
+        self.torque = self.power_shaft / self.speed
+
+    def _calc_from_flow_v_head_power_speed_suc_torque(self):
+        self._calc_from_flow_v_head_power_speed_suc()
+        self.power_shaft = self.torque * self.speed
+        self.power_losses = self.power_shaft - self.power
+
+    def _calc_from_flow_v_head_power_power_losses_speed_suc(self):
+        self._calc_from_flow_v_head_power_speed_suc()
+        self.power_shaft = self.power + self.power_losses
+        self.torque = self.power_shaft / self.speed
 
     def _calc_from_flow_m_head_power_speed_suc(self):
         suc = self.suc
@@ -453,6 +605,76 @@ class Point:
         self.phi = phi(self.flow_v, self.speed, self.D)
         self.psi = psi(self.head, self.speed, self.D)
         self.volume_ratio = self.suc.v() / self.disch.v()
+        if not self.power_losses:
+            self.power_losses = Q_(0, "watt")
+        self.power_shaft = self.power + self.power_losses
+        self.torque = self.power_shaft / self.speed
+
+    def _calc_from_flow_m_head_power_speed_suc_torque(self):
+        self._calc_from_flow_m_head_power_speed_suc()
+        self.power_shaft = self.torque * self.speed
+        self.power_losses = self.power_shaft - self.power
+
+    def _calc_from_flow_m_head_power_power_losses_speed_suc(self):
+        self._calc_from_flow_m_head_power_speed_suc()
+        self.power_shaft = self.power + self.power_losses
+        self.torque = self.power_shaft / self.speed
+
+    def _calc_from_flow_v_head_power_shaft_speed_suc(self):
+        suc = self.suc
+        head = self.head
+        power_shaft = self.power_shaft
+        if not self.power_losses:
+            self.power_losses = Q_(0, "watt")
+        self.power = power_shaft - self.power_losses
+        self.flow_m = self.flow_v * self.suc.rho()
+        self.eff = (self.flow_m * head / self.power).to("dimensionless")
+        self.disch = disch_from_suc_head_eff(suc, head, self.eff)
+        self.phi = phi(self.flow_v, self.speed, self.D)
+        self.psi = psi(self.head, self.speed, self.D)
+        self.volume_ratio = self.suc.v() / self.disch.v()
+        self.torque = self.power_shaft / self.speed
+
+    def _calc_from_flow_m_head_power_shaft_speed_suc(self):
+        suc = self.suc
+        head = self.head
+        power_shaft = self.power_shaft
+        if not self.power_losses:
+            self.power_losses = Q_(0, "watt")
+        self.power = power_shaft - self.power_losses
+        self.flow_v = self.flow_m / self.suc.rho()
+        self.eff = (self.flow_m * head / self.power).to("dimensionless")
+        self.disch = disch_from_suc_head_eff(suc, head, self.eff)
+        self.phi = phi(self.flow_v, self.speed, self.D)
+        self.psi = psi(self.head, self.speed, self.D)
+        self.volume_ratio = self.suc.v() / self.disch.v()
+        self.torque = self.power_shaft / self.speed
+
+    def _calc_from_flow_v_head_power_losses_power_shaft_speed_suc(self):
+        suc = self.suc
+        head = self.head
+        power_shaft = self.power_shaft
+        self.power = power_shaft - self.power_losses
+        self.flow_m = self.flow_v * self.suc.rho()
+        self.eff = (self.flow_m * head / self.power).to("dimensionless")
+        self.disch = disch_from_suc_head_eff(suc, head, self.eff)
+        self.phi = phi(self.flow_v, self.speed, self.D)
+        self.psi = psi(self.head, self.speed, self.D)
+        self.volume_ratio = self.suc.v() / self.disch.v()
+        self.torque = self.power_shaft / self.speed
+
+    def _calc_from_flow_m_head_power_losses_power_shaft_speed_suc(self):
+        suc = self.suc
+        head = self.head
+        power_shaft = self.power_shaft
+        self.power = power_shaft - self.power_losses
+        self.flow_v = self.flow_m / self.suc.rho()
+        self.eff = (self.flow_m * head / power).to("dimensionless")
+        self.disch = disch_from_suc_head_eff(suc, head, self.eff)
+        self.phi = phi(self.flow_v, self.speed, self.D)
+        self.psi = psi(self.head, self.speed, self.D)
+        self.volume_ratio = self.suc.v() / self.disch.v()
+        self.torque = self.power_shaft / self.speed
 
     def _calc_from_disch_T_flow_v_pressure_ratio_speed_suc(self):
         suc = self.suc
@@ -462,6 +684,22 @@ class Point:
         self.disch = State(p=disch_p, T=disch_T, fluid=suc.fluid)
         self._calc_from_disch_flow_v_speed_suc()
 
+    def _calc_from_disch_T_flow_v_pressure_ratio_speed_suc_torque(self):
+        suc = self.suc
+        disch_T = self.disch_T
+        pressure_ratio = self.pressure_ratio
+        disch_p = suc.p() * pressure_ratio
+        self.disch = State(p=disch_p, T=disch_T, fluid=suc.fluid)
+        self._calc_from_disch_flow_v_speed_suc_torque()
+
+    def _calc_from_disch_T_flow_v_power_losses_pressure_ratio_speed_suc(self):
+        suc = self.suc
+        disch_T = self.disch_T
+        pressure_ratio = self.pressure_ratio
+        disch_p = suc.p() * pressure_ratio
+        self.disch = State(p=disch_p, T=disch_T, fluid=suc.fluid)
+        self._calc_from_disch_flow_v_power_losses_speed_suc()
+
     def _calc_from_disch_T_flow_m_pressure_ratio_speed_suc(self):
         suc = self.suc
         disch_T = self.disch_T
@@ -469,6 +707,22 @@ class Point:
         disch_p = suc.p() * pressure_ratio
         self.disch = State(p=disch_p, T=disch_T, fluid=suc.fluid)
         self._calc_from_disch_flow_m_speed_suc()
+
+    def _calc_from_disch_T_flow_m_pressure_ratio_speed_suc_torque(self):
+        suc = self.suc
+        disch_T = self.disch_T
+        pressure_ratio = self.pressure_ratio
+        disch_p = suc.p() * pressure_ratio
+        self.disch = State(p=disch_p, T=disch_T, fluid=suc.fluid)
+        self._calc_from_disch_flow_m_speed_suc_torque()
+
+    def _calc_from_disch_T_flow_m_power_losses_pressure_ratio_speed_suc(self):
+        suc = self.suc
+        disch_T = self.disch_T
+        pressure_ratio = self.pressure_ratio
+        disch_p = suc.p() * pressure_ratio
+        self.disch = State(p=disch_p, T=disch_T, fluid=suc.fluid)
+        self._calc_from_disch_flow_m_power_losses_speed_suc()
 
     def _calc_from_disch_T_flow_v_head_speed_suc(self):
         suc = self.suc
@@ -478,6 +732,22 @@ class Point:
         self.disch = disch_from_suc_disch_T_head(suc, disch_T, head)
         self._calc_from_disch_flow_v_speed_suc()
 
+    def _calc_from_disch_T_flow_v_head_speed_suc_torque(self):
+        suc = self.suc
+        disch_T = self.disch_T
+        head = self.head
+
+        self.disch = disch_from_suc_disch_T_head(suc, disch_T, head)
+        self._calc_from_disch_flow_v_speed_suc_torque()
+
+    def _calc_from_disch_T_flow_v_head_power_losses_speed_suc(self):
+        suc = self.suc
+        disch_T = self.disch_T
+        head = self.head
+
+        self.disch = disch_from_suc_disch_T_head(suc, disch_T, head)
+        self._calc_from_disch_flow_v_power_losses_speed_suc()
+
     def _calc_from_disch_T_flow_m_head_speed_suc(self):
         suc = self.suc
         disch_T = self.disch_T
@@ -485,6 +755,22 @@ class Point:
 
         self.disch = disch_from_suc_disch_T_head(suc, disch_T, head)
         self._calc_from_disch_flow_m_speed_suc()
+
+    def _calc_from_disch_T_flow_m_head_speed_suc_torque(self):
+        suc = self.suc
+        disch_T = self.disch_T
+        head = self.head
+
+        self.disch = disch_from_suc_disch_T_head(suc, disch_T, head)
+        self._calc_from_disch_flow_m_speed_suc_torque()
+
+    def _calc_from_disch_T_flow_m_head_power_losses_speed_suc(self):
+        suc = self.suc
+        disch_T = self.disch_T
+        head = self.head
+
+        self.disch = disch_from_suc_disch_T_head(suc, disch_T, head)
+        self._calc_from_disch_flow_m_power_losses_speed_suc()
 
     @classmethod
     @check_units
