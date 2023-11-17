@@ -47,18 +47,18 @@ def test_point_0(imp_0):
 def test_load_power_shaft(suc_0, test_point_0):
     # desired values: vendor results
     patm = Q_(101.3, "kPa")
-    assert_allclose(test_point_0.disch.p().to("kPa").m - patm.m, 4770, rtol=14)
-    assert_allclose(test_point_0.disch.T().to("degC").m, 188.2, rtol=1.3)
+    assert_allclose(test_point_0.disch.p().to("kPa").m - patm.m, 4770, atol=14)
+    assert_allclose(test_point_0.disch.T().to("degC").m, 188.2, atol=1.3)
 
-    assert_allclose(test_point_0.power.to("kW").m, 10242, rtol=41)
-    assert_allclose(test_point_0.power_shaft.to("kW").m, 10345, rtol=43)
-    assert_allclose(test_point_0.head.to("kJ/kg").m, 120.1, rtol=1)
-    assert_allclose(test_point_0.eff.m, 0.7721, rtol=1e-2)
+    assert_allclose(test_point_0.power.to("kW").m, 10242, atol=41)
+    assert_allclose(test_point_0.power_shaft.to("kW").m, 10345, atol=43)
+    assert_allclose(test_point_0.head.to("kJ/kg").m, 120.1, atol=1)
+    assert_allclose(test_point_0.eff.m, 0.7721, atol=1e-2)
     assert test_point_0.speed.to("rpm").m == 13311
-    assert_allclose(test_point_0.torque.to("N*m").m, 7421, rtol=31)
-    assert_allclose(suc_0.molar_mass().to("kg/kmol").m, 28.17, rtol=1e-2)
+    assert_allclose(test_point_0.torque.to("N*m").m, 7421, atol=31)
+    assert_allclose(suc_0.molar_mass().to("kg/kmol").m, 28.17, atol=1e-2)
     assert_allclose(
         test_point_0.flow_v.to("m**3/min").m * suc_0.rho().to("kg/m**3").m,
         3950,
-        rtol=8.4,  # 8.3,
+        atol=8.4, 
     )
