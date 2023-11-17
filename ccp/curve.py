@@ -200,6 +200,7 @@ class Curve:
         self.flow_v = Q_(_flow_v_values, _flow_v_units)
 
         self.speed = self[0].speed
+        self.power_losses = self.points[0].power_losses
         # change the following check in the future
         for point in self:
             if self.speed != point.speed:
@@ -212,7 +213,16 @@ class Curve:
             [p.disch for p in self], flow_v=self.flow_v, speed=self.speed
         )
 
-        for param in ["head", "eff", "power", "phi", "psi", "flow_m"]:
+        for param in [
+            "head",
+            "eff",
+            "power",
+            "power_shaft",
+            "torque",
+            "phi",
+            "psi",
+            "flow_m",
+        ]:
             values = []
             for point in self:
                 try:
