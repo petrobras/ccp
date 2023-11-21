@@ -990,7 +990,8 @@ class Impeller:
         The csv files should be generated with engauge with the following procedure:
         First, copy the image of the curve to your clipboard, then inside engauge digitizer:
             - Edit -> Paste as new
-            - Name each curve with their respective speed value;
+            - Name each curve with their respective speed value (e.g. 10322);
+            - If the curve is for shaft power, you can add the power loss next to the speed value (e.g. 10322, 82);
             - On Axis Point -> add 3 reference points
             - Select the curve (e.g. 10322 would be the curve for 10322 RPM)
             - Select the points using the segment fill tool;
@@ -1043,6 +1044,8 @@ class Impeller:
             Power units used when extracting data with engauge.
         power_shaft_units : str
             Shaft power units used when extracting data with engauge.
+        power_losses_units : str
+            Power losses units used when extracting data with engauge.
         pressure_ratio_units : str
             Pressure ratio units used when extracting data with engauge.
         disch_T_units : str
@@ -1082,7 +1085,7 @@ class Impeller:
             head_units=head_units,
             power_units=power_units,
             power_shaft_units=power_shaft_units,
-            power_losses_units=power_shaft_units,
+            power_losses_units=power_losses_units,
             flow_units_head=flow_units_head,
             flow_units_eff=flow_units_eff,
             flow_units_power=flow_units_power,
