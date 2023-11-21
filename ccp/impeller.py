@@ -264,12 +264,34 @@ class Impeller:
     def __init__(self, points):
         self.points = deepcopy(points)
 
+        losses_dict = {p.power_losses: p.speed for p in self.points}
+        max_losses = max(losses_dict.keys())
+        max_losses_speed = losses_dict[max_losses]
+
         curves = []
         for speed, grouped_points in groupby(
             sorted(self.points, key=lambda point: point.speed),
             key=lambda point: point.speed,
         ):
-            points = [point for point in grouped_points]
+            if max_losses.m > 0:
+                points = []
+                for p in grouped_points:
+                    if p.power_losses.m == 0:
+                        losses = max_losses * (p.speed / max_losses_speed) ** 2.5
+                        p_new = Point(
+                            suc=p.suc,
+                            disch=p.disch,
+                            flow_v=p.flow_v,
+                            speed=p.speed,
+                            power_losses=losses,
+                            b=p.b,
+                            D=p.D,
+                        )
+                    else:
+                        p_new = deepcopy(p)
+                    points.append(p_new)
+            else:
+                points = [point for point in grouped_points]
             curve = Curve(points)
             curves.append(curve)
             setattr(self, f"curve_{int(curve.speed.magnitude)}", curve)
@@ -285,6 +307,8 @@ class Impeller:
             "head",
             "eff",
             "power",
+            "power_shaft",
+            "torque",
             "psi",
             "phi",
             "flow_v",
@@ -369,8 +393,16 @@ class Impeller:
         p0 = self.points[0]
         disch = State(p=disch_p, T=disch_T, fluid=p0.suc.fluid)
 
+        power_losses = current_curve.power_losses
+
         point = Point(
-            suc=p0.suc, disch=disch, flow_v=flow_v, speed=speed, b=p0.b, D=p0.D
+            suc=p0.suc,
+            disch=disch,
+            flow_v=flow_v,
+            speed=speed,
+            b=p0.b,
+            D=p0.D,
+            power_losses=power_losses,
         )
 
         return point
@@ -402,6 +434,13 @@ class Impeller:
                     f"Can only interpolate for speed={current_curve.speed}"
                 )
             return current_curve
+
+        # calculate power losses
+        power_losses = calculate_power_losses(
+            power_losses_ref=self.curves[0].power_losses,
+            speed_ref=self.curves[0].speed,
+            speed=speed,
+        )
 
         closest_curves_idxs = find_closest_speeds(speeds, speed.magnitude)
         curves = [
@@ -440,6 +479,7 @@ class Impeller:
                 disch=disch,
                 flow_v=(flow_T + flow_p) / 2,
                 speed=speed,
+                power_losses=power_losses,
                 b=p0.b,
                 D=p0.D,
             )
@@ -578,6 +618,7 @@ class Impeller:
         head_curves=None,
         eff_curves=None,
         power_curves=None,
+        power_shaft_curves=None,
         pressure_ratio_curves=None,
         disch_T_curves=None,
         b=Q_(0.005, "m"),
@@ -587,6 +628,7 @@ class Impeller:
         flow_units_head=None,
         flow_units_eff=None,
         flow_units_power=None,
+        flow_units_power_shaft=None,
         flow_units_pressure_ratio=None,
         flow_units_disch_T=None,
         head_units="J/kg",
@@ -594,6 +636,8 @@ class Impeller:
         pressure_ratio_units="dimensionless",
         disch_T_units="degK",
         power_units="W",
+        power_shaft_units="W",
+        power_losses_units="W",
         speed_units="RPM",
     ):
         """Create points from dict object.
@@ -602,9 +646,9 @@ class Impeller:
 
         curve = {
             '10000': {
-                'x': [list with flow values],
-                'y': [list with head or eff values]
-                },
+                'x1': [list with flow values],
+                'x2': [list with head or eff values]
+                'x3': power losses value},
             ...}
         Where 10000 is the speed for that curve.
 
@@ -633,11 +677,14 @@ class Impeller:
         flow_units_power: str
             Flow units used  in the dict for power curves.
             Only needed when flow units for power curve differs from other curves.
+        flow_units_power_shaft: str
+            Flow units used in the dict for shaft power curves.
+            Only needed when flow units for power curve differs from other curves.
         flow_units_pressure_ratio: str
             Flow units used  in the dict for pressure ratio curves.
             Only needed when flow units for efficiency curve differs from other curves.
         flow_units_disch_T: str
-            Flow units used  in the dict for discharge Temp erature curves.
+            Flow units used  in the dict for discharge Temperature curves.
             Only needed when flow units for efficiency curve differs from other curves.
         head_units : str
             Head units used in the dict.
@@ -646,6 +693,10 @@ class Impeller:
             Dimensionless.
         power_units : str
             Power units used in the dict.
+        power_shaft_units : str
+            Shaft power units used in the dict.
+        power_losses_units : str
+            Mechanical power losses units used in the dict.
         pressure_ratio_units : str
             Pressure ratio units used in the dict.
         disch_T_units : str
@@ -690,10 +741,10 @@ class Impeller:
         }
 
         if "eff" in curves:
-            if max(curves["eff"][speeds[0]]["y"]) > 1:
+            if max(curves["eff"][speeds[0]]["x2"]) > 1:
                 for speed in speeds:
-                    curves["eff"][speed]["y"] = [
-                        i / 100 for i in curves["eff"][speed]["y"]
+                    curves["eff"][speed]["x2"] = [
+                        i / 100 for i in curves["eff"][speed]["x2"]
                     ]
 
         # create interpolated curves
@@ -705,36 +756,46 @@ class Impeller:
             min_x = 0
             max_x = 1e20
             # get min and max flow
-            for curve in curves:
+            for n, curve in enumerate(curves):
+                if n == 0:
+                    power_losses = curves[curve][speed]["x3"]
+                else:
+                    if power_losses != curves[curve][speed]["x3"]:
+                        raise ValueError(
+                            f"There should be the same power losses values, for the same speed. \n"
+                            f"Currently we have different values for {speed.to(speed_units):.2f~P} "
+                            f"{speed_units}. \n"
+                            "Please check and try again."
+                        )
                 if flow_units_list[f"flow_units_{curve}"] != flow_type:
                     if flow_units_list[f"flow_units_{curve}"] == "mass":
                         flow_curve = [
                             Q_(flow, args[f"flow_units_{curve}"]) / suc.rho()
-                            for flow in curves[curve][speed]["x"]
+                            for flow in curves[curve][speed]["x1"]
                         ]
-                        curves[curve][speed]["x"] = [
+                        curves[curve][speed]["x1"] = [
                             flow.to(flow_units).m for flow in flow_curve
                         ]
                     else:
                         flow_curve = [
                             Q_(flow, args[f"flow_units_{curve}"]) * suc.rho()
-                            for flow in curves[curve][speed]["x"]
+                            for flow in curves[curve][speed]["x1"]
                         ]
-                        curves[curve][speed]["x"] = [
+                        curves[curve][speed]["x1"] = [
                             flow.to(flow_units).m for flow in flow_curve
                         ]
                 else:
                     flow_curve = [
                         Q_(flow, args[f"flow_units_{curve}"])
-                        for flow in curves[curve][speed]["x"]
+                        for flow in curves[curve][speed]["x1"]
                     ]
-                    curves[curve][speed]["x"] = [
+                    curves[curve][speed]["x1"] = [
                         flow.to(flow_units).m for flow in flow_curve
                     ]
-                if curves[curve][speed]["x"][0] > min_x:
-                    min_x = curves[curve][speed]["x"][0]
-                if curves[curve][speed]["x"][-1] < max_x:
-                    max_x = curves[curve][speed]["x"][-1]
+                if curves[curve][speed]["x1"][0] > min_x:
+                    min_x = curves[curve][speed]["x1"][0]
+                if curves[curve][speed]["x1"][-1] < max_x:
+                    max_x = curves[curve][speed]["x1"][-1]
 
             points_x = np.linspace(min_x, max_x, number_of_points)
 
@@ -743,8 +804,8 @@ class Impeller:
                 points_interpolated[curve] = {}
 
                 curves_interpolated[curve][speed] = PchipInterpolator(
-                    curves[curve][speed]["x"],
-                    curves[curve][speed]["y"],
+                    curves[curve][speed]["x1"],
+                    curves[curve][speed]["x2"],
                     extrapolate=True,
                 )
                 points_interpolated[curve][speed] = curves_interpolated[curve][speed](
@@ -763,6 +824,7 @@ class Impeller:
                     "speed": Q_(float(speed), speed_units),
                     parameters[0]: Q_(param0, args[f"{parameters[0]}_units"]),
                     parameters[1]: Q_(param1, args[f"{parameters[1]}_units"]),
+                    "power_losses": Q_(power_losses, power_losses_units),
                     "b": b,
                     "D": D,
                 }
@@ -867,8 +929,9 @@ class Impeller:
                 y.append(point["y"])
 
             head_curve_ccp[speed] = {}
-            head_curve_ccp[speed]["x"] = x
-            head_curve_ccp[speed]["y"] = y
+            head_curve_ccp[speed]["x1"] = x
+            head_curve_ccp[speed]["x2"] = y
+            head_curve_ccp[speed]["x3"] = 0
 
         eff_curve_ccp = {}
         for eff_curve in eff_curves["CURVES"]:
@@ -880,8 +943,9 @@ class Impeller:
                 y.append(point["y"])
 
             eff_curve_ccp[speed] = {}
-            eff_curve_ccp[speed]["x"] = x
-            eff_curve_ccp[speed]["y"] = y
+            eff_curve_ccp[speed]["x1"] = x
+            eff_curve_ccp[speed]["x2"] = y
+            eff_curve_ccp[speed]["x3"] = 0
 
         return cls.load_from_dict(
             suc=suc,
@@ -908,11 +972,14 @@ class Impeller:
         flow_units_head=None,
         flow_units_eff=None,
         flow_units_power=None,
+        flow_units_power_shaft=None,
         flow_units_pressure_ratio=None,
         flow_units_disch_T=None,
         head_units="J/kg",
         eff_units="dimensionless",
         power_units="W",
+        power_shaft_units="W",
+        power_losses_units="W",
         pressure_ratio_units="dimensionless",
         disch_T_units="degK",
         speed_units="RPM",
@@ -923,7 +990,8 @@ class Impeller:
         The csv files should be generated with engauge with the following procedure:
         First, copy the image of the curve to your clipboard, then inside engauge digitizer:
             - Edit -> Paste as new
-            - Name each curve with their respective speed value;
+            - Name each curve with their respective speed value (e.g. 10322);
+            - If the curve is for shaft power, you can add the power loss next to the speed value (e.g. 10322, 82);
             - On Axis Point -> add 3 reference points
             - Select the curve (e.g. 10322 would be the curve for 10322 RPM)
             - Select the points using the segment fill tool;
@@ -958,6 +1026,9 @@ class Impeller:
         flow_units_power: str
             Flow units used when extracting data with engauge for power curves.
             Only needed when flow units for power curve differs from other curves.
+        flow_units_power_shaft: str
+            Flow units used when extracting data with engauge for shaft power curves.
+            Only needed when flow units for power curve differs from other curves.
         flow_units_pressure_ratio: str
             Flow units used when extracting data with engauge for pressure ratio curves.
             Only needed when flow units for power curve differs from other curves.
@@ -971,6 +1042,10 @@ class Impeller:
             Dimensionless.
         power_units : str
             Power units used when extracting data with engauge.
+        power_shaft_units : str
+            Shaft power units used when extracting data with engauge.
+        power_losses_units : str
+            Power losses units used when extracting data with engauge.
         pressure_ratio_units : str
             Pressure ratio units used when extracting data with engauge.
         disch_T_units : str
@@ -980,7 +1055,14 @@ class Impeller:
         """
         curves_path_dict = {}
 
-        for param in ["head", "eff", "power", "pressure_ratio", "disch_T"]:
+        for param in [
+            "head",
+            "eff",
+            "power",
+            "power_shaft",
+            "pressure_ratio",
+            "disch_T",
+        ]:
             param_path = curve_path / (curve_name + f"-{param}.csv")
             if param_path.is_file():
                 curves_path_dict[f"{param}_curves"] = read_data_from_engauge_csv(
@@ -1002,9 +1084,12 @@ class Impeller:
             flow_units=flow_units,
             head_units=head_units,
             power_units=power_units,
+            power_shaft_units=power_shaft_units,
+            power_losses_units=power_losses_units,
             flow_units_head=flow_units_head,
             flow_units_eff=flow_units_eff,
             flow_units_power=flow_units_power,
+            flow_units_power_shaft=flow_units_power_shaft,
             flow_units_pressure_ratio=flow_units_pressure_ratio,
             flow_units_disch_T=flow_units_disch_T,
             eff_units=eff_units,
@@ -1160,6 +1245,10 @@ def system_to_interpolate(x, *args):
     eq_2 = -fac * (flow_1 - flow_0) + x[0] - flow_0
 
     return [eq_1, eq_2]
+
+
+def calculate_power_losses(power_losses_ref, speed_ref, speed):
+    return power_losses_ref * (speed / speed_ref) ** 2.5
 
 
 def impeller_example():

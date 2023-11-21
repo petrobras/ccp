@@ -14,6 +14,21 @@ In the guide wizard we name the curves with the value of each speed:
 ```{image} ../_static/img/step2.gif
 ```
 
+````{note}
+
+If you are passing a shaft power curve, you can add the power loss value for 
+each speed with the convention 'speed, power_loss':
+
+```{image} ../_static/img/step_power_loss.png
+```
+
+If only one value for power loss is passed, the values for other speeds are 
+calculated based on the ASME PTC 10.
+
+````
+
+
+
 The next step is to select three axis points in the plot:
 
 ```{image} ../_static/img/step3.gif

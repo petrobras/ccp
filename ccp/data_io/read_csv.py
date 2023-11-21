@@ -28,9 +28,13 @@ def read_data_from_engauge_csv(file_path):
             if row:
                 if row[0] == "x":
                     current_curve = row[1]
-                    curves[current_curve] = {"x": [], "y": []}
+                    curves[current_curve] = {"x1": [], "x2": []}
+                    try:
+                        curves[current_curve]["x3"] = float(row[2].replace(",", "."))
+                    except:
+                        curves[current_curve]["x3"] = 0
                 else:
-                    curves[current_curve]["x"].append(float(row[0].replace(",", ".")))
-                    curves[current_curve]["y"].append(float(row[1].replace(",", ".")))
+                    curves[current_curve]["x1"].append(float(row[0].replace(",", ".")))
+                    curves[current_curve]["x2"].append(float(row[1].replace(",", ".")))
 
     return curves

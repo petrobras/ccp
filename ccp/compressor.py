@@ -553,12 +553,12 @@ class BackToBack(Impeller):
         self.points_flange_t_sec2 = test_points_sec2
 
         # calculate rotor condition for sec1
-        test_points_sec1_rotor = np.full(len(test_points_sec1), np.nan, dtype=np.object)
+        test_points_sec1_rotor = np.full(len(test_points_sec1), np.nan, dtype=object)
         self.k_end_seal = np.zeros(
-            len(test_points_sec1), dtype=np.object
+            len(test_points_sec1), dtype=object
         )  # array with seal constants
         self.k_div_wall = np.zeros(
-            len(test_points_sec1), dtype=np.object
+            len(test_points_sec1), dtype=object
         )  # array with div wall seal constants
 
         for point in test_points_sec1:
@@ -718,7 +718,7 @@ class BackToBack(Impeller):
         self.points_rotor_t_sec1 = test_points_sec1_rotor
 
         # calculate rotor condition for sec2
-        test_points_sec2_rotor = np.full(len(test_points_sec1), np.nan, dtype=np.object)
+        test_points_sec2_rotor = np.full(len(test_points_sec1), np.nan, dtype=object)
         for i, point_f in enumerate(test_points_sec2):
             ms2f_t = point_f.flow_m
             mbal_t = point_f.balance_line_flow_m
@@ -748,7 +748,7 @@ class BackToBack(Impeller):
 
         # calculate rotor specified conditions for sec1
         self.points_rotor_sp_sec1 = []
-        ms1f_sp_array = np.zeros(len(self.points_rotor_t_sec1), dtype=np.object)
+        ms1f_sp_array = np.zeros(len(self.points_rotor_t_sec1), dtype=object)
         for i, point, k_end_seal, k_div_wall in zip(
             range(len(ms1f_sp_array)),
             self.points_rotor_t_sec1,
