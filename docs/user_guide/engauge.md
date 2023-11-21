@@ -22,6 +22,9 @@ each speed with the convention 'speed, power_loss':
 ```{image} ../_static/img/step_power_loss.png
 ```
 
+If only one value for power loss is passed, the values for other speeds are 
+calculated based on the ASME PTC 10.
+
 ````
 
 
