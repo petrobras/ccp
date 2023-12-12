@@ -44,6 +44,11 @@ class Evaluation:
             - Suction temperature: should be 'Ts' (degK) in the DataFrame;
             - Discharge temperature: should be 'Td' (degK) in the DataFrame;
             - Speed: should be 'speed' (rad/s) in the DataFrame.
+        operation_fluid : dict, list
+            Dictionary with constituent and composition.
+            (e.g.: fluid={'Oxygen': 0.2096, 'Nitrogen': 0.7812, 'Argon': 0.0092})
+            or list with the constituents, in this case the constituents will be
+            columns in the data DataFrame.
         window : int, optional
             Window size for rolling calculation, meaning how many rolls will be used
             to calculate the fluctuation.
