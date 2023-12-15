@@ -387,7 +387,7 @@ class Impeller:
                 f"Interpolation limits: {min_flow_v:.3f~P} ~ {max_flow_v:.3f~P}\n"
                 f"Expected point flow: {flow_v:.3f~P}"
             )
-        disch_T = func_T(flow_v)
+
         flow_at_min_p = (
             np.log(current_curve[-1].disch.p().m + np.exp(4 * max_flow_v.m))
         ) / 4
