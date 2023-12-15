@@ -354,6 +354,7 @@ class Impeller:
         flow_m : pint.Quantity, float
             Mass flow (kg/s).
         speed : pint.Quantity, float
+            Speed (rad/s).
 
         Returns
         -------
