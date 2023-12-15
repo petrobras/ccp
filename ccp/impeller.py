@@ -354,7 +354,6 @@ class Impeller:
         flow_m : pint.Quantity, float
             Mass flow (kg/s).
         speed : pint.Quantity, float
-            Speed (rad/s).
 
         Returns
         -------
@@ -388,7 +387,41 @@ class Impeller:
                 f"Expected point flow: {flow_v:.3f~P}"
             )
         disch_T = func_T(flow_v)
-        disch_p = func_p(flow_v)
+        flow_at_min_p = (
+            np.log(current_curve[-1].disch.p().m + np.exp(4 * max_flow_v.m))
+        ) / 4
+        flow_at_min_T = (
+            np.log(
+                current_curve[-1].disch.T().m
+                - current_curve.points[0].suc.T().m
+                + np.exp(4 * max_flow_v.m)
+            )
+        ) / 4
+
+        # Extrapolation code for choke region
+        if flow_v <= max_flow_v:
+            disch_p = func_p(flow_v)
+        elif flow_v.m < flow_at_min_p:
+            disch_p = round(
+                current_curve[-1].disch.p().m
+                + np.exp(4 * current_curve[-1].flow_v.m)
+                - np.exp(4 * flow_v.m),
+                2,
+            )
+        else:
+            disch_p = 0.001
+
+        if flow_v <= max_flow_v:
+            disch_T = func_T(flow_v)
+        elif flow_v.m < flow_at_min_T:
+            disch_T = round(
+                current_curve[-1].disch.T().m
+                + np.exp(4 * current_curve[-1].flow_v.m)
+                - np.exp(4 * flow_v.m),
+                2,
+            )
+        else:
+            disch_T = current_curve.points[0].suc.T().m
 
         p0 = self.points[0]
         disch = State(p=disch_p, T=disch_T, fluid=p0.suc.fluid)
