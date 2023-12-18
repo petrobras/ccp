@@ -909,6 +909,7 @@ class Point:
             flow_v=str(self.flow_v),
             head=str(self.head),
             eff=str(self.eff),
+            power_losses=str(self.power_losses),
             b=str(self.b),
             D=str(self.D),
         )
