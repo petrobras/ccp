@@ -44,6 +44,11 @@ class Evaluation:
             - Suction temperature: should be 'Ts' (degK) in the DataFrame;
             - Discharge temperature: should be 'Td' (degK) in the DataFrame;
             - Speed: should be 'speed' (rad/s) in the DataFrame.
+        operation_fluid : dict, list
+            Dictionary with constituent and composition.
+            (e.g.: fluid={'Oxygen': 0.2096, 'Nitrogen': 0.7812, 'Argon': 0.0092})
+            or list with the constituents, in this case the constituents will be
+            columns in the data DataFrame.
         window : int, optional
             Window size for rolling calculation, meaning how many rolls will be used
             to calculate the fluctuation.
@@ -92,6 +97,27 @@ class Evaluation:
             self.impellers_new = kwargs.get("impellers_new")
             self.df = kwargs.get("df")
 
+    def get_composition(self, row):
+        """Get composition from row.
+
+        Parameters
+        ----------
+        row : pandas.Series
+            Row from DataFrame.
+
+        Returns
+        -------
+        dict
+            Dictionary with composition.
+        """
+        if isinstance(self.operation_fluid, list):
+            composition = {}
+            for key in self.operation_fluid:
+                    composition[key] = row[key]
+        else:
+            composition = self.operation_fluid
+        return composition
+
     def _run(self):
         df = self.data.copy()
         df = filter_data(
@@ -107,11 +133,12 @@ class Evaluation:
         df["v_s"] = 0
         df["speed_sound"] = 0
         for i, row in df.iterrows():
+            fluid = self.get_composition(row)
             # create state
             state = State(
                 p=Q_(row.ps, self.data_units["ps"]),
                 T=Q_(row.Ts, self.data_units["Ts"]),
-                fluid=self.operation_fluid,
+                fluid=fluid,
             )
             df.loc[i, "v_s"] = state.v().m
             df.loc[i, "speed_sound"] = state.speed_sound().m
@@ -161,10 +188,11 @@ class Evaluation:
         print("Converting curves")
         for i in tqdm(range(kmeans.n_clusters)):
             cluster_series = df[df["cluster"] == 0].iloc[0]
+            fluid = self.get_composition(cluster_series)
             suc_new = State(
                 p=Q_(cluster_series.ps_center, self.data_units["ps"]),
                 T=Q_(cluster_series.Ts_center, self.data_units["Ts"]),
-                fluid=self.operation_fluid,
+                fluid=fluid,
             )
             imp_new = Impeller.convert_from(self.impellers, suc=suc_new, speed="same")
             self.impellers_new.append(imp_new)
@@ -176,6 +204,7 @@ class Evaluation:
 
         args_list = []
         for i, row in df.iterrows():
+            fluid = self.get_composition(row)
             # calculate point
             arg_dict = {
                 "flow_m": row.flow_m,
@@ -183,12 +212,12 @@ class Evaluation:
                 "suc": State(
                     p=Q_(row.ps, self.data_units["ps"]),
                     T=Q_(row.Ts, self.data_units["Ts"]),
-                    fluid=self.operation_fluid,
+                    fluid=fluid,
                 ),
                 "disch": State(
                     p=Q_(row.pd, self.data_units["pd"]),
                     T=Q_(row.Td, self.data_units["Td"]),
-                    fluid=self.operation_fluid,
+                    fluid=fluid,
                 ),
                 "imp_new": self.impellers_new[int(row.cluster)],
             }
@@ -323,4 +352,14 @@ def get_interpolated_point(x):
         expected_point = imp_new.point(flow_m=x["flow_m"], speed=x["speed"])
     except:
         print("Error for expected point with args:", x)
+        # return a dummy point in case of error
+        expected_point = Point(
+            suc=State(p=Q_(1, "bar"), T=Q_(50, "degC"), fluid={"co2": 1}),
+            disch=State(p=Q_(2, "bar"), T=Q_(100, "degC"), fluid={"co2": 1}),
+            flow_v=1,
+            speed=1,
+        )
+        expected_point.eff = np.nan
+        expected_point.head = np.nan
+        expected_point.power = np.nan
     return expected_point
