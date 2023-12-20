@@ -114,19 +114,43 @@ class ImpellerPlotFunction:
         p0 = impeller_object.points[0]
         flow_v_units = kwargs.get("flow_v_units", p0.flow_v.units)
 
+        # store values for surge flow and attr value in lists so that we can plot them
+        surge_flow_list = []
+        surge_attr_list = []
+        attr_units = kwargs.get(
+            f"{attr}_units", getattr(impeller_object.curves[0], attr).units
+        )
+
         for curve in impeller_object.curves:
             fig = r_getattr(curve, attr + "_plot")(fig=fig, plot_kws=plot_kws, **kwargs)
+            surge_flow_list.append(curve.flow_v[0].to(flow_v_units).m)
+            surge_attr_list.append(r_getattr(curve, attr)[0].to(attr_units).m)
 
         if speed:
             current_curve = impeller_object.curve(speed=speed)
             fig = r_getattr(current_curve, attr + "_plot")(
                 fig=fig, plot_kws=plot_kws, **kwargs
             )
+            surge_flow_list.append(current_curve.flow_v[0].to(flow_v_units).m)
+            surge_attr_list.append(r_getattr(current_curve, attr)[0].to(attr_units).m)
             if flow_v:
                 current_point = impeller_object.point(flow_v=flow_v, speed=speed)
                 fig = r_getattr(current_point, attr + "_plot")(
                     fig=fig, plot_kws=plot_kws, **kwargs
                 )
+
+        # add surge flow and attr values to plot as dotted line
+        fig.add_trace(
+            go.Scatter(
+                x=surge_flow_list,
+                y=surge_attr_list,
+                mode="lines",
+                # gray line with transparency
+                line=dict(color="black", dash="dash"),
+                showlegend=False,
+                opacity=0.3,
+            )
+        )
 
         # extra x range
         flow_values = [p.flow_v.to(flow_v_units) for p in impeller_object.points]
