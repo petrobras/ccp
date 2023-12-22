@@ -45,6 +45,9 @@ fluid_list["Propylene"].possible_names.extend(["propene"])
 fluid_list["Ethylene"].possible_names.extend(["ethene"])
 fluid_list["R1234ze(E)"].possible_names.extend(["r1234ze", "r1234zee"])
 fluid_list["R134a"].possible_names.extend(["r134a"])
+fluid_list["EthylBenzene"].possible_names.extend(
+    ["ethylbenzene", "e-benzene", "ebenzene"]
+)
 
 
 def get_name(name):
