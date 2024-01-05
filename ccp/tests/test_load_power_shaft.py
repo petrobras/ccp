@@ -60,5 +60,5 @@ def test_load_power_shaft(suc_0, test_point_0):
     assert_allclose(
         test_point_0.flow_v.to("m**3/min").m * suc_0.rho().to("kg/m**3").m,
         3950,
-        atol=8.4, 
+        atol=8.4,
     )

@@ -121,7 +121,7 @@ class FlowOrifice:
             if D < Q_(71.12, "mm"):
                 C += 0.011 * (0.75 - beta) * (2.8 - D / Q_(25.4, "mm"))
 
-            self.flow_m= (
+            self.flow_m = (
                 C
                 / (np.sqrt(1 - beta**4))
                 * e
