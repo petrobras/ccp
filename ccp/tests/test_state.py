@@ -310,9 +310,10 @@ def test_improved_error_message():
         ccp.State(p=100000, T=20, fluid={"methane": 1 - 1e-15, "ethane": 1e-15})
 
     assert (
-        "Could not define state with {'p': <Quantity(100000, 'pascal')>, 'T': <Quantity(20, 'kelvin')>} and {'METHANE': 0.999999999999999, 'ETHANE': 9.992007221626409e-16}"
-        in str(exc.value)
-    )
+        "Could not define state with {'T': <Quantity(20, 'kelvin')>, 'p': "
+        "<Quantity(100000, 'pascal')>} and {'METHANE': 0.999999999999999, 'ETHANE': "
+        "9.992007221626409e-16}"
+    ) in str(exc.value)
 
 
 def test_normalization():
