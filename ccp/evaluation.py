@@ -86,7 +86,7 @@ class Evaluation:
 
         # check if we are loading from a zip file where the impellers are available
         if kwargs.get("impellers_new") is None:
-            print('running')
+            print("running")
             self._run()
         else:
             self.impellers_new = kwargs.get("impellers_new")
@@ -282,14 +282,21 @@ class Evaluation:
             # load impellers
             impellers = []
             for i in range(len(zip_file.filelist)):
-                if zip_file.filelist[i].filename.startswith("imp_") and "new" not in zip_file.filelist[i].filename:
-                    with zip_file.open(zip_file.filelist[i].filename, "r") as pickle_file:
+                if (
+                    zip_file.filelist[i].filename.startswith("imp_")
+                    and "new" not in zip_file.filelist[i].filename
+                ):
+                    with zip_file.open(
+                        zip_file.filelist[i].filename, "r"
+                    ) as pickle_file:
                         impellers.append(pickle.load(pickle_file))
             # load impellers_new
             impellers_new = []
             for i in range(len(zip_file.filelist)):
                 if zip_file.filelist[i].filename.startswith("imp_new_"):
-                    with zip_file.open(zip_file.filelist[i].filename, "r") as pickle_file:
+                    with zip_file.open(
+                        zip_file.filelist[i].filename, "r"
+                    ) as pickle_file:
                         impellers_new.append(pickle.load(pickle_file))
             evaluation = cls(
                 data=data,
