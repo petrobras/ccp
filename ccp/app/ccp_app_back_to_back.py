@@ -657,7 +657,7 @@ def main():
         gas_composition = {}
         for gas in gas_compositions_table.keys():
             if gas_compositions_table[gas]["name"] == gas_name:
-                for i in range(len(default_components) - 1):
+                for i in range(len(default_components)):
                     component = gas_compositions_table[gas][f"component_{i}"]
                     molar_fraction = float(
                         gas_compositions_table[gas][f"molar_fraction_{i}"]
