@@ -158,6 +158,10 @@ class StraightThrough(Impeller):
             ms1f = point.flow_m
             mbal = point.balance_line_flow_m
             mseal = point.seal_gas_flow_m
+            if mbal == None:
+                mbal = Q_(0, "kg/s")
+            if mseal == None:
+                mseal = Q_(0, "kg/s")
 
             mend = mbal - (0.95 * mseal) / 2
             ms1r = ms1f + mend
@@ -168,6 +172,8 @@ class StraightThrough(Impeller):
             dummy_state.update(p=point.suc.p(), h=dummy_state.h())
             Tend = dummy_state.T()
             Tseal = point.seal_gas_temperature
+            if Tseal == None:
+                Tseal = Q_(0, "kelvin")
             Ts1r = (ms1f * Ts1f + mend * Tend + 0.95 * mseal * Tseal) / (
                 ms1f + mend + 0.95 * mseal
             )
