@@ -5,7 +5,7 @@
 # By default, Streamlit checks if the Python watchdog module is available and, if not, prints a warning asking for you to install it. The watchdog module is not required, but highly recommended. It improves Streamlit's ability to detect changes to files in your filesystem.
 # If you'd like to turn off this warning, set this to True.
 # Default: false
-disableWatchdogWarning = false
+# disableWatchdogWarning = false
 
 # If True, will show a warning when you run a Streamlit-enabled script via "python my_script.py".
 # Default: true
@@ -14,7 +14,7 @@ showWarningOnDirectExecution = true
 # DataFrame serialization.
 # Acceptable values: - 'legacy': Serialize DataFrames using Streamlit's custom format. Slow but battle-tested. - 'arrow': Serialize DataFrames using Apache Arrow. Much faster and versatile.
 # Default: "arrow"
-dataFrameSerialization = "arrow"
+# dataFrameSerialization = "arrow"
 
 
 [logger]
@@ -32,11 +32,11 @@ messageFormat = "%(asctime)s %(message)s"
 
 # Whether to enable st.cache.
 # Default: true
-caching = true
+# caching = true
 
 # If false, makes your Streamlit script not draw to a Streamlit app.
 # Default: true
-displayEnabled = true
+# displayEnabled = true
 
 # Controls whether uncaught app exceptions are displayed in the browser. By default, this is set to True and Streamlit displays app exceptions and associated tracebacks in the browser.
 # If set to False, an exception will result in a generic message being shown in the browser, and exceptions and tracebacks will be printed to the console only.
@@ -52,11 +52,11 @@ magicEnabled = true
 
 # Install a Python tracer to allow you to stop or pause your script at any point and introspect it. As a side-effect, this slows down your script's execution.
 # Default: false
-installTracer = false
+# installTracer = false
 
 # Sets the MPLBACKEND environment variable to Agg inside Streamlit to prevent Python crashing.
 # Default: true
-fixMatplotlib = true
+# fixMatplotlib = true
 
 # Run the Python Garbage Collector after each script execution. This can help avoid excess memory use in Streamlit apps, but could introduce delay in rerunning the app script for high-memory-use applications.
 # Default: true
@@ -158,7 +158,7 @@ token = ""
 
 # Set to false to disable the deprecation warning for the file uploader encoding.
 # Default: true
-showfileUploaderEncoding = true
+# showfileUploaderEncoding = true
 
 # Set to false to disable the deprecation warning for using the global pyplot instance.
 # Default: true
