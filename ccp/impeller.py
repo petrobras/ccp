@@ -130,22 +130,15 @@ class ImpellerPlotFunction:
             fig = r_getattr(curve, attr + "_plot")(fig=fig, plot_kws=plot_kws, **kwargs)
             surge_flow_list.append(curve.flow_v[0].to(flow_v_units).m)
             try:
-                surge_attr_list.append(r_getattr(curve, attr).to(attr_units).m)
+                surge_attr_list.append(r_getattr(curve, attr)[0].to(attr_units).m)
             except AttributeError:
-                surge_attr_list.append(r_getattr(curve, attr)().to(attr_units).m)
+                surge_attr_list.append(r_getattr(curve, attr)()[0].to(attr_units).m)
 
         if speed:
             current_curve = impeller_object.curve(speed=speed)
             fig = r_getattr(current_curve, attr + "_plot")(
                 fig=fig, plot_kws=plot_kws, **kwargs
             )
-            surge_flow_list.append(current_curve.flow_v[0].to(flow_v_units).m)
-            try:
-                surge_attr_list.append(r_getattr(current_curve, attr).to(attr_units).m)
-            except AttributeError:
-                surge_attr_list.append(
-                    r_getattr(current_curve, attr)().to(attr_units).m
-                )
 
             if flow_v:
                 current_point = impeller_object.point(flow_v=flow_v, speed=speed)
