@@ -76,6 +76,10 @@ def main():
             st.session_state.straight_through = ""
         if "expander_state" not in st.session_state:
             st.session_state.expander_state = False
+        if "ccp_version" not in st.session_state:
+            st.session_state.ccp_version = ccp.__version__
+        if "app_type" not in st.session_state:
+            st.session_state.app_type = "straight_through"
         for curve in ["head", "power", "eff", "discharge_pressure"]:
             if f"fig_{curve}" not in st.session_state:
                 st.session_state[f"fig_{curve}"] = ""
