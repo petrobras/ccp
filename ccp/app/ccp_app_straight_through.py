@@ -106,6 +106,8 @@ def main():
                 for name in my_zip.namelist():
                     if name.endswith(".json"):
                         session_state_data = json.loads(my_zip.read(name))
+                        if "flow_point_guarantee" not in session_state_data:
+                            raise ValueError("File is not a ccp straight-through file.")
 
                 # extract figures and straight_through objects
                 for name in my_zip.namelist():
