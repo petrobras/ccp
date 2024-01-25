@@ -150,12 +150,13 @@ def main():
                 session_state_json = json.dumps(session_state_dict_copy)
                 my_zip.writestr("session_state.json", session_state_json)
 
-            st.download_button(
-                label="💾 Save As",
-                data=session_state_json,
-                file_name=file_name,
-                mime="application/json",
-            )
+            with open(file_name, "rb") as file:
+                st.download_button(
+                    label="💾 Save As",
+                    data=file,
+                    file_name=file_name,
+                    mime="application/json",
+                )
 
     # Gas selection
     fluid_list = []
