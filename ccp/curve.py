@@ -42,6 +42,7 @@ class PlotFunction:
         curve_state_object = self.curve_state_object
         attr = self.attr
         fig = kwargs.pop("fig", None)
+        color = kwargs.pop("color", None)
 
         if fig is None:
             fig = go.Figure()
@@ -92,7 +93,25 @@ class PlotFunction:
                     .m
                 )
 
-        fig.add_trace(go.Scatter(x=flow_v_range, y=values_range, name=name), **plot_kws)
+        fig.add_trace(
+            go.Scatter(
+                x=flow_v_range,
+                y=values_range,
+                name=name,
+                line_color=color,
+            ),
+            **plot_kws,
+        )
+        fig.add_trace(
+            go.Scatter(
+                x=flow_v,
+                y=getattr(curve_state_object, attr),
+                marker=dict(color=color, symbol="circle-open"),
+                mode="markers",
+                name=name,
+                showlegend=False,
+            )
+        )
 
         fig.update_layout(
             xaxis=dict(title=f"Volume Flow ({x_units:~H})"),

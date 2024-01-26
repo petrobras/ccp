@@ -126,8 +126,12 @@ class ImpellerPlotFunction:
                 f"{attr}_units", r_getattr(impeller_object.curves[0], attr)().units
             )
 
+        color_iterator = iter(tableau_colors)
         for curve in impeller_object.curves:
-            fig = r_getattr(curve, attr + "_plot")(fig=fig, plot_kws=plot_kws, **kwargs)
+            color = next(color_iterator)
+            fig = r_getattr(curve, attr + "_plot")(
+                fig=fig, plot_kws=plot_kws, color=color, **kwargs
+            )
             surge_flow_list.append(curve.flow_v[0].to(flow_v_units).m)
             try:
                 surge_attr_list.append(r_getattr(curve, attr)[0].to(attr_units).m)
@@ -135,15 +139,17 @@ class ImpellerPlotFunction:
                 surge_attr_list.append(r_getattr(curve, attr)()[0].to(attr_units).m)
 
         if speed:
+            color = next(color_iterator)
             current_curve = impeller_object.curve(speed=speed)
             fig = r_getattr(current_curve, attr + "_plot")(
-                fig=fig, plot_kws=plot_kws, **kwargs
+                fig=fig, plot_kws=plot_kws, color=color, **kwargs
             )
 
+            color = "black"
             if flow_v:
                 current_point = impeller_object.point(flow_v=flow_v, speed=speed)
                 fig = r_getattr(current_point, attr + "_plot")(
-                    fig=fig, plot_kws=plot_kws, **kwargs
+                    fig=fig, plot_kws=plot_kws, color=color, **kwargs
                 )
 
         # add surge flow and attr values to plot as dotted line
