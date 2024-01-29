@@ -238,8 +238,20 @@ def main():
             "Calculate Leakages", value=True, disabled=True, help="Not yet implemented"
         )
         seal_gas_flow = st.checkbox(
-            "Seal Gas Flow", value=True, disabled=True, help="Not yet implemented"
+            "Seal Gas Flow",
+            value=True,
         )
+
+        # add a disabled flag in the parameters_map dict based on the checkbox
+        if seal_gas_flow:
+            parameters_map["seal_gas_flow_m"]["disabled"] = False
+            parameters_map["seal_gas_temperature"]["disabled"] = False
+        else:
+            parameters_map["seal_gas_flow_m"]["disabled"] = True
+            parameters_map["seal_gas_temperature"]["disabled"] = True
+            parameters_map["seal_gas_flow_m"]["value"] = ""
+            parameters_map["seal_gas_temperature"]["value"] = ""
+
         variable_speed = st.checkbox("Variable Speed", value=True)
         # add text input for the ambient pressure
         st.text("Ambient Pressure")
@@ -536,6 +548,7 @@ def main():
                             options=parameters_map[parameter]["units"],
                             key=f"{parameter}_units_section_1",
                             label_visibility="collapsed",
+                            disabled=parameters_map[parameter].get("disabled", False),
                         )
                     else:
                         parameters_map[parameter]["section_1"][f"point_{i - 1}"][
@@ -544,6 +557,7 @@ def main():
                             f"{parameter} value.",
                             key=f"{parameter}_section_1_point_{i - 1}",
                             label_visibility="collapsed",
+                            disabled=parameters_map[parameter].get("disabled", False),
                         )
                         check_correct_separator(
                             parameters_map[parameter]["section_1"][f"point_{i - 1}"][
@@ -616,6 +630,7 @@ def main():
                             options=parameters_map[parameter]["units"],
                             key=f"{parameter}_units_section_2",
                             label_visibility="collapsed",
+                            disabled=parameters_map[parameter].get("disabled", False),
                         )
                     else:
                         parameters_map[parameter]["section_2"][f"point_{i - 1}"][
@@ -624,6 +639,7 @@ def main():
                             f"{parameter} value.",
                             key=f"{parameter}_section_2_point_{i - 1}",
                             label_visibility="collapsed",
+                            disabled=parameters_map[parameter].get("disabled", False),
                         )
                         check_correct_separator(
                             parameters_map[parameter]["section_2"][f"point_{i - 1}"][
@@ -900,7 +916,8 @@ def main():
                         else:
                             kwargs["balance_line_flow_m"] = None
                         if (
-                            st.session_state[f"seal_gas_flow_m_{section}_point_{i}"]
+                            seal_gas_flow
+                            and st.session_state[f"seal_gas_flow_m_{section}_point_{i}"]
                             != ""
                         ):
                             kwargs["seal_gas_flow_m"] = Q_(
@@ -998,7 +1015,8 @@ def main():
                                 ]["test_units"],
                             )
                             if (
-                                st.session_state[
+                                seal_gas_flow
+                                and st.session_state[
                                     f"seal_gas_temperature_{section}_point_{i}"
                                 ]
                                 != ""
