@@ -666,21 +666,20 @@ def main():
             "Calculate",
             type="primary",
             use_container_width=True,
-            # help="Calculate results using the data sheet speed.",
-            # for now help breaks the button width. See streamlit issue #6161
+            help="Calculate results using the data sheet speed.",
         )
         calculate_speed_button = calculate_speed_col.button(
             "Calculate Speed",
             type="primary",
             use_container_width=True,
-            # help="Calculate speed to match the discharge pressure.",
+            help="Calculate speed to match the discharge pressure.",
         )
         calculate_flowrate = calculate_flowrate_col.button(
             "Calculate Flowrate",
             type="primary",
             use_container_width=True,
             on_click=fo_calc,
-            # help="Calculate flowrate with orifice plate data.",
+            help="Calculate flowrate with orifice plate data.",
         )
 
     def get_gas_composition(gas_name):
