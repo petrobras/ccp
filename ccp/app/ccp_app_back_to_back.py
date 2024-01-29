@@ -253,6 +253,11 @@ def main():
             parameters_map["seal_gas_temperature"]["value"] = ""
 
         variable_speed = st.checkbox("Variable Speed", value=True)
+        show_points = st.checkbox(
+            "Show Points",
+            value=True,
+            help="If marked, show points in the plotted curves in addition to interpolation.",
+        )
         # add text input for the ambient pressure
         st.text("Ambient Pressure")
         ambient_pressure_magnitude_col, ambient_pressure_unit_col = st.columns(2)
@@ -1742,12 +1747,14 @@ def main():
                                 getattr(back_to_back, f"imp_flange_sp_{sec}"),
                                 f"{curve_plot_method}_plot",
                             )(
+                                # show_points=show_points,
                                 **kwargs,
                             )
                             plots_dict[curve] = r_getattr(
                                 point_interpolated, f"{curve_plot_method}_plot"
                             )(
                                 fig=plots_dict[curve],
+                                show_points=show_points,
                                 **kwargs,
                             )
 
