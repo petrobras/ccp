@@ -106,7 +106,10 @@ def main():
                 for name in my_zip.namelist():
                     if name.endswith(".json"):
                         session_state_data = json.loads(my_zip.read(name))
-                        if "div_wall_flow_m_section_1_point_1" not in session_state_data:
+                        if (
+                            "div_wall_flow_m_section_1_point_1"
+                            not in session_state_data
+                        ):
                             raise ValueError("File is not a ccp back-to-back file.")
                 # extract figures and back_to_back objects
                 for name in my_zip.namelist():
@@ -637,14 +640,13 @@ def main():
             "Calculate",
             type="primary",
             use_container_width=True,
-            # help="Calculate results using the data sheet speed.",
-            # for now help breaks the button width. See streamlit issue #6161
+            help="Calculate results using the data sheet speed.",
         )
         calculate_speed_button = calculate_speed_col.button(
             "Calculate Speed",
             type="primary",
             use_container_width=True,
-            # help="Calculate speed to match the second section discharge pressure.",
+            help="Calculate speed to match the second section discharge pressure.",
         )
 
     def get_gas_composition(gas_name):
