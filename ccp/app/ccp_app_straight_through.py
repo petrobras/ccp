@@ -228,6 +228,17 @@ def main():
         calculate_leakages = st.checkbox("Calculate Leakages", value=True)
         seal_gas_flow = st.checkbox("Seal Gas Flow", value=True)
         variable_speed = st.checkbox("Variable Speed", value=True)
+
+        # add a disabled flag in the parameters_map dict based on the checkbox
+        if seal_gas_flow:
+            parameters_map["seal_gas_flow_m"]["disabled"] = False
+            parameters_map["seal_gas_temperature"]["disabled"] = False
+        else:
+            parameters_map["seal_gas_flow_m"]["disabled"] = True
+            parameters_map["seal_gas_temperature"]["disabled"] = True
+            parameters_map["seal_gas_flow_m"]["value"] = ""
+            parameters_map["seal_gas_temperature"]["value"] = ""
+
         # add text input for the ambient pressure
         st.text("Ambient Pressure")
         ambient_pressure_magnitude_col, ambient_pressure_unit_col = st.columns(2)
@@ -483,6 +494,7 @@ def main():
                         options=parameters_map[parameter]["units"],
                         key=f"{parameter}_units",
                         label_visibility="collapsed",
+                        disabled=parameters_map[parameter].get("disabled", False),
                     )
                 else:
                     parameters_map[parameter]["points"][f"point_{i - 1}"][
@@ -491,6 +503,7 @@ def main():
                         f"{parameter} value.",
                         key=f"{parameter}_point_{i - 1}",
                         label_visibility="collapsed",
+                        disabled=parameters_map[parameter].get("disabled", False),
                     )
 
     with st.expander("Flowrate Calculation", expanded=st.session_state.expander_state):
@@ -871,7 +884,10 @@ def main():
                         )
                     else:
                         kwargs["balance_line_flow_m"] = None
-                    if st.session_state[f"seal_gas_flow_m_point_{i}"] != "":
+                    if (
+                        seal_gas_flow
+                        and st.session_state[f"seal_gas_flow_m_point_{i}"] != ""
+                    ):
                         kwargs["seal_gas_flow_m"] = Q_(
                             float(st.session_state[f"seal_gas_flow_m_point_{i}"]),
                             parameters_map["seal_gas_flow_m"]["points"]["test_units"],
@@ -880,7 +896,10 @@ def main():
                         kwargs["seal_gas_flow_m"] = Q_(
                             0, parameters_map["seal_gas_flow_m"]["points"]["test_units"]
                         )
-                    if st.session_state[f"seal_gas_temperature_point_{i}"] != "":
+                    if (
+                        seal_gas_flow
+                        and st.session_state[f"seal_gas_temperature_point_{i}"] != ""
+                    ):
                         kwargs["seal_gas_temperature"] = Q_(
                             float(st.session_state[f"seal_gas_temperature_point_{i}"]),
                             parameters_map["seal_gas_temperature"]["points"][
