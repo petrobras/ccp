@@ -1325,6 +1325,7 @@ def plot_func(self, attr):
         attr_units='...'.
         """
         fig = kwargs.pop("fig", None)
+        color = kwargs.pop("color", None)
 
         if fig is None:
             fig = go.Figure()
@@ -1356,7 +1357,9 @@ def plot_func(self, attr):
         if flow_v_units is not None:
             flow_v = flow_v.to(flow_v_units)
 
-        fig.add_trace(go.Scatter(x=[flow_v], y=[value], name=name, **plot_kws))
+        fig.add_trace(
+            go.Scatter(x=[flow_v], y=[value], name=name, marker_color=color, **plot_kws)
+        )
 
         return fig
 

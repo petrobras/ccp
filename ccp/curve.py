@@ -33,15 +33,24 @@ class PlotFunction:
         self.curve_state_object = curve_state_object
         self.attr = attr
 
-    def __call__(self, *args, plot_kws=None, **kwargs):
+    def __call__(self, *args, plot_kws=None, show_points=False, **kwargs):
         """Plot parameter versus volumetric flow.
 
         You can choose units with the arguments flow_v_units='...' and
         {attr}_units='...'. For the speed you can use speed_units='...'.
+
+        Parameters
+        ----------
+        plot_kws: dict
+            Keyword arguments to be passed to the plotly figure.
+        show_points: bool, optional
+            If True, the points will be plotted as markers.
+
         """
         curve_state_object = self.curve_state_object
         attr = self.attr
         fig = kwargs.pop("fig", None)
+        color = kwargs.pop("color", None)
 
         if fig is None:
             fig = go.Figure()
@@ -64,24 +73,31 @@ class PlotFunction:
         speed_units = ureg.Unit(speed_units)
         name = kwargs.get("name", str(round(curve_state_object.speed.to(speed_units))))
 
-        flow_v = curve_state_object.flow_v
-
+        flow_v = flow_v_points = curve_state_object.flow_v
+        flow_v_range = np.linspace(min(flow_v), max(flow_v), 30)
         interpolated_curve = getattr(curve_state_object, attr + "_interpolated")
 
-        flow_v_range = np.linspace(min(flow_v), max(flow_v), 30)
-
         values_range = interpolated_curve(flow_v_range)
-
         values_range = values_range.magnitude
+        try:
+            values_points = getattr(curve_state_object, attr).magnitude
+        except AttributeError:
+            values_points = getattr(curve_state_object, attr)().magnitude
 
         if x_units is not None:
             flow_v_range = (
                 Q_(flow_v_range, curve_state_object.flow_v.units).to(x_units).m
             )
+            flow_v_points = Q_(flow_v, curve_state_object.flow_v.units).to(x_units).m
         if y_units is not None:
             try:
                 values_range = (
                     Q_(values_range, getattr(curve_state_object, attr).units)
+                    .to(y_units)
+                    .m
+                )
+                values_points = (
+                    Q_(values_points, getattr(curve_state_object, attr).units)
                     .to(y_units)
                     .m
                 )
@@ -91,8 +107,32 @@ class PlotFunction:
                     .to(y_units)
                     .m
                 )
+                values_points = (
+                    Q_(values_points, getattr(curve_state_object, attr)().units)
+                    .to(y_units)
+                    .m
+                )
 
-        fig.add_trace(go.Scatter(x=flow_v_range, y=values_range, name=name), **plot_kws)
+        fig.add_trace(
+            go.Scatter(
+                x=flow_v_range,
+                y=values_range,
+                name=name,
+                line_color=color,
+            ),
+            **plot_kws,
+        )
+        if show_points:
+            fig.add_trace(
+                go.Scatter(
+                    x=flow_v_points,
+                    y=values_points,
+                    marker=dict(color=color, symbol="circle-open"),
+                    mode="markers",
+                    name=name,
+                    showlegend=False,
+                )
+            )
 
         fig.update_layout(
             xaxis=dict(title=f"Volume Flow ({x_units:~H})"),

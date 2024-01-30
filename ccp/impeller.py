@@ -61,7 +61,9 @@ class ImpellerPlotFunction:
         self.attr = attr
 
     @check_units
-    def __call__(self, *args, flow_v=None, speed=None, plot_kws=None, **kwargs):
+    def __call__(
+        self, *args, flow_v=None, speed=None, plot_kws=None, show_points=False, **kwargs
+    ):
         """Plot parameter versus volumetric flow.
 
         You can plot a specific point in the plot giving its flow_v and speed.
@@ -82,6 +84,8 @@ class ImpellerPlotFunction:
             head_units='J/kg' or head_units='J/g'). Default is SI.
         speed_units : str, optional
             Speed units for the plot. Default is 'rad/s'.
+        show_points : bool, optional
+            If True, the points will be plotted as markers.
 
         Returns
         -------
@@ -92,11 +96,11 @@ class ImpellerPlotFunction:
         --------
         >>> import ccp
         >>> imp = ccp.impeller_example()
-        >>> fig = imp.plot_head(
+        >>> fig = imp.head_plot(
         ...    flow_v=5.5,
         ...    speed=900,
         ...    flow_v_units='m³/h',
-        ...    head_units='j/kg',
+        ...    head_units='J/kg',
         ...    speed_units='RPM'
         ... )
 
@@ -126,31 +130,38 @@ class ImpellerPlotFunction:
                 f"{attr}_units", r_getattr(impeller_object.curves[0], attr)().units
             )
 
+        color_iterator = iter(tableau_colors)
         for curve in impeller_object.curves:
-            fig = r_getattr(curve, attr + "_plot")(fig=fig, plot_kws=plot_kws, **kwargs)
+            color = next(color_iterator)
+            fig = r_getattr(curve, attr + "_plot")(
+                fig=fig,
+                plot_kws=plot_kws,
+                color=color,
+                show_points=show_points,
+                **kwargs,
+            )
             surge_flow_list.append(curve.flow_v[0].to(flow_v_units).m)
             try:
-                surge_attr_list.append(r_getattr(curve, attr).to(attr_units).m)
-            except AttributeError:
-                surge_attr_list.append(r_getattr(curve, attr)().to(attr_units).m)
+                surge_attr_list.append(r_getattr(curve, attr)[0].to(attr_units).m)
+            except (AttributeError, TypeError):
+                surge_attr_list.append(r_getattr(curve, attr)()[0].to(attr_units).m)
 
         if speed:
+            color = next(color_iterator)
             current_curve = impeller_object.curve(speed=speed)
             fig = r_getattr(current_curve, attr + "_plot")(
-                fig=fig, plot_kws=plot_kws, **kwargs
+                fig=fig,
+                plot_kws=plot_kws,
+                color=color,
+                show_points=show_points,
+                **kwargs,
             )
-            surge_flow_list.append(current_curve.flow_v[0].to(flow_v_units).m)
-            try:
-                surge_attr_list.append(r_getattr(current_curve, attr).to(attr_units).m)
-            except AttributeError:
-                surge_attr_list.append(
-                    r_getattr(current_curve, attr)().to(attr_units).m
-                )
 
+            color = "black"
             if flow_v:
                 current_point = impeller_object.point(flow_v=flow_v, speed=speed)
                 fig = r_getattr(current_point, attr + "_plot")(
-                    fig=fig, plot_kws=plot_kws, **kwargs
+                    fig=fig, plot_kws=plot_kws, color=color, **kwargs
                 )
 
         # add surge flow and attr values to plot as dotted line
