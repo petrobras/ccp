@@ -143,7 +143,7 @@ class ImpellerPlotFunction:
             surge_flow_list.append(curve.flow_v[0].to(flow_v_units).m)
             try:
                 surge_attr_list.append(r_getattr(curve, attr)[0].to(attr_units).m)
-            except AttributeError:
+            except (AttributeError, TypeError):
                 surge_attr_list.append(r_getattr(curve, attr)()[0].to(attr_units).m)
 
         if speed:

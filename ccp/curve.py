@@ -79,7 +79,10 @@ class PlotFunction:
 
         values_range = interpolated_curve(flow_v_range)
         values_range = values_range.magnitude
-        values_points = getattr(curve_state_object, attr).magnitude
+        try:
+            values_points = getattr(curve_state_object, attr).magnitude
+        except AttributeError:
+            values_points = getattr(curve_state_object, attr)().magnitude
 
         if x_units is not None:
             flow_v_range = (

@@ -227,7 +227,6 @@ def main():
         casing_heat_loss = st.checkbox("Casing Heat Loss", value=True)
         calculate_leakages = st.checkbox("Calculate Leakages", value=True)
         seal_gas_flow = st.checkbox("Seal Gas Flow", value=True)
-        variable_speed = st.checkbox("Variable Speed", value=True)
 
         # add a disabled flag in the parameters_map dict based on the checkbox
         if seal_gas_flow:
@@ -239,6 +238,12 @@ def main():
             parameters_map["seal_gas_flow_m"]["value"] = ""
             parameters_map["seal_gas_temperature"]["value"] = ""
 
+        variable_speed = st.checkbox("Variable Speed", value=True)
+        show_points = st.checkbox(
+            "Show Points",
+            value=True,
+            help="If marked, show points in the plotted curves in addition to interpolation.",
+        )
         # add text input for the ambient pressure
         st.text("Ambient Pressure")
         ambient_pressure_magnitude_col, ambient_pressure_unit_col = st.columns(2)
@@ -1439,12 +1444,14 @@ def main():
                         # getattr(straight_through, f"imp_flange_sp"),
                         f"{curve_plot_method}_plot",
                     )(
+                        show_points=show_points,
                         **kwargs,
                     )
                     plots_dict[curve] = r_getattr(
                         point_interpolated, f"{curve_plot_method}_plot"
                     )(
                         fig=plots_dict[curve],
+                        show_points=show_points,
                         **kwargs,
                     )
 

@@ -1747,7 +1747,7 @@ def main():
                                 getattr(back_to_back, f"imp_flange_sp_{sec}"),
                                 f"{curve_plot_method}_plot",
                             )(
-                                # show_points=show_points,
+                                show_points=show_points,
                                 **kwargs,
                             )
                             plots_dict[curve] = r_getattr(
