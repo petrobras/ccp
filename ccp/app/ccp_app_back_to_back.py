@@ -1141,6 +1141,9 @@ def main():
         and st.session_state["back_to_back"] != ""
     ):
         with st.expander("Results"):
+            st.write(
+                f"Final speed used in calculation: {back_to_back.speed.to('rpm').m:.2f} RPM"
+            )
             _t = "\u209C"
             _sp = "\u209B\u209A"
             conv = "\u1D9C" + "\u1D52" + "\u207F" + "\u1D5B"
