@@ -987,6 +987,9 @@ def main():
         and st.session_state["straight_through"] != ""
     ):
         with st.expander("Results"):
+            st.write(
+                f"Final speed used in calculation: {straight_through.speed.to('rpm').m:.2f} RPM"
+            )
             _t = "\u209C"
             _sp = "\u209B\u209A"
             conv = "\u1D9C" + "\u1D52" + "\u207F" + "\u1D5B"
