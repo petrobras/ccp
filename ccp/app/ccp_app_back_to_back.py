@@ -235,7 +235,7 @@ def main():
         reynolds_correction = st.checkbox("Reynolds Correction", value=True)
         casing_heat_loss = st.checkbox("Casing Heat Loss", value=True)
         calculate_leakages = st.checkbox(
-            "Calculate Leakages", value=True, disabled=True, help="Not yet implemented"
+            "Calculate Leakages", value=True,
         )
         seal_gas_flow = st.checkbox(
             "Seal Gas Flow",
@@ -251,6 +251,34 @@ def main():
             parameters_map["seal_gas_temperature"]["disabled"] = True
             parameters_map["seal_gas_flow_m"]["value"] = ""
             parameters_map["seal_gas_temperature"]["value"] = ""
+
+        if calculate_leakages:
+            parameters_map["balance_line_flow_m"]["disabled"] = False
+            parameters_map["end_seal_upstream_pressure"]["disabled"] = False
+            parameters_map["end_seal_upstream_temperature"]["disabled"] = False
+            parameters_map["div_wall_flow_m"]["disabled"] = False
+            parameters_map["div_wall_upstream_pressure"]["disabled"] = False
+            parameters_map["div_wall_upstream_temperature"]["disabled"] = False
+            parameters_map["first_section_discharge_flow_m"]["disabled"] = False
+        else:
+            parameters_map["balance_line_flow_m"]["disabled"] = True
+            parameters_map["end_seal_upstream_pressure"]["disabled"] = True
+            parameters_map["end_seal_upstream_temperature"]["disabled"] = True
+            parameters_map["seal_gas_flow_m"]["disabled"] = True
+            parameters_map["seal_gas_temperature"]["disabled"] = True
+            parameters_map["div_wall_flow_m"]["disabled"] = True
+            parameters_map["div_wall_upstream_pressure"]["disabled"] = True
+            parameters_map["div_wall_upstream_temperature"]["disabled"] = True
+            parameters_map["first_section_discharge_flow_m"]["disabled"] = True
+            parameters_map["balance_line_flow_m"]["value"] = ""
+            parameters_map["end_seal_upstream_pressure"]["value"] = ""
+            parameters_map["end_seal_upstream_temperature"]["value"] = ""
+            parameters_map["seal_gas_flow_m"]["value"] = ""
+            parameters_map["seal_gas_temperature"]["value"] = ""
+            parameters_map["div_wall_flow_m"]["value"] = ""
+            parameters_map["div_wall_upstream_pressure"]["value"] = ""
+            parameters_map["div_wall_upstream_temperature"]["value"] = ""
+            parameters_map["first_section_discharge_flow_m"]["value"] = ""
 
         variable_speed = st.checkbox("Variable Speed", value=True)
         show_points = st.checkbox(
