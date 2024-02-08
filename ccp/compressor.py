@@ -114,6 +114,11 @@ class Point1Sec(Point):
         self.oil_outlet_temperature_de = oil_outlet_temperature_de
         self.oil_outlet_temperature_nde = oil_outlet_temperature_nde
 
+        if self.balance_line_flow_m is None:
+            self.balance_line_flow_m = Q_(0, "kg/s")
+            self.seal_gas_flow_m = Q_(0, "kg/s")
+            self.seal_gas_temperature = self.suc.T()
+
     def _dict_to_save(self):
         """Returns a dict that will be saved to a toml file."""
         dict_to_save = super()._dict_to_save()
@@ -472,6 +477,22 @@ class PointFirstSection(Point):
         self.oil_inlet_temperature = oil_inlet_temperature
         self.oil_outlet_temperature_de = oil_outlet_temperature_de
         self.oil_outlet_temperature_nde = oil_outlet_temperature_nde
+
+        # check case for no leakage. If no leakage, div_wall_flow_m and first_section_discharge_flow_m are zero
+        # and we equate the seal/div wall states to avoid errors
+        if (
+            self.div_wall_flow_m is None
+            and self.first_section_discharge_flow_m is None
+            and self.balance_line_flow_m is None
+        ):
+            self.div_wall_flow_m = Q_(0, "kg/s")
+            self.balance_line_flow_m = Q_(0, "kg/s")
+            self.seal_gas_flow_m = Q_(0, "kg/s")
+            self.seal_gas_temperature = self.suc.T()
+            self.end_seal_upstream_temperature = self.suc.T()
+            self.end_seal_upstream_pressure = self.suc.p()
+            self.div_wall_upstream_temperature = self.disch.T()
+            self.div_wall_upstream_pressure = self.disch.p()
 
         self.end_seal_upstream_state = State(
             p=self.end_seal_upstream_pressure,
