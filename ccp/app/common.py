@@ -150,6 +150,33 @@ parameters_map = {
 }
 
 
+def get_gas_composition(gas_name, gas_compositions_table, default_components):
+    """Get gas composition from gas name.
+
+    Parameters
+    ----------
+    gas_name : str
+        Name of gas.
+
+    Returns
+    -------
+    gas_composition : dict
+        Gas composition.
+    """
+    gas_composition = {}
+    for gas in gas_compositions_table.keys():
+        if gas_compositions_table[gas]["name"] == gas_name:
+            for i in range(len(default_components)):
+                component = gas_compositions_table[gas][f"component_{i}"]
+                molar_fraction = float(
+                    gas_compositions_table[gas][f"molar_fraction_{i}"]
+                )
+                if molar_fraction != 0:
+                    gas_composition[component] = molar_fraction
+
+    return gas_composition
+
+
 def to_excel(df):
     """Function to convert pandas dataframe to excel file to be downloaded."""
     output = io.BytesIO()
