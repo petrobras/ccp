@@ -1,8 +1,14 @@
 import streamlit as st
+from pathlib import Path
+
+assets = Path(__file__).parent / "assets"
+ccp_ico = assets / "ccp.png"
+ccp_logo = assets / "ccp_logo.png"
+css_path = assets / "style.css"
 
 st.set_page_config(
-    page_title="Hello",
-    page_icon="👋",
+    page_title="ccp",
+    page_icon=str(ccp_ico),
 )
 
 icon, header = st.columns([2, 8])
