@@ -190,7 +190,10 @@ def main():
     fluid_list = sorted(fluid_list)
     fluid_list.insert(0, "")
 
-    with st.expander("Gas Selection", expanded=st.session_state.expander_state):
+    with st.expander(
+        "Gas Selection",
+        expanded=st.session_state.expander_state,
+    ):
         gas_compositions_table = {}
         gas_columns = st.columns(6)
         for i, gas_column in enumerate(gas_columns):
@@ -200,6 +203,13 @@ def main():
                 f"Gas Name",
                 value=f"gas_{i}",
                 key=f"gas_{i}",
+                help="""
+                Gas name will be selected in Data Sheet and Test Data.
+
+                Fill in gas components and molar fractions for each gas.
+                """
+                if i == 0
+                else None,
             )
             component, molar_fraction = gas_column.columns([2, 1])
             default_components = [
@@ -235,6 +245,7 @@ def main():
                     value="0",
                     key=f"gas_{i}_molar_fraction_{j}",
                     label_visibility="collapsed",
+                    help="Molar fraction of the component.",
                 )
                 check_correct_separator(
                     gas_compositions_table[f"gas_{i}"][f"molar_fraction_{j}"]

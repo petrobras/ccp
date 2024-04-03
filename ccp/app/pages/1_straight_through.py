@@ -194,6 +194,13 @@ def main():
                 f"Gas Name",
                 value=f"gas_{i}",
                 key=f"gas_{i}",
+                help="""
+                Gas name will be selected in Data Sheet and Test Data.
+
+                Fill in gas components and molar fractions for each gas.
+                """
+                if i == 0
+                else None,
             )
             component, molar_fraction = gas_column.columns([2, 1])
             default_components = [
