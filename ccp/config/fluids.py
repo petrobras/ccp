@@ -1,76 +1,67 @@
-"""Module to organize fluids."""
+from typing import List, Tuple
 from warnings import warn
 import CoolProp.CoolProp as CP
 
 
 class Fluid:
-    def __init__(self, name):
+    """Class to represent a fluid."""
+
+    def __init__(self, name: str):
         self.name = name
-        self.possible_names = []
+        self.possible_names: List[str] = []
 
     def __repr__(self):
-        return f"{type(self).__name__}({self.__dict__}"
+        return f"{type(self).__name__}({self.name})"
 
 
-_fluid_list = CP.get_global_param_string("fluids_list").split(",")
-fluid_list = {name: Fluid(name) for name in _fluid_list}
+fluid_list = {
+    name: Fluid(name) for name in CP.get_global_param_string("fluids_list").split(",")
+}
 
-# define possible names
-fluid_list["n-Propane"].possible_names.extend(["propane", "n-propane", "npropane"])
-fluid_list["IsoButane"].possible_names.extend(
-    ["isobutane", "i-butane", "ibutane", "isobutan", "iso-butane"]
-)
-fluid_list["n-Butane"].possible_names.extend(["butane", "n-butane", "nbutane"])
-fluid_list["trans-2-Butene"].possible_names.extend(["trans-butene", "trans-butene-2"])
-fluid_list["IsoButene"].possible_names.extend(["i-butene", "ibutene", "iso-butene"])
-fluid_list["cis-2-Butene"].possible_names.extend(["cis-butene", "cis-butene-2"])
-fluid_list["n-Pentane"].possible_names.extend(["pentane", "n-pentane", "npentane"])
-fluid_list["Isopentane"].possible_names.extend(
-    ["i-pentane", "ipentane", "iso-pentane", "isopentane"]
-)
-fluid_list["n-Hexane"].possible_names.extend(["hexane", "n-hexane", "nhexane"])
-fluid_list["Isohexane"].possible_names.extend(["isohexane", "i-hexane", "iso-hexane"])
-fluid_list["n-Heptane"].possible_names.extend(["heptane", "n-heptane"])
-fluid_list["n-Octane"].possible_names.extend(["octane", "n-octane"])
-fluid_list["n-Undecane"].possible_names.extend(["undecane", "n-undecane"])
-fluid_list["n-Dodecane"].possible_names.extend(["dodecane", "n-dodecane"])
-fluid_list["HydrogenSulfide"].possible_names.extend(["hydrogen sulfide", "h2s"])
-fluid_list["CarbonMonoxide"].possible_names.extend(["carbon monoxide", "co"])
-fluid_list["CarbonDioxide"].possible_names.extend(["carbon dioxide", "co2"])
-fluid_list["Nitrogen"].possible_names.extend(["n2"])
-fluid_list["Oxygen"].possible_names.extend(["o2"])
-fluid_list["Hydrogen"].possible_names.extend(["h2"])
-fluid_list["Water"].possible_names.extend(["water", "h2o"])
-fluid_list["Propylene"].possible_names.extend(["propene"])
-fluid_list["Ethylene"].possible_names.extend(["ethene"])
-fluid_list["R1234ze(E)"].possible_names.extend(["r1234ze", "r1234zee"])
-fluid_list["R134a"].possible_names.extend(["r134a"])
-fluid_list["EthylBenzene"].possible_names.extend(
-    ["ethylbenzene", "e-benzene", "ebenzene"]
-)
+# Define possible names for each fluid
+fluid_aliases = {
+    "n-Propane": ["propane", "n-propane", "npropane"],
+    "IsoButane": ["isobutane", "i-butane", "ibutane", "isobutan", "iso-butane"],
+    "n-Butane": ["butane", "n-butane", "nbutane"],
+    "trans-2-Butene": ["trans-butene", "trans-butene-2"],
+    "IsoButene": ["i-butene", "ibutene", "iso-butene"],
+    "cis-2-Butene": ["cis-butene", "cis-butene-2"],
+    "n-Pentane": ["pentane", "n-pentane", "npentane"],
+    "Isopentane": ["i-pentane", "ipentane", "iso-pentane", "isopentane"],
+    "n-Hexane": ["hexane", "n-hexane", "nhexane"],
+    "Isohexane": ["isohexane", "i-hexane", "iso-hexane"],
+    "n-Heptane": ["heptane", "n-heptane"],
+    "n-Octane": ["octane", "n-octane"],
+    "n-Undecane": ["undecane", "n-undecane"],
+    "n-Dodecane": ["dodecane", "n-dodecane"],
+    "HydrogenSulfide": ["hydrogen sulfide", "h2s"],
+    "CarbonMonoxide": ["carbon monoxide", "co"],
+    "CarbonDioxide": ["carbon dioxide", "co2"],
+    "Nitrogen": ["n2"],
+    "Oxygen": ["o2"],
+    "Hydrogen": ["h2"],
+    "Water": ["water", "h2o"],
+    "Propylene": ["propene"],
+    "Ethylene": ["ethene"],
+    "R1234ze(E)": ["r1234ze", "r1234zee"],
+    "R134a": ["r134a"],
+    "EthylBenzene": ["ethylbenzene", "e-benzene", "ebenzene"],
+}
 
-
-def get_name(name):
-    """Seach for compatible fluid name."""
-
-    for k, v in fluid_list.items():
-        if name.lower() in v.possible_names:
-            name = k
-
-    fluid_name = CP.get_REFPROPname(name)
-
-    if fluid_name == "":
-        raise ValueError(f"Fluid {name} not available. See ccp.fluid_list. ")
-
-    return fluid_name
+for fluid, aliases in fluid_aliases.items():
+    fluid_list[fluid].possible_names.extend(aliases)
 
 
-###############################################################################
-# Helper functions
-###############################################################################
+def get_fluid_name(name: str) -> str:
+    """Search for a compatible fluid name."""
+    for fluid in fluid_list.values():
+        if name.lower() in fluid.possible_names:
+            return fluid.name
+
+    raise ValueError(f"Fluid {name} not available. See ccp.fluid_list.")
 
 
-def normalize_mix(molar_fractions):
+def normalize_mix(molar_fractions: List[float]) -> List[float]:
     """
     Normalize the molar fractions so that the sum is 1.
 
@@ -82,31 +73,17 @@ def normalize_mix(molar_fractions):
     Returns
     -------
     molar_fractions: list
-        Molar fractions list will be modified in place.
+        Normalized molar fractions.
     """
-    total = sum(sorted(list(molar_fractions)))
+    total = sum(molar_fractions)
 
     if not ((0.95 < total < 1.05) or (95 < total < 105)):
         warn(f"Molar fraction far from 1 or 100% -> Total: {total}")
 
-    molar_fractions_dict = {k: v for k, v in enumerate(molar_fractions)}
-    molar_fractions_dict = dict(
-        sorted(molar_fractions_dict.items(), key=lambda item: -item[1])
-    )
+    normalized_total = sum(sorted(molar_fractions))  # Calculate the total again
 
-    # skip component with highest fraction
-    molar_fractions_dict_iter = iter(molar_fractions_dict.items())
-    next(molar_fractions_dict_iter)
+    if normalized_total != 1.0:
+        normalized_fractions = [x / normalized_total for x in molar_fractions]
+        return normalized_fractions
 
-    normalized_total = 0
-    for k, v in molar_fractions_dict_iter:
-        if v != 0:
-            new_fraction = 1.0 - (1.0 - v / total)
-            molar_fractions_dict[k] = new_fraction
-            normalized_total += new_fraction
-
-    # adjust component with highest fraction so that sum == 1.0
-    molar_fractions_dict[next(iter(molar_fractions_dict))] = 1.0 - normalized_total
-
-    for k, v in molar_fractions_dict.items():
-        molar_fractions[k] = molar_fractions_dict[k]
+    return molar_fractions
