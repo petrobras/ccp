@@ -1,4 +1,5 @@
 """Module to keep everything that is common to ccp_app_straight_through and ccp_app_back_to_back."""
+
 import io
 import pandas as pd
 
@@ -16,6 +17,11 @@ parameters_map = {
         "label": "Flow",
         "units": flow_units,
         "help": "Flow can be mass flow or volumetric flow depending on the selected unit.",
+    },
+    "flow_v": {
+        "label": "Volumetric Flow",
+        "units": flow_v_units,
+        "help": "Volumetric flow.",
     },
     "suction_pressure": {
         "label": "Suction Pressure",

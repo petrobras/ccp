@@ -486,7 +486,7 @@ def main():
                                 "units"
                             ] = units_col.selectbox(
                                 f"{parameter} units",
-                                options=parameters_map["flow"]["units"],
+                                options=parameters_map["flow_v"]["units"],
                                 key=f"{axis}_{curve}_{section}_flow_units",
                                 label_visibility="collapsed",
                             )

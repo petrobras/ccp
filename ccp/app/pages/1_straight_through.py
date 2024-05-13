@@ -438,7 +438,7 @@ def main():
                     if axis == "x":
                         plot_limits[curve][f"{axis}"]["units"] = units_col.selectbox(
                             f"{parameter} units",
-                            options=parameters_map["flow"]["units"],
+                            options=parameters_map["flow_v"]["units"],
                             key=f"{axis}_{curve}_flow_units",
                             label_visibility="collapsed",
                         )
