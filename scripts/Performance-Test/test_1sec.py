@@ -76,7 +76,6 @@ if __name__ == "__main__" or __name__ == "test_script":
     global P_FD_eff
 
     def reynolds_corr(P_AT, P_FD, rug=None):
-
         ReAT = P_AT.reynolds
         ReFD = P_FD.reynolds
 
@@ -125,7 +124,6 @@ if __name__ == "__main__" or __name__ == "test_script":
         newton(update_h, P_ATconv_temp.psi.m, tol=1)
 
         return P_AT_reyn
-
 
     if AT_sheet["H35"].value != None:
         AT_sheet["H35"].value = None

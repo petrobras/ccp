@@ -15,7 +15,17 @@ from ccp.config.units import ureg
 from pathlib import Path
 
 # import everything that is common to ccp_app_straight_through and ccp_app_back_to_back
-from common import *
+from common import (
+    flow_m_units,
+    flow_v_units,
+    flow_units,
+    pressure_units,
+    temperature_units,
+    speed_units,
+    parameters_map,
+    get_gas_composition,
+    to_excel,
+)
 
 
 sentry_sdk.init(
@@ -180,7 +190,10 @@ def main():
     fluid_list = sorted(fluid_list)
     fluid_list.insert(0, "")
 
-    with st.expander("Gas Selection", expanded=st.session_state.expander_state):
+    with st.expander(
+        "Gas Selection",
+        expanded=st.session_state.expander_state,
+    ):
         gas_compositions_table = {}
         gas_columns = st.columns(6)
         for i, gas_column in enumerate(gas_columns):
@@ -190,6 +203,13 @@ def main():
                 f"Gas Name",
                 value=f"gas_{i}",
                 key=f"gas_{i}",
+                help="""
+                Gas name will be selected in Data Sheet and Test Data.
+
+                Fill in gas components and molar fractions for each gas.
+                """
+                if i == 0
+                else None,
             )
             component, molar_fraction = gas_column.columns([2, 1])
             default_components = [
@@ -225,6 +245,7 @@ def main():
                     value="0",
                     key=f"gas_{i}_molar_fraction_{j}",
                     label_visibility="collapsed",
+                    help="Molar fraction of the component.",
                 )
                 check_correct_separator(
                     gas_compositions_table[f"gas_{i}"][f"molar_fraction_{j}"]
@@ -493,7 +514,7 @@ def main():
                                 "units"
                             ] = units_col.selectbox(
                                 f"{parameter} units",
-                                options=parameters_map["flow"]["units"],
+                                options=parameters_map["flow_v"]["units"],
                                 key=f"{axis}_{curve}_{section}_flow_units",
                                 label_visibility="collapsed",
                             )
@@ -698,32 +719,6 @@ def main():
             help="Calculate speed to match the second section discharge pressure.",
         )
 
-    def get_gas_composition(gas_name):
-        """Get gas composition from gas name.
-
-        Parameters
-        ----------
-        gas_name : str
-            Name of gas.
-
-        Returns
-        -------
-        gas_composition : dict
-            Gas composition.
-        """
-        gas_composition = {}
-        for gas in gas_compositions_table.keys():
-            if gas_compositions_table[gas]["name"] == gas_name:
-                for i in range(len(default_components)):
-                    component = gas_compositions_table[gas][f"component_{i}"]
-                    molar_fraction = float(
-                        gas_compositions_table[gas][f"molar_fraction_{i}"]
-                    )
-                    if molar_fraction != 0:
-                        gas_composition[component] = molar_fraction
-
-        return gas_composition
-
     # create test points for first section
     first_section_test_points = []
     second_section_test_points = []
@@ -739,10 +734,14 @@ def main():
         # get gas composition from selected gas
         gas_composition_data_sheet = {}
         gas_composition_data_sheet["section_1_point_guarantee"] = get_gas_composition(
-            gas_name_section_1_point_guarantee
+            gas_name_section_1_point_guarantee,
+            gas_compositions_table,
+            default_components,
         )
         gas_composition_data_sheet["section_2_point_guarantee"] = get_gas_composition(
-            gas_name_section_2_point_guarantee
+            gas_name_section_2_point_guarantee,
+            gas_compositions_table,
+            default_components,
         )
 
         for section, section_kws in zip(
@@ -890,7 +889,9 @@ def main():
                             ],
                         ),
                         fluid=get_gas_composition(
-                            st.session_state[f"gas_{section}_point_{i}"]
+                            st.session_state[f"gas_{section}_point_{i}"],
+                            gas_compositions_table,
+                            default_components,
                         ),
                     )
                     kwargs["disch"] = ccp.State(
@@ -913,7 +914,9 @@ def main():
                             ],
                         ),
                         fluid=get_gas_composition(
-                            st.session_state[f"gas_{section}_point_{i}"]
+                            st.session_state[f"gas_{section}_point_{i}"],
+                            gas_compositions_table,
+                            default_components,
                         ),
                     )
                     if (

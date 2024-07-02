@@ -15,7 +15,17 @@ from ccp.config.units import ureg
 from pathlib import Path
 
 # import everything that is common to ccp_app_straight_through and ccp_app_back_to_back
-from common import *
+from common import (
+    flow_m_units,
+    flow_v_units,
+    flow_units,
+    pressure_units,
+    temperature_units,
+    speed_units,
+    parameters_map,
+    get_gas_composition,
+    to_excel,
+)
 
 sentry_sdk.init(
     dsn="https://8fd0e79dffa94dbb9747bf64e7e55047@o348313.ingest.sentry.io/4505046640623616",
@@ -184,6 +194,13 @@ def main():
                 f"Gas Name",
                 value=f"gas_{i}",
                 key=f"gas_{i}",
+                help="""
+                Gas name will be selected in Data Sheet and Test Data.
+
+                Fill in gas components and molar fractions for each gas.
+                """
+                if i == 0
+                else None,
             )
             component, molar_fraction = gas_column.columns([2, 1])
             default_components = [
@@ -421,7 +438,7 @@ def main():
                     if axis == "x":
                         plot_limits[curve][f"{axis}"]["units"] = units_col.selectbox(
                             f"{parameter} units",
-                            options=parameters_map["flow"]["units"],
+                            options=parameters_map["flow_v"]["units"],
                             key=f"{axis}_{curve}_flow_units",
                             label_visibility="collapsed",
                         )
@@ -634,7 +651,11 @@ def main():
                                 "test_fo_units"
                             ],
                         ),
-                        fluid=get_gas_composition(st.session_state[f"gas_fo_{i-1}"]),
+                        fluid=get_gas_composition(
+                            st.session_state[f"gas_fo_{i-1}"],
+                            gas_compositions_table,
+                            default_components,
+                        ),
                     )
 
                     kwargs["delta_p"] = Q_(
@@ -700,32 +721,6 @@ def main():
             help="Calculate flowrate with orifice plate data.",
         )
 
-    def get_gas_composition(gas_name):
-        """Get gas composition from gas name.
-
-        Parameters
-        ----------
-        gas_name : str
-            Name of gas.
-
-        Returns
-        -------
-        gas_composition : dict
-            Gas composition.
-        """
-        gas_composition = {}
-        for gas in gas_compositions_table.keys():
-            if gas_compositions_table[gas]["name"] == gas_name:
-                for i in range(len(default_components)):
-                    component = gas_compositions_table[gas][f"component_{i}"]
-                    molar_fraction = float(
-                        gas_compositions_table[gas][f"molar_fraction_{i}"]
-                    )
-                    if molar_fraction != 0:
-                        gas_composition[component] = molar_fraction
-
-        return gas_composition
-
     if calculate_flowrate:
         calculate_flowrate = False
         progress_value = 0
@@ -754,7 +749,9 @@ def main():
         # get gas composition from selected gas
         gas_composition_data_sheet = {}
         gas_composition_data_sheet["point_guarantee"] = get_gas_composition(
-            gas_name_point_guarantee
+            gas_name_point_guarantee,
+            gas_compositions_table,
+            default_components,
         )
 
         # to get data sheet units we use parameters_map[parameter]["selected_units"]
@@ -856,7 +853,11 @@ def main():
                         float(st.session_state[f"suction_temperature_point_{i}"]),
                         parameters_map["suction_temperature"]["points"]["test_units"],
                     ),
-                    fluid=get_gas_composition(st.session_state[f"gas_point_{i}"]),
+                    fluid=get_gas_composition(
+                        st.session_state[f"gas_point_{i}"],
+                        gas_compositions_table,
+                        default_components,
+                    ),
                 )
                 kwargs["disch"] = ccp.State(
                     p=Q_(
@@ -867,7 +868,11 @@ def main():
                         float(st.session_state[f"discharge_temperature_point_{i}"]),
                         parameters_map["discharge_temperature"]["points"]["test_units"],
                     ),
-                    fluid=get_gas_composition(st.session_state[f"gas_point_{i}"]),
+                    fluid=get_gas_composition(
+                        st.session_state[f"gas_point_{i}"],
+                        gas_compositions_table,
+                        default_components,
+                    ),
                 )
                 if st.session_state[f"casing_delta_T_point_{i}"] and casing_heat_loss:
                     kwargs["casing_temperature"] = Q_(

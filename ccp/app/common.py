@@ -1,4 +1,5 @@
 """Module to keep everything that is common to ccp_app_straight_through and ccp_app_back_to_back."""
+
 import io
 import pandas as pd
 
@@ -16,6 +17,11 @@ parameters_map = {
         "label": "Flow",
         "units": flow_units,
         "help": "Flow can be mass flow or volumetric flow depending on the selected unit.",
+    },
+    "flow_v": {
+        "label": "Volumetric Flow",
+        "units": flow_v_units,
+        "help": "Volumetric flow.",
     },
     "suction_pressure": {
         "label": "Suction Pressure",
@@ -148,6 +154,34 @@ parameters_map = {
         "units": ["kg/h", "lbm/h", "kg/s", "lbm/s"],
     },
 }
+
+
+def get_gas_composition(gas_name, gas_compositions_table, default_components):
+    """Get gas composition from gas name.
+
+    Parameters
+    ----------
+    gas_name : str
+        Name of gas.
+
+    Returns
+    -------
+    gas_composition : dict
+        Gas composition.
+    """
+    gas_composition = {}
+    for gas in gas_compositions_table.keys():
+        if gas_compositions_table[gas]["name"] == gas_name:
+            for i in range(len(default_components)):
+                component = gas_compositions_table[gas][f"component_{i}"]
+                molar_fraction = gas_compositions_table[gas][f"molar_fraction_{i}"]
+                if molar_fraction == "":
+                    molar_fraction = 0
+                molar_fraction = float(molar_fraction)
+                if molar_fraction != 0:
+                    gas_composition[component] = molar_fraction
+
+    return gas_composition
 
 
 def to_excel(df):
