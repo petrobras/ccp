@@ -142,7 +142,7 @@ def main():
             st.session_state.update(session_state_data_copy)
             st.session_state.session_name = file.name.replace(".ccp", "")
             st.session_state.expander_state = True
-            st.experimental_rerun()
+            st.rerun()
 
         if save_button:
             session_state_dict = dict(st.session_state)
@@ -223,6 +223,7 @@ def main():
                 "n-hexane",
                 "n-heptane",
                 "n-octane",
+                "n-nonane",
                 "nitrogen",
                 "h2s",
                 "co2",
@@ -1543,22 +1544,22 @@ def main():
                             # apply conditional formatting to the specific cell
                             cell_value = df.loc[row_index, col_index]
                             if cell_value >= lower_limit and cell_value <= higher_limit:
-                                styled_df = styled_df.applymap(
+                                styled_df = styled_df.map(
                                     lambda x: "background-color: #C8E6C9"
                                     if x == cell_value
                                     else ""
-                                ).applymap(
+                                ).map(
                                     lambda x: "font-color: #33691E"
                                     if x == cell_value
                                     else ""
                                 )
 
                             else:
-                                styled_df = styled_df.applymap(
+                                styled_df = styled_df.map(
                                     lambda x: "background-color: #FFCDD2"
                                     if x == cell_value
                                     else ""
-                                ).applymap(
+                                ).map(
                                     lambda x: "font-color: #FFCDD2"
                                     if x == cell_value
                                     else ""
