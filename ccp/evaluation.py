@@ -138,10 +138,13 @@ class Evaluation:
         data_mean = data.mean()
         data_std = data.std()
         data_norm = (data - data_mean) / data_std
+        self.data_mean = data_mean
+        self.data_std = data_std
 
         # Using sklearn
         kmeans = KMeans(n_clusters=5, n_init="auto")
         kmeans.fit(data_norm)
+        self.kmeans = kmeans
 
         # Format results as a DataFrame
         df["cluster"] = kmeans.labels_
@@ -169,10 +172,44 @@ class Evaluation:
             imp_new = Impeller.convert_from(self.impellers, suc=suc_new, speed="same")
             self.impellers_new.append(imp_new)
 
+        self.df = df
+
+
+    def calculate_points(self, data=None):
         # create args list for parallel processing
         # loop
+        # TODO: if new data, define to which cluster the point belongs
+        if data is None:
+            df = self.data
+        else:
+            df = data
+            # create density column
+            df["v_s"] = 0
+            df["speed_sound"] = 0
+            for i, row in df.iterrows():
+                # create state
+                state = State(
+                    p=Q_(row.ps, self.data_units["ps"]),
+                    T=Q_(row.Ts, self.data_units["Ts"]),
+                    fluid=self.operation_fluid,
+                )
+                df.loc[i, "v_s"] = state.v().m
+                df.loc[i, "speed_sound"] = state.speed_sound().m
+            
+            # assign to a cluster
+            df["cluster"] = 0
+
+            for i, row in df.iterrows():
+                new_data = row["speed_sound", "ps", "Ts"].array
+                new_data = (new_data - self.data_mean.array) / self.data_std.array
+                # TODO: assign cluster
+                cluster_idx = self.kmeans.predict(new_data)
+
+
+
         points = []
         expected_points = []
+
 
         args_list = []
         for i, row in df.iterrows():
