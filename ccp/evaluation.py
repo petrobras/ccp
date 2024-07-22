@@ -1,4 +1,5 @@
 """Module for performance evaluation based on historical data."""
+
 import multiprocessing
 import zipfile
 import toml
@@ -28,6 +29,8 @@ class Evaluation:
         speed_fluctuation=0.5,
         impellers=None,
         verbose=False,
+        n_clusters=5,
+        calculate_points=True,
         **kwargs,
     ):
         """Initialize the evaluation class.
@@ -61,6 +64,12 @@ class Evaluation:
             The default is 0.5.
         impellers : list
             List of impellers with design curves.
+        n_clusters : int, optional
+            Number of clusters to be used in the K-means algorithm.
+            The default is 5.
+        calculate_points : bool, optional
+            If True, calculates the performance points for the given data.
+            The default is True.
         verbose : bool, optional
             If True, shows progress bar.
 
@@ -83,11 +92,14 @@ class Evaluation:
         self.pressure_fluctuation = pressure_fluctuation
         self.speed_fluctuation = speed_fluctuation
         self.impellers = impellers
+        self.n_clusters = n_clusters
 
         # check if we are loading from a zip file where the impellers are available
         if kwargs.get("impellers_new") is None:
             print("running")
             self._run()
+            if calculate_points:
+                self.df = self.calculate_points()
         else:
             self.impellers_new = kwargs.get("impellers_new")
             self.df = kwargs.get("df")
@@ -142,7 +154,7 @@ class Evaluation:
         self.data_std = data_std
 
         # Using sklearn
-        kmeans = KMeans(n_clusters=5, n_init="auto")
+        kmeans = KMeans(n_clusters=self.n_clusters, n_init="auto")
         kmeans.fit(data_norm)
         self.kmeans = kmeans
 
@@ -174,13 +186,23 @@ class Evaluation:
 
         self.df = df
 
-
     def calculate_points(self, data=None):
-        # create args list for parallel processing
-        # loop
-        # TODO: if new data, define to which cluster the point belongs
+        """Calculate the performance points for the given data.
+
+        Parameters
+        ----------
+        data : pandas.DataFrame, optional
+            Data to be used for the calculation. If not provided, the data
+            used in the initialization will be used.
+            The default is None.
+
+        Returns
+        -------
+        df : pandas.DataFrame
+            DataFrame with the calculated points.
+        """
         if data is None:
-            df = self.data
+            df = self.df
         else:
             df = data
             # create density column
@@ -195,7 +217,7 @@ class Evaluation:
                 )
                 df.loc[i, "v_s"] = state.v().m
                 df.loc[i, "speed_sound"] = state.speed_sound().m
-            
+
             # assign to a cluster
             df["cluster"] = 0
 
@@ -203,13 +225,10 @@ class Evaluation:
                 new_data = row["speed_sound", "ps", "Ts"].array
                 new_data = (new_data - self.data_mean.array) / self.data_std.array
                 # TODO: assign cluster
-                cluster_idx = self.kmeans.predict(new_data)
-
-
+                df.loc[i, "cluster"] = self.kmeans.predict(new_data)
 
         points = []
         expected_points = []
-
 
         args_list = []
         for i, row in df.iterrows():
@@ -281,7 +300,7 @@ class Evaluation:
             sample_time = i - df.index[0]
             df.loc[i, "timescale"] = sample_time.seconds / total_time.seconds
 
-        self.df = df
+        return df
 
     def save(self, path):
         # create zip file and save dataframe as parquet and impellers
