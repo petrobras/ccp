@@ -1,4 +1,5 @@
 """Module to define impeller class."""
+
 import csv
 import multiprocessing
 import warnings
@@ -62,7 +63,14 @@ class ImpellerPlotFunction:
 
     @check_units
     def __call__(
-        self, *args, flow_v=None, speed=None, plot_kws=None, show_points=False, **kwargs
+        self,
+        *args,
+        flow_v=None,
+        speed=None,
+        speed_units="RPM",
+        plot_kws=None,
+        show_points=False,
+        **kwargs,
     ):
         """Plot parameter versus volumetric flow.
 
@@ -83,7 +91,7 @@ class ImpellerPlotFunction:
             Units for the parameter being plotted (e.g. for a head plot we could use
             head_units='J/kg' or head_units='J/g'). Default is SI.
         speed_units : str, optional
-            Speed units for the plot. Default is 'rad/s'.
+            Speed units for the plot. Default is 'RPM'.
         show_points : bool, optional
             If True, the points will be plotted as markers.
 
@@ -135,6 +143,7 @@ class ImpellerPlotFunction:
             color = next(color_iterator)
             fig = r_getattr(curve, attr + "_plot")(
                 fig=fig,
+                speed_units=speed_units,
                 plot_kws=plot_kws,
                 color=color,
                 show_points=show_points,
@@ -153,6 +162,7 @@ class ImpellerPlotFunction:
                 fig=fig,
                 plot_kws=plot_kws,
                 color=color,
+                speed_units=speed_units,
                 show_points=show_points,
                 **kwargs,
             )
@@ -161,7 +171,11 @@ class ImpellerPlotFunction:
             if flow_v:
                 current_point = impeller_object.point(flow_v=flow_v, speed=speed)
                 fig = r_getattr(current_point, attr + "_plot")(
-                    fig=fig, plot_kws=plot_kws, color=color, **kwargs
+                    fig=fig,
+                    speed_units=speed_units,
+                    plot_kws=plot_kws,
+                    color=color,
+                    **kwargs,
                 )
 
         # add surge flow and attr values to plot as dotted line
@@ -198,7 +212,13 @@ class CompareImpellerPlotFunction:
 
     @check_units
     def __call__(
-        self, other_impeller, flow_v=None, speed=None, plot_kws=None, **kwargs
+        self,
+        other_impeller,
+        flow_v=None,
+        speed=None,
+        speed_units="RPM",
+        plot_kws=None,
+        **kwargs,
     ):
         """Plot parameter versus volumetric flow.
 
@@ -219,7 +239,7 @@ class CompareImpellerPlotFunction:
             Units for the parameter being plotted (e.g. for a head plot we could use
             head_units='J/kg' or head_units='J/g'). Default is SI.
         speed_units : str, optional
-            Speed units for the plot. Default is 'rad/s'.
+            Speed units for the plot. Default is 'RPM'.
 
         Returns
         -------
@@ -255,7 +275,7 @@ class CompareImpellerPlotFunction:
         for curve, color in zip(impeller_object.curves, tableau_colors):
             other_curve = other_impeller.curve(speed=curve.speed)
             fig = r_getattr(other_curve, attr + "_plot")(
-                fig=fig, plot_kws=plot_kws, **kwargs
+                fig=fig, speed_units=speed_units, plot_kws=plot_kws, **kwargs
             )
             # change line to dash
             fig.data[-1].update(
@@ -264,18 +284,20 @@ class CompareImpellerPlotFunction:
             )
 
         for curve, color in zip(impeller_object.curves, tableau_colors):
-            fig = r_getattr(curve, attr + "_plot")(fig=fig, plot_kws=plot_kws, **kwargs)
+            fig = r_getattr(curve, attr + "_plot")(
+                fig=fig, speed_units=speed_units, plot_kws=plot_kws, **kwargs
+            )
             fig.data[-1].update(line=dict(color=color))
 
         if speed:
             current_curve = impeller_object.curve(speed=speed)
             fig = r_getattr(current_curve, attr + "_plot")(
-                fig=fig, plot_kws=plot_kws, **kwargs
+                fig=fig, speed_units=speed_units, plot_kws=plot_kws, **kwargs
             )
             if flow_v:
                 current_point = impeller_object.point(flow_v=flow_v, speed=speed)
                 fig = r_getattr(current_point, attr + "_plot")(
-                    fig=fig, plot_kws=plot_kws, **kwargs
+                    fig=fig, speed_units=speed_units, plot_kws=plot_kws, **kwargs
                 )
 
         # extra x range

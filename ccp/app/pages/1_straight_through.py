@@ -140,7 +140,7 @@ def main():
             st.session_state.update(session_state_data_copy)
             st.session_state.session_name = file.name.replace(".ccp", "")
             st.session_state.expander_state = True
-            st.experimental_rerun()
+            st.rerun()
 
         if save_button:
             session_state_dict = dict(st.session_state)
@@ -194,6 +194,13 @@ def main():
                 f"Gas Name",
                 value=f"gas_{i}",
                 key=f"gas_{i}",
+                help="""
+                Gas name will be selected in Data Sheet and Test Data.
+
+                Fill in gas components and molar fractions for each gas.
+                """
+                if i == 0
+                else None,
             )
             component, molar_fraction = gas_column.columns([2, 1])
             default_components = [
@@ -207,28 +214,29 @@ def main():
                 "n-hexane",
                 "n-heptane",
                 "n-octane",
+                "n-nonane",
                 "nitrogen",
                 "h2s",
                 "co2",
                 "h2o",
             ]
             for j, default_component in enumerate(default_components):
-                gas_compositions_table[f"gas_{i}"][
-                    f"component_{j}"
-                ] = component.selectbox(
-                    "Component",
-                    options=fluid_list,
-                    index=fluid_list.index(default_component),
-                    key=f"gas_{i}_component_{j}",
-                    label_visibility="collapsed",
+                gas_compositions_table[f"gas_{i}"][f"component_{j}"] = (
+                    component.selectbox(
+                        "Component",
+                        options=fluid_list,
+                        index=fluid_list.index(default_component),
+                        key=f"gas_{i}_component_{j}",
+                        label_visibility="collapsed",
+                    )
                 )
-                gas_compositions_table[f"gas_{i}"][
-                    f"molar_fraction_{j}"
-                ] = molar_fraction.text_input(
-                    "Molar Fraction",
-                    value="0",
-                    key=f"gas_{i}_molar_fraction_{j}",
-                    label_visibility="collapsed",
+                gas_compositions_table[f"gas_{i}"][f"molar_fraction_{j}"] = (
+                    molar_fraction.text_input(
+                        "Molar Fraction",
+                        value="0",
+                        key=f"gas_{i}_molar_fraction_{j}",
+                        label_visibility="collapsed",
+                    )
                 )
 
     # add container with 4 columns and 2 rows
@@ -362,20 +370,20 @@ def main():
                 help=f"{parameters_map[parameter].get('help', '')}",
             )
 
-            parameters_map[parameter]["points"][
-                "data_sheet_units"
-            ] = units_col.selectbox(
-                f"{parameter} units",
-                options=parameters_map[parameter]["units"],
-                key=f"{parameter}_units_point_guarantee",
-                label_visibility="collapsed",
+            parameters_map[parameter]["points"]["data_sheet_units"] = (
+                units_col.selectbox(
+                    f"{parameter} units",
+                    options=parameters_map[parameter]["units"],
+                    key=f"{parameter}_units_point_guarantee",
+                    label_visibility="collapsed",
+                )
             )
-            parameters_map[parameter]["points"]["point_guarantee"][
-                "value"
-            ] = values_col.text_input(
-                f"{parameter} value.",
-                key=f"{parameter}_point_guarantee",
-                label_visibility="collapsed",
+            parameters_map[parameter]["points"]["point_guarantee"]["value"] = (
+                values_col.text_input(
+                    f"{parameter} value.",
+                    key=f"{parameter}_point_guarantee",
+                    label_visibility="collapsed",
+                )
             )
 
     with st.expander("Curves", expanded=st.session_state.expander_state):
@@ -414,24 +422,24 @@ def main():
                     ) = curves_col.columns(4, gap="small")
                     plot_limit.markdown(f"{axis} range")
                     plot_limits[curve][f"{axis}"] = {}
-                    plot_limits[curve][f"{axis}"][
-                        "lower_limit"
-                    ] = lower_value_col.text_input(
-                        f"Lower limit",
-                        key=f"{axis}_{curve}_lower",
-                        label_visibility="collapsed",
+                    plot_limits[curve][f"{axis}"]["lower_limit"] = (
+                        lower_value_col.text_input(
+                            f"Lower limit",
+                            key=f"{axis}_{curve}_lower",
+                            label_visibility="collapsed",
+                        )
                     )
-                    plot_limits[curve][f"{axis}"][
-                        "upper_limit"
-                    ] = upper_value_col.text_input(
-                        f"Upper limit",
-                        key=f"{axis}_{curve}_upper",
-                        label_visibility="collapsed",
+                    plot_limits[curve][f"{axis}"]["upper_limit"] = (
+                        upper_value_col.text_input(
+                            f"Upper limit",
+                            key=f"{axis}_{curve}_upper",
+                            label_visibility="collapsed",
+                        )
                     )
                     if axis == "x":
                         plot_limits[curve][f"{axis}"]["units"] = units_col.selectbox(
                             f"{parameter} units",
-                            options=parameters_map["flow"]["units"],
+                            options=parameters_map["flow_v"]["units"],
                             key=f"{axis}_{curve}_flow_units",
                             label_visibility="collapsed",
                         )
@@ -512,13 +520,13 @@ def main():
                         disabled=parameters_map[parameter].get("disabled", False),
                     )
                 else:
-                    parameters_map[parameter]["points"][f"point_{i - 1}"][
-                        "value"
-                    ] = col.text_input(
-                        f"{parameter} value.",
-                        key=f"{parameter}_point_{i - 1}",
-                        label_visibility="collapsed",
-                        disabled=parameters_map[parameter].get("disabled", False),
+                    parameters_map[parameter]["points"][f"point_{i - 1}"]["value"] = (
+                        col.text_input(
+                            f"{parameter} value.",
+                            key=f"{parameter}_point_{i - 1}",
+                            label_visibility="collapsed",
+                            disabled=parameters_map[parameter].get("disabled", False),
+                        )
                     )
 
     with st.expander("Flowrate Calculation", expanded=st.session_state.expander_state):
@@ -579,23 +587,23 @@ def main():
                     if parameter == "tappings_fo":
                         pass
                     else:
-                        parameters_map[parameter]["points_fo"][
-                            "test_fo_units"
-                        ] = col.selectbox(
-                            f"{parameter} units",
-                            options=parameters_map[parameter]["units"],
-                            key=f"{parameter}_units",
-                            label_visibility="collapsed",
+                        parameters_map[parameter]["points_fo"]["test_fo_units"] = (
+                            col.selectbox(
+                                f"{parameter} units",
+                                options=parameters_map[parameter]["units"],
+                                key=f"{parameter}_units",
+                                label_visibility="collapsed",
+                            )
                         )
                 else:
                     if parameter == "tappings_fo":
-                        parameters_map[parameter]["points_fo"][
-                            "test_fo_units"
-                        ] = col.selectbox(
-                            f"{parameter} value",
-                            options=parameters_map[parameter]["units"],
-                            key=f"{parameter}_{i - 1}",
-                            label_visibility="collapsed",
+                        parameters_map[parameter]["points_fo"]["test_fo_units"] = (
+                            col.selectbox(
+                                f"{parameter} value",
+                                options=parameters_map[parameter]["units"],
+                                key=f"{parameter}_{i - 1}",
+                                label_visibility="collapsed",
+                            )
                         )
                     else:
                         # elif parameter != "mass_flow_fo":
@@ -988,9 +996,9 @@ def main():
             st.write(
                 f"Final speed used in calculation: {straight_through.speed.to('rpm').m:.2f} RPM"
             )
-            _t = "\u209C"
-            _sp = "\u209B\u209A"
-            conv = "\u1D9C" + "\u1D52" + "\u207F" + "\u1D5B"
+            _t = "\u209c"
+            _sp = "\u209b\u209a"
+            conv = "\u1d9c" + "\u1d52" + "\u207f" + "\u1d5b"
 
             results = {}
 
@@ -1244,9 +1252,9 @@ def main():
                     i: f"Point {i+1}"
                     for i in range(len(getattr(straight_through, f"points_flange_t")))
                 }
-                rename_index[
-                    len(getattr(straight_through, f"points_flange_t"))
-                ] = "Guarantee Point"
+                rename_index[len(getattr(straight_through, f"points_flange_t"))] = (
+                    "Guarantee Point"
+                )
 
                 df_results.rename(
                     index=rename_index,
@@ -1273,20 +1281,20 @@ def main():
                     # apply conditional formatting to the specific cell
                     cell_value = df.loc[row_index, col_index]
                     if cell_value >= lower_limit and cell_value <= higher_limit:
-                        styled_df = styled_df.applymap(
+                        styled_df = styled_df.map(
                             lambda x: "background-color: #C8E6C9"
                             if x == cell_value
                             else ""
-                        ).applymap(
+                        ).map(
                             lambda x: "font-color: #33691E" if x == cell_value else ""
                         )
 
                     else:
-                        styled_df = styled_df.applymap(
+                        styled_df = styled_df.map(
                             lambda x: "background-color: #FFCDD2"
                             if x == cell_value
                             else ""
-                        ).applymap(
+                        ).map(
                             lambda x: "font-color: #FFCDD2" if x == cell_value else ""
                         )
 
@@ -1463,17 +1471,13 @@ def main():
                         plots_dict[curve].data[1].update(
                             name=f"Flow: {point_interpolated.flow_v.to(flow_v_units):.~2f}, {curve.capitalize()}: {r_getattr(point_interpolated, curve_plot_method)(curve_units):.~2f}".replace(
                                 "m ** 3 / h", "m³/h"
-                            ).replace(
-                                "Discharge_pressure", "Disch. p"
-                            )
+                            ).replace("Discharge_pressure", "Disch. p")
                         )
                     else:
                         plots_dict[curve].data[1].update(
                             name=f"Flow: {point_interpolated.flow_v.to(flow_v_units):.~2f}, {curve.capitalize()}: {r_getattr(point_interpolated, curve_plot_method).to(curve_units):.~2f}".replace(
                                 "m ** 3 / h", "m³/h"
-                            ).replace(
-                                "Discharge_pressure", "Disch. p"
-                            )
+                            ).replace("Discharge_pressure", "Disch. p")
                         )
 
                     plots_dict[curve].update_layout(

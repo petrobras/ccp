@@ -13,6 +13,7 @@ st.set_page_config(
 
 icon, header = st.columns([2, 8])
 icon.image(str(ccp_ico), width=100)
+
 header.header("ccp - Centrifugal Compressor Peformance")
 
 st.write("")
