@@ -15,7 +15,7 @@ from ccp.config.units import ureg
 from pathlib import Path
 
 # import everything that is common to ccp_app_straight_through and ccp_app_back_to_back
-from common import (
+from ccp.app.common import (
     flow_m_units,
     flow_v_units,
     flow_units,
