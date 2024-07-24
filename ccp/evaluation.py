@@ -230,10 +230,9 @@ class Evaluation:
             df["cluster"] = 0
 
             for i, row in df.iterrows():
-                new_data = row["speed_sound", "ps", "Ts"].array
+                new_data = row[["speed_sound", "ps", "Ts"]].array
                 new_data = (new_data - self.data_mean.array) / self.data_std.array
-                # TODO: assign cluster
-                df.loc[i, "cluster"] = self.kmeans.predict(new_data)
+                df.loc[i, "cluster"] = self.kmeans.predict(new_data.reshape(1, -1))[0]
 
         points = []
         expected_points = []
