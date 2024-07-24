@@ -133,13 +133,13 @@ class Evaluation:
             # create flow_m column
             df["flow_m"] = (
                 Q_(df["flow_v"].array, self.data_units["flow_v"])
-                * Q_(df["v_s"].array, "m³/kg")
+                / Q_(df["v_s"].array, "m³/kg")
             ).m
         elif "flow_m" in df.columns:
             # create flow_v column
             df["flow_v"] = (
                 Q_(df["flow_m"].array, self.data_units["flow_m"])
-                / Q_(df["v_s"].array, "m³/kg")
+                * Q_(df["v_s"].array, "m³/kg")
             ).m
         else:
             raise ValueError("Flow rate not found in the DataFrame.")
