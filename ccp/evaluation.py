@@ -1,4 +1,5 @@
 """Module for performance evaluation based on historical data."""
+
 import multiprocessing
 import zipfile
 import toml
@@ -28,6 +29,8 @@ class Evaluation:
         speed_fluctuation=0.5,
         impellers=None,
         verbose=False,
+        n_clusters=5,
+        calculate_points=True,
         **kwargs,
     ):
         """Initialize the evaluation class.
@@ -61,6 +64,12 @@ class Evaluation:
             The default is 0.5.
         impellers : list
             List of impellers with design curves.
+        n_clusters : int, optional
+            Number of clusters to be used in the K-means algorithm.
+            The default is 5.
+        calculate_points : bool, optional
+            If True, calculates the performance points for the given data.
+            The default is True.
         verbose : bool, optional
             If True, shows progress bar.
 
@@ -83,11 +92,14 @@ class Evaluation:
         self.pressure_fluctuation = pressure_fluctuation
         self.speed_fluctuation = speed_fluctuation
         self.impellers = impellers
+        self.n_clusters = n_clusters
 
         # check if we are loading from a zip file where the impellers are available
         if kwargs.get("impellers_new") is None:
             print("running")
             self._run()
+            if calculate_points:
+                self.df = self.calculate_points()
         else:
             self.impellers_new = kwargs.get("impellers_new")
             self.df = kwargs.get("df")
@@ -121,13 +133,13 @@ class Evaluation:
             # create flow_m column
             df["flow_m"] = (
                 Q_(df["flow_v"].array, self.data_units["flow_v"])
-                * Q_(df["v_s"].array, "m³/kg")
+                / Q_(df["v_s"].array, "m³/kg")
             ).m
         elif "flow_m" in df.columns:
             # create flow_v column
             df["flow_v"] = (
                 Q_(df["flow_m"].array, self.data_units["flow_m"])
-                / Q_(df["v_s"].array, "m³/kg")
+                * Q_(df["v_s"].array, "m³/kg")
             ).m
         else:
             raise ValueError("Flow rate not found in the DataFrame.")
@@ -138,10 +150,13 @@ class Evaluation:
         data_mean = data.mean()
         data_std = data.std()
         data_norm = (data - data_mean) / data_std
+        self.data_mean = data_mean
+        self.data_std = data_std
 
         # Using sklearn
-        kmeans = KMeans(n_clusters=5, n_init="auto")
+        kmeans = KMeans(n_clusters=self.n_clusters, n_init="auto")
         kmeans.fit(data_norm)
+        self.kmeans = kmeans
 
         # Format results as a DataFrame
         df["cluster"] = kmeans.labels_
@@ -169,8 +184,56 @@ class Evaluation:
             imp_new = Impeller.convert_from(self.impellers, suc=suc_new, speed="same")
             self.impellers_new.append(imp_new)
 
-        # create args list for parallel processing
-        # loop
+        self.df = df
+
+    def calculate_points(self, data=None):
+        """Calculate the performance points for the given data.
+
+        Parameters
+        ----------
+        data : pandas.DataFrame, optional
+            Data to be used for the calculation. If not provided, the data
+            used in the initialization will be used.
+            The default is None.
+
+        Returns
+        -------
+        df : pandas.DataFrame
+            DataFrame with the calculated points.
+        """
+        if data is None:
+            df = self.df
+        else:
+            df = data.copy()
+            df = filter_data(
+                df,
+                data_type=self.data_type,
+                window=self.window,
+                temperature_fluctuation=self.temperature_fluctuation,
+                pressure_fluctuation=self.pressure_fluctuation,
+                speed_fluctuation=self.speed_fluctuation,
+            )
+            # create density column
+            df["v_s"] = 0
+            df["speed_sound"] = 0
+            for i, row in df.iterrows():
+                # create state
+                state = State(
+                    p=Q_(row.ps, self.data_units["ps"]),
+                    T=Q_(row.Ts, self.data_units["Ts"]),
+                    fluid=self.operation_fluid,
+                )
+                df.loc[i, "v_s"] = state.v().m
+                df.loc[i, "speed_sound"] = state.speed_sound().m
+
+            # assign to a cluster
+            df["cluster"] = 0
+
+            for i, row in df.iterrows():
+                new_data = row[["speed_sound", "ps", "Ts"]].array
+                new_data = (new_data - self.data_mean.array) / self.data_std.array
+                df.loc[i, "cluster"] = self.kmeans.predict(new_data.reshape(1, -1))[0]
+
         points = []
         expected_points = []
 
@@ -244,7 +307,7 @@ class Evaluation:
             sample_time = i - df.index[0]
             df.loc[i, "timescale"] = sample_time.seconds / total_time.seconds
 
-        self.df = df
+        return df
 
     def save(self, path):
         # create zip file and save dataframe as parquet and impellers
