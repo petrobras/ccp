@@ -204,7 +204,15 @@ class Evaluation:
         if data is None:
             df = self.df
         else:
-            df = data
+            df = data.copy()
+            df = filter_data(
+                df,
+                data_type=self.data_type,
+                window=self.window,
+                temperature_fluctuation=self.temperature_fluctuation,
+                pressure_fluctuation=self.pressure_fluctuation,
+                speed_fluctuation=self.speed_fluctuation,
+            )
             # create density column
             df["v_s"] = 0
             df["speed_sound"] = 0
