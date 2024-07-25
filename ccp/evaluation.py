@@ -9,6 +9,7 @@ import pickle
 from .data_io import filter_data
 from .state import State
 from .point import Point
+from .fo import FlowOrifice
 from .impeller import Impeller
 from . import Q_
 from sklearn.cluster import KMeans
@@ -28,6 +29,9 @@ class Evaluation:
         pressure_fluctuation=2,
         speed_fluctuation=0.5,
         impellers=None,
+        D=None,
+        d=None,
+        tappings=None,
         verbose=False,
         n_clusters=5,
         calculate_points=True,
@@ -41,7 +45,8 @@ class Evaluation:
             Historical data of the following parameters below. Notice that if the units
             are not provided in the data_units dictionary, the units will be assumed as
             SI units:
-            - flow: should be 'flow_v' (m³/s) or 'flow_m' (kg/s) in the DataFrame;
+            - Flow: should be 'flow_v' (m³/s) or 'flow_m' (kg/s) in the DataFrame;
+            - Delta p: should be 'delta_p' (Pa) in the DataFrame;
             - Suction pressure: should be 'ps' (Pa) in the DataFrame;
             - Discharge pressure: should be 'pd' (Pa) in the DataFrame;
             - Suction temperature: should be 'Ts' (degK) in the DataFrame;
@@ -64,6 +69,13 @@ class Evaluation:
             The default is 0.5.
         impellers : list
             List of impellers with design curves.
+        D : float, pint.Quantity
+            Pipe diameter (m).
+        d : float, pint.Quantity
+            Orifice diameter (m).
+        tappings : str, optional
+            Tappings of the orifice.
+            Default is "flange".
         n_clusters : int, optional
             Number of clusters to be used in the K-means algorithm.
             The default is 5.
@@ -92,6 +104,9 @@ class Evaluation:
         self.pressure_fluctuation = pressure_fluctuation
         self.speed_fluctuation = speed_fluctuation
         self.impellers = impellers
+        self.D = D
+        self.d = d
+        self.tappings = tappings
         self.n_clusters = n_clusters
 
         # check if we are loading from a zip file where the impellers are available
@@ -118,31 +133,51 @@ class Evaluation:
         # create density column
         df["v_s"] = 0
         df["speed_sound"] = 0
+
+        state = State(
+            p=Q_(df.ps[0], self.data_units["ps"]),
+            T=Q_(df.Ts[0], self.data_units["Ts"]),
+            fluid=self.operation_fluid,
+        )
+
+        calculate_flow = False
+        if not ("flow_v" in df.columns or "flow_m" in df.columns):
+            calculate_flow = True
+            df["flow_v"] = 0
+            df["flow_m"] = 0
+
         for i, row in df.iterrows():
             # create state
-            state = State(
+            state.update(
                 p=Q_(row.ps, self.data_units["ps"]),
                 T=Q_(row.Ts, self.data_units["Ts"]),
-                fluid=self.operation_fluid,
             )
             df.loc[i, "v_s"] = state.v().m
             df.loc[i, "speed_sound"] = state.speed_sound().m
+            # check if flow_v or flow_m are in df columns, otherwise calculate flow
+
+            if calculate_flow:
+                delta_p = Q_(row.delta_p, self.data_units["delta_p"])
+                fo = FlowOrifice(state, delta_p, self.D, self.d, tappings=self.tappings)
+                df.loc[i, "flow_m"] = fo.qm.m
+                df.loc[i, "flow_v"] = (fo.qm * state.v()).m
 
         # check if flow_v or flow_m is in the DataFrame
-        if "flow_v" in df.columns:
-            # create flow_m column
-            df["flow_m"] = (
-                Q_(df["flow_v"].array, self.data_units["flow_v"])
-                / Q_(df["v_s"].array, "m³/kg")
-            ).m
-        elif "flow_m" in df.columns:
-            # create flow_v column
-            df["flow_v"] = (
-                Q_(df["flow_m"].array, self.data_units["flow_m"])
-                * Q_(df["v_s"].array, "m³/kg")
-            ).m
-        else:
-            raise ValueError("Flow rate not found in the DataFrame.")
+        if not calculate_flow:
+            if "flow_v" in df.columns:
+                # create flow_m column
+                df["flow_m"] = (
+                    Q_(df["flow_v"].array, self.data_units["flow_v"])
+                    / Q_(df["v_s"].array, "m³/kg")
+                ).m
+            elif "flow_m" in df.columns:
+                # create flow_v column
+                df["flow_v"] = (
+                    Q_(df["flow_m"].array, self.data_units["flow_m"])
+                    * Q_(df["v_s"].array, "m³/kg")
+                ).m
+            else:
+                raise ValueError("Flow rate not found in the DataFrame.")
 
         # create clusters based on speed_sound, ps and Ts
         data = df[["speed_sound", "ps", "Ts"]]
@@ -213,26 +248,62 @@ class Evaluation:
                 pressure_fluctuation=self.pressure_fluctuation,
                 speed_fluctuation=self.speed_fluctuation,
             )
-            # create density column
-            df["v_s"] = 0
-            df["speed_sound"] = 0
-            for i, row in df.iterrows():
-                # create state
-                state = State(
-                    p=Q_(row.ps, self.data_units["ps"]),
-                    T=Q_(row.Ts, self.data_units["Ts"]),
-                    fluid=self.operation_fluid,
-                )
-                df.loc[i, "v_s"] = state.v().m
-                df.loc[i, "speed_sound"] = state.speed_sound().m
+        # create density column
+        df["v_s"] = 0
+        df["speed_sound"] = 0
 
-            # assign to a cluster
-            df["cluster"] = 0
+        state = State(
+            p=Q_(df.ps[0], self.data_units["ps"]),
+            T=Q_(df.Ts[0], self.data_units["Ts"]),
+            fluid=self.operation_fluid,
+        )
 
-            for i, row in df.iterrows():
-                new_data = row[["speed_sound", "ps", "Ts"]].array
-                new_data = (new_data - self.data_mean.array) / self.data_std.array
-                df.loc[i, "cluster"] = self.kmeans.predict(new_data.reshape(1, -1))[0]
+        calculate_flow = False
+        if not ("flow_v" in df.columns or "flow_m" in df.columns):
+            calculate_flow = True
+            df["flow_v"] = 0
+            df["flow_m"] = 0
+
+        for i, row in df.iterrows():
+            # create state
+            state.update(
+                p=Q_(row.ps, self.data_units["ps"]),
+                T=Q_(row.Ts, self.data_units["Ts"]),
+            )
+            df.loc[i, "v_s"] = state.v().m
+            df.loc[i, "speed_sound"] = state.speed_sound().m
+            # check if flow_v or flow_m are in df columns, otherwise calculate flow
+
+            if calculate_flow:
+                delta_p = Q_(row.delta_p, self.data_units["delta_p"])
+                fo = FlowOrifice(state, delta_p, self.D, self.d, tappings=self.tappings)
+                df.loc[i, "flow_m"] = fo.qm.m
+                df.loc[i, "flow_v"] = (fo.qm * state.v()).m
+
+        # check if flow_v or flow_m is in the DataFrame
+        if not calculate_flow:
+            if "flow_v" in df.columns:
+                # create flow_m column
+                df["flow_m"] = (
+                    Q_(df["flow_v"].array, self.data_units["flow_v"])
+                    / Q_(df["v_s"].array, "m³/kg")
+                ).m
+            elif "flow_m" in df.columns:
+                # create flow_v column
+                df["flow_v"] = (
+                    Q_(df["flow_m"].array, self.data_units["flow_m"])
+                    * Q_(df["v_s"].array, "m³/kg")
+                ).m
+            else:
+                raise ValueError("Flow rate not found in the DataFrame.")
+
+        # assign to a cluster
+        df["cluster"] = 0
+
+        for i, row in df.iterrows():
+            new_data = row[["speed_sound", "ps", "Ts"]].array
+            new_data = (new_data - self.data_mean.array) / self.data_std.array
+            df.loc[i, "cluster"] = self.kmeans.predict(new_data.reshape(1, -1))[0]
 
         points = []
         expected_points = []
