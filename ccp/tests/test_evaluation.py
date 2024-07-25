@@ -139,3 +139,133 @@ def test_evaluation_calculate_points():
 
     df_results = evaluation.calculate_points(df)
     assert_allclose(df_results["delta_eff"].mean(), 0.107348, rtol=1e-3)
+
+def test_evaluation_delta_p():
+    data_path = Path(ccp.__file__).parent / "tests/data"
+    # load data.parquet
+    df = pd.read_parquet(data_path / "data_delta_p.parquet")
+    # load lp-sec1-caso-a
+    fluid_a = {
+        "methane": 58.976,
+        "ethane": 3.099,
+        "propane": 0.6,
+        "n-butane": 0.08,
+        "i-butane": 0.05,
+        "n-pentane": 0.01,
+        "i-pentane": 0.01,
+        "n2": 0.55,
+        "h2s": 0.02,
+        "co2": 36.605,
+    }
+    suc_a = ccp.State(
+        p=Q_(4, "bar"),
+        T=Q_(40, "degC"),
+        fluid=fluid_a,
+    )
+
+    imp_a = ccp.Impeller.load_from_engauge_csv(
+        suc=suc_a,
+        curve_name="lp-sec1-caso-a",
+        curve_path=data_path,
+        flow_units="m³/h",
+        head_units="kJ/kg",
+    )
+
+    operation_fluid = {
+        "methane": 44.04,
+        "ethane": 3.18,
+        "propane": 0.66,
+        "n-butane": 0.15,
+        "i-butane": 0.05,
+        "n-pentane": 0.03,
+        "i-pentane": 0.02,
+        "n2": 0.25,
+        "h2s": 0.06,
+        "co2": 51.55,
+    }
+
+    evaluation = ccp.Evaluation(
+        data=df,
+        operation_fluid=operation_fluid,
+        data_units={
+            "ps": "bar",
+            "Ts": "degC",
+            "pd": "bar",
+            "Td": "degC",
+            "delta_p": "mmH2O",
+            "speed": "RPM",
+        },
+        impellers=[imp_a],
+        D = Q_(0.590550, "m"),
+        d = Q_(0.366130, "m"),
+        tappings="flange",
+        n_clusters=2,
+    )
+
+    assert_allclose(evaluation.df["delta_eff"].mean(), 0.107348, rtol=1e-2)
+
+def test_evaluation_calculate_points_delta_p():
+    data_path = Path(ccp.__file__).parent / "tests/data"
+    # load data.parquet
+    df = pd.read_parquet(data_path / "data_delta_p.parquet")
+    # load lp-sec1-caso-a
+    fluid_a = {
+        "methane": 58.976,
+        "ethane": 3.099,
+        "propane": 0.6,
+        "n-butane": 0.08,
+        "i-butane": 0.05,
+        "n-pentane": 0.01,
+        "i-pentane": 0.01,
+        "n2": 0.55,
+        "h2s": 0.02,
+        "co2": 36.605,
+    }
+    suc_a = ccp.State(
+        p=Q_(4, "bar"),
+        T=Q_(40, "degC"),
+        fluid=fluid_a,
+    )
+
+    imp_a = ccp.Impeller.load_from_engauge_csv(
+        suc=suc_a,
+        curve_name="lp-sec1-caso-a",
+        curve_path=data_path,
+        flow_units="m³/h",
+        head_units="kJ/kg",
+    )
+
+    operation_fluid = {
+        "methane": 44.04,
+        "ethane": 3.18,
+        "propane": 0.66,
+        "n-butane": 0.15,
+        "i-butane": 0.05,
+        "n-pentane": 0.03,
+        "i-pentane": 0.02,
+        "n2": 0.25,
+        "h2s": 0.06,
+        "co2": 51.55,
+    }
+
+    evaluation = ccp.Evaluation(
+        data=df,
+        operation_fluid=operation_fluid,
+        data_units={
+            "ps": "bar",
+            "Ts": "degC",
+            "pd": "bar",
+            "Td": "degC",
+            "delta_p": "mmH2O",
+            "speed": "RPM",
+        },
+        impellers=[imp_a],
+        D = Q_(0.590550, "m"),
+        d = Q_(0.366130, "m"),
+        tappings="flange",
+        n_clusters=2,
+        calculate_points=False,
+    )
+
+    df_results = evaluation.calculate_points(df)
+    assert_allclose(df_results["delta_eff"].mean(), 0.107348, rtol=1e-2)
