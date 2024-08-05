@@ -410,7 +410,7 @@ class State(CP.AbstractState):
         try:
             # dp/dv calculated from dp/drho needs to be multiplied by -rho**2
             dpdv_s = Q_(
-                -self.rho().magnitude ** 2
+                -(self.rho().magnitude ** 2)
                 * (self.first_partial_deriv(CP.iP, CP.iDmass, CP.iSmass)),
                 "pascal * kg / m**3",
             )

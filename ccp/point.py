@@ -1017,8 +1017,8 @@ class Point:
         )
 
         # subscripts for t and sp
-        _t = "\u209C"
-        _sp = "\u209B\u209A"
+        _t = "\u209c"
+        _sp = "\u209b\u209a"
         fig.update_xaxes(
             title=f"Machine Mach No. Specified - Mm{_sp}",
         )
@@ -1112,8 +1112,8 @@ class Point:
         )
 
         # subscripts for t and sp
-        _t = "\u209C"
-        _sp = "\u209B\u209A"
+        _t = "\u209c"
+        _sp = "\u209b\u209a"
         fig.update_xaxes(
             type="log",
             tickformat=".1e",

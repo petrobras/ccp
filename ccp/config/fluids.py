@@ -1,4 +1,5 @@
 """Module to organize fluids."""
+
 from warnings import warn
 import CoolProp.CoolProp as CP
 

@@ -8,6 +8,7 @@ $ pip install snakeviz
 $ snakeviz <prof file name>.prof
 
 """
+
 import cProfile
 import subprocess
 import sys

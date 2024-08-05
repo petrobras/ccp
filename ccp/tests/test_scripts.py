@@ -24,6 +24,7 @@ for row in range(45):
                 )
 
 """
+
 import ccp
 from numpy.testing import assert_allclose
 from pathlib import Path
