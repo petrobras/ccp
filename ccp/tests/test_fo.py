@@ -61,7 +61,27 @@ def fo3():
     return ccp.FlowOrifice(state, delta_p, D, d)
 
 
-def test_flow_orifice(fo1, fo2, fo3):
+@pytest.fixture
+def fo4():
+    """fo3 with pressure measured downstream of the flow element."""
+    fluid = {
+        "R134A": 0.018,
+        "R1234ZE": 31.254,
+        "N2": 67.588,
+        "o2": 1.14,
+    }
+    D = 0.250
+    d = 0.170
+    p1 = 990000.0
+    T1 = 313.15
+    delta_p = 10000.0
+    state = ccp.State(p=p1, T=T1, fluid=fluid)
+
+    return ccp.FlowOrifice(state, delta_p, D, d, state_upstream=False)
+
+
+def test_flow_orifice(fo1, fo2, fo3, fo4):
     assert_allclose(fo1.qm.to("kg/h").m, 36408.6871553386)
     assert_allclose(fo2.qm.to("kg/h").m, 36408.6871553386)
     assert_allclose(fo3.qm.to("kg/h").m, 36408.6871553386)
+    assert_allclose(fo4.qm.to("kg/h").m, 36408.6871553386)
