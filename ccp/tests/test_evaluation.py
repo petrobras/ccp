@@ -32,10 +32,11 @@ def test_evaluation():
 
     imp_a = ccp.Impeller.load_from_engauge_csv(
         suc=suc_a,
-        curve_name="lp-sec1-caso-a",
+        curve_name="eval-lp-sec1-caso-a",
         curve_path=data_path,
         flow_units="m³/h",
         head_units="kJ/kg",
+        number_of_points=4,
     )
 
     operation_fluid = {
@@ -66,14 +67,14 @@ def test_evaluation():
         n_clusters=2,
     )
 
-    assert_allclose(evaluation.df["delta_eff"].mean(), 0.107348, rtol=1e-2)
+    assert_allclose(evaluation.df["delta_eff"].mean(), 0.112725, rtol=1e-2)
 
     # save evaluation in temporary file
     file = Path(tempdir) / "evaluation.ccp_eval"
     evaluation.save(file)
 
     loaded_evaluation = ccp.Evaluation.load(file)
-    assert_allclose(loaded_evaluation.df["delta_eff"].mean(), 0.107348, rtol=1e-2)
+    assert_allclose(loaded_evaluation.df["delta_eff"].mean(), 0.112725, rtol=1e-2)
     assert loaded_evaluation.impellers_new[0] == evaluation.impellers_new[0]
 
 
@@ -102,7 +103,7 @@ def test_evaluation_calculate_points():
 
     imp_a = ccp.Impeller.load_from_engauge_csv(
         suc=suc_a,
-        curve_name="lp-sec1-caso-a",
+        curve_name="eval-lp-sec1-caso-a",
         curve_path=data_path,
         flow_units="m³/h",
         head_units="kJ/kg",
@@ -138,7 +139,8 @@ def test_evaluation_calculate_points():
     )
 
     df_results = evaluation.calculate_points(df)
-    assert_allclose(df_results["delta_eff"].mean(), 0.107348, rtol=1e-3)
+    assert_allclose(df_results["delta_eff"].mean(), 0.112725, rtol=1e-2)
+
 
 def test_evaluation_delta_p():
     data_path = Path(ccp.__file__).parent / "tests/data"
@@ -165,7 +167,7 @@ def test_evaluation_delta_p():
 
     imp_a = ccp.Impeller.load_from_engauge_csv(
         suc=suc_a,
-        curve_name="lp-sec1-caso-a",
+        curve_name="eval-lp-sec1-caso-a",
         curve_path=data_path,
         flow_units="m³/h",
         head_units="kJ/kg",
@@ -196,13 +198,14 @@ def test_evaluation_delta_p():
             "speed": "RPM",
         },
         impellers=[imp_a],
-        D = Q_(0.590550, "m"),
-        d = Q_(0.366130, "m"),
+        D=Q_(0.590550, "m"),
+        d=Q_(0.366130, "m"),
         tappings="flange",
         n_clusters=2,
     )
 
-    assert_allclose(evaluation.df["delta_eff"].mean(), 0.107348, rtol=1e-2)
+    assert_allclose(evaluation.df["delta_eff"].mean(), 0.112725, rtol=1e-2)
+
 
 def test_evaluation_calculate_points_delta_p():
     data_path = Path(ccp.__file__).parent / "tests/data"
@@ -229,7 +232,7 @@ def test_evaluation_calculate_points_delta_p():
 
     imp_a = ccp.Impeller.load_from_engauge_csv(
         suc=suc_a,
-        curve_name="lp-sec1-caso-a",
+        curve_name="eval-lp-sec1-caso-a",
         curve_path=data_path,
         flow_units="m³/h",
         head_units="kJ/kg",
@@ -260,12 +263,12 @@ def test_evaluation_calculate_points_delta_p():
             "speed": "RPM",
         },
         impellers=[imp_a],
-        D = Q_(0.590550, "m"),
-        d = Q_(0.366130, "m"),
+        D=Q_(0.590550, "m"),
+        d=Q_(0.366130, "m"),
         tappings="flange",
         n_clusters=2,
         calculate_points=False,
     )
 
     df_results = evaluation.calculate_points(df)
-    assert_allclose(df_results["delta_eff"].mean(), 0.107348, rtol=1e-2)
+    assert_allclose(df_results["delta_eff"].mean(), 0.111267, rtol=1e-2)

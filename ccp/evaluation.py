@@ -281,7 +281,9 @@ class Evaluation:
                 df.loc[i, "flow_v"] = (fo.qm * state.v()).m
 
         # check if flow_v or flow_m is in the DataFrame
-        if not calculate_flow:
+        if (not calculate_flow) and (
+            "flow_v" not in df.columns or "flow_m" not in df.columns
+        ):
             if "flow_v" in df.columns:
                 # create flow_m column
                 df["flow_m"] = (
