@@ -130,54 +130,7 @@ class Evaluation:
             speed_fluctuation=self.speed_fluctuation,
         )
 
-        # create density column
-        df["v_s"] = 0
-        df["speed_sound"] = 0
-
-        state = State(
-            p=Q_(df.ps[0], self.data_units["ps"]),
-            T=Q_(df.Ts[0], self.data_units["Ts"]),
-            fluid=self.operation_fluid,
-        )
-
-        calculate_flow = False
-        if not ("flow_v" in df.columns or "flow_m" in df.columns):
-            calculate_flow = True
-            df["flow_v"] = 0
-            df["flow_m"] = 0
-
-        for i, row in df.iterrows():
-            # create state
-            state.update(
-                p=Q_(row.ps, self.data_units["ps"]),
-                T=Q_(row.Ts, self.data_units["Ts"]),
-            )
-            df.loc[i, "v_s"] = state.v().m
-            df.loc[i, "speed_sound"] = state.speed_sound().m
-            # check if flow_v or flow_m are in df columns, otherwise calculate flow
-
-            if calculate_flow:
-                delta_p = Q_(row.delta_p, self.data_units["delta_p"])
-                fo = FlowOrifice(state, delta_p, self.D, self.d, tappings=self.tappings)
-                df.loc[i, "flow_m"] = fo.qm.m
-                df.loc[i, "flow_v"] = (fo.qm * state.v()).m
-
-        # check if flow_v or flow_m is in the DataFrame
-        if not calculate_flow:
-            if "flow_v" in df.columns:
-                # create flow_m column
-                df["flow_m"] = (
-                    Q_(df["flow_v"].array, self.data_units["flow_v"])
-                    / Q_(df["v_s"].array, "m³/kg")
-                ).m
-            elif "flow_m" in df.columns:
-                # create flow_v column
-                df["flow_v"] = (
-                    Q_(df["flow_m"].array, self.data_units["flow_m"])
-                    * Q_(df["v_s"].array, "m³/kg")
-                ).m
-            else:
-                raise ValueError("Flow rate not found in the DataFrame.")
+        df = self.calculate_flow(df)
 
         # create clusters based on speed_sound, ps and Ts
         data = df[["speed_sound", "ps", "Ts"]]
@@ -221,6 +174,84 @@ class Evaluation:
 
         self.df = df
 
+    def calculate_flow(self, data=None):
+        df = data
+        calculate_flow = False
+        if not ("flow_v" in df.columns or "flow_m" in df.columns):
+            calculate_flow = True
+
+        # create density column
+        df["v_s"] = 0
+        df["speed_sound"] = 0
+
+        state = State(
+            p=Q_(df.ps[0], self.data_units["ps"]),
+            T=Q_(df.Ts[0], self.data_units["Ts"]),
+            fluid=self.operation_fluid,
+        )
+
+        for i, row in df.iterrows():
+            # check if flow_v or flow_m are in df columns, otherwise calculate flow
+
+            if calculate_flow:
+                if "p_downstream" in df.columns:
+                    state_upstream = False
+                    state.update(
+                        p=Q_(row.p_downstream, self.data_units["p_downstream"]),
+                        T=Q_(row.Ts, self.data_units["Ts"]),
+                    )
+                elif "p_upstream" in df.columns:
+                    state_upstream = True
+                    state.update(
+                        p=Q_(row.p_upstream, self.data_units["p_upstream"]),
+                        T=Q_(row.Ts, self.data_units["Ts"]),
+                    )
+                else:
+                    raise ValueError(
+                        "Pressure upstream/downstream fo not found in the DataFrame."
+                    )
+
+                delta_p = Q_(row.delta_p, self.data_units["delta_p"])
+                fo = FlowOrifice(
+                    state,
+                    delta_p,
+                    self.D,
+                    self.d,
+                    tappings=self.tappings,
+                    state_upstream=state_upstream,
+                )
+                df.loc[i, "flow_m"] = fo.qm.m
+                df.loc[i, "flow_v"] = (fo.qm * state.v()).m
+            else:
+                state.update(
+                    p=Q_(row.ps, self.data_units["ps"]),
+                    T=Q_(row.Ts, self.data_units["Ts"]),
+                )
+
+            df.loc[i, "v_s"] = state.v().m
+            df.loc[i, "speed_sound"] = state.speed_sound().m
+
+        # check if flow_v or flow_m is in the DataFrame
+        if (not calculate_flow) and (
+            not ("flow_v" in df.columns or "flow_m" in df.columns)
+        ):
+            if "flow_v" in df.columns:
+                # create flow_m column
+                df["flow_m"] = (
+                    Q_(df["flow_v"].array, self.data_units["flow_v"])
+                    / Q_(df["v_s"].array, "m³/kg")
+                ).m
+            elif "flow_m" in df.columns:
+                # create flow_v column
+                df["flow_v"] = (
+                    Q_(df["flow_m"].array, self.data_units["flow_m"])
+                    * Q_(df["v_s"].array, "m³/kg")
+                ).m
+            else:
+                raise ValueError("Flow rate not found in the DataFrame.")
+
+        return df
+
     def calculate_points(self, data=None):
         """Calculate the performance points for the given data.
 
@@ -248,56 +279,8 @@ class Evaluation:
                 pressure_fluctuation=self.pressure_fluctuation,
                 speed_fluctuation=self.speed_fluctuation,
             )
-        # create density column
-        df["v_s"] = 0
-        df["speed_sound"] = 0
 
-        state = State(
-            p=Q_(df.ps[0], self.data_units["ps"]),
-            T=Q_(df.Ts[0], self.data_units["Ts"]),
-            fluid=self.operation_fluid,
-        )
-
-        calculate_flow = False
-        if not ("flow_v" in df.columns or "flow_m" in df.columns):
-            calculate_flow = True
-            df["flow_v"] = 0
-            df["flow_m"] = 0
-
-        for i, row in df.iterrows():
-            # create state
-            state.update(
-                p=Q_(row.ps, self.data_units["ps"]),
-                T=Q_(row.Ts, self.data_units["Ts"]),
-            )
-            df.loc[i, "v_s"] = state.v().m
-            df.loc[i, "speed_sound"] = state.speed_sound().m
-            # check if flow_v or flow_m are in df columns, otherwise calculate flow
-
-            if calculate_flow:
-                delta_p = Q_(row.delta_p, self.data_units["delta_p"])
-                fo = FlowOrifice(state, delta_p, self.D, self.d, tappings=self.tappings)
-                df.loc[i, "flow_m"] = fo.qm.m
-                df.loc[i, "flow_v"] = (fo.qm * state.v()).m
-
-        # check if flow_v or flow_m is in the DataFrame
-        if (not calculate_flow) and (
-            "flow_v" not in df.columns or "flow_m" not in df.columns
-        ):
-            if "flow_v" in df.columns:
-                # create flow_m column
-                df["flow_m"] = (
-                    Q_(df["flow_v"].array, self.data_units["flow_v"])
-                    / Q_(df["v_s"].array, "m³/kg")
-                ).m
-            elif "flow_m" in df.columns:
-                # create flow_v column
-                df["flow_v"] = (
-                    Q_(df["flow_m"].array, self.data_units["flow_m"])
-                    * Q_(df["v_s"].array, "m³/kg")
-                ).m
-            else:
-                raise ValueError("Flow rate not found in the DataFrame.")
+        df = self.calculate_flow(df)
 
         # assign to a cluster
         df["cluster"] = 0

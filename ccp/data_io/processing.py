@@ -1,5 +1,5 @@
-"""Data processing functions for ccp.
-"""
+"""Data processing functions for ccp."""
+
 import pandas as pd
 
 
