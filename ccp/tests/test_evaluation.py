@@ -139,7 +139,7 @@ def test_evaluation_calculate_points():
     )
 
     df_results = evaluation.calculate_points(df)
-    assert_allclose(df_results["delta_eff"].mean(), 0.112725, rtol=1e-2)
+    assert_allclose(df_results["delta_eff"].mean(), 0.111267, rtol=1e-2)
 
 
 def test_evaluation_delta_p():
@@ -195,6 +195,7 @@ def test_evaluation_delta_p():
             "pd": "bar",
             "Td": "degC",
             "delta_p": "mmH2O",
+            "p_downstream": "bar",
             "speed": "RPM",
         },
         impellers=[imp_a],
@@ -204,7 +205,7 @@ def test_evaluation_delta_p():
         n_clusters=2,
     )
 
-    assert_allclose(evaluation.df["delta_eff"].mean(), 0.112725, rtol=1e-2)
+    assert_allclose(evaluation.df["delta_eff"].mean(), 0.111338, rtol=1e-2)
 
 
 def test_evaluation_calculate_points_delta_p():
@@ -260,6 +261,7 @@ def test_evaluation_calculate_points_delta_p():
             "pd": "bar",
             "Td": "degC",
             "delta_p": "mmH2O",
+            "p_downstream": "bar",
             "speed": "RPM",
         },
         impellers=[imp_a],
@@ -271,4 +273,4 @@ def test_evaluation_calculate_points_delta_p():
     )
 
     df_results = evaluation.calculate_points(df)
-    assert_allclose(df_results["delta_eff"].mean(), 0.111267, rtol=1e-2)
+    assert_allclose(df_results["delta_eff"].mean(), 0.111338, rtol=1e-2)
