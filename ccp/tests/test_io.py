@@ -88,7 +88,9 @@ def test_filter_data():
     )
     assert_frame_equal(
         ccp.data_io.filter_data(df, data_type={"a": "pressure", "b": "temperature"}),
-        pd.DataFrame(index=pd.Index([5]), data={"a": [4.01], "b": [7.01]}),
+        pd.DataFrame(
+            index=pd.Index([5]), data={"a": [4.01], "b": [7.01], "valid": [True]}
+        ),
     )
 
 

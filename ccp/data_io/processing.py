@@ -183,6 +183,7 @@ def filter_data(
     """
     fluctuation_df = fluctuation_data(df, window=window)
     mean_df = mean_data(df, window=window)
+    mean_df["valid"] = True
     # filter mean_df based on fluctuation_df max values
     if drop_invalid_values:
         for column, property_type in data_type.items():
@@ -204,8 +205,8 @@ def filter_data(
                     "Valid data types are: pressure, temperature and speed."
                 )
             mean_df.loc[fluctuation_df[column] > max_fluctuation, column] = None
+        mean_df = mean_df.dropna()
     else:
-        mean_df["valid"] = True
         for column, property_type in data_type.items():
             if property_type == "pressure":
                 max_fluctuation = pressure_fluctuation
