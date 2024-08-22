@@ -59,9 +59,9 @@ def get_name(name):
         if name.lower() in v.possible_names:
             name = k
 
-    fluid_name = CP.get_REFPROPname(name)
-
-    if fluid_name == "":
+    try:
+        fluid_name = CP.get_REFPROPname(name)
+    except RuntimeError:
         raise ValueError(f"Fluid {name} not available. See ccp.fluid_list. ")
 
     return fluid_name
