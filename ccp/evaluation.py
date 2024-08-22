@@ -366,10 +366,11 @@ class Evaluation:
         # create column for timescale
         df["timescale"] = 0
 
-        for i, row in df.iterrows():
-            # calculate seconds from i sample to start. Remember that i here is the index which is datetime
-            sample_time = i - df.index[0]
-            df.loc[i, "timescale"] = sample_time.seconds / total_time.seconds
+        if len(df) > 1:
+            for i, row in df.iterrows():
+                # calculate seconds from i sample to start. Remember that i here is the index which is datetime
+                sample_time = i - df.index[0]
+                df.loc[i, "timescale"] = sample_time.seconds / total_time.seconds
 
         return df
 
