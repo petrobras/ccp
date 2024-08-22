@@ -443,9 +443,11 @@ class Evaluation:
 
 
 def create_points_parallel(x):
-    del x["imp_new"]
     if not x["valid"]:
         return None
+    # delete arguments not used for point calculation
+    del x["imp_new"]
+    del x["valid"]
     try:
         p = Point(**x)
     except:
