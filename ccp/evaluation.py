@@ -252,7 +252,7 @@ class Evaluation:
 
         return df
 
-    def calculate_points(self, data=None):
+    def calculate_points(self, data=None, drop_invalid_values=True):
         """Calculate the performance points for the given data.
 
         Parameters
@@ -261,6 +261,10 @@ class Evaluation:
             Data to be used for the calculation. If not provided, the data
             used in the initialization will be used.
             The default is None.
+        drop_invalid_values : bool, optional
+            Drop invalid values from the dataframe.
+            If false, a column 'valid' will be added to the dataframe with True for valid.
+            The default is True.
 
         Returns
         -------
@@ -278,6 +282,7 @@ class Evaluation:
                 temperature_fluctuation=self.temperature_fluctuation,
                 pressure_fluctuation=self.pressure_fluctuation,
                 speed_fluctuation=self.speed_fluctuation,
+                drop_invalid_values=drop_invalid_values,
             )
 
         df = self.calculate_flow(df)
@@ -310,6 +315,7 @@ class Evaluation:
                     fluid=self.operation_fluid,
                 ),
                 "imp_new": self.impellers_new[int(row.cluster)],
+                "valid": row.valid,
             }
 
             args_list.append(arg_dict)
@@ -320,35 +326,37 @@ class Evaluation:
             print("Calculating expected points...")
             expected_points += tqdm(pool.imap(get_interpolated_point, args_list))
 
-        # loop
-        df["eff"] = 0
-        df["head"] = 0
-        df["power"] = 0
-        df["p_disch"] = 0
-        df["expected_eff"] = 0
-        df["expected_head"] = 0
-        df["expected_power"] = 0
-        df["expected_p_disch"] = 0
-        df["delta_eff"] = 0
-        df["delta_head"] = 0
-        df["delta_power"] = 0
-        df["delta_p_disch"] = 0
+        # start column with -1, if this value remains, it means that the point was not calculated due to invalid data
+        df["eff"] = -1
+        df["head"] = -1
+        df["power"] = -1
+        df["p_disch"] = -1
+        df["expected_eff"] = -1
+        df["expected_head"] = -1
+        df["expected_power"] = -1
+        df["expected_p_disch"] = -1
+        df["delta_eff"] = -1
+        df["delta_head"] = -1
+        df["delta_power"] = -1
+        df["delta_p_disch"] = -1
 
         for i, point_op, point_expected in zip(df.index, points, expected_points):
-            df.loc[i, "eff"] = point_op.eff.m
-            df.loc[i, "head"] = point_op.head.m
-            df.loc[i, "power"] = point_op.power.m
-            df.loc[i, "p_disch"] = point_op.disch.p("bar").m
-            df.loc[i, "expected_eff"] = point_expected.eff.m
-            df.loc[i, "expected_head"] = point_expected.head.m
-            df.loc[i, "expected_power"] = point_expected.power.m
-            df.loc[i, "expected_p_disch"] = point_expected.disch.p("bar").m
-            df.loc[i, "delta_eff"] = (point_op.eff - point_expected.eff).m
-            df.loc[i, "delta_head"] = (point_op.head - point_expected.head).m
-            df.loc[i, "delta_power"] = (point_op.power - point_expected.power).m
-            df.loc[i, "delta_p_disch"] = (
-                point_op.disch.p("bar") - point_expected.disch.p("bar")
-            ).m
+            # if point_op is None, it means that the point was not calculated due to invalid data
+            if point_op is not None:
+                df.loc[i, "eff"] = point_op.eff.m
+                df.loc[i, "head"] = point_op.head.m
+                df.loc[i, "power"] = point_op.power.m
+                df.loc[i, "p_disch"] = point_op.disch.p("bar").m
+                df.loc[i, "expected_eff"] = point_expected.eff.m
+                df.loc[i, "expected_head"] = point_expected.head.m
+                df.loc[i, "expected_power"] = point_expected.power.m
+                df.loc[i, "expected_p_disch"] = point_expected.disch.p("bar").m
+                df.loc[i, "delta_eff"] = (point_op.eff - point_expected.eff).m
+                df.loc[i, "delta_head"] = (point_op.head - point_expected.head).m
+                df.loc[i, "delta_power"] = (point_op.power - point_expected.power).m
+                df.loc[i, "delta_p_disch"] = (
+                    point_op.disch.p("bar") - point_expected.disch.p("bar")
+                ).m
 
         # plot eff in plot with colormap showing the time
 
@@ -435,15 +443,22 @@ class Evaluation:
 
 
 def create_points_parallel(x):
+    if not x["valid"]:
+        return None
+    # delete arguments not used for point calculation
     del x["imp_new"]
+    del x["valid"]
     try:
         p = Point(**x)
     except:
         print("Error for point with args:", x)
+        return None
     return p
 
 
 def get_interpolated_point(x):
+    if not x["valid"]:
+        return None
     try:
         imp_new = x["imp_new"]
         expected_point = imp_new.point(flow_m=x["flow_m"], speed=x["speed"])
