@@ -993,9 +993,13 @@ def main():
         and st.session_state["straight_through"] != ""
     ):
         with st.expander("Results"):
+
+            speeds = [str(speed.to("rpm").m).format(":.2f") for speed in straight_through.speed]
+            speed_msg = " RPM, ".join(speeds)
             st.write(
-                f"Final speed used in calculation: {straight_through.speed.to('rpm').m:.2f} RPM"
+                f"Final speed(s) used in calculation: {speed_msg} RPM"
             )
+
             _t = "\u209c"
             _sp = "\u209b\u209a"
             conv = "\u1d9c" + "\u1d52" + "\u207f" + "\u1d5b"
@@ -1465,7 +1469,7 @@ def main():
                     )
 
                     plots_dict[curve].data[0].update(
-                        name=f"Converted Curve {straight_through.speed.to('rpm').m:.0f} RPM",
+                        name=f"Converted Curve {speed_msg} RPM",
                     )
                     if curve == "discharge_pressure":
                         plots_dict[curve].data[1].update(
