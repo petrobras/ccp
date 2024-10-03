@@ -331,7 +331,7 @@ def main():
         def get_index_selected_gas(gas_name):
             try:
                 index_gas_name = gas_options.index(st.session_state[gas_name])
-            except KeyError:
+            except:
                 index_gas_name = 0
             return index_gas_name
 
@@ -339,6 +339,7 @@ def main():
             "gas_point_guarantee",
             options=gas_options,
             label_visibility="collapsed",
+            key="gas_point_guarantee",
             index=get_index_selected_gas("gas_point_guarantee"),
         )
 
@@ -993,9 +994,13 @@ def main():
         and st.session_state["straight_through"] != ""
     ):
         with st.expander("Results"):
+
+            used_speed_str = " RPM, ".join([str(speed.to("rpm").m) for speed in straight_through.speed])
+
             st.write(
-                f"Final speed used in calculation: {straight_through.speed.to('rpm').m:.2f} RPM"
+                f"Final speed(s) used in calculation: {used_speed_str} RPM"
             )
+
             _t = "\u209c"
             _sp = "\u209b\u209a"
             conv = "\u1d9c" + "\u1d52" + "\u207f" + "\u1d5b"
@@ -1465,7 +1470,7 @@ def main():
                     )
 
                     plots_dict[curve].data[0].update(
-                        name=f"Converted Curve {straight_through.speed.to('rpm').m:.0f} RPM",
+                        name=f"Converted Curve {used_speed_str} RPM",
                     )
                     if curve == "discharge_pressure":
                         plots_dict[curve].data[1].update(
