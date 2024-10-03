@@ -331,7 +331,7 @@ def main():
         def get_index_selected_gas(gas_name):
             try:
                 index_gas_name = gas_options.index(st.session_state[gas_name])
-            except KeyError:
+            except:
                 index_gas_name = 0
             return index_gas_name
 
