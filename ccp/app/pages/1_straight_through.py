@@ -994,10 +994,10 @@ def main():
     ):
         with st.expander("Results"):
 
-            speeds = [str(speed.to("rpm").m) for speed in straight_through.speed]
-            speed_msg = " RPM, ".join(speeds)
+            used_speed_str = " RPM, ".join([str(speed.to("rpm").m) for speed in straight_through.speed])
+
             st.write(
-                f"Final speed(s) used in calculation: {speed_msg} RPM"
+                f"Final speed(s) used in calculation: {used_speed_str} RPM"
             )
 
             _t = "\u209c"
@@ -1469,7 +1469,7 @@ def main():
                     )
 
                     plots_dict[curve].data[0].update(
-                        name=f"Converted Curve {speed_msg} RPM",
+                        name=f"Converted Curve {used_speed_str} RPM",
                     )
                     if curve == "discharge_pressure":
                         plots_dict[curve].data[1].update(
