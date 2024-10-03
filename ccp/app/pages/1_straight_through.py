@@ -339,6 +339,7 @@ def main():
             "gas_point_guarantee",
             options=gas_options,
             label_visibility="collapsed",
+            key="gas_point_guarantee",
             index=get_index_selected_gas("gas_point_guarantee"),
         )
 
