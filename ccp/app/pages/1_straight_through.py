@@ -994,7 +994,7 @@ def main():
     ):
         with st.expander("Results"):
 
-            speeds = [str(speed.to("rpm").m).format(":.2f") for speed in straight_through.speed]
+            speeds = [str(speed.to("rpm").m) for speed in straight_through.speed]
             speed_msg = " RPM, ".join(speeds)
             st.write(
                 f"Final speed(s) used in calculation: {speed_msg} RPM"
