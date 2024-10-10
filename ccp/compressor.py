@@ -259,7 +259,7 @@ class StraightThrough(Impeller):
     def _dict_to_save(self):
         dict_to_save = {
             "reynolds_correction": self.reynolds_correction,
-            "speed": str(self.speed_operational),
+            "speed_operational": str(self.speed_operational),
         }
         # add points to file
         dict_to_save["guarantee_point"] = self.guarantee_point._dict_to_save()
@@ -544,15 +544,15 @@ class BackToBack(Impeller):
         guarantee_point_sec2,
         test_points_sec2,
         reynolds_correction=False,
-        speed=None,
+        speed_operational=None,
     ):
         self.guarantee_point_sec1 = guarantee_point_sec1
         self.guarantee_point_sec2 = guarantee_point_sec2
         self.test_points_sec1 = test_points_sec1
         self.test_points_sec2 = test_points_sec2
-        if speed is None:
-            speed = guarantee_point_sec1.speed
-        self.speed = speed
+        if speed_operational is None:
+            speed_operational = guarantee_point_sec1.speed
+        self.speed_operational = speed_operational
         self.reynolds_correction = reynolds_correction
 
         # points for test flange conditions
@@ -765,7 +765,7 @@ class BackToBack(Impeller):
             initial_point = Point.convert_from(
                 original_point=point,
                 suc=guarantee_point_sec1.suc,
-                speed=self.speed,
+                speed=self.speed_operational,
                 find="volume_ratio",
                 reynolds_correction=self.reynolds_correction,
             )
@@ -788,7 +788,7 @@ class BackToBack(Impeller):
             )
 
             Ts1f_sp = guarantee_point_sec1.suc.T()
-            qs1r_sp = flow_from_phi(D=point.D, phi=point.phi, speed=self.speed)
+            qs1r_sp = flow_from_phi(D=point.D, phi=point.phi, speed=self.speed_operational)
             ps1r_sp = guarantee_point_sec1.suc.p()
             vs1f_sp = guarantee_point_sec1.suc.v()
             dummy_suc = copy(guarantee_point_sec1.suc)
@@ -824,7 +824,7 @@ class BackToBack(Impeller):
             point_r_sp = Point.convert_from(
                 original_point=point,
                 suc=rotor_sp_sec1_suc,
-                speed=self.speed,
+                speed=self.speed_operational,
                 find="volume_ratio",
                 reynolds_correction=self.reynolds_correction,
             )
@@ -841,7 +841,7 @@ class BackToBack(Impeller):
         ms1r_sp = guarantee_point_sec1.flow_m + end_seal_flow_m_sp
 
         disch_r_sp = self.imp_rotor_sp_sec1.point(
-            flow_m=ms1r_sp, speed=self.speed
+            flow_m=ms1r_sp, speed=self.speed_operational
         ).disch
         ps2f_sp = disch_r_sp.p() - (
             guarantee_point_sec1.disch.p() - guarantee_point_sec2.suc.p()
@@ -855,7 +855,7 @@ class BackToBack(Impeller):
             point_r_sp = Point.convert_from(
                 original_point=point_r_t,
                 suc=suc2f_sp,
-                speed=self.speed,
+                speed=self.speed_operational,
                 find="volume_ratio",
                 reynolds_correction=self.reynolds_correction,
             )
@@ -899,7 +899,7 @@ class BackToBack(Impeller):
             imp_sec2_flow_m = point_r_sp.flow_m
             if imp_sec2_flow_m > imp_sec2_conv.flow_m.max():
                 imp_sec2_flow_m = imp_sec2_conv.flow_m.max()
-            sec2_point = imp_sec2_conv.point(flow_m=imp_sec2_flow_m, speed=self.speed)
+            sec2_point = imp_sec2_conv.point(flow_m=imp_sec2_flow_m, speed=self.speed_operational)
             sec2_disch = ccp.point.disch_from_suc_head_eff(
                 suc=suc_sec2, head=sec2_point.head, eff=sec2_point.eff
             )
@@ -924,7 +924,7 @@ class BackToBack(Impeller):
                 suc=guarantee_point_sec1.suc,
                 disch=disch_f,
                 flow_m=ms1f_sp,
-                speed=self.speed,
+                speed=self.speed_operational,
                 b=guarantee_point_sec1.b,
                 D=guarantee_point_sec1.D,
             )
@@ -944,7 +944,7 @@ class BackToBack(Impeller):
         if isinstance(other, self.__class__):
             if (
                 self.reynolds_correction == other.reynolds_correction
-                and self.speed == other.speed
+                and self.speed_operational == other.speed_operational
                 and self.guarantee_point_sec1 == other.guarantee_point_sec1
                 and self.guarantee_point_sec2 == other.guarantee_point_sec2
             ):
@@ -972,7 +972,7 @@ class BackToBack(Impeller):
     def _dict_to_save(self):
         dict_to_save = {
             "reynolds_correction": self.reynolds_correction,
-            "speed": str(self.speed),
+            "speed_operational": str(self.speed_operational),
         }
         # add points to file
         dict_to_save["guarantee_point_sec1"] = self.guarantee_point_sec1._dict_to_save()
@@ -1008,7 +1008,7 @@ class BackToBack(Impeller):
             File name.
         """
         parameters = toml.load(file)
-        kwargs = {"speed": Q_(parameters.pop("speed", None))}
+        kwargs = {"speed_operational": Q_(parameters.pop("speed_operational", None))}
 
         for k, v in parameters.items():
             if "guarantee_point" in k:
@@ -1125,7 +1125,7 @@ class BackToBack(Impeller):
                 guarantee_point_sec2=self.guarantee_point_sec2,
                 test_points_sec1=self.test_points_sec1,
                 test_points_sec2=self.test_points_sec2,
-                speed=x,
+                speed_operational=x,
                 reynolds_correction=self.reynolds_correction,
             )
 
@@ -1136,14 +1136,14 @@ class BackToBack(Impeller):
             delta_p = point.disch.p().m - (self.guarantee_point_sec2.disch.p().m + 1)
             return delta_p
 
-        new_speed = newton(calculate_disch_pressure_delta, self.speed.m)
+        new_speed = newton(calculate_disch_pressure_delta, self.speed_operational.m)
 
         return self.__class__(
             guarantee_point_sec1=self.guarantee_point_sec1,
             guarantee_point_sec2=self.guarantee_point_sec2,
             test_points_sec1=self.test_points_sec1,
             test_points_sec2=self.test_points_sec2,
-            speed=new_speed,
+            speed_operational=new_speed,
             reynolds_correction=self.reynolds_correction,
         )
 
