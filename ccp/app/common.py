@@ -172,16 +172,12 @@ def convert(data, version):
             return data
         elif isinstance(data, io.StringIO):
             file = toml.load(data)
-            print("Dentro do convert")
-            print(file)
-
             new_file = {}
             for k, v in file.items():
                 if k == "speed":
                     new_file["speed_operational"] = v
                 else:
                     new_file[k] = v
-        
             return io.StringIO(toml.dumps(new_file))           
 
 
