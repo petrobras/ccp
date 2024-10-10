@@ -88,5 +88,61 @@ def test_filter_data():
     )
     assert_frame_equal(
         ccp.data_io.filter_data(df, data_type={"a": "pressure", "b": "temperature"}),
-        pd.DataFrame(index=pd.Index([5]), data={"a": [4.01], "b": [7.01]}),
+        pd.DataFrame(
+            index=pd.Index([5]), data={"a": [4.01], "b": [7.01], "valid": [True]}
+        ),
+    )
+
+
+def test_filter_data_flag():
+    df = pd.DataFrame(
+        {
+            "a": [1, 2, 3, 4, 4.01, 4.02, 5, 6.01, 6.02, 6.04, 6.05],
+            "b": [4, 5, 6, 7, 7.01, 7.02, 8, 9, 10, 11, 12],
+        }
+    )
+    assert_frame_equal(
+        ccp.data_io.filter_data(
+            df,
+            data_type={"a": "pressure", "b": "temperature"},
+            drop_invalid_values=False,
+        ),
+        pd.DataFrame(
+            index=pd.Index(range(2, 11, 1)),
+            data={
+                "a": [
+                    2.0,
+                    3.0,
+                    3.67,
+                    4.01,
+                    4.343333333333333,
+                    5.01,
+                    5.676666666666667,
+                    6.023333333333333,
+                    6.036666666666666,
+                ],
+                "b": [
+                    5.0,
+                    6.0,
+                    6.669999999999999,
+                    7.010000000000001,
+                    7.343333333333334,
+                    8.006666666666666,
+                    9.0,
+                    10.0,
+                    11.0,
+                ],
+                "valid": [
+                    False,
+                    False,
+                    False,
+                    True,
+                    False,
+                    False,
+                    False,
+                    False,
+                    False,
+                ],
+            },
+        ),
     )

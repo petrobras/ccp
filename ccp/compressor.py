@@ -1,4 +1,5 @@
 """Module to define compressors with 1 or 2 sections."""
+
 from copy import copy
 
 import ccp

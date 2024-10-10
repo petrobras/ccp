@@ -15,7 +15,7 @@ from ccp.config.units import ureg
 from pathlib import Path
 
 # import everything that is common to ccp_app_straight_through and ccp_app_back_to_back
-from common import (
+from ccp.app.common import (
     flow_m_units,
     flow_v_units,
     flow_units,
@@ -142,7 +142,7 @@ def main():
             st.session_state.update(session_state_data_copy)
             st.session_state.session_name = file.name.replace(".ccp", "")
             st.session_state.expander_state = True
-            st.experimental_rerun()
+            st.rerun()
 
         if save_button:
             session_state_dict = dict(st.session_state)
@@ -223,29 +223,30 @@ def main():
                 "n-hexane",
                 "n-heptane",
                 "n-octane",
+                "n-nonane",
                 "nitrogen",
                 "h2s",
                 "co2",
                 "h2o",
             ]
             for j, default_component in enumerate(default_components):
-                gas_compositions_table[f"gas_{i}"][
-                    f"component_{j}"
-                ] = component.selectbox(
-                    "Component",
-                    options=fluid_list,
-                    index=fluid_list.index(default_component),
-                    key=f"gas_{i}_component_{j}",
-                    label_visibility="collapsed",
+                gas_compositions_table[f"gas_{i}"][f"component_{j}"] = (
+                    component.selectbox(
+                        "Component",
+                        options=fluid_list,
+                        index=fluid_list.index(default_component),
+                        key=f"gas_{i}_component_{j}",
+                        label_visibility="collapsed",
+                    )
                 )
-                gas_compositions_table[f"gas_{i}"][
-                    f"molar_fraction_{j}"
-                ] = molar_fraction.text_input(
-                    "Molar Fraction",
-                    value="0",
-                    key=f"gas_{i}_molar_fraction_{j}",
-                    label_visibility="collapsed",
-                    help="Molar fraction of the component.",
+                gas_compositions_table[f"gas_{i}"][f"molar_fraction_{j}"] = (
+                    molar_fraction.text_input(
+                        "Molar Fraction",
+                        value="0",
+                        key=f"gas_{i}_molar_fraction_{j}",
+                        label_visibility="collapsed",
+                        help="Molar fraction of the component.",
+                    )
                 )
                 check_correct_separator(
                     gas_compositions_table[f"gas_{i}"][f"molar_fraction_{j}"]
@@ -422,22 +423,22 @@ def main():
                 key=f"{parameter}_units_section_1_point_guarantee",
                 label_visibility="collapsed",
             )
-            parameters_map[parameter]["section_1"]["point_guarantee"][
-                "value"
-            ] = first_section_col.text_input(
-                f"{parameter} value.",
-                key=f"{parameter}_section_1_point_guarantee",
-                label_visibility="collapsed",
+            parameters_map[parameter]["section_1"]["point_guarantee"]["value"] = (
+                first_section_col.text_input(
+                    f"{parameter} value.",
+                    key=f"{parameter}_section_1_point_guarantee",
+                    label_visibility="collapsed",
+                )
             )
             check_correct_separator(
                 parameters_map[parameter]["section_1"]["point_guarantee"]
             )
-            parameters_map[parameter]["section_2"]["point_guarantee"][
-                "value"
-            ] = second_section_col.text_input(
-                f"{parameter} value.",
-                key=f"{parameter}_section_2_point_guarantee",
-                label_visibility="collapsed",
+            parameters_map[parameter]["section_2"]["point_guarantee"]["value"] = (
+                second_section_col.text_input(
+                    f"{parameter} value.",
+                    key=f"{parameter}_section_2_point_guarantee",
+                    label_visibility="collapsed",
+                )
             )
             check_correct_separator(
                 parameters_map[parameter]["section_2"]["point_guarantee"]
@@ -464,13 +465,13 @@ def main():
                 else:
                     section_col = second_section_col
                 # create upload button for each section
-                fig_dict_uploaded[
-                    f"uploaded_fig_{curve}_{section}"
-                ] = section_col.file_uploader(
-                    f"Upload {curve} curve for {section}.",
-                    type=["png"],
-                    key=f"uploaded_fig_{curve}_{section}",
-                    label_visibility="collapsed",
+                fig_dict_uploaded[f"uploaded_fig_{curve}_{section}"] = (
+                    section_col.file_uploader(
+                        f"Upload {curve} curve for {section}.",
+                        type=["png"],
+                        key=f"uploaded_fig_{curve}_{section}",
+                        label_visibility="collapsed",
+                    )
                 )
 
                 if fig_dict_uploaded[f"uploaded_fig_{curve}_{section}"] is not None:
@@ -489,43 +490,43 @@ def main():
                         ) = section_col.columns(4, gap="small")
                         plot_limit.markdown(f"{axis} range")
                         plot_limits[curve][section][f"{axis}"] = {}
-                        plot_limits[curve][section][f"{axis}"][
-                            "lower_limit"
-                        ] = lower_value_col.text_input(
-                            f"Lower limit",
-                            key=f"{axis}_{curve}_{section}_lower",
-                            label_visibility="collapsed",
+                        plot_limits[curve][section][f"{axis}"]["lower_limit"] = (
+                            lower_value_col.text_input(
+                                f"Lower limit",
+                                key=f"{axis}_{curve}_{section}_lower",
+                                label_visibility="collapsed",
+                            )
                         )
                         check_correct_separator(
                             plot_limits[curve][section][f"{axis}"]["lower_limit"]
                         )
-                        plot_limits[curve][section][f"{axis}"][
-                            "upper_limit"
-                        ] = upper_value_col.text_input(
-                            f"Upper limit",
-                            key=f"{axis}_{curve}_{section}_upper",
-                            label_visibility="collapsed",
+                        plot_limits[curve][section][f"{axis}"]["upper_limit"] = (
+                            upper_value_col.text_input(
+                                f"Upper limit",
+                                key=f"{axis}_{curve}_{section}_upper",
+                                label_visibility="collapsed",
+                            )
                         )
                         check_correct_separator(
                             plot_limits[curve][section][f"{axis}"]["upper_limit"]
                         )
                         if axis == "x":
-                            plot_limits[curve][section][f"{axis}"][
-                                "units"
-                            ] = units_col.selectbox(
-                                f"{parameter} units",
-                                options=parameters_map["flow_v"]["units"],
-                                key=f"{axis}_{curve}_{section}_flow_units",
-                                label_visibility="collapsed",
+                            plot_limits[curve][section][f"{axis}"]["units"] = (
+                                units_col.selectbox(
+                                    f"{parameter} units",
+                                    options=parameters_map["flow_v"]["units"],
+                                    key=f"{axis}_{curve}_{section}_flow_units",
+                                    label_visibility="collapsed",
+                                )
                             )
                         else:
-                            plot_limits[curve][section][f"{axis}"][
-                                "units"
-                            ] = units_col.selectbox(
-                                f"{parameter} units",
-                                options=parameters_map[curve]["units"],
-                                key=f"{axis}_{curve}_{section}_units",
-                                label_visibility="collapsed",
+                            plot_limits[curve][section][f"{axis}"]["units"] = (
+                                units_col.selectbox(
+                                    f"{parameter} units",
+                                    options=parameters_map[curve]["units"],
+                                    key=f"{axis}_{curve}_{section}_units",
+                                    label_visibility="collapsed",
+                                )
                             )
 
     number_of_test_points = 6
@@ -595,14 +596,16 @@ def main():
                             help=f"{parameters_map[parameter].get('help', '')}",
                         )
                     elif i == 1:
-                        parameters_map[parameter]["section_1"][
-                            "test_units"
-                        ] = col.selectbox(
-                            f"{parameter} units",
-                            options=parameters_map[parameter]["units"],
-                            key=f"{parameter}_units_section_1",
-                            label_visibility="collapsed",
-                            disabled=parameters_map[parameter].get("disabled", False),
+                        parameters_map[parameter]["section_1"]["test_units"] = (
+                            col.selectbox(
+                                f"{parameter} units",
+                                options=parameters_map[parameter]["units"],
+                                key=f"{parameter}_units_section_1",
+                                label_visibility="collapsed",
+                                disabled=parameters_map[parameter].get(
+                                    "disabled", False
+                                ),
+                            )
                         )
                     else:
                         parameters_map[parameter]["section_1"][f"point_{i - 1}"][
@@ -677,14 +680,16 @@ def main():
                             help=f"{parameters_map[parameter].get('help', '')}",
                         )
                     elif i == 1:
-                        parameters_map[parameter]["section_2"][
-                            "test_units"
-                        ] = col.selectbox(
-                            f"{parameter} units",
-                            options=parameters_map[parameter]["units"],
-                            key=f"{parameter}_units_section_2",
-                            label_visibility="collapsed",
-                            disabled=parameters_map[parameter].get("disabled", False),
+                        parameters_map[parameter]["section_2"]["test_units"] = (
+                            col.selectbox(
+                                f"{parameter} units",
+                                options=parameters_map[parameter]["units"],
+                                key=f"{parameter}_units_section_2",
+                                label_visibility="collapsed",
+                                disabled=parameters_map[parameter].get(
+                                    "disabled", False
+                                ),
+                            )
                         )
                     else:
                         parameters_map[parameter]["section_2"][f"point_{i - 1}"][
@@ -1175,9 +1180,9 @@ def main():
             st.write(
                 f"Final speed used in calculation: {back_to_back.speed.to('rpm').m:.2f} RPM"
             )
-            _t = "\u209C"
-            _sp = "\u209B\u209A"
-            conv = "\u1D9C" + "\u1D52" + "\u207F" + "\u1D5B"
+            _t = "\u209c"
+            _sp = "\u209b\u209a"
+            conv = "\u1d9c" + "\u1d52" + "\u207f" + "\u1d5b"
 
             results_section_1 = {}
             results_section_2 = {}
@@ -1571,22 +1576,22 @@ def main():
                             # apply conditional formatting to the specific cell
                             cell_value = df.loc[row_index, col_index]
                             if cell_value >= lower_limit and cell_value <= higher_limit:
-                                styled_df = styled_df.applymap(
+                                styled_df = styled_df.map(
                                     lambda x: "background-color: #C8E6C9"
                                     if x == cell_value
                                     else ""
-                                ).applymap(
+                                ).map(
                                     lambda x: "font-color: #33691E"
                                     if x == cell_value
                                     else ""
                                 )
 
                             else:
-                                styled_df = styled_df.applymap(
+                                styled_df = styled_df.map(
                                     lambda x: "background-color: #FFCDD2"
                                     if x == cell_value
                                     else ""
-                                ).applymap(
+                                ).map(
                                     lambda x: "font-color: #FFCDD2"
                                     if x == cell_value
                                     else ""
@@ -1799,17 +1804,13 @@ def main():
                                 plots_dict[curve].data[1].update(
                                     name=f"Flow: {point_interpolated.flow_v.to(flow_v_units):.~2f}, {curve.capitalize()}: {r_getattr(point_interpolated, curve_plot_method)(curve_units):.~2f}".replace(
                                         "m ** 3 / h", "m³/h"
-                                    ).replace(
-                                        "Discharge_pressure", "Disch. p"
-                                    )
+                                    ).replace("Discharge_pressure", "Disch. p")
                                 )
                             else:
                                 plots_dict[curve].data[1].update(
                                     name=f"Flow: {point_interpolated.flow_v.to(flow_v_units):.~2f}, {curve.capitalize()}: {r_getattr(point_interpolated, curve_plot_method).to(curve_units):.~2f}".replace(
                                         "m ** 3 / h", "m³/h"
-                                    ).replace(
-                                        "Discharge_pressure", "Disch. p"
-                                    )
+                                    ).replace("Discharge_pressure", "Disch. p")
                                 )
 
                             plots_dict[curve].update_layout(

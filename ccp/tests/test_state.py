@@ -371,3 +371,10 @@ def test_normalization():
 
         # no negative values
         assert suc0.fluid[k] >= 0.0
+
+
+def test_fluids_not_in_coolprop_json_fluid_library():
+    s = ccp.State(p=100000, T=300, fluid={"13Butadiene": 1})
+    assert_allclose(s.rho(), 2.222332)
+    s = ccp.State(p=100000, T=300, fluid={"1-Pentene": 1})
+    assert_allclose(s.rho(), 633.523164)
