@@ -243,7 +243,7 @@ def main():
                     gas_composition_df,
                     num_rows="dynamic",
                     key=f"table_gas_{i}_composition",
-                    height=int((gas_composition_df.shape[0] + 1) * 37.35),
+                    height=int((len(default_components) + 1) * 37.35),
                     use_container_width=True,
                     column_config={
                         "component": st.column_config.SelectboxColumn(
