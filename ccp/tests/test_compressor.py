@@ -283,7 +283,7 @@ def straight_through():
     compressor = StraightThrough(
         guarantee_point=guarantee_point,
         test_points=test_points,
-        speed=Q_(12193.63898, "RPM"),
+        speed_operational=Q_(12193.63898, "RPM"),
     )
 
     return compressor

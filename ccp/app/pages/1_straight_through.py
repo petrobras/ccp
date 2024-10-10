@@ -994,11 +994,8 @@ def main():
         and st.session_state["straight_through"] != ""
     ):
         with st.expander("Results"):
-
-            used_speed_str = " RPM, ".join([str(speed.to("rpm").m) for speed in straight_through.speed])
-
             st.write(
-                f"Final speed(s) used in calculation: {used_speed_str} RPM"
+                f"Final speed(s) used in calculation: {straight_through.speed_operational.to('rpm').m:.2f} RPM"
             )
 
             _t = "\u209c"
@@ -1011,7 +1008,7 @@ def main():
                 # create interpolated point with point method
                 point_interpolated = getattr(straight_through, f"point")(
                     flow_v=getattr(straight_through, f"guarantee_point").flow_v,
-                    speed=straight_through.speed,
+                    speed=straight_through.speed_operational,
                 )
 
                 results[f"φ{_t}"] = [
@@ -1470,7 +1467,7 @@ def main():
                     )
 
                     plots_dict[curve].data[0].update(
-                        name=f"Converted Curve {used_speed_str} RPM",
+                        name=f"Converted Curve {straight_through.speed_operational.to('rpm').m:.0f} RPM",
                     )
                     if curve == "discharge_pressure":
                         plots_dict[curve].data[1].update(

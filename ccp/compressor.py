@@ -140,13 +140,13 @@ class StraightThrough(Impeller):
 
     @check_units
     def __init__(
-        self, guarantee_point, test_points, speed=None, reynolds_correction=False
+        self, guarantee_point, test_points, speed_operational=None, reynolds_correction=False
     ):
         self.guarantee_point = guarantee_point
         self.test_points = test_points
-        if speed is None:
-            speed = guarantee_point.speed
-        self.speed = speed
+        if speed_operational is None:
+            speed_operational = guarantee_point.speed
+        self.speed_operational = speed_operational
         self.reynolds_correction = reynolds_correction
 
         # points for test flange conditions
@@ -215,7 +215,7 @@ class StraightThrough(Impeller):
                 initial_point_rotor_sp = Point.convert_from(
                     original_point=point,
                     suc=initial_suc,
-                    speed=self.speed,
+                    speed=self.speed_operational,
                     find="volume_ratio",
                     reynolds_correction=self.reynolds_correction,
                 )
@@ -243,7 +243,7 @@ class StraightThrough(Impeller):
                     suc=guarantee_point.suc,
                     disch=initial_point_rotor_sp.disch,
                     flow_m=ms1f_sp,
-                    speed=speed,
+                    speed=speed_operational,
                     b=guarantee_point.b,
                     D=guarantee_point.D,
                     surface_roughness=guarantee_point.surface_roughness,
@@ -259,7 +259,7 @@ class StraightThrough(Impeller):
     def _dict_to_save(self):
         dict_to_save = {
             "reynolds_correction": self.reynolds_correction,
-            "speed": str(self.speed),
+            "speed": str(self.speed_operational),
         }
         # add points to file
         dict_to_save["guarantee_point"] = self.guarantee_point._dict_to_save()
@@ -291,7 +291,7 @@ class StraightThrough(Impeller):
             File name.
         """
         parameters = toml.load(file)
-        kwargs = {"speed": Q_(parameters.pop("speed", None))}
+        kwargs = {"speed_operational": Q_(parameters.pop("speed_operational", None))}
         # guarantee_point, test_points, speed=None, reynolds_correction=False
 
         for k, v in parameters.items():
@@ -308,7 +308,7 @@ class StraightThrough(Impeller):
         if isinstance(other, self.__class__):
             if (
                 self.reynolds_correction == other.reynolds_correction
-                and self.speed == other.speed
+                and self.speed_operational == other.speed_operational
                 and self.guarantee_point == other.guarantee_point
             ):
                 test_points_other = sorted(other.test_points, key=lambda x: x.flow_v)
@@ -324,7 +324,7 @@ class StraightThrough(Impeller):
             compressor = StraightThrough(
                 guarantee_point=self.guarantee_point,
                 test_points=self.test_points,
-                speed=x,
+                speed_operational=x,
                 reynolds_correction=self.reynolds_correction,
             )
 
@@ -332,11 +332,11 @@ class StraightThrough(Impeller):
             # add 1 pascal to guarantee that discharge pressure is higher
             return point.disch.p().m - (self.guarantee_point.disch.p().m + 1)
 
-        new_speed = newton(calculate_disch_pressure_delta, self.speed.m)
+        new_speed = newton(calculate_disch_pressure_delta, self.speed_operational.m)
         return self.__class__(
             guarantee_point=self.guarantee_point,
             test_points=self.test_points,
-            speed=new_speed,
+            speed_operational=new_speed,
             reynolds_correction=self.reynolds_correction,
         )
 
