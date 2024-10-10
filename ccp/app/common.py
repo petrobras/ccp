@@ -172,14 +172,16 @@ def get_gas_composition(gas_name, gas_compositions_table, default_components):
     gas_composition = {}
     for gas in gas_compositions_table.keys():
         if gas_compositions_table[gas]["name"] == gas_name:
-            for i in range(len(default_components)):
-                component = gas_compositions_table[gas][f"component_{i}"]
-                molar_fraction = gas_compositions_table[gas][f"molar_fraction_{i}"]
-                if molar_fraction == "":
-                    molar_fraction = 0
-                molar_fraction = float(molar_fraction)
-                if molar_fraction != 0:
-                    gas_composition[component] = molar_fraction
+            for column in gas_compositions_table[gas]:
+                if "component" in column:
+                    idx = column.split("_")[1]
+                    component = gas_compositions_table[gas][f"component_{idx}"]
+                    molar_fraction = gas_compositions_table[gas][f"molar_fraction_{idx}"]
+                    if molar_fraction == "":
+                        molar_fraction = 0
+                    molar_fraction = float(molar_fraction)
+                    if molar_fraction != 0:
+                        gas_composition[component] = molar_fraction
 
     return gas_composition
 
