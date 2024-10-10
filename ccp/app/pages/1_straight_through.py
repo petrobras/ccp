@@ -25,6 +25,7 @@ from ccp.app.common import (
     parameters_map,
     get_gas_composition,
     to_excel,
+    convert,
 )
 
 sentry_sdk.init(
@@ -113,9 +114,17 @@ def main():
             # open file with zip
 
             with zipfile.ZipFile(file) as my_zip:
+                # get the ccp version
+                try:
+                    version = my_zip.read("ccp.version")
+                except KeyError:
+                    version = "0.3.6"
+
                 for name in my_zip.namelist():
                     if name.endswith(".json"):
-                        session_state_data = json.loads(my_zip.read(name))
+                        session_state_data = convert(
+                            json.loads(my_zip.read(name)), version
+                        )
                         if "flow_point_guarantee" not in session_state_data:
                             raise ValueError("File is not a ccp straight-through file.")
 
@@ -125,8 +134,8 @@ def main():
                         session_state_data[name.split(".")[0]] = my_zip.read(name)
                     elif name.endswith(".toml"):
                         # create file object to read the toml file
-                        straight_through_file = io.StringIO(
-                            my_zip.read(name).decode("utf-8")
+                        straight_through_file = convert(
+                            io.StringIO(my_zip.read(name).decode("utf-8")), version
                         )
                         session_state_data[name.split(".")[0]] = StraightThrough.load(
                             straight_through_file
@@ -149,6 +158,7 @@ def main():
             file_name = f"{st.session_state.session_name}.ccp"
             session_state_dict_copy = session_state_dict.copy()
             with zipfile.ZipFile(file_name, "w") as my_zip:
+                my_zip.writestr("ccp.version", ccp.__version__)
                 # first save figures
                 for key, value in session_state_dict.items():
                     if isinstance(
@@ -194,13 +204,15 @@ def main():
                 f"Gas Name",
                 value=f"gas_{i}",
                 key=f"gas_{i}",
-                help="""
+                help=(
+                    """
                 Gas name will be selected in Data Sheet and Test Data.
 
                 Fill in gas components and molar fractions for each gas.
                 """
-                if i == 0
-                else None,
+                    if i == 0
+                    else None
+                ),
             )
             component, molar_fraction = gas_column.columns([2, 1])
             default_components = [
@@ -1284,18 +1296,18 @@ def main():
                     cell_value = df.loc[row_index, col_index]
                     if cell_value >= lower_limit and cell_value <= higher_limit:
                         styled_df = styled_df.map(
-                            lambda x: "background-color: #C8E6C9"
-                            if x == cell_value
-                            else ""
+                            lambda x: (
+                                "background-color: #C8E6C9" if x == cell_value else ""
+                            )
                         ).map(
                             lambda x: "font-color: #33691E" if x == cell_value else ""
                         )
 
                     else:
                         styled_df = styled_df.map(
-                            lambda x: "background-color: #FFCDD2"
-                            if x == cell_value
-                            else ""
+                            lambda x: (
+                                "background-color: #FFCDD2" if x == cell_value else ""
+                            )
                         ).map(
                             lambda x: "font-color: #FFCDD2" if x == cell_value else ""
                         )
@@ -1473,13 +1485,17 @@ def main():
                         plots_dict[curve].data[1].update(
                             name=f"Flow: {point_interpolated.flow_v.to(flow_v_units):.~2f}, {curve.capitalize()}: {r_getattr(point_interpolated, curve_plot_method)(curve_units):.~2f}".replace(
                                 "m ** 3 / h", "m³/h"
-                            ).replace("Discharge_pressure", "Disch. p")
+                            ).replace(
+                                "Discharge_pressure", "Disch. p"
+                            )
                         )
                     else:
                         plots_dict[curve].data[1].update(
                             name=f"Flow: {point_interpolated.flow_v.to(flow_v_units):.~2f}, {curve.capitalize()}: {r_getattr(point_interpolated, curve_plot_method).to(curve_units):.~2f}".replace(
                                 "m ** 3 / h", "m³/h"
-                            ).replace("Discharge_pressure", "Disch. p")
+                            ).replace(
+                                "Discharge_pressure", "Disch. p"
+                            )
                         )
 
                     plots_dict[curve].update_layout(
