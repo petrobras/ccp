@@ -118,7 +118,7 @@ def main():
                 try:
                     version = my_zip.read("ccp.version")
                 except KeyError:
-                    version = "0.3.6"
+                    version = "0.3.5"
 
                 for name in my_zip.namelist():
                     if name.endswith(".json"):

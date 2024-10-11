@@ -1,4 +1,5 @@
 """Module to keep everything that is common to ccp_app_straight_through and ccp_app_back_to_back."""
+
 import ccp
 import io
 import pandas as pd
@@ -159,18 +160,9 @@ parameters_map = {
 
 
 def convert(data, version):
-
-    current_version = Version("0.3.7")
-    # current_version = Version(ccp.__version__)
-    version = Version(version)
-
-    if version == current_version:
-        return data
     # version 0.3.6 and older
-    elif version < Version("0.3.7"): # update
-        if isinstance(data, dict):
-            return data
-        elif isinstance(data, io.StringIO):
+    if Version(version) < Version("0.3.6"):  # update
+        if isinstance(data, io.StringIO):
             file = toml.load(data)
             new_file = {}
             for k, v in file.items():
@@ -178,7 +170,9 @@ def convert(data, version):
                     new_file["speed_operational"] = v
                 else:
                     new_file[k] = v
-            return io.StringIO(toml.dumps(new_file))           
+            data = io.StringIO(toml.dumps(new_file))
+
+    return data
 
 
 def get_gas_composition(gas_name, gas_compositions_table, default_components):
