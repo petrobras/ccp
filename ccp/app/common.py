@@ -201,7 +201,10 @@ def convert(data, version):
                         gas_compositions_table[gas][f"molar_fraction_{j}"] = v
                         del data[k]
 
-            data["gas_compositions_table"] = gas_compositions_table
+            # check if nothing is found
+            empty = [True if v else False for k, v in gas_compositions_table.items()]
+            if all(empty):
+                data["gas_compositions_table"] = gas_compositions_table
 
     return data
 
