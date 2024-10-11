@@ -781,7 +781,7 @@ def back_to_back():
         guarantee_point_sec2=guarantee_point_sec2,
         test_points_sec1=test_points_sec1,
         test_points_sec2=test_points_sec2,
-        speed=Q_(12152.45187, "RPM"),
+        speed_operational=Q_(12152.45187, "RPM"),
     )
 
     return compressor_kwargs
