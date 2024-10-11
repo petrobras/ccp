@@ -1,7 +1,10 @@
 """Module to keep everything that is common to ccp_app_straight_through and ccp_app_back_to_back."""
 
+import ccp
 import io
 import pandas as pd
+import toml
+from packaging.version import Version
 
 # parameters with name and label
 flow_m_units = ["kg/h", "kg/min", "kg/s", "lbm/h", "lbm/min", "lbm/s"]
@@ -154,6 +157,22 @@ parameters_map = {
         "units": ["kg/h", "lbm/h", "kg/s", "lbm/s"],
     },
 }
+
+
+def convert(data, version):
+    # version 0.3.6 and older
+    if Version(version) < Version("0.3.6"):  # update
+        if isinstance(data, io.StringIO):
+            file = toml.load(data)
+            new_file = {}
+            for k, v in file.items():
+                if k == "speed":
+                    new_file["speed_operational"] = v
+                else:
+                    new_file[k] = v
+            data = io.StringIO(toml.dumps(new_file))
+
+    return data
 
 
 def get_gas_composition(gas_name, gas_compositions_table, default_components):

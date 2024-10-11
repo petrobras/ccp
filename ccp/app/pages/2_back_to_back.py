@@ -25,6 +25,7 @@ from ccp.app.common import (
     parameters_map,
     get_gas_composition,
     to_excel,
+    convert,
 )
 
 
@@ -113,9 +114,17 @@ def main():
             st.write("Loaded!")
             # open file with zip
             with zipfile.ZipFile(file) as my_zip:
+                # get the ccp version
+                try:
+                    version = my_zip.read("ccp.version")
+                except KeyError:
+                    version = "0.3.5"
+
                 for name in my_zip.namelist():
                     if name.endswith(".json"):
-                        session_state_data = json.loads(my_zip.read(name))
+                        session_state_data = convert(
+                            json.loads(my_zip.read(name)), version
+                        )
                         if (
                             "div_wall_flow_m_section_1_point_1"
                             not in session_state_data
@@ -127,8 +136,8 @@ def main():
                         session_state_data[name.split(".")[0]] = my_zip.read(name)
                     elif name.endswith(".toml"):
                         # create file object to read the toml file
-                        back_to_back_file = io.StringIO(
-                            my_zip.read(name).decode("utf-8")
+                        back_to_back_file = convert(
+                            io.StringIO(my_zip.read(name).decode("utf-8")), version
                         )
                         session_state_data[name.split(".")[0]] = BackToBack.load(
                             back_to_back_file
@@ -151,6 +160,7 @@ def main():
             file_name = f"{st.session_state.session_name}.ccp"
             session_state_dict_copy = session_state_dict.copy()
             with zipfile.ZipFile(file_name, "w") as my_zip:
+                my_zip.writestr("ccp.version", ccp.__version__)
                 # first save figures
                 for key, value in session_state_dict.items():
                     if isinstance(
@@ -340,7 +350,7 @@ def main():
         def get_index_selected_gas(gas_name):
             try:
                 index_gas_name = gas_options.index(st.session_state[gas_name])
-            except KeyError:
+            except (KeyError, ValueError):
                 index_gas_name = 0
             return index_gas_name
 
@@ -1150,7 +1160,7 @@ def main():
     ):
         with st.expander("Results"):
             st.write(
-                f"Final speed used in calculation: {back_to_back.speed.to('rpm').m:.2f} RPM"
+                f"Final speed used in calculation: {back_to_back.speed_operational.to('rpm').m:.2f} RPM"
             )
             _t = "\u209c"
             _sp = "\u209b\u209a"
@@ -1165,11 +1175,11 @@ def main():
                 # create interpolated point with point method
                 point_interpolated_sec1 = getattr(back_to_back, f"point_sec1")(
                     flow_v=getattr(back_to_back, f"guarantee_point_sec1").flow_v,
-                    speed=back_to_back.speed,
+                    speed=back_to_back.speed_operational,
                 )
                 point_interpolated_sec2 = getattr(back_to_back, f"point_sec2")(
                     flow_v=getattr(back_to_back, f"guarantee_point_sec2").flow_v,
-                    speed=back_to_back.speed,
+                    speed=back_to_back.speed_operational,
                 )
 
                 for results, section, sec, point_interpolated in zip(
@@ -1770,7 +1780,7 @@ def main():
                             )
 
                             plots_dict[curve].data[0].update(
-                                name=f"Converted Curve {back_to_back.speed.to('rpm').m:.0f} RPM",
+                                name=f"Converted Curve {back_to_back.speed_operational.to('rpm').m:.0f} RPM",
                             )
                             if curve == "discharge_pressure":
                                 plots_dict[curve].data[1].update(

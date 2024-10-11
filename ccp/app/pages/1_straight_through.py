@@ -25,6 +25,7 @@ from ccp.app.common import (
     parameters_map,
     get_gas_composition,
     to_excel,
+    convert,
 )
 
 sentry_sdk.init(
@@ -113,9 +114,17 @@ def main():
             # open file with zip
 
             with zipfile.ZipFile(file) as my_zip:
+                # get the ccp version
+                try:
+                    version = my_zip.read("ccp.version")
+                except KeyError:
+                    version = "0.3.5"
+
                 for name in my_zip.namelist():
                     if name.endswith(".json"):
-                        session_state_data = json.loads(my_zip.read(name))
+                        session_state_data = convert(
+                            json.loads(my_zip.read(name)), version
+                        )
                         if "flow_point_guarantee" not in session_state_data:
                             raise ValueError("File is not a ccp straight-through file.")
 
@@ -125,8 +134,8 @@ def main():
                         session_state_data[name.split(".")[0]] = my_zip.read(name)
                     elif name.endswith(".toml"):
                         # create file object to read the toml file
-                        straight_through_file = io.StringIO(
-                            my_zip.read(name).decode("utf-8")
+                        straight_through_file = convert(
+                            io.StringIO(my_zip.read(name).decode("utf-8")), version
                         )
                         session_state_data[name.split(".")[0]] = StraightThrough.load(
                             straight_through_file
@@ -149,6 +158,7 @@ def main():
             file_name = f"{st.session_state.session_name}.ccp"
             session_state_dict_copy = session_state_dict.copy()
             with zipfile.ZipFile(file_name, "w") as my_zip:
+                my_zip.writestr("ccp.version", ccp.__version__)
                 # first save figures
                 for key, value in session_state_dict.items():
                     if isinstance(
@@ -191,82 +201,56 @@ def main():
             for i, gas_column in enumerate(gas_columns):
                 gas_compositions_table[f"gas_{i}"] = {}
 
-                gas_compositions_table[f"gas_{i}"]["name"] = gas_column.text_input(
-                    f"Gas Name",
-                    value=f"gas_{i}",
-                    key=f"gas_{i}",
-                    help="""
-                    Gas name will be selected in Data Sheet and Test Data.
-
-                    Fill in gas components and molar fractions for each gas.
+            gas_compositions_table[f"gas_{i}"]["name"] = gas_column.text_input(
+                f"Gas Name",
+                value=f"gas_{i}",
+                key=f"gas_{i}",
+                help=(
                     """
+                Gas name will be selected in Data Sheet and Test Data.
+
+                Fill in gas components and molar fractions for each gas.
+                """
                     if i == 0
-                    else None,
+                    else None
+                ),
+            )
+            component, molar_fraction = gas_column.columns([2, 1])
+            default_components = [
+                "methane",
+                "ethane",
+                "propane",
+                "n-butane",
+                "i-butane",
+                "n-pentane",
+                "i-pentane",
+                "n-hexane",
+                "n-heptane",
+                "n-octane",
+                "n-nonane",
+                "nitrogen",
+                "h2s",
+                "co2",
+                "h2o",
+            ]
+            for j, default_component in enumerate(default_components):
+                gas_compositions_table[f"gas_{i}"][f"component_{j}"] = (
+                    component.selectbox(
+                        "Component",
+                        options=fluid_list,
+                        index=fluid_list.index(default_component),
+                        key=f"gas_{i}_component_{j}",
+                        label_visibility="collapsed",
+                    )
                 )
-                component, molar_fraction = gas_column.columns([2, 1])
-                default_components = [
-                    "methane",
-                    "ethane",
-                    "propane",
-                    "n-butane",
-                    "i-butane",
-                    "n-pentane",
-                    "i-pentane",
-                    "n-hexane",
-                    "n-heptane",
-                    "n-octane",
-                    "n-nonane",
-                    "nitrogen",
-                    "h2s",
-                    "co2",
-                    "h2o",
-                ]
-                
-                gas_composition_list = []
-                for key in st.session_state:
-                    if "compositions_table" in key:
-                        for column in st.session_state[key][f"gas_{i}"]:
-                            if "component" in column:
-                                idx = column.split("_")[1]
-                                gas_composition_list.append({
-                                    "component": st.session_state[key][f"gas_{i}"][column],
-                                    "molar_fraction": st.session_state[key][f"gas_{i}"][f"molar_fraction_{idx}"]
-                                })
-                if not gas_composition_list:
-                    gas_composition_list = [
-                        {"component": molecule, "molar_fraction": 0.0} for molecule in default_components
-                    ]
-
-                gas_composition_df = pd.DataFrame(gas_composition_list)
-
-                gas_composition_df_edited = gas_column.data_editor(
-                    gas_composition_df,
-                    num_rows="dynamic",
-                    key=f"table_gas_{i}_composition",
-                    height=int((len(default_components) + 1) * 37.35),
-                    use_container_width=True,
-                    column_config={
-                        "component": st.column_config.SelectboxColumn(
-                            st.session_state[f"gas_{i}"],
-                            options=fluid_list,
-                            width="small",
-                        ),
-                        "molar_fraction": st.column_config.NumberColumn(
-                            "mol %",
-                            min_value=0.0,
-                            format="%.3f"
-                        )
-                    }
+                gas_compositions_table[f"gas_{i}"][f"molar_fraction_{j}"] = (
+                    molar_fraction.text_input(
+                        "Molar Fraction",
+                        value="0",
+                        key=f"gas_{i}_molar_fraction_{j}",
+                        label_visibility="collapsed",
+                    )
                 )
-
-                for column in gas_composition_df_edited:
-                    for j, value in enumerate(gas_composition_df_edited[column]):
-                        gas_compositions_table[f"gas_{i}"][f"{column}_{j}"] = value
-
-            submit_composition = st.form_submit_button("Submit", type="primary")
-
-            if "gas_compositions_table" not in st.session_state or submit_composition:
-                st.session_state["gas_compositions_table"] = gas_compositions_table
 
     # add container with 4 columns and 2 rows
     with st.sidebar.expander("⚙️ Options"):
@@ -360,7 +344,7 @@ def main():
         def get_index_selected_gas(gas_name):
             try:
                 index_gas_name = gas_options.index(st.session_state[gas_name])
-            except KeyError:
+            except (KeyError, ValueError):
                 index_gas_name = 0
             return index_gas_name
 
@@ -368,6 +352,7 @@ def main():
             "gas_point_guarantee",
             options=gas_options,
             label_visibility="collapsed",
+            key="gas_point_guarantee",
             index=get_index_selected_gas("gas_point_guarantee"),
         )
 
@@ -1023,8 +1008,9 @@ def main():
     ):
         with st.expander("Results"):
             st.write(
-                f"Final speed used in calculation: {straight_through.speed.to('rpm').m:.2f} RPM"
+                f"Final speed(s) used in calculation: {straight_through.speed_operational.to('rpm').m:.2f} RPM"
             )
+
             _t = "\u209c"
             _sp = "\u209b\u209a"
             conv = "\u1d9c" + "\u1d52" + "\u207f" + "\u1d5b"
@@ -1035,7 +1021,7 @@ def main():
                 # create interpolated point with point method
                 point_interpolated = getattr(straight_through, f"point")(
                     flow_v=getattr(straight_through, f"guarantee_point").flow_v,
-                    speed=straight_through.speed,
+                    speed=straight_through.speed_operational,
                 )
 
                 results[f"φ{_t}"] = [
@@ -1311,18 +1297,18 @@ def main():
                     cell_value = df.loc[row_index, col_index]
                     if cell_value >= lower_limit and cell_value <= higher_limit:
                         styled_df = styled_df.map(
-                            lambda x: "background-color: #C8E6C9"
-                            if x == cell_value
-                            else ""
+                            lambda x: (
+                                "background-color: #C8E6C9" if x == cell_value else ""
+                            )
                         ).map(
                             lambda x: "font-color: #33691E" if x == cell_value else ""
                         )
 
                     else:
                         styled_df = styled_df.map(
-                            lambda x: "background-color: #FFCDD2"
-                            if x == cell_value
-                            else ""
+                            lambda x: (
+                                "background-color: #FFCDD2" if x == cell_value else ""
+                            )
                         ).map(
                             lambda x: "font-color: #FFCDD2" if x == cell_value else ""
                         )
@@ -1494,19 +1480,23 @@ def main():
                     )
 
                     plots_dict[curve].data[0].update(
-                        name=f"Converted Curve {straight_through.speed.to('rpm').m:.0f} RPM",
+                        name=f"Converted Curve {straight_through.speed_operational.to('rpm').m:.0f} RPM",
                     )
                     if curve == "discharge_pressure":
                         plots_dict[curve].data[1].update(
                             name=f"Flow: {point_interpolated.flow_v.to(flow_v_units):.~2f}, {curve.capitalize()}: {r_getattr(point_interpolated, curve_plot_method)(curve_units):.~2f}".replace(
                                 "m ** 3 / h", "m³/h"
-                            ).replace("Discharge_pressure", "Disch. p")
+                            ).replace(
+                                "Discharge_pressure", "Disch. p"
+                            )
                         )
                     else:
                         plots_dict[curve].data[1].update(
                             name=f"Flow: {point_interpolated.flow_v.to(flow_v_units):.~2f}, {curve.capitalize()}: {r_getattr(point_interpolated, curve_plot_method).to(curve_units):.~2f}".replace(
                                 "m ** 3 / h", "m³/h"
-                            ).replace("Discharge_pressure", "Disch. p")
+                            ).replace(
+                                "Discharge_pressure", "Disch. p"
+                            )
                         )
 
                     plots_dict[curve].update_layout(
