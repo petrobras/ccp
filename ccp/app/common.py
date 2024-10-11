@@ -1,6 +1,5 @@
 """Module to keep everything that is common to ccp_app_straight_through and ccp_app_back_to_back."""
 
-import ccp
 import io
 import pandas as pd
 import toml
@@ -183,14 +182,14 @@ def convert(data, version):
                         gas_list.append(f"gas_{int(key.split('_')[1])}")
                     except ValueError:
                         continue
-            
+
             gas_list = list(set(gas_list))
             gas_list.sort()
 
             data_copy = data.copy()
-            
+
             for gas in gas_list:
-                gas_compositions_table[gas] = {}   
+                gas_compositions_table[gas] = {}
                 for k, v in data_copy.items():
                     if k.startswith(gas) and "component" in k:
                         j = k.split("_")[-1]
@@ -229,7 +228,9 @@ def get_gas_composition(gas_name, gas_compositions_table, default_components):
                 if "component" in column:
                     idx = column.split("_")[1]
                     component = gas_compositions_table[gas][f"component_{idx}"]
-                    molar_fraction = gas_compositions_table[gas][f"molar_fraction_{idx}"]
+                    molar_fraction = gas_compositions_table[gas][
+                        f"molar_fraction_{idx}"
+                    ]
                     if molar_fraction == "":
                         molar_fraction = 0
                     molar_fraction = float(molar_fraction)

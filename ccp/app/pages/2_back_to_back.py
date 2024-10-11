@@ -16,12 +16,7 @@ from pathlib import Path
 
 # import everything that is common to ccp_app_straight_through and ccp_app_back_to_back
 from ccp.app.common import (
-    flow_m_units,
-    flow_v_units,
-    flow_units,
     pressure_units,
-    temperature_units,
-    speed_units,
     parameters_map,
     get_gas_composition,
     to_excel,
@@ -210,7 +205,7 @@ def main():
                 gas_compositions_table[f"gas_{i}"] = {}
 
                 gas_compositions_table[f"gas_{i}"]["name"] = gas_column.text_input(
-                    f"Gas Name",
+                    "Gas Name",
                     value=f"gas_{i}",
                     key=f"gas_{i}",
                     help="""
@@ -497,7 +492,7 @@ def main():
                         plot_limits[curve][section][f"{axis}"] = {}
                         plot_limits[curve][section][f"{axis}"]["lower_limit"] = (
                             lower_value_col.text_input(
-                                f"Lower limit",
+                                "Lower limit",
                                 key=f"{axis}_{curve}_{section}_lower",
                                 label_visibility="collapsed",
                             )
@@ -507,7 +502,7 @@ def main():
                         )
                         plot_limits[curve][section][f"{axis}"]["upper_limit"] = (
                             upper_value_col.text_input(
-                                f"Upper limit",
+                                "Upper limit",
                                 key=f"{axis}_{curve}_{section}_upper",
                                 label_visibility="collapsed",
                             )
@@ -1196,12 +1191,12 @@ def main():
             )
             if back_to_back:
                 # create interpolated point with point method
-                point_interpolated_sec1 = getattr(back_to_back, f"point_sec1")(
-                    flow_v=getattr(back_to_back, f"guarantee_point_sec1").flow_v,
+                point_interpolated_sec1 = getattr(back_to_back, "point_sec1")(
+                    flow_v=getattr(back_to_back, "guarantee_point_sec1").flow_v,
                     speed=back_to_back.speed_operational,
                 )
-                point_interpolated_sec2 = getattr(back_to_back, f"point_sec2")(
-                    flow_v=getattr(back_to_back, f"guarantee_point_sec2").flow_v,
+                point_interpolated_sec2 = getattr(back_to_back, "point_sec2")(
+                    flow_v=getattr(back_to_back, "guarantee_point_sec2").flow_v,
                     speed=back_to_back.speed_operational,
                 )
 
@@ -1477,7 +1472,7 @@ def main():
                             results[key].append(
                                 round(
                                     point_interpolated_sec2.disch.p("bar").m
-                                    / getattr(back_to_back, f"guarantee_point_sec2")
+                                    / getattr(back_to_back, "guarantee_point_sec2")
                                     .disch.p("bar")
                                     .m,
                                     5,
@@ -1502,7 +1497,7 @@ def main():
                                         Q_(
                                             float(
                                                 st.session_state[
-                                                    f"power_section_1_point_guarantee"
+                                                    "power_section_1_point_guarantee"
                                                 ]
                                             ),
                                             parameters_map["power"][section][
@@ -1514,7 +1509,7 @@ def main():
                                         + Q_(
                                             float(
                                                 st.session_state[
-                                                    f"power_section_2_point_guarantee"
+                                                    "power_section_2_point_guarantee"
                                                 ]
                                             ),
                                             parameters_map["power"][section][
