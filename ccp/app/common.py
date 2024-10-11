@@ -160,8 +160,9 @@ parameters_map = {
 
 
 def convert(data, version):
-    # version 0.3.6 and older
-    if Version(version) < Version("0.3.6"):  # update
+    version = Version(version)
+    # previous than v0.3.6 and older
+    if version < Version("0.3.6"):  # update
         if isinstance(data, io.StringIO):
             file = toml.load(data)
             new_file = {}
@@ -171,6 +172,36 @@ def convert(data, version):
                 else:
                     new_file[k] = v
             data = io.StringIO(toml.dumps(new_file))
+    # previous than v0.3.7
+    if version < Version("0.3.7"):
+        if isinstance(data, dict):
+            gas_compositions_table = {}
+            gas_list = []
+            for key in data:
+                if key.startswith("gas"):
+                    try:
+                        gas_list.append(f"gas_{int(key.split('_')[1])}")
+                    except ValueError:
+                        continue
+            
+            gas_list = list(set(gas_list))
+            gas_list.sort()
+
+            data_copy = data.copy()
+            
+            for gas in gas_list:
+                gas_compositions_table[gas] = {}   
+                for k, v in data_copy.items():
+                    if k.startswith(gas) and "component" in k:
+                        j = k.split("_")[-1]
+                        gas_compositions_table[gas][f"component_{j}"] = v
+                        del data[k]
+                    elif k.startswith(gas) and "molar_fraction" in k:
+                        j = k.split("_")[-1]
+                        gas_compositions_table[gas][f"molar_fraction_{j}"] = v
+                        del data[k]
+
+            data["gas_compositions_table"] = gas_compositions_table
 
     return data
 
