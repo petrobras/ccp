@@ -384,6 +384,7 @@ class Impeller:
             "phi",
             "flow_v",
             "flow_m",
+            "speed",
         ]:
             values = []
             # for disch.p etc values are defined in _Impeller_State
@@ -504,7 +505,7 @@ class Impeller:
             suc=p0.suc,
             disch=disch,
             flow_v=flow_v,
-            speed=speed,
+            speed=current_curve.speed,
             b=p0.b,
             D=p0.D,
             power_losses=power_losses,

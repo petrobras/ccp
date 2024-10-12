@@ -55,6 +55,16 @@ fluid_list["EthylBenzene"].possible_names.extend(
 def get_name(name):
     """Seach for compatible fluid name."""
 
+    # block to treat fluids that are not available in CoolProp JSONFluidLibrary
+    fluid_not_in_coolprop = {
+        "13Butadiene": ["13Butadiene", "1,3-Butadiene", "13-butadiene"],
+        "1-Pentene": ["1-Pentene", "1-pentene"],
+    }
+
+    for k, v in fluid_not_in_coolprop.items():
+        if name in v:
+            return k
+
     for k, v in fluid_list.items():
         if name.lower() in v.possible_names:
             name = k
