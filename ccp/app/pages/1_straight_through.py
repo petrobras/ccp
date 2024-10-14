@@ -16,12 +16,7 @@ from pathlib import Path
 
 # import everything that is common to ccp_app_straight_through and ccp_app_back_to_back
 from ccp.app.common import (
-    flow_m_units,
-    flow_v_units,
-    flow_units,
     pressure_units,
-    temperature_units,
-    speed_units,
     parameters_map,
     get_gas_composition,
     to_excel,
@@ -116,7 +111,7 @@ def main():
             with zipfile.ZipFile(file) as my_zip:
                 # get the ccp version
                 try:
-                    version = my_zip.read("ccp.version")
+                    version = my_zip.read("ccp.version").decode("utf-8")
                 except KeyError:
                     version = "0.3.5"
 
@@ -144,7 +139,7 @@ def main():
             session_state_data_copy = session_state_data.copy()
             # remove keys that cannot be set with st.session_state.update
             for key in session_state_data.keys():
-                if key.startswith(("FormSubmitter", "my_form", "uploaded")):
+                if key.startswith(("FormSubmitter", "my_form", "uploaded", "form", "table")):
                     del session_state_data_copy[key]
             st.session_state.update(session_state_data_copy)
             st.session_state.session_name = file.name.replace(".ccp", "")
@@ -194,62 +189,90 @@ def main():
     fluid_list = sorted(fluid_list)
     fluid_list.insert(0, "")
 
-    with st.expander("Gas Selection", expanded=st.session_state.expander_state):
-        gas_compositions_table = {}
-        gas_columns = st.columns(6)
-        for i, gas_column in enumerate(gas_columns):
-            gas_compositions_table[f"gas_{i}"] = {}
+    with st.form(key="form_gas_selection", enter_to_submit=False, border=False):
+        with st.expander("Gas Selection", expanded=st.session_state.expander_state):
+            gas_compositions_table = {}
+            gas_columns = st.columns(6)
+            for i, gas_column in enumerate(gas_columns):
+                gas_compositions_table[f"gas_{i}"] = {}
 
-            gas_compositions_table[f"gas_{i}"]["name"] = gas_column.text_input(
-                f"Gas Name",
-                value=f"gas_{i}",
-                key=f"gas_{i}",
-                help=(
+                gas_compositions_table[f"gas_{i}"]["name"] = gas_column.text_input(
+                    "Gas Name",
+                    value=f"gas_{i}",
+                    key=f"gas_{i}",
+                    help=(
+                        """
+                    Gas name will be selected in Data Sheet and Test Data.
+
+                    Fill in gas components and molar fractions for each gas.
                     """
-                Gas name will be selected in Data Sheet and Test Data.
+                        if i == 0
+                        else None
+                    ),
+                )
 
-                Fill in gas components and molar fractions for each gas.
-                """
-                    if i == 0
-                    else None
-                ),
-            )
-            component, molar_fraction = gas_column.columns([2, 1])
-            default_components = [
-                "methane",
-                "ethane",
-                "propane",
-                "n-butane",
-                "i-butane",
-                "n-pentane",
-                "i-pentane",
-                "n-hexane",
-                "n-heptane",
-                "n-octane",
-                "n-nonane",
-                "nitrogen",
-                "h2s",
-                "co2",
-                "h2o",
-            ]
-            for j, default_component in enumerate(default_components):
-                gas_compositions_table[f"gas_{i}"][f"component_{j}"] = (
-                    component.selectbox(
-                        "Component",
-                        options=fluid_list,
-                        index=fluid_list.index(default_component),
-                        key=f"gas_{i}_component_{j}",
-                        label_visibility="collapsed",
-                    )
+                default_components = [
+                    "methane",
+                    "ethane",
+                    "propane",
+                    "n-butane",
+                    "i-butane",
+                    "n-pentane",
+                    "i-pentane",
+                    "n-hexane",
+                    "n-heptane",
+                    "n-octane",
+                    "n-nonane",
+                    "nitrogen",
+                    "h2s",
+                    "co2",
+                    "h2o",
+                ]
+                
+                gas_composition_list = []
+                for key in st.session_state:
+                    if "compositions_table" in key:
+                        for column in st.session_state[key][f"gas_{i}"]:
+                            if "component" in column:
+                                idx = column.split("_")[1]
+                                gas_composition_list.append({
+                                    "component": st.session_state[key][f"gas_{i}"][column],
+                                    "molar_fraction": st.session_state[key][f"gas_{i}"][f"molar_fraction_{idx}"]
+                                })
+                if not gas_composition_list:
+                    gas_composition_list = [
+                        {"component": molecule, "molar_fraction": 0.0} for molecule in default_components
+                    ]
+
+                gas_composition_df = pd.DataFrame(gas_composition_list)
+                gas_composition_df_edited = gas_column.data_editor(
+                    gas_composition_df,
+                    num_rows="dynamic",
+                    key=f"table_gas_{i}_composition",
+                    height=int((len(default_components) + 1) * 37.35),
+                    use_container_width=True,
+                    column_config={
+                        "component": st.column_config.SelectboxColumn(
+                            st.session_state[f"gas_{i}"],
+                            options=fluid_list,
+                            width="small",
+                        ),
+                        "molar_fraction": st.column_config.NumberColumn(
+                            "mol %",
+                            min_value=0.0,
+                            format="%.3f"
+                        )
+                    }
                 )
-                gas_compositions_table[f"gas_{i}"][f"molar_fraction_{j}"] = (
-                    molar_fraction.text_input(
-                        "Molar Fraction",
-                        value="0",
-                        key=f"gas_{i}_molar_fraction_{j}",
-                        label_visibility="collapsed",
-                    )
-                )
+
+                for column in gas_composition_df_edited:
+                    for j, value in enumerate(gas_composition_df_edited[column]):
+                        gas_compositions_table[f"gas_{i}"][f"{column}_{j}"] = value
+
+            submit_composition = st.form_submit_button("Submit", type="primary")
+
+            if "gas_compositions_table" not in st.session_state or submit_composition:
+                st.session_state["gas_compositions_table"] = gas_compositions_table
 
     # add container with 4 columns and 2 rows
     with st.sidebar.expander("⚙️ Options"):
@@ -437,14 +460,14 @@ def main():
                     plot_limits[curve][f"{axis}"] = {}
                     plot_limits[curve][f"{axis}"]["lower_limit"] = (
                         lower_value_col.text_input(
-                            f"Lower limit",
+                            "Lower limit",
                             key=f"{axis}_{curve}_lower",
                             label_visibility="collapsed",
                         )
                     )
                     plot_limits[curve][f"{axis}"]["upper_limit"] = (
                         upper_value_col.text_input(
-                            f"Upper limit",
+                            "Upper limit",
                             key=f"{axis}_{curve}_upper",
                             label_visibility="collapsed",
                         )
@@ -774,7 +797,7 @@ def main():
             == "[mass] / [time]"
         ):
             kwargs_guarantee["flow_m"] = Q_(
-                float(st.session_state[f"flow_point_guarantee"]),
+                float(st.session_state["flow_point_guarantee"]),
                 parameters_map["flow"]["points"]["data_sheet_units"],
             )
         else:
@@ -788,7 +811,7 @@ def main():
                 parameters_map["suction_pressure"]["points"]["data_sheet_units"],
             ),
             T=Q_(
-                float(st.session_state[f"suction_temperature_point_guarantee"]),
+                float(st.session_state["suction_temperature_point_guarantee"]),
                 parameters_map["suction_temperature"]["points"]["data_sheet_units"],
             ),
             fluid=gas_composition_data_sheet["point_guarantee"],
@@ -807,15 +830,15 @@ def main():
             fluid=gas_composition_data_sheet["point_guarantee"],
         )
         kwargs_guarantee["speed"] = Q_(
-            float(st.session_state[f"speed_point_guarantee"]),
+            float(st.session_state["speed_point_guarantee"]),
             parameters_map["speed"]["points"]["data_sheet_units"],
         )
         kwargs_guarantee["b"] = Q_(
-            float(st.session_state[f"b_point_guarantee"]),
+            float(st.session_state["b_point_guarantee"]),
             parameters_map["b"]["points"]["data_sheet_units"],
         )
         kwargs_guarantee["D"] = Q_(
-            float(st.session_state[f"D_point_guarantee"]),
+            float(st.session_state["D_point_guarantee"]),
             parameters_map["D"]["points"]["data_sheet_units"],
         )
 
@@ -942,19 +965,19 @@ def main():
                     # TODO implement calculation without leakages
 
                 kwargs["b"] = Q_(
-                    float(st.session_state[f"b_point_guarantee"]),
+                    float(st.session_state["b_point_guarantee"]),
                     parameters_map["b"]["points"]["data_sheet_units"],
                 )
                 kwargs["D"] = Q_(
-                    float(st.session_state[f"D_point_guarantee"]),
+                    float(st.session_state["D_point_guarantee"]),
                     parameters_map["D"]["points"]["data_sheet_units"],
                 )
                 kwargs["casing_area"] = Q_(
-                    float(st.session_state[f"casing_area_point_guarantee"]),
+                    float(st.session_state["casing_area_point_guarantee"]),
                     parameters_map["casing_area"]["points"]["data_sheet_units"],
                 )
                 kwargs["surface_roughness"] = Q_(
-                    float(st.session_state[f"surface_roughness_point_guarantee"]),
+                    float(st.session_state["surface_roughness_point_guarantee"]),
                     parameters_map["surface_roughness"]["points"]["data_sheet_units"],
                 )
                 time.sleep(0.1)
@@ -1018,154 +1041,154 @@ def main():
 
             if straight_through:
                 # create interpolated point with point method
-                point_interpolated = getattr(straight_through, f"point")(
-                    flow_v=getattr(straight_through, f"guarantee_point").flow_v,
+                point_interpolated = getattr(straight_through, "point")(
+                    flow_v=getattr(straight_through, "guarantee_point").flow_v,
                     speed=straight_through.speed_operational,
                 )
 
                 results[f"φ{_t}"] = [
-                    round(p.phi.m, 5) for p in getattr(straight_through, f"test_points")
+                    round(p.phi.m, 5) for p in getattr(straight_through, "test_points")
                 ]
                 results[f"φ{_t} / φ{_sp}"] = [
                     round(
-                        p.phi.m / getattr(straight_through, f"guarantee_point").phi.m,
+                        p.phi.m / getattr(straight_through, "guarantee_point").phi.m,
                         5,
                     )
-                    for p in getattr(straight_through, f"test_points")
+                    for p in getattr(straight_through, "test_points")
                 ]
                 results["vi / vd"] = [
                     round(p.volume_ratio.m, 5)
-                    for p in getattr(straight_through, f"test_points")
+                    for p in getattr(straight_through, "test_points")
                 ]
                 results[f"(vi/vd){_t}/(vi/vd){_sp}"] = [
                     round(
                         p.volume_ratio.m
-                        / getattr(straight_through, f"guarantee_point").volume_ratio.m,
+                        / getattr(straight_through, "guarantee_point").volume_ratio.m,
                         5,
                     )
-                    for p in getattr(straight_through, f"test_points")
+                    for p in getattr(straight_through, "test_points")
                 ]
                 results[f"Mach{_t}"] = [
                     round(p.mach.m, 5)
-                    for p in getattr(straight_through, f"test_points")
+                    for p in getattr(straight_through, "test_points")
                 ]
                 results[f"Mach{_t} - Mach{_sp}"] = [
                     round(
-                        p.mach.m - getattr(straight_through, f"guarantee_point").mach.m,
+                        p.mach.m - getattr(straight_through, "guarantee_point").mach.m,
                         5,
                     )
-                    for p in getattr(straight_through, f"test_points")
+                    for p in getattr(straight_through, "test_points")
                 ]
                 results[f"Re{_t}"] = [
                     round(p.reynolds.m, 5)
-                    for p in getattr(straight_through, f"test_points")
+                    for p in getattr(straight_through, "test_points")
                 ]
                 results[f"Re{_t} / Re{_sp}"] = [
                     round(
                         p.reynolds.m
-                        / getattr(straight_through, f"guarantee_point").reynolds.m,
+                        / getattr(straight_through, "guarantee_point").reynolds.m,
                         5,
                     )
-                    for p in getattr(straight_through, f"test_points")
+                    for p in getattr(straight_through, "test_points")
                 ]
                 results[f"pd{conv} (bar)"] = [
                     round(p.disch.p("bar").m, 5)
-                    for p in getattr(straight_through, f"points_flange_sp")
+                    for p in getattr(straight_through, "points_flange_sp")
                 ]
                 results[f"pd{conv}/pd{_sp}"] = [
                     round(
                         p.disch.p("bar").m
-                        / getattr(straight_through, f"guarantee_point")
+                        / getattr(straight_through, "guarantee_point")
                         .disch.p("bar")
                         .m,
                         5,
                     )
-                    for p in getattr(straight_through, f"points_flange_sp")
+                    for p in getattr(straight_through, "points_flange_sp")
                 ]
                 results[f"Head{_t} (kJ/kg)"] = [
                     round(p.head.to("kJ/kg").m, 5)
-                    for p in getattr(straight_through, f"points_flange_sp")
+                    for p in getattr(straight_through, "points_flange_sp")
                 ]
                 results[f"Head{_t}/Head{_sp}"] = [
                     round(
                         p.head.to("kJ/kg").m
-                        / getattr(straight_through, f"guarantee_point")
+                        / getattr(straight_through, "guarantee_point")
                         .head.to("kJ/kg")
                         .m,
                         5,
                     )
-                    for p in getattr(straight_through, f"test_points")
+                    for p in getattr(straight_through, "test_points")
                 ]
                 results[f"Head{conv} (kJ/kg)"] = [
                     round(p.head.to("kJ/kg").m, 5)
-                    for p in getattr(straight_through, f"points_flange_sp")
+                    for p in getattr(straight_through, "points_flange_sp")
                 ]
                 results[f"Head{conv}/Head{_sp}"] = [
                     round(
                         p.head.to("kJ/kg").m
-                        / getattr(straight_through, f"guarantee_point")
+                        / getattr(straight_through, "guarantee_point")
                         .head.to("kJ/kg")
                         .m,
                         5,
                     )
-                    for p in getattr(straight_through, f"points_flange_sp")
+                    for p in getattr(straight_through, "points_flange_sp")
                 ]
                 results[f"Q{conv} (m3/h)"] = [
                     round(p.flow_v.to("m³/h").m, 5)
-                    for p in getattr(straight_through, f"points_flange_sp")
+                    for p in getattr(straight_through, "points_flange_sp")
                 ]
                 results[f"Q{conv}/Q{_sp}"] = [
                     round(
                         p.flow_v.to("m³/h").m
-                        / getattr(straight_through, f"guarantee_point")
+                        / getattr(straight_through, "guarantee_point")
                         .flow_v.to("m³/h")
                         .m,
                         5,
                     )
-                    for p in getattr(straight_through, f"points_flange_sp")
+                    for p in getattr(straight_through, "points_flange_sp")
                 ]
                 results[f"W{_t} (kW)"] = [
                     round(p.power.to("kW").m, 5)
-                    for p in getattr(straight_through, f"points_rotor_t")
+                    for p in getattr(straight_through, "points_rotor_t")
                 ]
                 results[f"W{_t}/W{_sp}"] = [
                     round(
                         p.power.to("kW").m
-                        / getattr(straight_through, f"guarantee_point")
+                        / getattr(straight_through, "guarantee_point")
                         .power.to("kW")
                         .m,
                         5,
                     )
-                    for p in getattr(straight_through, f"points_rotor_t")
+                    for p in getattr(straight_through, "points_rotor_t")
                 ]
                 results[f"W{conv} (kW)"] = [
                     round(p.power.to("kW").m, 5)
-                    for p in getattr(straight_through, f"points_rotor_sp")
+                    for p in getattr(straight_through, "points_rotor_sp")
                 ]
                 results[f"W{conv}/W{_sp}"] = [
                     round(
                         p.power.to("kW").m
-                        / getattr(straight_through, f"guarantee_point")
+                        / getattr(straight_through, "guarantee_point")
                         .power.to("kW")
                         .m,
                         5,
                     )
-                    for p in getattr(straight_through, f"points_rotor_sp")
+                    for p in getattr(straight_through, "points_rotor_sp")
                 ]
                 results[f"Eff{_t}"] = [
                     round(p.eff.m, 5)
-                    for p in getattr(straight_through, f"points_flange_t")
+                    for p in getattr(straight_through, "points_flange_t")
                 ]
                 results[f"Eff{conv}"] = [
                     round(p.eff.m, 5)
-                    for p in getattr(straight_through, f"points_flange_sp")
+                    for p in getattr(straight_through, "points_flange_sp")
                 ]
 
                 results[f"φ{_t}"].append(round(point_interpolated.phi.m, 5))
                 results[f"φ{_t} / φ{_sp}"].append(
                     round(
                         point_interpolated.phi.m
-                        / getattr(straight_through, f"guarantee_point").phi.m,
+                        / getattr(straight_through, "guarantee_point").phi.m,
                         5,
                     )
                 )
@@ -1173,7 +1196,7 @@ def main():
                 results[f"(vi/vd){_t}/(vi/vd){_sp}"].append(
                     round(
                         point_interpolated.volume_ratio.m
-                        / getattr(straight_through, f"guarantee_point").volume_ratio.m,
+                        / getattr(straight_through, "guarantee_point").volume_ratio.m,
                         5,
                     )
                 )
@@ -1181,7 +1204,7 @@ def main():
                 results[f"Mach{_t} - Mach{_sp}"].append(
                     round(
                         point_interpolated.mach.m
-                        - getattr(straight_through, f"guarantee_point").mach.m,
+                        - getattr(straight_through, "guarantee_point").mach.m,
                         5,
                     )
                 )
@@ -1189,7 +1212,7 @@ def main():
                 results[f"Re{_t} / Re{_sp}"].append(
                     round(
                         point_interpolated.reynolds.m
-                        / getattr(straight_through, f"guarantee_point").reynolds.m,
+                        / getattr(straight_through, "guarantee_point").reynolds.m,
                         5,
                     )
                 )
@@ -1199,7 +1222,7 @@ def main():
                 results[f"pd{conv}/pd{_sp}"].append(
                     round(
                         point_interpolated.disch.p("bar").m
-                        / getattr(straight_through, f"guarantee_point")
+                        / getattr(straight_through, "guarantee_point")
                         .disch.p("bar")
                         .m,
                         5,
@@ -1211,7 +1234,7 @@ def main():
                 results[f"Head{_t}/Head{_sp}"].append(
                     round(
                         point_interpolated.head.to("kJ/kg").m
-                        / getattr(straight_through, f"guarantee_point")
+                        / getattr(straight_through, "guarantee_point")
                         .head.to("kJ/kg")
                         .m,
                         5,
@@ -1223,7 +1246,7 @@ def main():
                 results[f"Head{conv}/Head{_sp}"].append(
                     round(
                         point_interpolated.head.to("kJ/kg").m
-                        / getattr(straight_through, f"guarantee_point")
+                        / getattr(straight_through, "guarantee_point")
                         .head.to("kJ/kg")
                         .m,
                         5,
@@ -1235,7 +1258,7 @@ def main():
                 results[f"Q{conv}/Q{_sp}"].append(
                     round(
                         point_interpolated.flow_v.to("m³/h").m
-                        / getattr(straight_through, f"guarantee_point")
+                        / getattr(straight_through, "guarantee_point")
                         .flow_v.to("m³/h")
                         .m,
                         5,
@@ -1250,7 +1273,7 @@ def main():
                     round(
                         point_interpolated.power.to("kW").m
                         / Q_(
-                            float(st.session_state[f"power_point_guarantee"]),
+                            float(st.session_state["power_point_guarantee"]),
                             parameters_map["power"]["points"]["data_sheet_units"],
                         )
                         .to("kW")
@@ -1264,9 +1287,9 @@ def main():
                 df_results = pd.DataFrame(results)
                 rename_index = {
                     i: f"Point {i+1}"
-                    for i in range(len(getattr(straight_through, f"points_flange_t")))
+                    for i in range(len(getattr(straight_through, "points_flange_t")))
                 }
-                rename_index[len(getattr(straight_through, f"points_flange_t"))] = (
+                rename_index[len(getattr(straight_through, "points_flange_t"))] = (
                     "Guarantee Point"
                 )
 

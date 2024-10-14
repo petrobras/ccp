@@ -16,12 +16,7 @@ from pathlib import Path
 
 # import everything that is common to ccp_app_straight_through and ccp_app_back_to_back
 from ccp.app.common import (
-    flow_m_units,
-    flow_v_units,
-    flow_units,
     pressure_units,
-    temperature_units,
-    speed_units,
     parameters_map,
     get_gas_composition,
     to_excel,
@@ -116,7 +111,7 @@ def main():
             with zipfile.ZipFile(file) as my_zip:
                 # get the ccp version
                 try:
-                    version = my_zip.read("ccp.version")
+                    version = my_zip.read("ccp.version").decode("utf-8")
                 except KeyError:
                     version = "0.3.5"
 
@@ -199,68 +194,91 @@ def main():
                 fluid_list.append(possible_name)
     fluid_list = sorted(fluid_list)
     fluid_list.insert(0, "")
+    with st.form(key="form_gas_selection", enter_to_submit=False, border=False):
+        with st.expander(
+            "Gas Selection",
+            expanded=st.session_state.expander_state,
+        ):
+            gas_compositions_table = {}
+            gas_columns = st.columns(6)
+            for i, gas_column in enumerate(gas_columns):
+                gas_compositions_table[f"gas_{i}"] = {}
 
-    with st.expander(
-        "Gas Selection",
-        expanded=st.session_state.expander_state,
-    ):
-        gas_compositions_table = {}
-        gas_columns = st.columns(6)
-        for i, gas_column in enumerate(gas_columns):
-            gas_compositions_table[f"gas_{i}"] = {}
+                gas_compositions_table[f"gas_{i}"]["name"] = gas_column.text_input(
+                    "Gas Name",
+                    value=f"gas_{i}",
+                    key=f"gas_{i}",
+                    help="""
+                    Gas name will be selected in Data Sheet and Test Data.
 
-            gas_compositions_table[f"gas_{i}"]["name"] = gas_column.text_input(
-                f"Gas Name",
-                value=f"gas_{i}",
-                key=f"gas_{i}",
-                help="""
-                Gas name will be selected in Data Sheet and Test Data.
+                    Fill in gas components and molar fractions for each gas.
+                    """
+                    if i == 0
+                    else None,
+                )
 
-                Fill in gas components and molar fractions for each gas.
-                """
-                if i == 0
-                else None,
-            )
-            component, molar_fraction = gas_column.columns([2, 1])
-            default_components = [
-                "methane",
-                "ethane",
-                "propane",
-                "n-butane",
-                "i-butane",
-                "n-pentane",
-                "i-pentane",
-                "n-hexane",
-                "n-heptane",
-                "n-octane",
-                "n-nonane",
-                "nitrogen",
-                "h2s",
-                "co2",
-                "h2o",
-            ]
-            for j, default_component in enumerate(default_components):
-                gas_compositions_table[f"gas_{i}"][f"component_{j}"] = (
-                    component.selectbox(
-                        "Component",
-                        options=fluid_list,
-                        index=fluid_list.index(default_component),
-                        key=f"gas_{i}_component_{j}",
-                        label_visibility="collapsed",
-                    )
+                default_components = [
+                    "methane",
+                    "ethane",
+                    "propane",
+                    "n-butane",
+                    "i-butane",
+                    "n-pentane",
+                    "i-pentane",
+                    "n-hexane",
+                    "n-heptane",
+                    "n-octane",
+                    "n-nonane",
+                    "nitrogen",
+                    "h2s",
+                    "co2",
+                    "h2o",
+                ]
+
+                gas_composition_list = []
+                for key in st.session_state:
+                    if "compositions_table" in key:
+                        for column in st.session_state[key][f"gas_{i}"]:
+                            if "component" in column:
+                                idx = column.split("_")[1]
+                                gas_composition_list.append({
+                                    "component": st.session_state[key][f"gas_{i}"][column],
+                                    "molar_fraction": st.session_state[key][f"gas_{i}"][f"molar_fraction_{idx}"]
+                                })
+                if not gas_composition_list:
+                    gas_composition_list = [
+                        {"component": molecule, "molar_fraction": 0.0} for molecule in default_components
+                    ]
+
+                gas_composition_df = pd.DataFrame(gas_composition_list)
+                gas_composition_df_edited = gas_column.data_editor(
+                    gas_composition_df,
+                    num_rows="dynamic",
+                    key=f"table_gas_{i}_composition",
+                    height=int((len(default_components) + 1) * 37.35),
+                    use_container_width=True,
+                    column_config={
+                        "component": st.column_config.SelectboxColumn(
+                            st.session_state[f"gas_{i}"],
+                            options=fluid_list,
+                            width="small",
+                        ),
+                        "molar_fraction": st.column_config.NumberColumn(
+                            "mol %",
+                            min_value=0.0,
+                            format="%.3f"
+                        )
+                    }
                 )
-                gas_compositions_table[f"gas_{i}"][f"molar_fraction_{j}"] = (
-                    molar_fraction.text_input(
-                        "Molar Fraction",
-                        value="0",
-                        key=f"gas_{i}_molar_fraction_{j}",
-                        label_visibility="collapsed",
-                        help="Molar fraction of the component.",
-                    )
-                )
-                check_correct_separator(
-                    gas_compositions_table[f"gas_{i}"][f"molar_fraction_{j}"]
-                )
+
+                for column in gas_composition_df_edited:
+                    for j, value in enumerate(gas_composition_df_edited[column]):
+                        gas_compositions_table[f"gas_{i}"][f"{column}_{j}"] = value
+
+            submit_composition = st.form_submit_button("Submit", type="primary")
+
+            if "gas_compositions_table" not in st.session_state or submit_composition:
+                st.session_state["gas_compositions_table"] = gas_compositions_table
 
     # add container with 4 columns and 2 rows
     with st.sidebar.expander("⚙️ Options"):
@@ -474,7 +492,7 @@ def main():
                         plot_limits[curve][section][f"{axis}"] = {}
                         plot_limits[curve][section][f"{axis}"]["lower_limit"] = (
                             lower_value_col.text_input(
-                                f"Lower limit",
+                                "Lower limit",
                                 key=f"{axis}_{curve}_{section}_lower",
                                 label_visibility="collapsed",
                             )
@@ -484,7 +502,7 @@ def main():
                         )
                         plot_limits[curve][section][f"{axis}"]["upper_limit"] = (
                             upper_value_col.text_input(
-                                f"Upper limit",
+                                "Upper limit",
                                 key=f"{axis}_{curve}_{section}_upper",
                                 label_visibility="collapsed",
                             )
@@ -1173,12 +1191,12 @@ def main():
             )
             if back_to_back:
                 # create interpolated point with point method
-                point_interpolated_sec1 = getattr(back_to_back, f"point_sec1")(
-                    flow_v=getattr(back_to_back, f"guarantee_point_sec1").flow_v,
+                point_interpolated_sec1 = getattr(back_to_back, "point_sec1")(
+                    flow_v=getattr(back_to_back, "guarantee_point_sec1").flow_v,
                     speed=back_to_back.speed_operational,
                 )
-                point_interpolated_sec2 = getattr(back_to_back, f"point_sec2")(
-                    flow_v=getattr(back_to_back, f"guarantee_point_sec2").flow_v,
+                point_interpolated_sec2 = getattr(back_to_back, "point_sec2")(
+                    flow_v=getattr(back_to_back, "guarantee_point_sec2").flow_v,
                     speed=back_to_back.speed_operational,
                 )
 
@@ -1454,7 +1472,7 @@ def main():
                             results[key].append(
                                 round(
                                     point_interpolated_sec2.disch.p("bar").m
-                                    / getattr(back_to_back, f"guarantee_point_sec2")
+                                    / getattr(back_to_back, "guarantee_point_sec2")
                                     .disch.p("bar")
                                     .m,
                                     5,
@@ -1479,7 +1497,7 @@ def main():
                                         Q_(
                                             float(
                                                 st.session_state[
-                                                    f"power_section_1_point_guarantee"
+                                                    "power_section_1_point_guarantee"
                                                 ]
                                             ),
                                             parameters_map["power"][section][
@@ -1491,7 +1509,7 @@ def main():
                                         + Q_(
                                             float(
                                                 st.session_state[
-                                                    f"power_section_2_point_guarantee"
+                                                    "power_section_2_point_guarantee"
                                                 ]
                                             ),
                                             parameters_map["power"][section][
