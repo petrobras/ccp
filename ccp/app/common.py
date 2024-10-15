@@ -201,8 +201,8 @@ def convert(data, version):
                         del data[k]
 
             # check if nothing is found
-            empty = [True if v else False for k, v in gas_compositions_table.items()]
-            if all(empty):
+            filled = [True if v else False for k, v in gas_compositions_table.items()]
+            if all(filled):
                 data["gas_compositions_table"] = gas_compositions_table
 
     return data
