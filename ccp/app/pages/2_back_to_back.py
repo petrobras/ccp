@@ -141,7 +141,7 @@ def main():
             session_state_data_copy = session_state_data.copy()
             # remove keys that cannot be set with st.session_state.update
             for key in session_state_data.keys():
-                if key.startswith(("FormSubmitter", "my_form", "uploaded")):
+                if key.startswith(("FormSubmitter", "my_form", "uploaded", "form", "table")):
                     del session_state_data_copy[key]
             st.session_state.update(session_state_data_copy)
             st.session_state.session_name = file.name.replace(".ccp", "")
