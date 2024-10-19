@@ -260,7 +260,9 @@ def main():
                         "molar_fraction": st.column_config.NumberColumn(
                             "mol %",
                             min_value=0.0,
-                            format="%.3f"
+                            default=0.0,
+                            required=True,
+                            format="%.3f",
                         )
                     }
                 )

@@ -141,7 +141,7 @@ def main():
             session_state_data_copy = session_state_data.copy()
             # remove keys that cannot be set with st.session_state.update
             for key in session_state_data.keys():
-                if key.startswith(("FormSubmitter", "my_form", "uploaded")):
+                if key.startswith(("FormSubmitter", "my_form", "uploaded", "form", "table")):
                     del session_state_data_copy[key]
             st.session_state.update(session_state_data_copy)
             st.session_state.session_name = file.name.replace(".ccp", "")
@@ -266,7 +266,9 @@ def main():
                         "molar_fraction": st.column_config.NumberColumn(
                             "mol %",
                             min_value=0.0,
-                            format="%.3f"
+                            default=0.0,
+                            required=True,
+                            format="%.3f",
                         )
                     }
                 )
