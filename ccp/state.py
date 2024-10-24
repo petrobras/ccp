@@ -612,7 +612,25 @@ class State(CP.AbstractState):
         args = [k for k, v in args.items() if v is not None]
         try:
             if p is not None and T is not None:
-                super().update(CP.PT_INPUTS, p.magnitude, T.magnitude)
+                try:
+                    super().update(CP.PT_INPUTS, p.magnitude, T.magnitude)
+                except ValueError:
+                    print('inside valu')
+                    # handle convergence error by forcing gas state directly with REFPROP
+                    # calculate with p and T and update with their values
+                    fluids = self._fluid.replace("&", "*")
+                    r = _RP.REFPROPdll(
+                        fluids,
+                        "PTV",
+                        "H,P",
+                        _RP.MASS_BASE_SI,
+                        0,
+                        0,
+                        p.magnitude,
+                        T.magnitude,
+                        self.get_mole_fractions(),
+                    )
+                    super().update(CP.HmassP_INPUTS, r.Output[0], r.Output[1])
             elif p is not None and rho is not None:
                 super().update(CP.DmassP_INPUTS, rho.magnitude, p.magnitude)
             elif p is not None and h is not None:

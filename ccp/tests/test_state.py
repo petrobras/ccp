@@ -408,3 +408,24 @@ def test_ps_gas_update():
     )
 
     assert_allclose(s.rho().m, 4.241756, rtol=1e-3)
+
+
+def test_pt_gas_update():
+    s = ccp.State(
+        **{
+            "T": Q_(289.15, "kelvin"),
+            "p": Q_(3.82, "bar"),
+            "fluid": {
+                "PROPANE": 9.999999999998899e-05,
+                "WATER": 2.999999999997449e-05,
+                "NITROGEN": 0.0016599999999999948,
+                "CO2": 0.7140400000000001,
+                "H2S": 0.0004999999999999449,
+                "METHANE": 0.28218,
+                "ETHANE": 0.0014899999999999913,
+            },
+        }
+    )
+
+    assert_allclose(s.T().m, 289.15, rtol=1e-3)
+    assert_allclose(s.p().m, 3.82e5, rtol=1e-3)
