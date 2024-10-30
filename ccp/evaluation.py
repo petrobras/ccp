@@ -75,6 +75,7 @@ class Evaluation:
             Orifice diameter (m).
         tappings : str, optional
             Tappings of the orifice.
+            Options are "flange", "corner" or "D D/2".
             Default is "flange".
         n_clusters : int, optional
             Number of clusters to be used in the K-means algorithm.
@@ -98,6 +99,7 @@ class Evaluation:
             "pd": "pressure",
             "Td": "temperature",
             "speed": "speed",
+            "delta_p": "pressure",
         }
         self.data_units = data_units
         self.temperature_fluctuation = temperature_fluctuation

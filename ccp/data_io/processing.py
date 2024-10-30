@@ -199,6 +199,11 @@ def filter_data(
                 max_fluctuation = speed_fluctuation
                 # remove speed values below 1
                 mean_df.loc[mean_df[column] < 1, column] = None
+            elif property_type == "delta_p":
+                max_fluctuation = 100
+                # remove pressure values equal to 0
+                if "delta_p" in mean_df.columns:
+                    mean_df.loc[mean_df[column] <= 0, column] = None
             else:
                 raise ValueError(
                     f"Invalid data type for column {column}. "
@@ -220,6 +225,11 @@ def filter_data(
                 max_fluctuation = speed_fluctuation
                 # remove speed values below 1
                 mean_df.loc[mean_df[column] < 1, "valid"] = False
+            elif property_type == "delta_p":
+                max_fluctuation = 100
+                # remove pressure values equal to 0
+                if "delta_p" in mean_df.columns:
+                    mean_df.loc[mean_df[column] <= 0, "valid"] = False
             else:
                 raise ValueError(
                     f"Invalid data type for column {column}. "
