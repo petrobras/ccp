@@ -354,10 +354,15 @@ class Evaluation:
                 df.loc[i, "expected_power"] = point_expected.power.m
                 df.loc[i, "expected_p_disch"] = point_expected.disch.p("bar").m
                 df.loc[i, "delta_eff"] = (point_op.eff - point_expected.eff).m
-                df.loc[i, "delta_head"] = (point_op.head - point_expected.head).m
-                df.loc[i, "delta_power"] = (point_op.power - point_expected.power).m
+                df.loc[i, "delta_head"] = (
+                    (point_op.head - point_expected.head) / point_expected.head
+                ).m
+                df.loc[i, "delta_power"] = (
+                    (point_op.power - point_expected.power) / point_expected.power
+                ).m
                 df.loc[i, "delta_p_disch"] = (
-                    point_op.disch.p("bar") - point_expected.disch.p("bar")
+                    point_op.disch.p("bar")
+                    - point_expected.disch.p("bar") / point_expected.disch.p("bar")
                 ).m
 
         # plot eff in plot with colormap showing the time
