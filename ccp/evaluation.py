@@ -99,7 +99,7 @@ class Evaluation:
             "pd": "pressure",
             "Td": "temperature",
             "speed": "speed",
-            "delta_p": "pressure",
+            "delta_p": "delta_p",
         }
         self.data_units = data_units
         self.temperature_fluctuation = temperature_fluctuation
