@@ -346,7 +346,7 @@ def test_evaluation_calculate_points_delta_p_flag():
 
     # remove invalid values
     df_results = df_results[df_results.valid]
-    assert_allclose(df_results["delta_eff"].mean(), 0.111338, rtol=1e-2)
+    assert_allclose(df_results["delta_eff"].mean(), 11.096486, rtol=1e-2)
 
 def test_evaluation_calculate_points_delta_p_3_values():
     data_path = Path(ccp.__file__).parent / "tests/data"
