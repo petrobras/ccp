@@ -615,7 +615,6 @@ class State(CP.AbstractState):
                 try:
                     super().update(CP.PT_INPUTS, p.magnitude, T.magnitude)
                 except ValueError:
-                    print('inside valu')
                     # handle convergence error by forcing gas state directly with REFPROP
                     # calculate with p and T and update with their values
                     fluids = self._fluid.replace("&", "*")
