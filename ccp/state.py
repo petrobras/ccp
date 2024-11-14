@@ -715,8 +715,16 @@ class State(CP.AbstractState):
             args_dict = {}
             for k in args:
                 args_dict[k] = locals()[k]
+            args_dict["fluid"] = self.fluid
+            args_repr = (
+                str(args_dict)
+                .replace(">", "")
+                .replace("<", "")
+                .replace("Quantity", "Q_")
+            )
+
             raise ValueError(
-                f"Could not define state with {args_dict} and {self.fluid}"
+                f"Could not define state with ccp.State(**{args_repr})"
             ) from e
 
     def get_coolprop_state(self):
