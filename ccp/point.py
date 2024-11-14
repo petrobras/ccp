@@ -1766,8 +1766,9 @@ def head_reference_2017(suc, disch, num_steps=100):
         p = next_p
         p_intervals.append(p)
 
+    state1 = ccp.State(p=suc.p(), s=suc.s(), fluid=suc.fluid)
     def calc_step_discharge_z(s1, s0, p1, p0, z0, R, e):
-        state1 = ccp.State(p=p1, s=s1, fluid=suc.fluid)
+        state1.update(p=p1, s=s1) 
         z1 = state1.z()
         a = (z0 * (p1 / p0) - z1) / ((p1 / p0) - 1)
         b = (z1 - z0) / ((p1 / p0) - 1)
