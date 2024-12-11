@@ -410,8 +410,8 @@ class Point:
             elif update_type == "temperature":
                 disch.update(rho=disch_rho, T=x)
             new_eff = self.eff_calc_func(self.suc, disch)
-            if not 0.0 < new_eff < 1.1:
-                raise ValueError
+            if not 0.0 < new_eff < 1.5:
+                raise ValueError("Efficiency did not converge")
 
             return (new_eff - eff).magnitude
 
