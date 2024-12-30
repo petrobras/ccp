@@ -33,6 +33,7 @@ class FlowOrifice:
             Orifice diameter (m).
         tappings : str, optional
             Tappings of the orifice.
+            Options are "flange", "corner" or "D D/2".
             Default is "flange".
         qm : float, Quantity, optional
             Mass flow rate (kg/s).
@@ -133,4 +134,5 @@ class FlowOrifice:
             return abs(Reyn_qm - Reyn.magnitude)
 
         newton(update_Reyn, 1e8, tol=1e-5)
+
         return self.flow_m.to("kg/s")

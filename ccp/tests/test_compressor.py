@@ -325,7 +325,7 @@ def straight_through():
     compressor = StraightThrough(
         guarantee_point=guarantee_point,
         test_points=test_points,
-        speed=Q_(12193.63898, "RPM"),
+        speed_operational=Q_(12193.63898, "RPM"),
     )
 
     return compressor
@@ -858,7 +858,7 @@ def back_to_back():
         guarantee_point_sec2=guarantee_point_sec2,
         test_points_sec1=test_points_sec1,
         test_points_sec2=test_points_sec2,
-        speed=Q_(12152.45187, "RPM"),
+        speed_operational=Q_(12152.45187, "RPM"),
     )
 
     return compressor_kwargs
@@ -962,7 +962,7 @@ def test_back_to_back(back_to_back):
     # imp_sec1 specified
     p0f_sp = back_to_back.point_sec1(
         flow_m=Q_(153951.321926329, "kg/h"),
-        speed=back_to_back.speed,
+        speed=back_to_back.speed_operational,
     )
     assert_allclose(p0f_sp.flow_m, Q_(153951.321926329, "kg/h").to("kg/s"), rtol=1e-2)
     assert_allclose(p0f_sp.suc.T(), 313.15, rtol=1e-3)
@@ -976,7 +976,7 @@ def test_back_to_back(back_to_back):
     # imp_sec2 specified
     p0f_sp = back_to_back.point_sec2(
         flow_m=Q_(53.092244, "kg/s"),
-        speed=back_to_back.speed,
+        speed=back_to_back.speed_operational,
     )
     assert_allclose(p0f_sp.flow_m, 53.092244)
     assert_allclose(p0f_sp.suc.T(), 313.15)
@@ -1085,7 +1085,7 @@ def test_back_to_back_with_reynolds_correction(back_to_back):
     # imp_sec1 specified
     p0f_sp = back_to_back.point_sec1(
         flow_m=Q_(153951.321926329, "kg/h"),
-        speed=back_to_back.speed,
+        speed=back_to_back.speed_operational,
     )
     assert_allclose(p0f_sp.flow_m, Q_(153951.321926329, "kg/h").to("kg/s"), rtol=1e-2)
     assert_allclose(p0f_sp.suc.T(), 313.15, rtol=1e-3)
@@ -1099,7 +1099,7 @@ def test_back_to_back_with_reynolds_correction(back_to_back):
     # imp_sec2 specified
     p0f_sp = back_to_back.point_sec2(
         flow_m=Q_(53.092244, "kg/s"),
-        speed=back_to_back.speed,
+        speed=back_to_back.speed_operational,
     )
     assert_allclose(p0f_sp.flow_m, 53.092244)
     assert_allclose(p0f_sp.suc.T(), 313.15)
@@ -1114,7 +1114,7 @@ def test_back_to_back_calculate_speed(back_to_back):
     back_to_back = BackToBack(**back_to_back, reynolds_correction=True)
     back_to_back = back_to_back.calculate_speed_to_match_discharge_pressure()
     point_sp = back_to_back.point_sec2(
-        speed=back_to_back.speed,
+        speed=back_to_back.speed_operational,
         flow_m=back_to_back.guarantee_point_sec2.flow_m,
     )
     assert_allclose(point_sp.disch.p(), back_to_back.guarantee_point_sec2.disch.p())

@@ -75,6 +75,7 @@ class Evaluation:
             Orifice diameter (m).
         tappings : str, optional
             Tappings of the orifice.
+            Options are "flange", "corner" or "D D/2".
             Default is "flange".
         n_clusters : int, optional
             Number of clusters to be used in the K-means algorithm.
@@ -98,6 +99,7 @@ class Evaluation:
             "pd": "pressure",
             "Td": "temperature",
             "speed": "speed",
+            "delta_p": "delta_p",
         }
         self.data_units = data_units
         self.temperature_fluctuation = temperature_fluctuation
@@ -351,12 +353,17 @@ class Evaluation:
                 df.loc[i, "expected_head"] = point_expected.head.m
                 df.loc[i, "expected_power"] = point_expected.power.m
                 df.loc[i, "expected_p_disch"] = point_expected.disch.p("bar").m
-                df.loc[i, "delta_eff"] = (point_op.eff - point_expected.eff).m
-                df.loc[i, "delta_head"] = (point_op.head - point_expected.head).m
-                df.loc[i, "delta_power"] = (point_op.power - point_expected.power).m
+                df.loc[i, "delta_eff"] = (point_op.eff - point_expected.eff).m * 100
+                df.loc[i, "delta_head"] = (
+                    (point_op.head - point_expected.head) / point_expected.head
+                ).m * 100
+                df.loc[i, "delta_power"] = (
+                    (point_op.power - point_expected.power) / point_expected.power
+                ).m * 100
                 df.loc[i, "delta_p_disch"] = (
-                    point_op.disch.p("bar") - point_expected.disch.p("bar")
-                ).m
+                    (point_op.disch.p("bar") - point_expected.disch.p("bar"))
+                    / point_expected.disch.p("bar")
+                ).m * 100
 
         # plot eff in plot with colormap showing the time
 

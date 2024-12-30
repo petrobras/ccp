@@ -2,6 +2,8 @@
 
 import io
 import pandas as pd
+import toml
+from packaging.version import Version
 
 # parameters with name and label
 flow_m_units = ["kg/h", "kg/min", "kg/s", "lbm/h", "lbm/min", "lbm/s"]
@@ -156,6 +158,56 @@ parameters_map = {
 }
 
 
+def convert(data, version):
+    version = Version(version)
+    # previous than v0.3.6 and older
+    if version < Version("0.3.6"):  # update
+        if isinstance(data, io.StringIO):
+            file = toml.load(data)
+            new_file = {}
+            for k, v in file.items():
+                if k == "speed":
+                    new_file["speed_operational"] = v
+                else:
+                    new_file[k] = v
+            data = io.StringIO(toml.dumps(new_file))
+    # previous than v0.3.7
+    if version < Version("0.3.7"):
+        if isinstance(data, dict):
+            gas_compositions_table = {}
+            gas_list = []
+            for key in data:
+                if key.startswith("gas"):
+                    try:
+                        gas_list.append(f"gas_{int(key.split('_')[1])}")
+                    except ValueError:
+                        continue
+
+            gas_list = list(set(gas_list))
+            gas_list.sort()
+
+            data_copy = data.copy()
+
+            for gas in gas_list:
+                gas_compositions_table[gas] = {}
+                for k, v in data_copy.items():
+                    if k.startswith(gas) and "component" in k:
+                        j = k.split("_")[-1]
+                        gas_compositions_table[gas][f"component_{j}"] = v
+                        del data[k]
+                    elif k.startswith(gas) and "molar_fraction" in k:
+                        j = k.split("_")[-1]
+                        gas_compositions_table[gas][f"molar_fraction_{j}"] = v
+                        del data[k]
+
+            # check if nothing is found
+            filled = [True if v else False for k, v in gas_compositions_table.items()]
+            if all(filled):
+                data["gas_compositions_table"] = gas_compositions_table
+
+    return data
+
+
 def get_gas_composition(gas_name, gas_compositions_table, default_components):
     """Get gas composition from gas name.
 
@@ -172,14 +224,18 @@ def get_gas_composition(gas_name, gas_compositions_table, default_components):
     gas_composition = {}
     for gas in gas_compositions_table.keys():
         if gas_compositions_table[gas]["name"] == gas_name:
-            for i in range(len(default_components)):
-                component = gas_compositions_table[gas][f"component_{i}"]
-                molar_fraction = gas_compositions_table[gas][f"molar_fraction_{i}"]
-                if molar_fraction == "":
-                    molar_fraction = 0
-                molar_fraction = float(molar_fraction)
-                if molar_fraction != 0:
-                    gas_composition[component] = molar_fraction
+            for column in gas_compositions_table[gas]:
+                if "component" in column:
+                    idx = column.split("_")[1]
+                    component = gas_compositions_table[gas][f"component_{idx}"]
+                    molar_fraction = gas_compositions_table[gas][
+                        f"molar_fraction_{idx}"
+                    ]
+                    if molar_fraction == "":
+                        molar_fraction = 0
+                    molar_fraction = float(molar_fraction)
+                    if molar_fraction != 0:
+                        gas_composition[component] = molar_fraction
 
     return gas_composition
 

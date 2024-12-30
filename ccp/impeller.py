@@ -129,13 +129,19 @@ class ImpellerPlotFunction:
         # store values for surge flow and attr value in lists so that we can plot them
         surge_flow_list = []
         surge_attr_list = []
+
+        if "." in attr:
+            attr_str = attr.split(".")[-1]
+        else:
+            attr_str = attr
+        
         try:
             attr_units = kwargs.get(
-                f"{attr}_units", r_getattr(impeller_object.curves[0], attr).units
+                f"{attr_str}_units", r_getattr(impeller_object.curves[0], attr).units
             )
         except AttributeError:
             attr_units = kwargs.get(
-                f"{attr}_units", r_getattr(impeller_object.curves[0], attr)().units
+                f"{attr_str}_units", r_getattr(impeller_object.curves[0], attr)().units
             )
 
         color_iterator = iter(tableau_colors)
@@ -505,7 +511,7 @@ class Impeller:
             suc=p0.suc,
             disch=disch,
             flow_v=flow_v,
-            speed=speed,
+            speed=current_curve.speed,
             b=p0.b,
             D=p0.D,
             power_losses=power_losses,

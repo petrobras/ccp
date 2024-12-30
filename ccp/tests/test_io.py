@@ -5,6 +5,7 @@ from pathlib import Path
 from numpy.testing import assert_allclose
 from pandas.testing import assert_frame_equal
 import ccp
+import ccp.data_io
 
 Q_ = ccp.Q_
 
@@ -146,3 +147,24 @@ def test_filter_data_flag():
             },
         ),
     )
+
+
+def test_filter_real_data():
+    data_path = Path(ccp.__file__).parent / "tests/data"
+    # load data.parquet
+    df = pd.read_parquet(data_path / "data.parquet")
+    data_type = {
+            "ps": "pressure",
+            "Ts": "temperature",
+            "pd": "pressure",
+            "Td": "temperature",
+            "speed": "speed",
+            "delta_p": "delta_p",
+        }
+
+    df = ccp.data_io.filter_data(
+        df,
+        data_type=data_type,
+    )
+
+    assert len(df) == 2

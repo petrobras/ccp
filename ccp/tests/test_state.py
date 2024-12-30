@@ -310,9 +310,8 @@ def test_improved_error_message():
         ccp.State(p=100000, T=20, fluid={"methane": 1 - 1e-15, "ethane": 1e-15})
 
     assert (
-        "Could not define state with {'T': <Quantity(20, 'kelvin')>, 'p': "
-        "<Quantity(100000, 'pascal')>} and {'METHANE': 0.999999999999999, 'ETHANE': "
-        "9.992007221626409e-16}"
+        "Could not define state with ccp.State(**{'p': Q_(100000, 'pascal'), 'T': Q_(20, 'kelvin'), "
+        "'fluid': {'METHANE': 0.999999999999999, 'ETHANE': 9.992007221626409e-16}})"
     ) in str(exc.value)
 
 
@@ -378,3 +377,54 @@ def test_fluids_not_in_coolprop_json_fluid_library():
     assert_allclose(s.rho(), 2.222332)
     s = ccp.State(p=100000, T=300, fluid={"1-Pentene": 1})
     assert_allclose(s.rho(), 633.523164)
+
+
+def test_fluids_not_in_coolprop_json_fluid_library():
+    s = ccp.State(p=100000, T=300, fluid={"13Butadiene": 1})
+    assert_allclose(s.rho(), 2.222332)
+    s = ccp.State(p=100000, T=300, fluid={"1-Pentene": 1})
+    assert_allclose(s.rho(), 633.523164)
+
+
+def test_ps_gas_update():
+    s = ccp.State(
+        **{
+            "p": Q_(442071.736, "pascal"),
+            "s": Q_(4158.72138, "joule / kelvin / kilogram"),
+            "fluid": {
+                "METHANE": 0.5897600000000002,
+                "CO2": 0.36605,
+                "ETHANE": 0.030989999999999962,
+                "PROPANE": 0.006000000000000005,
+                "NITROGEN": 0.005499999999999949,
+                "BUTANE": 0.0008000000000000229,
+                "ISOBUTAN": 0.0004999999999999449,
+                "H2S": 0.00019999999999997797,
+                "PENTANE": 9.999999999998899e-05,
+                "IPENTANE": 9.999999999998899e-05,
+            },
+        }
+    )
+
+    assert_allclose(s.rho().m, 4.241756, rtol=1e-3)
+
+
+def test_pt_gas_update():
+    s = ccp.State(
+        **{
+            "T": Q_(289.15, "kelvin"),
+            "p": Q_(3.82, "bar"),
+            "fluid": {
+                "PROPANE": 9.999999999998899e-05,
+                "WATER": 2.999999999997449e-05,
+                "NITROGEN": 0.0016599999999999948,
+                "CO2": 0.7140400000000001,
+                "H2S": 0.0004999999999999449,
+                "METHANE": 0.28218,
+                "ETHANE": 0.0014899999999999913,
+            },
+        }
+    )
+
+    assert_allclose(s.T().m, 289.15, rtol=1e-3)
+    assert_allclose(s.p().m, 3.82e5, rtol=1e-3)
