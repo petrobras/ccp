@@ -41,6 +41,18 @@ class State(CP.AbstractState):
     EOS : str, optional
         String with REFPROP, HEOS, PR or SRK.
         Default is set in ccp.config.EOS
+    phase : str, optional
+        String with phase information.
+        Options are:
+        - "not_imposed"
+        - "liquid"
+        - "gas"
+        - "two_phase"
+        - "supercritical_liquid"
+        - "supercritical_gas"
+        - "supercritical"
+        Default is "not_imposed", in this case REFPROP/CoolProp will determine the phase.
+        The phase calculation may require a non-trivial flash calculation which can be computationally expensive.
 
     Returns
     -------
@@ -94,10 +106,21 @@ class State(CP.AbstractState):
         rho=None,
         fluid=None,
         EOS=None,
+        phase="not_imposed",
     ):
         # no call to super(). see :
         # http://stackoverflow.com/questions/18260095/
         self.EOS = EOS
+        self.phase = phase
+        self._phase_dict = {
+            "liquid": CP.iphase_liquid,
+            "gas": CP.iphase_gas,
+            "two_phase": CP.iphase_twophase,
+            "supercritical_liquid": CP.iphase_supercritical_liquid,
+            "supercritical_gas": CP.iphase_supercritical_gas,
+            "supercritical": CP.iphase_supercritical,
+            "not_imposed": CP.iphase_not_imposed,
+        }
 
         constituents = []
         molar_fractions = []
@@ -124,6 +147,7 @@ class State(CP.AbstractState):
                     "You might have repeated components in the fluid dictionary."
                 )
 
+        self.specify_phase(self._phase_dict[phase])
         self.update(**self.setup_args)
 
     def __repr__(self):
@@ -586,6 +610,7 @@ class State(CP.AbstractState):
         rho=None,
         h=None,
         s=None,
+        phase=None,
         **kwargs,
     ):
         """Update the state.
@@ -605,7 +630,21 @@ class State(CP.AbstractState):
             Enthalpy (J/kg).
         s : float, pint.Quantity
             Entropy (J/(kg*degK)).
+        phase : str, optional
+            String with phase information.
+            Options are:
+            - "not_imposed"
+            - "liquid"
+            - "gas"
+            - "two_phase"
+            - "supercritical_liquid"
+            - "supercritical_gas"
+            - "supercritical"
+            Default is the phase defined in the state initialization.
         """
+        if phase:
+            self.specify_phase(self._phase_dict[phase])
+
         args = locals().copy()
         for item in ["kwargs", "self", "__class__"]:
             args.pop(item)
@@ -726,6 +765,9 @@ class State(CP.AbstractState):
             raise ValueError(
                 f"Could not define state with ccp.State(**{args_repr})"
             ) from e
+
+        # go back to initialization phase after calculation
+        self.specify_phase(self._phase_dict[self.phase])
 
     def get_coolprop_state(self):
         """Return a CoolProp state object."""
