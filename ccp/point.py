@@ -857,6 +857,7 @@ class Point:
             "speed": dict(
                 suc=suc,
                 eff=eff_converted,
+                power_losses=original_point.power_losses,
                 phi=original_point.phi,
                 psi=psi_converted,
                 volume_ratio=original_point.volume_ratio,
@@ -867,6 +868,7 @@ class Point:
             "volume_ratio": dict(
                 suc=suc,
                 eff=eff_converted,
+                power_losses=original_point.power_losses,
                 phi=original_point.phi,
                 psi=psi_converted,
                 speed=speed,
