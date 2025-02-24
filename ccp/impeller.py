@@ -339,15 +339,16 @@ class Impeller:
 
     @check_units
     def __init__(self, points):
-        self.points = deepcopy(points)
+        points_init = deepcopy(points)
 
-        losses_dict = {p.power_losses: p.speed for p in self.points}
+        losses_dict = {p.power_losses: p.speed for p in points_init}
         max_losses = max(losses_dict.keys())
         max_losses_speed = losses_dict[max_losses]
 
         curves = []
+        points_update = []
         for speed, grouped_points in groupby(
-            sorted(self.points, key=lambda point: point.speed),
+            sorted(points_init, key=lambda point: point.speed),
             key=lambda point: point.speed,
         ):
             if max_losses.m > 0:
@@ -367,11 +368,14 @@ class Impeller:
                     else:
                         p_new = deepcopy(p)
                     points.append(p_new)
+                    points_update.append(p_new)
             else:
                 points = [point for point in grouped_points]
+                points_update = points_init
             curve = Curve(points)
             curves.append(curve)
             setattr(self, f"curve_{int(curve.speed.magnitude)}", curve)
+        self.points = points_update
         self.curves = curves
         self.disch = ImpellerState([c.disch for c in self.curves])
 
