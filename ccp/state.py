@@ -44,14 +44,13 @@ class State(CP.AbstractState):
     phase : str, optional
         String with phase information.
         Options are:
-        - "not_imposed"
         - "liquid"
         - "gas"
         - "two_phase"
         - "supercritical_liquid"
         - "supercritical_gas"
         - "supercritical"
-        Default is "not_imposed", in this case REFPROP/CoolProp will determine the phase.
+        Default is None, in this case REFPROP/CoolProp will determine the phase.
         The phase calculation may require a non-trivial flash calculation which can be computationally expensive.
 
     Returns
@@ -106,7 +105,7 @@ class State(CP.AbstractState):
         rho=None,
         fluid=None,
         EOS=None,
-        phase="not_imposed",
+        phase=None,
     ):
         # no call to super(). see :
         # http://stackoverflow.com/questions/18260095/
@@ -119,7 +118,6 @@ class State(CP.AbstractState):
             "supercritical_liquid": CP.iphase_supercritical_liquid,
             "supercritical_gas": CP.iphase_supercritical_gas,
             "supercritical": CP.iphase_supercritical,
-            "not_imposed": CP.iphase_not_imposed,
         }
 
         constituents = []
@@ -147,7 +145,8 @@ class State(CP.AbstractState):
                     "You might have repeated components in the fluid dictionary."
                 )
 
-        self.specify_phase(self._phase_dict[phase])
+        if phase:
+            self.specify_phase(self._phase_dict[phase])
         self.update(**self.setup_args)
 
     def __repr__(self):
@@ -633,7 +632,6 @@ class State(CP.AbstractState):
         phase : str, optional
             String with phase information.
             Options are:
-            - "not_imposed"
             - "liquid"
             - "gas"
             - "two_phase"
@@ -767,7 +765,8 @@ class State(CP.AbstractState):
             ) from e
 
         # go back to initialization phase after calculation
-        self.specify_phase(self._phase_dict[self.phase])
+        if self.phase:
+            self.specify_phase(self._phase_dict[self.phase])
 
     def get_coolprop_state(self):
         """Return a CoolProp state object."""
