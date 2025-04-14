@@ -428,3 +428,36 @@ def test_pt_gas_update():
 
     assert_allclose(s.T().m, 289.15, rtol=1e-3)
     assert_allclose(s.p().m, 3.82e5, rtol=1e-3)
+
+
+def test_call_refprop():
+    s = ccp.State(
+        **{
+            "p": Q_(442071.736, "pascal"),
+            "s": Q_(4158.72138, "joule / kelvin / kilogram"),
+            "fluid": {
+                "METHANE": 0.5897600000000002,
+                "CO2": 0.36605,
+                "ETHANE": 0.030989999999999962,
+                "PROPANE": 0.006000000000000005,
+                "NITROGEN": 0.005499999999999949,
+                "BUTANE": 0.0008000000000000229,
+                "ISOBUTAN": 0.0004999999999999449,
+                "H2S": 0.00019999999999997797,
+                "PENTANE": 9.999999999998899e-05,
+                "IPENTANE": 9.999999999998899e-05,
+            },
+        }
+    )
+
+    r = s._call_REFPROP(
+        **{
+            "p": Q_(442071.736, "pascal"),
+            "s": Q_(4158.72138, "joule / kelvin / kilogram"),
+            "phase": "gas",
+        }
+    )
+
+    assert_allclose(r["p"], 442071.736, rtol=1e-3)
+    assert_allclose(r["s"], 4158.72138, rtol=1e-3)
+
