@@ -150,14 +150,17 @@ class State(CP.AbstractState):
         self.update(**self.setup_args)
 
     def __repr__(self):
-        args = {k: v for k, v in self.init_args.items() if v is not None}
-        args_repr = [f'{k}=Q_("{getattr(self, k)():.0f~P}")' for k, v in args.items()]
-        args_repr = ", ".join(args_repr)
+        try:
+            args = {k: v for k, v in self.init_args.items() if v is not None}
+            args_repr = [f'{k}=Q_("{getattr(self, k)():.0f~P}")' for k, v in args.items()]
+            args_repr = ", ".join(args_repr)
 
-        fluid_dict = self.fluid
-        sorted_fluid_keys = sorted(fluid_dict, key=fluid_dict.get, reverse=True)
-        fluid_repr = [f'"{k}": {fluid_dict[k]:.5f}' for k in sorted_fluid_keys]
-        fluid_repr = "fluid={" + ", ".join(fluid_repr) + "}"
+            fluid_dict = self.fluid
+            sorted_fluid_keys = sorted(fluid_dict, key=fluid_dict.get, reverse=True)
+            fluid_repr = [f'"{k}": {fluid_dict[k]:.5f}' for k in sorted_fluid_keys]
+            fluid_repr = "fluid={" + ", ".join(fluid_repr) + "}"
+        except ValueError:
+            return "State calculation did not converge"
 
         return "State(" + args_repr + ", " + fluid_repr + ")"
 
