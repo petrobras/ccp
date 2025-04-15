@@ -241,11 +241,12 @@ class State(CP.AbstractState):
         }
 
         input_str = ""
-        args = []
-        for k, v in locals().items():
-            if k in refprop_param_dict and v is not None:
+        args_dict = locals().copy()
+        args_values = []
+        for k in refprop_param_dict:
+            if args_dict[k]:
                 input_str += refprop_param_dict[k]
-                args.append(k)
+                args_values.append(args_dict[k])
 
         if phase:
             input_str += refprop_phase_dict[phase]
@@ -258,8 +259,8 @@ class State(CP.AbstractState):
             _RP.MASS_BASE_SI,
             0,
             0,
-            getattr(self, args[0])().m,
-            getattr(self, args[1])().m,
+            args_values[0].m,
+            args_values[1].m,
             self.get_mole_fractions(),
         )
 
