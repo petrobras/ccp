@@ -152,7 +152,9 @@ class State(CP.AbstractState):
     def __repr__(self):
         try:
             args = {k: v for k, v in self.init_args.items() if v is not None}
-            args_repr = [f'{k}=Q_("{getattr(self, k)():.0f~P}")' for k, v in args.items()]
+            args_repr = [
+                f'{k}=Q_("{getattr(self, k)():.0f~P}")' for k, v in args.items()
+            ]
             args_repr = ", ".join(args_repr)
 
             fluid_dict = self.fluid
