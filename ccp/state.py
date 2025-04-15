@@ -184,6 +184,7 @@ class State(CP.AbstractState):
             self.fluid = fluid_dict
         return fluid_dict
 
+    @check_units
     def _call_REFPROP(
         self,
         p=None,
