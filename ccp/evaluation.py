@@ -304,7 +304,7 @@ class Evaluation:
         for i, row in df.iterrows():
             # calculate point
             arg_dict = {
-                "flow_m": row.flow_m,
+                "flow_v": row.flow_v,
                 "speed": Q_(row.speed, self.data_units["speed"]),
                 "suc": State(
                     p=Q_(row.ps, self.data_units["ps"]),
@@ -469,7 +469,7 @@ def get_interpolated_point(x):
         return None
     try:
         imp_new = x["imp_new"]
-        expected_point = imp_new.point(flow_m=x["flow_m"], speed=x["speed"])
+        expected_point = imp_new.point(flow_v=x["flow_v"], speed=x["speed"])
     except:
         print("Error for expected point with args:", x)
     return expected_point

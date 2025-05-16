@@ -205,7 +205,7 @@ def test_evaluation_delta_p():
         n_clusters=2,
     )
 
-    assert_allclose(evaluation.df["delta_eff"].mean(), 11.096862, rtol=1e-2)
+    assert_allclose(evaluation.df["delta_eff"].mean(), 11.22954, rtol=1e-2)
 
 
 def test_evaluation_calculate_points_delta_p():
@@ -273,7 +273,7 @@ def test_evaluation_calculate_points_delta_p():
     )
 
     df_results = evaluation.calculate_points(df)
-    assert_allclose(df_results["delta_eff"].mean(), 11.096486, rtol=1e-2)
+    assert_allclose(df_results["delta_eff"].mean(), 11.237109, rtol=1e-2)
 
 
 def test_evaluation_calculate_points_delta_p_flag():
@@ -342,11 +342,11 @@ def test_evaluation_calculate_points_delta_p_flag():
 
     df_results = evaluation.calculate_points(df, drop_invalid_values=False)
     # check mean with invalid values (-1)
-    assert_allclose(df_results["delta_eff"].mean(), -0.135938, rtol=1e-2)
+    assert_allclose(df_results["delta_eff"].mean(), -0.126461, rtol=1e-2)
 
     # remove invalid values
     df_results = df_results[df_results.valid]
-    assert_allclose(df_results["delta_eff"].mean(), 11.096486, rtol=1e-2)
+    assert_allclose(df_results["delta_eff"].mean(), 11.237109, rtol=1e-2)
 
 def test_evaluation_calculate_points_delta_p_3_values():
     data_path = Path(ccp.__file__).parent / "tests/data"

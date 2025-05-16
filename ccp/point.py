@@ -669,7 +669,7 @@ class Point:
         power_shaft = self.power_shaft
         self.power = power_shaft - self.power_losses
         self.flow_v = self.flow_m / self.suc.rho()
-        self.eff = (self.flow_m * head / power).to("dimensionless")
+        self.eff = (self.flow_m * head / self.power).to("dimensionless")
         self.disch = disch_from_suc_head_eff(suc, head, self.eff)
         self.phi = phi(self.flow_v, self.speed, self.D)
         self.psi = psi(self.head, self.speed, self.D)
@@ -857,6 +857,7 @@ class Point:
             "speed": dict(
                 suc=suc,
                 eff=eff_converted,
+                power_losses=original_point.power_losses,
                 phi=original_point.phi,
                 psi=psi_converted,
                 volume_ratio=original_point.volume_ratio,
@@ -867,6 +868,7 @@ class Point:
             "volume_ratio": dict(
                 suc=suc,
                 eff=eff_converted,
+                power_losses=original_point.power_losses,
                 phi=original_point.phi,
                 psi=psi_converted,
                 speed=speed,

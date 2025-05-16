@@ -428,3 +428,22 @@ def test_pt_gas_update():
 
     assert_allclose(s.T().m, 289.15, rtol=1e-3)
     assert_allclose(s.p().m, 3.82e5, rtol=1e-3)
+
+
+def test_call_refprop():
+    s = State(
+        p=100000,
+        T=300,
+        fluid={"Methane": 1 - 1e-15, "Ethane": 1e-15},
+    )
+
+    r = s._call_REFPROP(
+        **{
+            "p": Q_(442071.736, "pascal"),
+            "s": Q_(4158.72138, "joule / kelvin / kilogram"),
+            "phase": "gas",
+        }
+    )
+
+    assert_allclose(r["p"], 442071.736, rtol=1e-3)
+    assert_allclose(r["s"], 4158.72138, rtol=1e-3)

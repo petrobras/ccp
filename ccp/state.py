@@ -41,6 +41,17 @@ class State(CP.AbstractState):
     EOS : str, optional
         String with REFPROP, HEOS, PR or SRK.
         Default is set in ccp.config.EOS
+    phase : str, optional
+        String with phase information.
+        Options are:
+        - "liquid"
+        - "gas"
+        - "two_phase"
+        - "supercritical_liquid"
+        - "supercritical_gas"
+        - "supercritical"
+        Default is None, in this case REFPROP/CoolProp will determine the phase.
+        The phase calculation may require a non-trivial flash calculation which can be computationally expensive.
 
     Returns
     -------
@@ -94,10 +105,20 @@ class State(CP.AbstractState):
         rho=None,
         fluid=None,
         EOS=None,
+        phase=None,
     ):
         # no call to super(). see :
         # http://stackoverflow.com/questions/18260095/
         self.EOS = EOS
+        self.phase = phase
+        self._phase_dict = {
+            "liquid": CP.iphase_liquid,
+            "gas": CP.iphase_gas,
+            "two_phase": CP.iphase_twophase,
+            "supercritical_liquid": CP.iphase_supercritical_liquid,
+            "supercritical_gas": CP.iphase_supercritical_gas,
+            "supercritical": CP.iphase_supercritical,
+        }
 
         constituents = []
         molar_fractions = []
@@ -124,17 +145,24 @@ class State(CP.AbstractState):
                     "You might have repeated components in the fluid dictionary."
                 )
 
+        if phase:
+            self.specify_phase(self._phase_dict[phase])
         self.update(**self.setup_args)
 
     def __repr__(self):
-        args = {k: v for k, v in self.init_args.items() if v is not None}
-        args_repr = [f'{k}=Q_("{getattr(self, k)():.0f~P}")' for k, v in args.items()]
-        args_repr = ", ".join(args_repr)
+        try:
+            args = {k: v for k, v in self.init_args.items() if v is not None}
+            args_repr = [
+                f'{k}=Q_("{getattr(self, k)():.0f~P}")' for k, v in args.items()
+            ]
+            args_repr = ", ".join(args_repr)
 
-        fluid_dict = self.fluid
-        sorted_fluid_keys = sorted(fluid_dict, key=fluid_dict.get, reverse=True)
-        fluid_repr = [f'"{k}": {fluid_dict[k]:.5f}' for k in sorted_fluid_keys]
-        fluid_repr = "fluid={" + ", ".join(fluid_repr) + "}"
+            fluid_dict = self.fluid
+            sorted_fluid_keys = sorted(fluid_dict, key=fluid_dict.get, reverse=True)
+            fluid_repr = [f'"{k}": {fluid_dict[k]:.5f}' for k in sorted_fluid_keys]
+            fluid_repr = "fluid={" + ", ".join(fluid_repr) + "}"
+        except ValueError:
+            return "State calculation did not converge"
 
         return "State(" + args_repr + ", " + fluid_repr + ")"
 
@@ -157,6 +185,93 @@ class State(CP.AbstractState):
             fluid_dict[k] = v
             self.fluid = fluid_dict
         return fluid_dict
+
+    @check_units
+    def _call_REFPROP(
+        self,
+        p=None,
+        T=None,
+        h=None,
+        s=None,
+        rho=None,
+        fluid=None,
+        EOS=None,
+        phase=None,
+    ):
+        """Function to call REFPROP directly.
+
+        Parameters
+        ----------
+        p : float, pint.Quantity
+            Pressure
+        T : float, pint.Quantity
+            Temperature
+        h : float, pint.Quantity
+            Enthalpy
+        s : float, pint.Quantity
+            Entropy
+        rho : float, pint.Quantity
+            Specific mass
+        phase : str
+            String with phase information.
+            Options are:
+            - "liquid"
+            - "gas"
+            Default is None, in this case REFPROP will determine the phase.
+            The phase calculation may require a non-trivial flash calculation which can be computationally expensive.
+
+        Returns
+        -------
+        output : dict
+            Dictionary with p, T, rho, h and s.
+        """
+        # create string based on arguments
+
+        refprop_param_dict = {
+            "p": "P",
+            "T": "T",
+            "rho": "D",
+            "h": "H",
+            "s": "S",
+        }
+
+        refprop_phase_dict = {
+            "gas": "V",
+            "liquid": "L",
+        }
+
+        input_str = ""
+        args_dict = locals().copy()
+        args_values = []
+        for k in refprop_param_dict:
+            if args_dict[k]:
+                input_str += refprop_param_dict[k]
+                args_values.append(args_dict[k])
+
+        if phase:
+            input_str += refprop_phase_dict[phase]
+
+        fluids = self._fluid.replace("&", "*")
+        r = _RP.REFPROPdll(
+            fluids,
+            input_str,
+            "P,T,D,H,S",
+            _RP.MASS_BASE_SI,
+            0,
+            0,
+            args_values[0].m,
+            args_values[1].m,
+            self.get_mole_fractions(),
+        )
+
+        output = {
+            "p": r.Output[0],
+            "T": r.Output[1],
+            "rho": r.Output[2],
+            "h": r.Output[3],
+            "s": r.Output[4],
+        }
+        return output
 
     def gas_constant(self, units=None):
         """Gas constant in joule / (mol kelvin).
@@ -586,6 +701,7 @@ class State(CP.AbstractState):
         rho=None,
         h=None,
         s=None,
+        phase=None,
         **kwargs,
     ):
         """Update the state.
@@ -605,7 +721,20 @@ class State(CP.AbstractState):
             Enthalpy (J/kg).
         s : float, pint.Quantity
             Entropy (J/(kg*degK)).
+        phase : str, optional
+            String with phase information.
+            Options are:
+            - "liquid"
+            - "gas"
+            - "two_phase"
+            - "supercritical_liquid"
+            - "supercritical_gas"
+            - "supercritical"
+            Default is the phase defined in the state initialization.
         """
+        if phase:
+            self.specify_phase(self._phase_dict[phase])
+
         args = locals().copy()
         for item in ["kwargs", "self", "__class__"]:
             args.pop(item)
@@ -617,38 +746,25 @@ class State(CP.AbstractState):
                 except ValueError:
                     # handle convergence error by forcing gas state directly with REFPROP
                     # calculate with p and T and update with their values
-                    fluids = self._fluid.replace("&", "*")
-                    r = _RP.REFPROPdll(
-                        fluids,
-                        "PTV",
-                        "H,P",
-                        _RP.MASS_BASE_SI,
-                        0,
-                        0,
-                        p.magnitude,
-                        T.magnitude,
-                        self.get_mole_fractions(),
+                    r = self._call_REFPROP(
+                        p=p.magnitude,
+                        T=T.magnitude,
+                        phase="gas",
                     )
-                    super().update(CP.HmassP_INPUTS, r.Output[0], r.Output[1])
+                    super().update(CP.HmassP_INPUTS, r["h"], r["p"])
+
             elif p is not None and rho is not None:
                 try:
                     super().update(CP.DmassP_INPUTS, rho.magnitude, p.magnitude)
                 except ValueError:
                     # handle convergence error by forcing gas state directly with REFPROP
                     # calculate with p and T and update with their values
-                    fluids = self._fluid.replace("&", "*")
-                    r = _RP.REFPROPdll(
-                        fluids,
-                        "DPV",
-                        "P,T",
-                        _RP.MASS_BASE_SI,
-                        0,
-                        0,
-                        rho.magnitude,
-                        p.magnitude,
-                        self.get_mole_fractions(),
+                    r = self._call_REFPROP(
+                        rho=rho.magnitude,
+                        p=p.magnitude,
+                        phase="gas",
                     )
-                    super().update(CP.PT_INPUTS, r.Output[0], r.Output[1])
+                    super().update(CP.PT_INPUTS, r["p"], r["T"])
 
             elif p is not None and h is not None:
                 super().update(CP.HmassP_INPUTS, h.magnitude, p.magnitude)
@@ -659,19 +775,12 @@ class State(CP.AbstractState):
                     except ValueError:
                         # handle convergence error by forcing gas state directly with REFPROP
                         # calculate with p and T and update with their values
-                        fluids = self._fluid.replace("&", "*")
-                        r = _RP.REFPROPdll(
-                            fluids,
-                            "PSV",
-                            "P,T",
-                            _RP.MASS_BASE_SI,
-                            0,
-                            0,
-                            p.magnitude,
-                            s.magnitude,
-                            self.get_mole_fractions(),
+                        r = self._call_REFPROP(
+                            p=p.magnitude,
+                            s=s.magnitude,
+                            phase="gas",
                         )
-                        super().update(CP.PT_INPUTS, r.Output[0], r.Output[1])
+                        super().update(CP.PT_INPUTS, r["p"], r["T"])
 
                 else:
                     # ps update not available for some EOS, this is a workaround based on:
@@ -690,19 +799,10 @@ class State(CP.AbstractState):
                 except ValueError:
                     # handle convergence error by forcing gas state directly with REFPROP
                     # calculate with p and T and update with their values
-                    fluids = self._fluid.replace("&", "*")
-                    r = _RP.REFPROPdll(
-                        fluids,
-                        "DSV",
-                        "P,T",
-                        _RP.MASS_BASE_SI,
-                        0,
-                        0,
-                        rho.magnitude,
-                        s.magnitude,
-                        self.get_mole_fractions(),
+                    r = self._call_REFPROP(
+                        rho=rho.magnitude, s=s.magnitude, phase="gas"
                     )
-                    super().update(CP.PT_INPUTS, r.Output[0], r.Output[1])
+                    super().update(CP.PT_INPUTS, r["p"], r["T"])
             elif rho is not None and T is not None:
                 super().update(CP.DmassT_INPUTS, rho.magnitude, T.magnitude)
             elif h is not None and s is not None:
@@ -726,6 +826,10 @@ class State(CP.AbstractState):
             raise ValueError(
                 f"Could not define state with ccp.State(**{args_repr})"
             ) from e
+
+        # go back to initialization phase after calculation
+        if self.phase:
+            self.specify_phase(self._phase_dict[self.phase])
 
     def get_coolprop_state(self):
         """Return a CoolProp state object."""
