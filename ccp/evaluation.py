@@ -183,12 +183,12 @@ class Evaluation:
             calculate_flow = True
 
         # create density column
-        df["v_s"] = 0
-        df["speed_sound"] = 0
+        df["v_s"] = 0.
+        df["speed_sound"] = 0.
 
         state = State(
-            p=Q_(df.ps[0], self.data_units["ps"]),
-            T=Q_(df.Ts[0], self.data_units["Ts"]),
+            p=Q_(df.ps.iloc[0], self.data_units["ps"]),
+            T=Q_(df.Ts.iloc[0], self.data_units["Ts"]),
             fluid=self.operation_fluid,
         )
 
