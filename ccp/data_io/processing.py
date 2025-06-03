@@ -187,53 +187,55 @@ def filter_data(
     # filter mean_df based on fluctuation_df max values
     if drop_invalid_values:
         for column, property_type in data_type.items():
-            if property_type == "pressure":
-                max_fluctuation = pressure_fluctuation
-                # remove pressure values below 0
-                mean_df.loc[mean_df[column] < 0, column] = None
-            elif property_type == "temperature":
-                max_fluctuation = temperature_fluctuation
-                # remove temperature values below 0
-                mean_df.loc[mean_df[column] < 0, column] = None
-            elif property_type == "speed":
-                max_fluctuation = speed_fluctuation
-                # remove speed values below 1
-                mean_df.loc[mean_df[column] < 1, column] = None
-            elif property_type == "delta_p":
-                max_fluctuation = 100
-                # remove pressure values equal to 0
-                if "delta_p" in mean_df.columns:
-                    mean_df.loc[mean_df[column] <= 0, column] = None
-            else:
-                raise ValueError(
-                    f"Invalid data type for column {column}. "
-                    "Valid data types are: pressure, temperature and speed."
-                )
-            mean_df.loc[fluctuation_df[column] > max_fluctuation, column] = None
+            if column in mean_df.columns:
+                if property_type == "pressure":
+                    max_fluctuation = pressure_fluctuation
+                    # remove pressure values below 0
+                    mean_df.loc[mean_df[column] < 0, column] = None
+                elif property_type == "temperature":
+                    max_fluctuation = temperature_fluctuation
+                    # remove temperature values below 0
+                    mean_df.loc[mean_df[column] < 0, column] = None
+                elif property_type == "speed":
+                    max_fluctuation = speed_fluctuation
+                    # remove speed values below 1
+                    mean_df.loc[mean_df[column] < 1, column] = None
+                elif property_type == "delta_p":
+                    max_fluctuation = 100
+                    # remove pressure values equal to 0
+                    if "delta_p" in mean_df.columns:
+                        mean_df.loc[mean_df[column] <= 0, column] = None
+                else:
+                    raise ValueError(
+                        f"Invalid data type for column {column}. "
+                        "Valid data types are: pressure, temperature and speed."
+                    )
+                mean_df.loc[fluctuation_df[column] > max_fluctuation, column] = None
         mean_df = mean_df.dropna()
     else:
         for column, property_type in data_type.items():
-            if property_type == "pressure":
-                max_fluctuation = pressure_fluctuation
-                # remove pressure values below 0
-                mean_df.loc[mean_df[column] < 0, "valid"] = False
-            elif property_type == "temperature":
-                max_fluctuation = temperature_fluctuation
-                # remove temperature values below 0
-                mean_df.loc[mean_df[column] < 0, "valid"] = False
-            elif property_type == "speed":
-                max_fluctuation = speed_fluctuation
-                # remove speed values below 1
-                mean_df.loc[mean_df[column] < 1, "valid"] = False
-            elif property_type == "delta_p":
-                max_fluctuation = 100
-                # remove pressure values equal to 0
-                if "delta_p" in mean_df.columns:
-                    mean_df.loc[mean_df[column] <= 0, "valid"] = False
-            else:
-                raise ValueError(
-                    f"Invalid data type for column {column}. "
-                    "Valid data types are: pressure, temperature and speed."
-                )
-            mean_df.loc[fluctuation_df[column] > max_fluctuation, "valid"] = False
+            if column in mean_df.columns:
+                if property_type == "pressure":
+                    max_fluctuation = pressure_fluctuation
+                    # remove pressure values below 0
+                    mean_df.loc[mean_df[column] < 0, "valid"] = False
+                elif property_type == "temperature":
+                    max_fluctuation = temperature_fluctuation
+                    # remove temperature values below 0
+                    mean_df.loc[mean_df[column] < 0, "valid"] = False
+                elif property_type == "speed":
+                    max_fluctuation = speed_fluctuation
+                    # remove speed values below 1
+                    mean_df.loc[mean_df[column] < 1, "valid"] = False
+                elif property_type == "delta_p":
+                    max_fluctuation = 100
+                    # remove pressure values equal to 0
+                    if "delta_p" in mean_df.columns:
+                        mean_df.loc[mean_df[column] <= 0, "valid"] = False
+                else:
+                    raise ValueError(
+                        f"Invalid data type for column {column}. "
+                        "Valid data types are: pressure, temperature and speed."
+                    )
+                mean_df.loc[fluctuation_df[column] > max_fluctuation, "valid"] = False
     return mean_df
