@@ -110,8 +110,8 @@ html_favicon = "_static/favicon.ico"
 html_title = "ccp"
 html_sidebars = {}
 html_theme_options = {
-    "github_url": "https://github.com/raphaeltimbo/ccp",
-    "repository_url": "https://github.com/raphaeltimbo/ccp",
+    "github_url": "https://github.com/petrobras/ccp",
+    "repository_url": "https://github.com/petrobras/ccp",
     "extra_navbar": "",
     "navbar_footer_text": "",
 }
