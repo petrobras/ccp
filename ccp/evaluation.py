@@ -52,6 +52,14 @@ class Evaluation:
             - Suction temperature: should be 'Ts' (degK) in the DataFrame;
             - Discharge temperature: should be 'Td' (degK) in the DataFrame;
             - Speed: should be 'speed' (rad/s) in the DataFrame.
+            Optionally, the gas composition for each row can be provided by adding
+            columns whose names start with ``fluid_`` (e.g. ``fluid_methane``). Each
+            of these columns must contain the mole fraction of the constituent in that
+            row. When these columns are present ``operation_fluid`` can be omitted.
+        operation_fluid : dict, optional
+            Dictionary defining the working fluid composition for all rows. If
+            not provided, the composition will be read from the ``fluid_*``
+            columns of ``data``.
         window : int, optional
             Window size for rolling calculation, meaning how many rolls will be used
             to calculate the fluctuation.
@@ -92,6 +100,7 @@ class Evaluation:
         """
         self.data = data
         self.operation_fluid = operation_fluid
+        self.fluid_columns = [c for c in self.data.columns if c.startswith("fluid_")]
         self.window = window
         self.data_type = {
             "ps": "pressure",
@@ -166,10 +175,17 @@ class Evaluation:
         print("Converting curves")
         for i in tqdm(range(kmeans.n_clusters)):
             cluster_series = df[df["cluster"] == 0].iloc[0]
+            if self.operation_fluid is not None:
+                fluid = self.operation_fluid
+            else:
+                fluid = {
+                    col[len("fluid_") :]: cluster_series[col]
+                    for col in self.fluid_columns
+                }
             suc_new = State(
                 p=Q_(cluster_series.ps_center, self.data_units["ps"]),
                 T=Q_(cluster_series.Ts_center, self.data_units["Ts"]),
-                fluid=self.operation_fluid,
+                fluid=fluid,
             )
             imp_new = Impeller.convert_from(self.impellers, suc=suc_new, speed="same")
             self.impellers_new.append(imp_new)
@@ -183,30 +199,29 @@ class Evaluation:
             calculate_flow = True
 
         # create density column
-        df["v_s"] = 0.
-        df["speed_sound"] = 0.
-
-        state = State(
-            p=Q_(df.ps.iloc[0], self.data_units["ps"]),
-            T=Q_(df.Ts.iloc[0], self.data_units["Ts"]),
-            fluid=self.operation_fluid,
-        )
+        df["v_s"] = 0.0
+        df["speed_sound"] = 0.0
 
         for i, row in df.iterrows():
-            # check if flow_v or flow_m are in df columns, otherwise calculate flow
+            if self.operation_fluid is not None:
+                fluid = self.operation_fluid
+            else:
+                fluid = {col[len("fluid_") :]: row[col] for col in self.fluid_columns}
 
             if calculate_flow:
                 if "p_downstream" in df.columns:
                     state_upstream = False
-                    state.update(
+                    state = State(
                         p=Q_(row.p_downstream, self.data_units["p_downstream"]),
                         T=Q_(row.Ts, self.data_units["Ts"]),
+                        fluid=fluid,
                     )
                 elif "p_upstream" in df.columns:
                     state_upstream = True
-                    state.update(
+                    state = State(
                         p=Q_(row.p_upstream, self.data_units["p_upstream"]),
                         T=Q_(row.Ts, self.data_units["Ts"]),
+                        fluid=fluid,
                     )
                 else:
                     raise ValueError(
@@ -225,9 +240,10 @@ class Evaluation:
                 df.loc[i, "flow_m"] = fo.qm.m
                 df.loc[i, "flow_v"] = (fo.qm * state.v()).m
             else:
-                state.update(
+                state = State(
                     p=Q_(row.ps, self.data_units["ps"]),
                     T=Q_(row.Ts, self.data_units["Ts"]),
+                    fluid=fluid,
                 )
 
             df.loc[i, "v_s"] = state.v().m
@@ -302,19 +318,23 @@ class Evaluation:
 
         args_list = []
         for i, row in df.iterrows():
-            # calculate point
+            if self.operation_fluid is not None:
+                fluid = self.operation_fluid
+            else:
+                fluid = {col[len("fluid_") :]: row[col] for col in self.fluid_columns}
+
             arg_dict = {
                 "flow_v": row.flow_v,
                 "speed": Q_(row.speed, self.data_units["speed"]),
                 "suc": State(
                     p=Q_(row.ps, self.data_units["ps"]),
                     T=Q_(row.Ts, self.data_units["Ts"]),
-                    fluid=self.operation_fluid,
+                    fluid=fluid,
                 ),
                 "disch": State(
                     p=Q_(row.pd, self.data_units["pd"]),
                     T=Q_(row.Td, self.data_units["Td"]),
-                    fluid=self.operation_fluid,
+                    fluid=fluid,
                 ),
                 "imp_new": self.impellers_new[int(row.cluster)],
                 "valid": row.valid,
