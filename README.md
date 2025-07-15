@@ -63,4 +63,4 @@ If you have any questions, you can use the [Discussions](https://github.com/petr
 
 # Contributing to ccp
 ccp is a community-driven project. If you want to contribute to the project, please
-check [CONTRIBUTING.md](https://github.com/petrobras/ccp/blob/main/CONTRIBUTING.md). 
+check [CONTRIBUTING.md](https://github.com/petrobras/ccp/blob/main/CONTRIBUTING.md).
