@@ -1,10 +1,14 @@
 import ccp
+import io
+import zipfile
 import streamlit as st
 import pandas as pd
 import base64
 import time
 import sentry_sdk
 import logging
+import json
+import toml
 from pathlib import Path
 
 # import everything that is common to ccp_app_straight_through and ccp_app_back_to_back
@@ -70,6 +74,8 @@ def main():
 
     def get_session():
         # Initialize session state variables
+        if "session_name" not in st.session_state:
+            st.session_state.session_name = ""
         if "impeller_conversion_state" not in st.session_state:
             st.session_state.impeller_conversion_state = ""
         if "original_impeller" not in st.session_state:
@@ -80,8 +86,145 @@ def main():
             st.session_state.expander_state = False
         if "ccp_version" not in st.session_state:
             st.session_state.ccp_version = ccp.__version__
+        if "app_type" not in st.session_state:
+            st.session_state.app_type = "impeller_conversion"
 
     get_session()
+
+    # Create a Streamlit sidebar with a file uploader to load a session state file
+    with st.sidebar.expander("📁 File"):
+        with st.form("my_form", clear_on_submit=False):
+            st.session_state.session_name = st.text_input(
+                "Session name",
+                value=st.session_state.session_name,
+            )
+
+            file = st.file_uploader("📂 Open File", type=["ccp"])
+            submitted = st.form_submit_button("Load")
+            save_button = st.form_submit_button("💾 Save")
+
+        if submitted and file is not None:
+            st.write("Loaded!")
+            # open file with zip
+            with zipfile.ZipFile(file) as my_zip:
+                # get the ccp version
+                try:
+                    version = my_zip.read("ccp.version").decode("utf-8")
+                except KeyError:
+                    version = "0.3.5"
+
+                for name in my_zip.namelist():
+                    if name.endswith(".json"):
+                        session_state_data = json.loads(my_zip.read(name))
+                        # Check if it's an impeller conversion file
+                        if (
+                            "app_type" not in session_state_data
+                            or session_state_data.get("app_type")
+                            != "impeller_conversion"
+                        ):
+                            # Set as impeller conversion file
+                            session_state_data["app_type"] = "impeller_conversion"
+
+                # extract CSV files and impeller objects
+                for name in my_zip.namelist():
+                    if name.endswith(".csv"):
+                        # Store CSV files with csv_ prefix to match save logic
+                        csv_key = f"csv_{name}"
+                        session_state_data[csv_key] = my_zip.read(name)
+                    elif name.endswith(".toml"):
+                        # create file object to read the toml file
+                        impeller_file = io.StringIO(my_zip.read(name).decode("utf-8"))
+                        if name.startswith("original_impeller"):
+                            session_state_data["original_impeller"] = ccp.Impeller.load(
+                                impeller_file
+                            )
+                        elif name.startswith("converted_impeller"):
+                            session_state_data["converted_impeller"] = (
+                                ccp.Impeller.load(impeller_file)
+                            )
+
+            session_state_data_copy = session_state_data.copy()
+            # remove keys that cannot be set with st.session_state.update
+            for key in list(session_state_data.keys()):
+                if key.startswith(
+                    (
+                        "FormSubmitter",
+                        "my_form",
+                        "uploaded",
+                        "form",
+                        "table",
+                        "curves_file",
+                    )
+                ):
+                    del session_state_data_copy[key]
+            st.session_state.update(session_state_data_copy)
+            st.session_state.session_name = file.name.replace(".ccp", "")
+            st.session_state.expander_state = True
+            st.rerun()
+
+        if save_button:
+            session_state_dict = dict(st.session_state)
+
+            # create a zip file to add the data to
+            file_name = f"{st.session_state.session_name}.ccp"
+            session_state_dict_copy = session_state_dict.copy()
+            with zipfile.ZipFile(file_name, "w") as my_zip:
+                my_zip.writestr("ccp.version", ccp.__version__)
+
+                # Save CSV files and impeller objects
+                for key, value in session_state_dict.items():
+                    if isinstance(
+                        value, (bytes, st.runtime.uploaded_file_manager.UploadedFile)
+                    ):
+                        if key.startswith("curves_file_"):
+                            # Remove curves_file_ prefix from key to get filename
+                            my_zip.writestr(value.name, value.read())
+                        del session_state_dict_copy[key]
+                    elif isinstance(value, ccp.Impeller):
+                        if key == "original_impeller":
+                            my_zip.writestr(
+                                "original_impeller.toml",
+                                toml.dumps(value._dict_to_save()),
+                            )
+                        elif key == "converted_impeller":
+                            my_zip.writestr(
+                                "converted_impeller.toml",
+                                toml.dumps(value._dict_to_save()),
+                            )
+                        del session_state_dict_copy[key]
+
+                # Set app type
+                session_state_dict_copy["app_type"] = "impeller_conversion"
+
+                # Remove file uploader keys and other non-serializable keys
+                keys_to_remove = []
+                for key in session_state_dict_copy.keys():
+                    if key.startswith(
+                        (
+                            "FormSubmitter",
+                            "my_form",
+                            "uploaded",
+                            "form",
+                            "table",
+                            "curves_file",
+                        )
+                    ):
+                        keys_to_remove.append(key)
+
+                for key in keys_to_remove:
+                    del session_state_dict_copy[key]
+
+                # then save the rest of the session state
+                session_state_json = json.dumps(session_state_dict_copy)
+                my_zip.writestr("session_state.json", session_state_json)
+
+            with open(file_name, "rb") as file:
+                st.download_button(
+                    label="💾 Save As",
+                    data=file,
+                    file_name=file_name,
+                    mime="application/json",
+                )
 
     # Gas selection
     fluid_list = []
@@ -369,12 +512,20 @@ def main():
                     # Get curve name from first file
                     curve_name = extract_curve_name(curves_file_1.name)
 
+                    # Store CSV files in session state for saving
+                    st.session_state[f"csv_{curves_file_1.name}"] = (
+                        curves_file_1.getvalue()
+                    )
+
                     # Save uploaded files to temporary directory
                     file_1_path = temp_path / curves_file_1.name
                     with open(file_1_path, "w") as f:
                         f.write(curves_file_1.getvalue().decode("utf-8"))
 
                     if curves_file_2 is not None:
+                        st.session_state[f"csv_{curves_file_2.name}"] = (
+                            curves_file_2.getvalue()
+                        )
                         file_2_path = temp_path / curves_file_2.name
                         with open(file_2_path, "w") as f:
                             f.write(curves_file_2.getvalue().decode("utf-8"))
