@@ -88,6 +88,8 @@ def main():
             st.session_state.ccp_version = ccp.__version__
         if "app_type" not in st.session_state:
             st.session_state.app_type = "impeller_conversion"
+        if "uploaded_csv_files" not in st.session_state:
+            st.session_state.uploaded_csv_files = {}
 
     get_session()
 
@@ -127,11 +129,7 @@ def main():
 
                 # extract CSV files and impeller objects
                 for name in my_zip.namelist():
-                    if name.endswith(".csv"):
-                        # Store CSV files with csv_ prefix to match save logic
-                        csv_key = f"csv_{name}"
-                        session_state_data[csv_key] = my_zip.read(name)
-                    elif name.endswith(".toml"):
+                    if name.endswith(".toml"):
                         # create file object to read the toml file
                         impeller_file = io.StringIO(my_zip.read(name).decode("utf-8"))
                         if name.startswith("original_impeller"):
@@ -153,7 +151,6 @@ def main():
                         "uploaded",
                         "form",
                         "table",
-                        "curves_file",
                     )
                 ):
                     del session_state_data_copy[key]
@@ -171,16 +168,9 @@ def main():
             with zipfile.ZipFile(file_name, "w") as my_zip:
                 my_zip.writestr("ccp.version", ccp.__version__)
 
-                # Save CSV files and impeller objects
+                # Save impeller objects
                 for key, value in session_state_dict.items():
-                    if isinstance(
-                        value, (bytes, st.runtime.uploaded_file_manager.UploadedFile)
-                    ):
-                        if key.startswith("curves_file_"):
-                            # Remove curves_file_ prefix from key to get filename
-                            my_zip.writestr(value.name, value.read())
-                        del session_state_dict_copy[key]
-                    elif isinstance(value, ccp.Impeller):
+                    if isinstance(value, ccp.Impeller):
                         if key == "original_impeller":
                             my_zip.writestr(
                                 "original_impeller.toml",
@@ -208,6 +198,9 @@ def main():
                             "table",
                             "curves_file",
                         )
+                    ) or isinstance(
+                        session_state_dict_copy[key],
+                        (bytes, st.runtime.uploaded_file_manager.UploadedFile),
                     ):
                         keys_to_remove.append(key)
 
@@ -449,21 +442,34 @@ def main():
 
         with col1:
             st.markdown("#### Performance Curves File 1")
-            curves_file_1 = st.file_uploader(
+            uploaded_curves_file_1 = st.file_uploader(
                 "Upload first curves file",
                 type=["csv"],
-                key="curves_file_1",
+                key="uploaded_curves_file_1",
                 help="CSV file from Engauge Digitizer with performance curve data",
             )
 
         with col2:
             st.markdown("#### Performance Curves File 2")
-            curves_file_2 = st.file_uploader(
+            uploaded_curves_file_2 = st.file_uploader(
                 "Upload second curves file",
                 type=["csv"],
-                key="curves_file_2",
+                key="uploaded_curves_file_2",
                 help="CSV file from Engauge Digitizer with performance curve data (optional)",
             )
+
+        # Store uploaded files in session state immediately upon upload
+        if uploaded_curves_file_1 is not None:
+            st.session_state["curves_file_1"] = {
+                "name": uploaded_curves_file_1.name,
+                "content": uploaded_curves_file_1.getvalue(),
+            }
+
+        if uploaded_curves_file_2 is not None:
+            st.session_state["curves_file_2"] = {
+                "name": uploaded_curves_file_2.name,
+                "content": uploaded_curves_file_2.getvalue(),
+            }
 
         # Load impeller button
         load_impeller_button = st.button(
@@ -474,9 +480,18 @@ def main():
 
         # Process uploaded files
         if load_impeller_button:
-            if curves_file_1 is None:
-                st.error("Please upload at least one curves file")
-            else:
+            # Check if we have files from uploader or from session state
+            try:
+                has_files_from_session = bool(
+                    bool(st.session_state.curves_file_1)
+                    and bool(st.session_state.curves_file_2)
+                )
+            except AttributeError as e:
+                st.error(f"No curves files uploaded: {str(e)}")
+                logging.error(f"No curves files uploaded: {e}")
+                return
+
+            if has_files_from_session:
                 try:
                     # Create temporary directory for files
                     import tempfile
@@ -509,26 +524,27 @@ def main():
                     temp_dir = tempfile.mkdtemp()
                     temp_path = Path(temp_dir)
 
-                    # Get curve name from first file
-                    curve_name = extract_curve_name(curves_file_1.name)
+                    # Get curve name from first available file
+                    filenames = [
+                        st.session_state["curves_file_1"]["name"],
+                        st.session_state["curves_file_2"]["name"],
+                    ]
+                    print(filenames)
+                    if filenames:
+                        curve_name = extract_curve_name(filenames[0])
+                        print(curve_name)
 
-                    # Store CSV files in session state for saving
-                    st.session_state[f"csv_{curves_file_1.name}"] = (
-                        curves_file_1.getvalue()
-                    )
-
-                    # Save uploaded files to temporary directory
-                    file_1_path = temp_path / curves_file_1.name
-                    with open(file_1_path, "w") as f:
-                        f.write(curves_file_1.getvalue().decode("utf-8"))
-
-                    if curves_file_2 is not None:
-                        st.session_state[f"csv_{curves_file_2.name}"] = (
-                            curves_file_2.getvalue()
-                        )
-                        file_2_path = temp_path / curves_file_2.name
-                        with open(file_2_path, "w") as f:
-                            f.write(curves_file_2.getvalue().decode("utf-8"))
+                        # Save session state CSV files to temporary directory
+                        for csv_file in [
+                            st.session_state["curves_file_1"],
+                            st.session_state["curves_file_2"],
+                        ]:
+                            file_path = temp_path / csv_file["name"]
+                            with open(file_path, "wb") as f:
+                                f.write(csv_file["content"])
+                    else:
+                        st.error("No CSV files found in session state")
+                        return
 
                     # Create suction state
                     gas_composition_original = get_gas_composition(
