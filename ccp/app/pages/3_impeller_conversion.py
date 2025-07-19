@@ -9,6 +9,9 @@ import sentry_sdk
 import logging
 import json
 import toml
+import tempfile
+import os
+import shutil
 from pathlib import Path
 
 # import everything that is common to ccp_app_straight_through and ccp_app_back_to_back
@@ -494,9 +497,6 @@ def main():
             if has_files_from_session:
                 try:
                     # Create temporary directory for files
-                    import tempfile
-                    import os
-                    import shutil
 
                     # Function to extract curve name from filename
                     def extract_curve_name(filename):
@@ -529,10 +529,8 @@ def main():
                         st.session_state["curves_file_1"]["name"],
                         st.session_state["curves_file_2"]["name"],
                     ]
-                    print(filenames)
                     if filenames:
                         curve_name = extract_curve_name(filenames[0])
-                        print(curve_name)
 
                         # Save session state CSV files to temporary directory
                         for csv_file in [
