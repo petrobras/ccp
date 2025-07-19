@@ -185,6 +185,9 @@ def main():
                                 toml.dumps(value._dict_to_save()),
                             )
                         del session_state_dict_copy[key]
+                    if key.startswith("curves_file_"):
+                        my_zip.writestr(key, session_state_dict[key]["content"])
+                        del session_state_dict_copy[key]
 
                 # Set app type
                 session_state_dict_copy["app_type"] = "impeller_conversion"
@@ -199,7 +202,6 @@ def main():
                             "uploaded",
                             "form",
                             "table",
-                            "curves_file",
                         )
                     ) or isinstance(
                         session_state_dict_copy[key],
