@@ -131,7 +131,14 @@ def main():
                             session_state_data["app_type"] = "impeller_conversion"
 
                 # extract CSV files and impeller objects
+                csv_file_number = 1
                 for name in my_zip.namelist():
+                    if name.endswith(".csv"):
+                        session_state_data[f"curves_file_{csv_file_number}"] = {
+                            "name": name,
+                            "content": my_zip.read(name),
+                        }
+                        csv_file_number += 1
                     if name.endswith(".toml"):
                         # create file object to read the toml file
                         impeller_file = io.StringIO(my_zip.read(name).decode("utf-8"))
@@ -186,7 +193,10 @@ def main():
                             )
                         del session_state_dict_copy[key]
                     if key.startswith("curves_file_"):
-                        my_zip.writestr(key, session_state_dict[key]["content"])
+                        my_zip.writestr(
+                            session_state_dict[key]["name"],
+                            session_state_dict[key]["content"],
+                        )
                         del session_state_dict_copy[key]
 
                 # Set app type
