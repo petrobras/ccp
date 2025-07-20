@@ -402,47 +402,6 @@ def main():
             help="Suction temperature for the original impeller data",
         )
 
-        # Impeller geometry parameters
-        st.markdown("### Impeller Geometry")
-
-        # Impeller Width
-        width_container = st.container()
-        width_col1, width_col2, width_col3 = width_container.columns(3)
-
-        width_col1.markdown("Impeller Width (b)")
-        b_unit = width_col2.selectbox(
-            "Width Unit",
-            options=["m", "mm", "ft", "in"],
-            key="b_unit",
-            label_visibility="collapsed",
-            index=0,
-        )
-        b_value = width_col3.number_input(
-            "Impeller Width (b)",
-            key="b_value",
-            label_visibility="collapsed",
-            help="Impeller width at discharge",
-        )
-
-        # Impeller Diameter
-        diameter_container = st.container()
-        diameter_col1, diameter_col2, diameter_col3 = diameter_container.columns(3)
-
-        diameter_col1.markdown("Impeller Diameter (D)")
-        d_unit = diameter_col2.selectbox(
-            "Diameter Unit",
-            options=["m", "mm", "ft", "in"],
-            key="d_unit",
-            label_visibility="collapsed",
-            index=0,
-        )
-        d_value = diameter_col3.number_input(
-            "Impeller Diameter (D)",
-            key="d_value",
-            label_visibility="collapsed",
-            help="Impeller diameter",
-        )
-
     # Original Impeller Curves
     with st.expander(
         "Original Impeller Curves", expanded=st.session_state.expander_state
@@ -543,6 +502,7 @@ def main():
                     ]
                     if filenames:
                         curve_name = extract_curve_name(filenames[0])
+                        st.session_state.curve_name = curve_name
 
                         # Save session state CSV files to temporary directory
                         for csv_file in [
@@ -574,8 +534,6 @@ def main():
                         suc=original_suc_state,
                         curve_name=curve_name,
                         curve_path=temp_path,
-                        b=Q_(b_value, b_unit),
-                        D=Q_(d_value, d_unit),
                     )
 
                     progress_bar.progress(100, text="Impeller loaded successfully!")
@@ -592,23 +550,6 @@ def main():
                         f"Original impeller loaded successfully with {len(original_impeller.points)} points!"
                     )
 
-                    # Display basic info
-                    st.markdown("#### Loaded Impeller Information")
-                    st.write(f"Curve name: {curve_name}")
-                    st.write(f"Number of points: {len(original_impeller.points)}")
-                    st.write(f"Number of curves: {len(original_impeller.curves)}")
-                    if original_impeller.points:
-                        speeds = [p.speed.to("rpm").m for p in original_impeller.points]
-                        st.write(
-                            f"Speed range: {min(speeds):.0f} - {max(speeds):.0f} RPM"
-                        )
-                        flows = [
-                            p.flow_v.to("m³/h").m for p in original_impeller.points
-                        ]
-                        st.write(
-                            f"Flow range: {min(flows):.2f} - {max(flows):.2f} m³/h"
-                        )
-
                 except Exception as e:
                     st.error(f"Error loading impeller: {str(e)}")
                     logging.error(f"Error loading impeller: {e}")
@@ -618,6 +559,51 @@ def main():
                         shutil.rmtree(temp_dir)
                     except:
                         pass
+
+        if st.session_state.original_impeller is not None:
+            # Display basic info
+            st.markdown("#### Loaded Impeller Information")
+            st.write(f"Curve name: {st.session_state.curve_name}")
+            st.write(
+                f"Number of points: {len(st.session_state.original_impeller.points)}"
+            )
+            st.write(
+                f"Number of curves: {len(st.session_state.original_impeller.curves)}"
+            )
+            if st.session_state.original_impeller.points:
+                speeds = [
+                    p.speed.to("rpm").m
+                    for p in st.session_state.original_impeller.points
+                ]
+                st.write(f"Speed range: {min(speeds):.0f} - {max(speeds):.0f} RPM")
+                flows = [
+                    p.flow_v.to("m³/h").m
+                    for p in st.session_state.original_impeller.points
+                ]
+                st.write(f"Flow range: {min(flows):.2f} - {max(flows):.2f} m³/h")
+
+            # Display curves
+            st.markdown("#### Curves")
+            # Display 4 plots (head, eff, power, discharge pressure) in 2 columns and 2 rows
+            plot_col1, plot_col2 = st.columns(2)
+            with plot_col1:
+                st.plotly_chart(
+                    st.session_state.original_impeller.head_plot(),
+                    use_container_width=True,
+                )
+                st.plotly_chart(
+                    st.session_state.original_impeller.power_plot(),
+                    use_container_width=True,
+                )
+            with plot_col2:
+                st.plotly_chart(
+                    st.session_state.original_impeller.eff_plot(),
+                    use_container_width=True,
+                )
+                st.plotly_chart(
+                    st.session_state.original_impeller.disch.p_plot(),
+                    use_container_width=True,
+                )
 
     # New Suction Conditions
     with st.expander(
@@ -861,10 +847,10 @@ def main():
                     {
                         "Point": i + 1,
                         "Flow (m³/h)": f"{point.flow_v.to('m³/h').m:.2f}",
-                        "Suction P (bar)": f"{point.suc.p.to('bar').m:.2f}",
-                        "Suction T (°C)": f"{point.suc.T.to('degC').m:.1f}",
-                        "Discharge P (bar)": f"{point.disch.p.to('bar').m:.2f}",
-                        "Discharge T (°C)": f"{point.disch.T.to('degC').m:.1f}",
+                        "Suction P (bar)": f"{point.suc.p('bar').m:.2f}",
+                        "Suction T (°C)": f"{point.suc.T('degC').m:.1f}",
+                        "Discharge P (bar)": f"{point.disch.p('bar').m:.2f}",
+                        "Discharge T (°C)": f"{point.disch.T('degC').m:.1f}",
                         "Speed (RPM)": f"{point.speed.to('rpm').m:.0f}",
                         "Head (kJ/kg)": f"{point.head.to('kJ/kg').m:.2f}",
                         "Efficiency": f"{point.eff.m:.3f}",
