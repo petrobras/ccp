@@ -20,6 +20,8 @@ from ccp.app.common import (
     temperature_units,
     flow_units,
     speed_units,
+    head_units,
+    power_units,
     parameters_map,
     get_gas_composition,
 )
@@ -406,6 +408,58 @@ def main():
     with st.expander(
         "Original Impeller Curves", expanded=st.session_state.expander_state
     ):
+        # Units for curves
+        curves_units_cols = st.columns(6)
+
+        with curves_units_cols[0]:
+            curves_speed_units = st.selectbox(
+                "Speed Units",
+                options=speed_units,
+                key="curves_speed_units",
+                index=0,
+                help="Select the speed units for the curves",
+            )
+        with curves_units_cols[1]:
+            curves_flow_units = st.selectbox(
+                "Flow Units",
+                options=flow_units,
+                key="curves_flow_units",
+                index=6,
+                help="Select the flow units for the curves",
+            )
+        with curves_units_cols[2]:
+            curves_disch_p_units = st.selectbox(
+                "Discharge Pressure Units",
+                options=pressure_units,
+                key="curves_disch_p_units",
+                index=0,
+                help="Select the discharge pressure units for the curves",
+            )
+        with curves_units_cols[3]:
+            curves_disch_T_units = st.selectbox(
+                "Discharge Temperature Units",
+                options=temperature_units,
+                key="curves_disch_T_units",
+                index=0,
+                help="Select the discharge temperature units for the curves",
+            )
+        with curves_units_cols[4]:
+            curves_head_units = st.selectbox(
+                "Head Units",
+                options=head_units,
+                key="curves_head_units",
+                index=0,
+                help="Select the head units for the curves",
+            )
+        with curves_units_cols[5]:
+            curves_power_units = st.selectbox(
+                "Power Units",
+                options=power_units,
+                key="curves_power_units",
+                index=0,
+                help="Select the power units for the curves",
+            )
+
         st.markdown("### Upload Engauge Digitized Files")
         st.markdown(
             "Upload CSV files from Engauge Digitizer containing the original impeller performance curves."
@@ -534,6 +588,12 @@ def main():
                         suc=original_suc_state,
                         curve_name=curve_name,
                         curve_path=temp_path,
+                        flow_units=curves_flow_units,
+                        disch_p_units=curves_disch_p_units,
+                        disch_T_units=curves_disch_T_units,
+                        head_units=curves_head_units,
+                        power_units=curves_power_units,
+                        speed_units=curves_speed_units,
                     )
 
                     progress_bar.progress(100, text="Impeller loaded successfully!")
@@ -823,7 +883,7 @@ def main():
             operational_speed = st.number_input(
                 "Operational Speed (RPM)",
                 min_value=0,
-                value=0,# converted_imp.points[0].speed.to("rpm").m,
+                value=0,  # converted_imp.points[0].speed.to("rpm").m,
                 help="Select an operational speed to display the curves at that speed",
             )
             # Display 4 plots (head, eff, power, discharge pressure) in 2 columns and 2 rows
