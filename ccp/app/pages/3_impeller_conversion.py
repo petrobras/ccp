@@ -810,57 +810,30 @@ def main():
             # Performance curves
             st.markdown("#### Performance Curves")
 
-            # Head curve
-            try:
-                fig_head = converted_imp.head_plot(
-                    flow_v_units="m³/h", head_units="kJ/kg", show_points=True
+            # Display curves
+            st.markdown("#### Curves")
+            # Display 4 plots (head, eff, power, discharge pressure) in 2 columns and 2 rows
+            plot_conv_col1, plot_conv_col2 = st.columns(2)
+            with plot_conv_col1:
+                st.plotly_chart(
+                    converted_imp.head_plot(flow_v_units="m³/h", head_units="kJ/kg"),
+                    use_container_width=True,
                 )
-                fig_head.update_layout(title="Head vs Flow")
-                st.plotly_chart(fig_head, use_container_width=True)
-            except Exception as e:
-                st.error(f"Could not generate head plot: {str(e)}")
-
-            # Efficiency curve
-            try:
-                fig_eff = converted_imp.eff_plot(flow_v_units="m³/h", show_points=True)
-                fig_eff.update_layout(title="Efficiency vs Flow")
-                st.plotly_chart(fig_eff, use_container_width=True)
-            except Exception as e:
-                st.error(f"Could not generate efficiency plot: {str(e)}")
-
-            # Power curve
-            try:
-                fig_power = converted_imp.power_plot(
-                    flow_v_units="m³/h", power_units="kW", show_points=True
+                st.plotly_chart(
+                    converted_imp.power_plot(flow_v_units="m³/h", power_units="kW"),
+                    use_container_width=True,
                 )
-                fig_power.update_layout(title="Power vs Flow")
-                st.plotly_chart(fig_power, use_container_width=True)
-            except Exception as e:
-                st.error(f"Could not generate power plot: {str(e)}")
-
-            # Detailed results table
-            st.markdown("#### Detailed Results")
-
-            results_data = []
-            for i, point in enumerate(converted_imp.points):
-                results_data.append(
-                    {
-                        "Point": i + 1,
-                        "Flow (m³/h)": f"{point.flow_v.to('m³/h').m:.2f}",
-                        "Suction P (bar)": f"{point.suc.p('bar').m:.2f}",
-                        "Suction T (°C)": f"{point.suc.T('degC').m:.1f}",
-                        "Discharge P (bar)": f"{point.disch.p('bar').m:.2f}",
-                        "Discharge T (°C)": f"{point.disch.T('degC').m:.1f}",
-                        "Speed (RPM)": f"{point.speed.to('rpm').m:.0f}",
-                        "Head (kJ/kg)": f"{point.head.to('kJ/kg').m:.2f}",
-                        "Efficiency": f"{point.eff.m:.3f}",
-                        "Power (kW)": f"{point.power.to('kW').m:.2f}",
-                    }
+            with plot_conv_col2:
+                st.plotly_chart(
+                    converted_imp.eff_plot(flow_v_units="m³/h"),
+                    use_container_width=True,
                 )
-
-            results_df = pd.DataFrame(results_data)
-            st.dataframe(results_df, use_container_width=True)
-
+                st.plotly_chart(
+                    converted_imp.disch.p_plot(
+                        flow_v_units="m³/h", pressure_units="bar"
+                    ),
+                    use_container_width=True,
+                )
 
 if __name__ == "__main__":
     try:
