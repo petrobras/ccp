@@ -727,12 +727,12 @@ def main():
                 st.plotly_chart(
                     st.session_state.original_impeller.disch.p_plot(
                         flow_v_units=curves_flow_v_units,
-                        pressure_units=curves_disch_p_units,
+                        p_units=curves_disch_p_units,
                     ),
                     use_container_width=True,
                 )
                 # Display summary table
-                st.markdown("#### Operational Point")
+                st.markdown("#### Project Point")
                 project_point = st.session_state.original_impeller.point(
                     flow_v=Q_(project_flow, project_flow_v_units),
                     speed=Q_(project_speed, project_speed_units),
@@ -836,28 +836,17 @@ def main():
             )
 
         with col2:
-            if find_method == "volume_ratio":
-                new_speed = st.number_input(
-                    "New Speed", help="Desired speed for conversion"
-                )
-                new_speed_unit = st.selectbox(
-                    "New Speed Unit", options=speed_units, index=0
-                )
+            speed_option = st.selectbox(
+                "Speed Option",
+                options=["same", "calculate"],
+                help="Keep same speed or calculate new speed",
+            )
+
+            if speed_option == "calculate":
+                speed_option_arg=None
             else:
-                speed_option = st.selectbox(
-                    "Speed Option",
-                    options=["same", "calculate"],
-                    help="Keep same speed or calculate new speed",
-                )
-                if speed_option == "calculate":
-                    new_speed = st.number_input(
-                        "New Speed", help="Desired speed for conversion"
-                    )
-                    new_speed_unit = st.selectbox(
-                        "New Speed Unit", options=speed_units, index=0
-                    )
-                else:
-                    new_speed = "same"
+                speed_option_arg = "same"
+
 
     # Convert Button
     convert_button = st.button(
@@ -906,14 +895,8 @@ def main():
                 "original_impeller": original_impeller,
                 "suc": new_suc_state,
                 "find": find_method,
+                "speed": speed_option_arg,
             }
-
-            if find_method == "volume_ratio":
-                conversion_kwargs["speed"] = Q_(new_speed, new_speed_unit)
-            elif find_method == "speed" and new_speed != "same":
-                conversion_kwargs["speed"] = Q_(new_speed, new_speed_unit)
-            else:
-                conversion_kwargs["speed"] = new_speed
 
             converted_impeller = ccp.Impeller.convert_from(**conversion_kwargs)
             st.session_state.converted_impeller = converted_impeller
@@ -968,42 +951,122 @@ def main():
             st.markdown("#### Curves")
 
             # Give the user the option to select an operational flow
-            operational_flow = st.number_input(
+            # New Flow
+            new_flow_container = st.container()
+            new_flow_col1, new_flow_col2, new_flow_col3 = new_flow_container.columns(3)
+            new_flow_col1.markdown("Operational Flow")
+            new_flow_v_units = new_flow_col2.selectbox(
+                "Flow Units",
+                options=flow_v_units,
+                key="new_flow_v_units",
+                label_visibility="collapsed",
+                index=0,
+                help="Select the flow units for the curves",
+            )
+            new_flow = new_flow_col3.number_input(
                 "Operational Flow (m³/h)",
                 min_value=0.0,
-                value=converted_imp.points[0].flow_v.to("m³/h").m,
+                value=st.session_state.converted_impeller.points[0]
+                .flow_v.to(new_flow_v_units)
+                .m,
                 help="Select an operational flow to display the curves at that flow",
+                label_visibility="collapsed",
+                key="new_flow_input",
             )
-            operational_speed = st.number_input(
+            # New Speed
+            new_speed_container = st.container()
+            new_speed_col1, new_speed_col2, new_speed_col3 = (
+                new_speed_container.columns(3)
+            )
+            new_speed_col1.markdown("Operational Speed")
+            new_speed_units = new_speed_col2.selectbox(
+                "Speed Units",
+                options=speed_units,
+                key="new_speed_units",
+                label_visibility="collapsed",
+                index=0,
+                help="Select the speed units for the curves",
+            )
+            new_speed = new_speed_col3.number_input(
                 "Operational Speed (RPM)",
-                min_value=0,
-                value=0,  # converted_imp.points[0].speed.to("rpm").m,
+                min_value=0.0,
+                value=st.session_state.converted_impeller.points[0].speed.to("rpm").m,
                 help="Select an operational speed to display the curves at that speed",
+                label_visibility="collapsed",
+                key="new_speed_input",
             )
             # Display 4 plots (head, eff, power, discharge pressure) in 2 columns and 2 rows
             plot_conv_col1, plot_conv_col2 = st.columns(2)
             with plot_conv_col1:
                 st.plotly_chart(
                     converted_imp.head_plot(
-                        flow_v_units="m³/h",
-                        head_units="kJ/kg",
+                        flow_v_units=curves_flow_v_units,
+                        head_units=curves_head_units,
+                        flow_v=Q_(new_flow, new_flow_v_units),
+                        speed=Q_(new_speed, new_speed_units),
                     ),
                     use_container_width=True,
                 )
                 st.plotly_chart(
-                    converted_imp.power_plot(flow_v_units="m³/h", power_units="kW"),
+                    converted_imp.power_plot(
+                        flow_v_units=curves_flow_v_units,
+                        power_units=curves_power_units,
+                        flow_v=Q_(new_flow, new_flow_v_units),
+                        speed=Q_(new_speed, new_speed_units),
+                    ),
                     use_container_width=True,
+                )
+                st.plotly_chart(
+                    converted_imp.disch.T_plot(
+                        flow_v_units=curves_flow_v_units,
+                        temperature_units=curves_disch_T_units,
+                        flow_v=Q_(new_flow, new_flow_v_units),
+                        speed=Q_(new_speed, new_speed_units),
+                    ),
                 )
             with plot_conv_col2:
                 st.plotly_chart(
-                    converted_imp.eff_plot(flow_v_units="m³/h"),
+                    converted_imp.eff_plot(
+                        flow_v_units=curves_flow_v_units,
+                        flow_v=Q_(new_flow, new_flow_v_units),
+                        speed=Q_(new_speed, new_speed_units),
+                    ),
                     use_container_width=True,
                 )
                 st.plotly_chart(
                     converted_imp.disch.p_plot(
-                        flow_v_units="m³/h", pressure_units="bar"
+                        flow_v_units=curves_flow_v_units,
+                        p_units=curves_disch_p_units,
+                        flow_v=Q_(new_flow, new_flow_v_units),
+                        speed=Q_(new_speed, new_speed_units),
                     ),
                     use_container_width=True,
+                )
+                st.markdown("#### New Point")
+                new_point = st.session_state.converted_impeller.point(
+                    flow_v=Q_(new_flow, new_flow_v_units),
+                    speed=Q_(new_speed, new_speed_units),
+                )
+                st.code(
+                    f"""
+                            -----------------------------\n 
+                                Speed:                 {new_point.speed.to('rpm').m:.0f} {new_speed_units} 
+                                Flow:                  {new_point.flow_v.to(curves_flow_v_units).m:.2f} {curves_flow_v_units} 
+                                Head:                  {new_point.head.to(curves_head_units).m:.2f} {curves_head_units} 
+                                Eff:                   {new_point.eff.m:.2f} % 
+                                Power:                 {new_point.power.to(curves_power_units).m:.2f} {curves_power_units} 
+
+                                Suction Conditions
+                                --------------------
+                                Suction Pressure:      {new_point.suc.p(curves_disch_p_units).m:.2f} {curves_disch_p_units} 
+                                Suction Temperature:   {new_point.suc.T(curves_disch_T_units).m:.2f} {curves_disch_T_units} 
+
+                                Discharge Conditions
+                                --------------------
+                                Discharge Pressure:    {new_point.disch.p(curves_disch_p_units).m:.2f} {curves_disch_p_units} 
+                                Discharge Temperature: {new_point.disch.T(curves_disch_T_units).m:.2f} {curves_disch_T_units} 
+    
+"""
                 )
 
 
