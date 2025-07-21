@@ -812,11 +812,28 @@ def main():
 
             # Display curves
             st.markdown("#### Curves")
+
+            # Give the user the option to select an operational flow
+            operational_flow = st.number_input(
+                "Operational Flow (m³/h)",
+                min_value=0.0,
+                value=converted_imp.points[0].flow_v.to("m³/h").m,
+                help="Select an operational flow to display the curves at that flow",
+            )
+            operational_speed = st.number_input(
+                "Operational Speed (RPM)",
+                min_value=0,
+                value=0,# converted_imp.points[0].speed.to("rpm").m,
+                help="Select an operational speed to display the curves at that speed",
+            )
             # Display 4 plots (head, eff, power, discharge pressure) in 2 columns and 2 rows
             plot_conv_col1, plot_conv_col2 = st.columns(2)
             with plot_conv_col1:
                 st.plotly_chart(
-                    converted_imp.head_plot(flow_v_units="m³/h", head_units="kJ/kg"),
+                    converted_imp.head_plot(
+                        flow_v_units="m³/h",
+                        head_units="kJ/kg",
+                    ),
                     use_container_width=True,
                 )
                 st.plotly_chart(
@@ -834,6 +851,7 @@ def main():
                     ),
                     use_container_width=True,
                 )
+
 
 if __name__ == "__main__":
     try:
