@@ -316,6 +316,7 @@ def test_equality(point_disch_flow_v_speed_suc):
         D=point_disch_flow_v_speed_suc.D,
     )
     assert point_disch_flow_v_speed_suc == point_1
+    assert hash(point_disch_flow_v_speed_suc) == hash(point_1)
 
 
 @pytest.fixture

@@ -309,6 +309,19 @@ class Point:
 
         return False
 
+    def __hash__(self):
+        return hash(
+            (
+                self.suc,
+                round(self.speed.to_base_units().magnitude, 8) if self.speed else None,
+                round(self.flow_v.to_base_units().magnitude, 8)
+                if self.flow_v
+                else None,
+                round(self.head.to_base_units().magnitude, 8) if self.head else None,
+                round(self.eff.to_base_units().magnitude, 8) if self.eff else None,
+            )
+        )
+
     def __repr__(self):
         return (
             f"{self.__class__.__name__}(suc={self.suc},"
@@ -1769,8 +1782,9 @@ def head_reference_2017(suc, disch, num_steps=100):
         p_intervals.append(p)
 
     state1 = ccp.State(p=suc.p(), s=suc.s(), fluid=suc.fluid)
+
     def calc_step_discharge_z(s1, s0, p1, p0, z0, R, e):
-        state1.update(p=p1, s=s1) 
+        state1.update(p=p1, s=s1)
         z1 = state1.z()
         a = (z0 * (p1 / p0) - z1) / ((p1 / p0) - 1)
         b = (z1 - z0) / ((p1 / p0) - 1)
