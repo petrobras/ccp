@@ -49,7 +49,7 @@ def main():
         css = f.read()
 
     st.set_page_config(
-        page_title="ccp - Impeller Conversion",
+        page_title="ccp",
         page_icon=str(ccp_ico),
         layout="wide",
     )
@@ -74,7 +74,7 @@ def main():
     st.sidebar.markdown(title_alignment, unsafe_allow_html=True)
     st.markdown(
         """
-    ## Impeller Conversion
+    ## Curves Conversion
     """
     )
 
@@ -93,7 +93,7 @@ def main():
         if "ccp_version" not in st.session_state:
             st.session_state.ccp_version = ccp.__version__
         if "app_type" not in st.session_state:
-            st.session_state.app_type = "impeller_conversion"
+            st.session_state.app_type = "curves_conversion"
         if "uploaded_csv_files" not in st.session_state:
             st.session_state.uploaded_csv_files = {}
 
@@ -128,10 +128,10 @@ def main():
                         if (
                             "app_type" not in session_state_data
                             or session_state_data.get("app_type")
-                            != "impeller_conversion"
+                            != "curves_conversion"
                         ):
                             # Set as impeller conversion file
-                            session_state_data["app_type"] = "impeller_conversion"
+                            session_state_data["app_type"] = "curves_conversion"
 
                 # extract CSV files and impeller objects
                 csv_file_number = 1
@@ -343,10 +343,10 @@ def main():
 
     # Original Impeller Suction Conditions
     with st.expander(
-        "Original Impeller Suction Conditions", expanded=st.session_state.expander_state
+        "Original Curves Suction Conditions", expanded=st.session_state.expander_state
     ):
         st.markdown("### Original Suction Conditions")
-        st.markdown("Define the suction conditions for the original impeller data.")
+        st.markdown("Define the suction conditions for the original curves data.")
 
         # Gas selection for original impeller
         gas_options = [st.session_state[f"gas_{i}"] for i in range(6)]
@@ -358,11 +358,11 @@ def main():
         gas_col1.markdown("Gas Selection")
         gas_col2.markdown("")
         original_gas = gas_col3.selectbox(
-            "Gas for Original Impeller",
+            "Gas for Original Curves",
             options=gas_options,
             key="original_gas_selection",
             label_visibility="collapsed",
-            help="Select the gas composition for the original impeller",
+            help="Select the gas composition for the original curves",
         )
 
         # Suction Pressure
@@ -381,7 +381,7 @@ def main():
             "Original Suction Pressure",
             key="original_suc_p",
             label_visibility="collapsed",
-            help="Suction pressure for the original impeller data",
+            help="Suction pressure for the original curves data",
         )
 
         # Suction Temperature
@@ -402,12 +402,12 @@ def main():
             "Original Suction Temperature",
             key="original_suc_t",
             label_visibility="collapsed",
-            help="Suction temperature for the original impeller data",
+            help="Suction temperature for the original curves data",
         )
 
     # Original Impeller Curves
     with st.expander(
-        "Original Impeller Curves", expanded=st.session_state.expander_state
+        "Original Curves", expanded=st.session_state.expander_state
     ):
         # Units for curves
         curves_units_cols = st.columns(6)
@@ -468,7 +468,14 @@ def main():
 
         st.markdown("### Upload Engauge Digitized Files")
         st.markdown(
-            "Upload CSV files from Engauge Digitizer containing the original impeller performance curves."
+            """
+        Upload CSV files from Engauge Digitizer containing the original performance curves. \n\n
+        If you are uploading head and eff files, they should be saved with the following convention:\n
+            - <curve-name>-head.csv
+            - <curve-name>-eff.csv
+        Check in the link how to get points with Engauge Digitizer:
+        [Engauge Digitizer Guide](https://ccp-centrifugal-compressor-performance.readthedocs.io/en/stable/user_guide/engauge.html).
+        """
         )
 
         # File upload areas
@@ -507,9 +514,9 @@ def main():
 
         # Load impeller button
         load_impeller_button = st.button(
-            "Load Original Impeller",
+            "Load Original Curves",
             type="secondary",
-            help="Load the original impeller from the uploaded files",
+            help="Load the original curves from the uploaded files",
         )
 
         # Process uploaded files
@@ -588,7 +595,7 @@ def main():
                     )
 
                     # Load impeller from Engauge files
-                    progress_bar = st.progress(0, text="Loading impeller from files...")
+                    progress_bar = st.progress(0, text="Loading curves from files...")
 
                     original_impeller = ccp.Impeller.load_from_engauge_csv(
                         suc=original_suc_state,
@@ -602,7 +609,7 @@ def main():
                         speed_units=curves_speed_units,
                     )
 
-                    progress_bar.progress(100, text="Impeller loaded successfully!")
+                    progress_bar.progress(100, text="Curves loaded successfully!")
                     time.sleep(0.5)
                     progress_bar.empty()
 
@@ -613,7 +620,7 @@ def main():
                     shutil.rmtree(temp_dir)
 
                     st.success(
-                        f"Original impeller loaded successfully with {len(original_impeller.points)} points!"
+                        f"Original curves loaded successfully with {len(original_impeller.points)} points!"
                     )
 
                 except Exception as e:
@@ -628,7 +635,7 @@ def main():
 
         if st.session_state.original_impeller is not None:
             # Display basic info
-            st.markdown("#### Loaded Impeller Information")
+            st.markdown("#### Loaded Curves Information")
             st.write(f"Curve name: {st.session_state.curve_name}")
             st.write(
                 f"Number of points: {len(st.session_state.original_impeller.points)}"
@@ -815,7 +822,7 @@ def main():
         "New Suction Conditions", expanded=st.session_state.expander_state
     ):
         st.markdown("### Target Suction Conditions")
-        st.markdown("Define the new suction conditions for the impeller conversion.")
+        st.markdown("Define the new suction conditions for the curves conversion.")
 
         # Gas selection container
         new_gas_container = st.container()
@@ -900,10 +907,10 @@ def main():
 
     # Convert Button
     convert_button = st.button(
-        "Convert Impeller",
+        "Convert Curves",
         type="primary",
         use_container_width=True,
-        help="Convert the impeller to new suction conditions",
+        help="Convert the curves to new suction conditions",
     )
 
     # Conversion Process
@@ -911,7 +918,7 @@ def main():
         # Validate inputs
         if st.session_state.original_impeller is None:
             st.error(
-                "Please load the original impeller first using the 'Load Original Impeller' button"
+                "Please load the original curves first using the 'Load Original Curves' button"
             )
             return
 
@@ -938,7 +945,7 @@ def main():
                 fluid=gas_composition_new,
             )
 
-            progress_bar.progress(60, text="Converting impeller...")
+            progress_bar.progress(60, text="Converting curves...")
 
             # Convert impeller
             conversion_kwargs = {
@@ -955,7 +962,7 @@ def main():
             time.sleep(0.5)
             progress_bar.empty()
 
-            st.success("Impeller conversion completed successfully!")
+            st.success("Curves conversion completed successfully!")
 
         except Exception as e:
             st.error(f"Error during conversion: {str(e)}")
@@ -966,7 +973,7 @@ def main():
     # Results Display
     if st.session_state.converted_impeller is not None:
         with st.expander("Conversion Results", expanded=True):
-            st.markdown("### Converted Impeller Performance")
+            st.markdown("### Converted Curves")
 
             original_imp = st.session_state.original_impeller
             converted_imp = st.session_state.converted_impeller
@@ -975,7 +982,7 @@ def main():
             col1, col2 = st.columns(2)
 
             with col1:
-                st.markdown("#### Original Impeller")
+                st.markdown("#### Original Curves")
                 st.write(f"Number of points: {len(original_imp.points)}")
                 st.write(
                     f"Speed range: {min(p.speed.to('rpm').m for p in original_imp.points):.0f} - {max(p.speed.to('rpm').m for p in original_imp.points):.0f} RPM"
@@ -985,7 +992,7 @@ def main():
                 )
 
             with col2:
-                st.markdown("#### Converted Impeller")
+                st.markdown("#### Converted Curves")
                 st.write(f"Number of points: {len(converted_imp.points)}")
                 st.write(
                     f"Speed range: {min(p.speed.to('rpm').m for p in converted_imp.points):.0f} - {max(p.speed.to('rpm').m for p in converted_imp.points):.0f} RPM"
@@ -1115,7 +1122,7 @@ if __name__ == "__main__":
     try:
         main()
     except Exception as e:
-        logging.info("app: impeller_conversion")
+        logging.info("app: curves_conversion")
         logging.info(f"session state: {st.session_state}")
         logging.error(e)
         raise e
