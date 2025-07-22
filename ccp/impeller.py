@@ -422,6 +422,10 @@ class Impeller:
             else:
                 return points_other == points_self
 
+    def __hash__(self):
+        points_sorted = tuple(sorted(self.points, key=lambda x: x.flow_v))
+        return hash(points_sorted)
+
     @check_units
     def point(self, flow_v=None, flow_m=None, speed=None):
         """Calculate specific point in the performance map.

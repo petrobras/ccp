@@ -641,6 +641,7 @@ def test_save_load():
     imp_fd_loaded = Impeller.load(file)
 
     assert imp_fd == imp_fd_loaded
+    assert hash(imp_fd) == hash(imp_fd_loaded)
 
 
 def test_load_from_dict_isis():
