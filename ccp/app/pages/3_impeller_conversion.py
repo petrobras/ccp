@@ -650,6 +650,7 @@ def main():
 
             # Display curves
             st.markdown("#### Curves")
+
             # Project Flow
             project_flow_container = st.container()
             project_flow_col1, project_flow_col2, project_flow_col3 = (
@@ -693,50 +694,100 @@ def main():
                 label_visibility="collapsed",
             )
 
+            @st.cache_data
+            def generate_plots(
+                _impeller,
+                impeller_hash,  # Manual invalidation to avoid caching issues with ccp.Impeller object
+                point_flow,
+                point_flow_v_units,
+                point_speed,
+                point_speed_units,
+            ):
+                head_plot = _impeller.head_plot(
+                    flow_v_units=curves_flow_v_units,
+                    head_units=curves_head_units,
+                    flow_v=Q_(point_flow, point_flow_v_units),
+                    speed=Q_(point_speed, point_speed_units),
+                )
+                power_plot = _impeller.power_plot(
+                    flow_v_units=curves_flow_v_units,
+                    power_units=curves_power_units,
+                    flow_v=Q_(point_flow, point_flow_v_units),
+                    speed=Q_(point_speed, point_speed_units),
+                )
+                disch_T_plot = _impeller.disch.T_plot(
+                    flow_v_units=curves_flow_v_units,
+                    temperature_units=curves_disch_T_units,
+                    flow_v=Q_(point_flow, point_flow_v_units),
+                    speed=Q_(point_speed, point_speed_units),
+                )
+                eff_plot = _impeller.eff_plot(
+                    flow_v_units=curves_flow_v_units,
+                    flow_v=Q_(point_flow, point_flow_v_units),
+                    speed=Q_(point_speed, point_speed_units),
+                )
+                disch_p_plot = _impeller.disch.p_plot(
+                    flow_v_units=curves_flow_v_units,
+                    p_units=curves_disch_p_units,
+                    flow_v=Q_(point_flow, point_flow_v_units),
+                    speed=Q_(point_speed, point_speed_units),
+                )
+                point = _impeller.point(
+                    flow_v=Q_(point_flow, point_flow_v_units),
+                    speed=Q_(point_speed, point_speed_units),
+                )
+
+                return (
+                    head_plot,
+                    power_plot,
+                    disch_T_plot,
+                    eff_plot,
+                    disch_p_plot,
+                    point,
+                )
+
+            (
+                head_plot,
+                power_plot,
+                disch_T_plot,
+                eff_plot,
+                disch_p_plot,
+                project_point,
+            ) = generate_plots(
+                st.session_state.original_impeller,
+                hash(st.session_state.original_impeller),  # Manual invalidation
+                project_flow,
+                project_flow_v_units,
+                project_speed,
+                project_speed_units,
+            )
+
             # Display 4 plots (head, eff, power, discharge pressure) in 2 columns and 2 rows
             plot_col1, plot_col2 = st.columns(2)
             with plot_col1:
                 st.plotly_chart(
-                    st.session_state.original_impeller.head_plot(
-                        flow_v_units=curves_flow_v_units,
-                        head_units=curves_head_units,
-                        flow_v=Q_(project_flow, project_flow_v_units),
-                        speed=Q_(project_speed, project_speed_units),
-                    ),
+                    head_plot,
                     use_container_width=True,
                 )
                 st.plotly_chart(
-                    st.session_state.original_impeller.power_plot(
-                        flow_v_units=curves_flow_v_units, power_units=curves_power_units
-                    ),
+                    power_plot,
                     use_container_width=True,
                 )
                 st.plotly_chart(
-                    st.session_state.original_impeller.disch.T_plot(
-                        flow_v_units=curves_flow_v_units,
-                        temperature_units=curves_disch_T_units,
-                    ),
+                    disch_T_plot,
+                    use_container_width=True,
                 )
             with plot_col2:
                 st.plotly_chart(
-                    st.session_state.original_impeller.eff_plot(
-                        flow_v_units=curves_flow_v_units
-                    ),
+                    eff_plot,
                     use_container_width=True,
                 )
                 st.plotly_chart(
-                    st.session_state.original_impeller.disch.p_plot(
-                        flow_v_units=curves_flow_v_units,
-                        p_units=curves_disch_p_units,
-                    ),
+                    disch_p_plot,
                     use_container_width=True,
                 )
                 # Display summary table
                 st.markdown("#### Project Point")
-                project_point = st.session_state.original_impeller.point(
-                    flow_v=Q_(project_flow, project_flow_v_units),
-                    speed=Q_(project_speed, project_speed_units),
-                )
                 st.code(
                     f"""
                             -----------------------------\n 
@@ -843,10 +894,9 @@ def main():
             )
 
             if speed_option == "calculate":
-                speed_option_arg=None
+                speed_option_arg = None
             else:
                 speed_option_arg = "same"
-
 
     # Convert Button
     convert_button = st.button(
@@ -995,58 +1045,49 @@ def main():
                 label_visibility="collapsed",
                 key="new_speed_input",
             )
+
+            (
+                new_head_plot,
+                new_power_plot,
+                new_disch_T_plot,
+                new_eff_plot,
+                new_disch_p_plot,
+                new_point,
+            ) = generate_plots(
+                st.session_state.converted_impeller,
+                hash(st.session_state.converted_impeller),  # Manual invalidation
+                new_flow,
+                new_flow_v_units,
+                new_speed,
+                new_speed_units,
+            )
+
             # Display 4 plots (head, eff, power, discharge pressure) in 2 columns and 2 rows
             plot_conv_col1, plot_conv_col2 = st.columns(2)
             with plot_conv_col1:
                 st.plotly_chart(
-                    converted_imp.head_plot(
-                        flow_v_units=curves_flow_v_units,
-                        head_units=curves_head_units,
-                        flow_v=Q_(new_flow, new_flow_v_units),
-                        speed=Q_(new_speed, new_speed_units),
-                    ),
+                    new_head_plot,
                     use_container_width=True,
                 )
                 st.plotly_chart(
-                    converted_imp.power_plot(
-                        flow_v_units=curves_flow_v_units,
-                        power_units=curves_power_units,
-                        flow_v=Q_(new_flow, new_flow_v_units),
-                        speed=Q_(new_speed, new_speed_units),
-                    ),
+                    new_power_plot,
                     use_container_width=True,
                 )
                 st.plotly_chart(
-                    converted_imp.disch.T_plot(
-                        flow_v_units=curves_flow_v_units,
-                        temperature_units=curves_disch_T_units,
-                        flow_v=Q_(new_flow, new_flow_v_units),
-                        speed=Q_(new_speed, new_speed_units),
-                    ),
+                    new_disch_T_plot,
+                    use_container_width=True,
                 )
             with plot_conv_col2:
                 st.plotly_chart(
-                    converted_imp.eff_plot(
-                        flow_v_units=curves_flow_v_units,
-                        flow_v=Q_(new_flow, new_flow_v_units),
-                        speed=Q_(new_speed, new_speed_units),
-                    ),
+                    new_eff_plot,
                     use_container_width=True,
                 )
                 st.plotly_chart(
-                    converted_imp.disch.p_plot(
-                        flow_v_units=curves_flow_v_units,
-                        p_units=curves_disch_p_units,
-                        flow_v=Q_(new_flow, new_flow_v_units),
-                        speed=Q_(new_speed, new_speed_units),
-                    ),
+                    new_disch_p_plot,
                     use_container_width=True,
                 )
                 st.markdown("#### New Point")
-                new_point = st.session_state.converted_impeller.point(
-                    flow_v=Q_(new_flow, new_flow_v_units),
-                    speed=Q_(new_speed, new_speed_units),
-                )
+
                 st.code(
                     f"""
                             -----------------------------\n 
