@@ -271,6 +271,20 @@ def test_equality():
     assert state1_mix == state2_mix
 
 
+def test_state_hashable():
+    fluid = {"methane": 0.9, "ethane": 0.1}
+    s1 = State(p=Q_(10, "bar"), T=Q_(300, "K"), fluid=fluid)
+    s2 = State(
+        p=Q_(10.0001, "bar"), T=Q_(299.9999, "K"), fluid=fluid
+    )  # Still within tolerance
+
+    assert s1 == s2
+    assert hash(s1) == hash(s2)
+
+    my_dict = {s1: "ok"}
+    assert my_dict[s2] == "ok"
+
+
 def test_mix_composition():
     fluid = {
         "Isobutene": 0.20,

@@ -178,6 +178,26 @@ class State(CP.AbstractState):
                 return True
         return False
 
+    def __hash__(self):
+        try:
+            fluid_hashable = tuple(
+                sorted((k, round(v, 3)) for k, v in self.fluid.items())
+            )
+
+            # converte p e T para unidade base e aplica truncamento com a mesma lógica de tolerância de __eq__
+            def rounded_for_tol(x):
+                return round(
+                    x.to_base_units().magnitude,
+                    -int(np.floor(np.log10(abs(x.magnitude * 1e-3)))) + 1,
+                )
+
+            p_val = rounded_for_tol(self.p())
+            T_val = rounded_for_tol(self.T())
+
+            return hash((fluid_hashable, p_val, T_val))
+        except Exception:
+            return hash("StateError")
+
     def _fluid_dict(self):
         # preserve the dictionary from define method
         fluid_dict = {}
