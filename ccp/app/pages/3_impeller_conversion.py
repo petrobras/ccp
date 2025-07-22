@@ -689,7 +689,7 @@ def main():
             project_speed = project_speed_col3.number_input(
                 "Operational Speed (RPM)",
                 min_value=0.0,
-                value=st.session_state.original_impeller.points[0].speed.to("rpm").m,
+                value=st.session_state.original_impeller.curves[0].speed.to("rpm").m,
                 help="Select an operational speed to display the curves at that speed",
                 label_visibility="collapsed",
             )
@@ -1040,7 +1040,7 @@ def main():
             new_speed = new_speed_col3.number_input(
                 "Operational Speed (RPM)",
                 min_value=0.0,
-                value=st.session_state.converted_impeller.points[0].speed.to("rpm").m,
+                value=st.session_state.converted_impeller.curves[0].speed.to("rpm").m,
                 help="Select an operational speed to display the curves at that speed",
                 label_visibility="collapsed",
                 key="new_speed_input",
