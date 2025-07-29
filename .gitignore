@@ -91,6 +91,9 @@ ENV/
 .idea/
 .vscode/
 *.prof
+
+# Claude AI settings
+.claude/
 /ccp/debug.py
 /ccp/.pytest_cache/
 /ccp/tests/.pytest_cache/
