@@ -87,6 +87,10 @@ setup(
             "sphinx-copybutton",
             "sphinx-rtd-theme",
         ],
+        "app": [
+            "streamlit>=1.21.0",
+            "sentry-sdk",
+        ],
     },
     packages=find_packages(),
     license="Apache License 2.0",
