@@ -253,6 +253,12 @@ def test_head_pol_sandberg_colby(suc_0, disch_0):
     assert_allclose(h, 82816.596731, rtol=1e-6)
 
 
+def test_head_pol_sandberg_colby_f(suc_0, disch_0):
+    h = head_pol_sandberg_colby_f(suc_0, disch_0)
+    assert h.units == "joule/kilogram"
+    assert_allclose(h, 82816.596731, rtol=1e-6)
+
+
 def test_point_head_pol_mallen_saville(suc_0, disch_0):
     h = head_pol_mallen_saville(suc_0, disch_0)
     assert h.units == "joule/kilogram"
