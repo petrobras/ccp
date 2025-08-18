@@ -1883,6 +1883,34 @@ def head_pol_sandberg_colby(suc, disch):
     head_pol_sandberg_colby : pint.Quantity
        Reference head as described by :cite:`sandberg2013limitations` (J/kg).
     """
+    Tm = (suc.T() + disch.T()) / 2
+    h = (disch.h() - suc.h()) - Tm * (disch.s() - suc.s())
+    return h
+
+
+def head_pol_sandberg_colby_f(suc, disch):
+    r"""Polytropic head corrected by the :cite:`sandberg2013limitations` factor (original implementation).
+
+    .. math::
+       \begin{equation}
+          H_{p_{s-c}} = f_{s-c} H_p
+       \end{equation}
+
+    Where :math:`f_{s-c}` is calculated by :py:func:`f_sandberg_colby` and
+    :math:`H_p` is calculated by :py:func:`head_pol`.
+
+    Parameters
+    ----------
+    suc : ccp.State
+        Suction state.
+    disch : ccp.State
+        Discharge state.
+
+    Returns
+    -------
+    head_pol_sandberg_colby_f : pint.Quantity
+       Reference head as described by :cite:`sandberg2013limitations` (J/kg).
+    """
     f = f_sandberg_colby(suc, disch)
     h = f * head_pol(suc, disch)
     return h
