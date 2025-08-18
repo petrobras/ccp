@@ -116,7 +116,7 @@ parameters_map = {
     },
     "surface_roughness": {
         "label": "Surface Roughness",
-        "units": length_units,
+        "units": length_units + ["microm"],
         "help": "Mean surface roughness of the gas path.",
     },
     "casing_area": {
