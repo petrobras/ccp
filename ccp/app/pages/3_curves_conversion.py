@@ -127,8 +127,7 @@ def main():
                         # Check if it's an impeller conversion file
                         if (
                             "app_type" not in session_state_data
-                            or session_state_data.get("app_type")
-                            != "curves_conversion"
+                            or session_state_data.get("app_type") != "curves_conversion"
                         ):
                             # Set as impeller conversion file
                             session_state_data["app_type"] = "curves_conversion"
@@ -406,9 +405,7 @@ def main():
         )
 
     # Original Impeller Curves
-    with st.expander(
-        "Original Curves", expanded=st.session_state.expander_state
-    ):
+    with st.expander("Original Curves", expanded=st.session_state.expander_state):
         # Units for curves
         curves_units_cols = st.columns(6)
 
