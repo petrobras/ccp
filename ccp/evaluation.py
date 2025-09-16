@@ -308,9 +308,12 @@ class Evaluation:
         df["cluster"] = 0
 
         for i, row in df.iterrows():
-            new_data = row[["speed_sound", "ps", "Ts"]].array
-            new_data = (new_data - self.data_mean.array) / self.data_std.array
-            df.loc[i, "cluster"] = self.kmeans.predict(new_data.reshape(1, -1))[0]
+            new_data = pd.DataFrame(
+                [row[["speed_sound", "ps", "Ts"]].values],
+                columns=["speed_sound", "ps", "Ts"],
+            )
+            new_data = (new_data - self.data_mean.values) / self.data_std.values
+            df.loc[i, "cluster"] = self.kmeans.predict(new_data)[0]
 
         points = []
         expected_points = []
