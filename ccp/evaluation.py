@@ -122,7 +122,6 @@ class Evaluation:
 
         # check if we are loading from a zip file where the impellers are available
         if kwargs.get("impellers_new") is None:
-            print("running")
             self._run()
             if calculate_points:
                 self.df = self.calculate_points()
