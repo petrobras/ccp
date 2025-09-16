@@ -1,4 +1,4 @@
-# CCP Straight-Through Compressor User Guide
+# Straight-Through App Guide
 
 ## Table of Contents
 1. [Overview](#overview)
@@ -18,7 +18,7 @@
 
 ## Overview
 
-The Straight-Through Compressor page in the CCP application is designed for performance testing and analysis of straight-through centrifugal compressors according to ASME PTC 10 standards. 
+The Straight-Through Compressor page is a streamlit application designed for performance testing and analysis of straight-through centrifugal compressors according to ASME PTC 10 standards. 
 
 ### Key Features
 - **Multi-gas support**: Define up to 6 different gas compositions
