@@ -836,7 +836,7 @@ class Point:
         psi_converted = original_point.psi
 
         if reynolds_correction:
-            eff_converted = correct_eff_reynolds_1997(suc, speed, original_point)            
+            eff_converted = correct_eff_reynolds_1997(suc, speed, original_point)
             psi_converted = original_point.psi * (eff_converted / original_point.eff)
 
         convert_point_options = {
@@ -2583,6 +2583,7 @@ def mach(suc, speed, D):
 
     return ma.to("dimensionless")
 
+
 def correct_eff_reynolds_1997(suc, speed, original_point):
     """Correct the efficiency based on ASME PTC 10 1997.
 
@@ -2602,8 +2603,7 @@ def correct_eff_reynolds_1997(suc, speed, original_point):
     """
     rc_original = 0.988 / original_point.reynolds**0.243
     rb_original = np.log(0.000125 + 13.67 / original_point.reynolds) / np.log(
-        original_point.surface_roughness.to("in").m
-        + (13.67 / original_point.reynolds)
+        original_point.surface_roughness.to("in").m + (13.67 / original_point.reynolds)
     )
     ra_original = (
         0.066
@@ -2616,18 +2616,49 @@ def correct_eff_reynolds_1997(suc, speed, original_point):
     )
     rc_converted = 0.988 / reynolds_converted**0.243
     rb_converted = np.log(0.000125 + 13.67 / reynolds_converted) / np.log(
-        original_point.surface_roughness.to("in").m
-        + (13.67 / reynolds_converted)
+        original_point.surface_roughness.to("in").m + (13.67 / reynolds_converted)
     )
     ra_converted = (
         0.066
         + 0.934
-        * ((4.8e6 * original_point.b.to("ft").m) / reynolds_converted)
-        ** rc_converted
+        * ((4.8e6 * original_point.b.to("ft").m) / reynolds_converted) ** rc_converted
     )
 
-    eff_converted = 1 - (1 - original_point.eff) * (
-        ra_converted / ra_original
-    ) * (rb_converted / rb_original)
+    eff_converted = 1 - (1 - original_point.eff) * (ra_converted / ra_original) * (
+        rb_converted / rb_original
+    )
 
     return eff_converted
+
+
+def correct_eff_reynolds_2022(suc, speed, original_point):
+    """Correct the efficiency based on ASME PTC 10 2022.
+
+    Parameters
+    ----------
+    suc : ccp.State
+        New suction state.
+    speed : pint.Quantity, float
+        Impeller speed (rad/s).
+    original_point : ccp.Point
+        Original operating point.
+    """
+    if original_point.surface_roughness < original_point.b / 1e6:
+        ra = original_point.b / 1e6
+    elif original_point.surface_roughness < original_point.b / 20:
+        ra = original_point.b / 20
+
+    crit_friction_factor = (1.74 - np.log10(2 * ra / original_point.b)) ** (-2)
+
+    def colebrook(lamda, reynolds):
+        return (
+            1 / np.sqrt(lamda)
+            + 2
+            * np.log10(
+                1 + (18.7 * original_point.b) / (reynolds * 2 * ra * np.sqrt(lamda))
+            )
+            - 1 / np.sqrt(crit_friction_factor)
+        )
+
+    lambda_t = newton(colebrook, x0=crit_friction_factor)
+    lambda_sp = newton(colebrook, x0=crit_friction_factor)
