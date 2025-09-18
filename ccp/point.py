@@ -814,6 +814,8 @@ class Point:
         ----------
         original_point : ccp.Point
             Original point from which the desired point will be converted.
+        suc : ccp.State
+            New suction state.
         find : str, optional
             If the calculation will find a new speed keeping constant volume ratio,
             or a new volume ratio for the desired speed.
@@ -834,36 +836,7 @@ class Point:
         psi_converted = original_point.psi
 
         if reynolds_correction:
-            rc_original = 0.988 / original_point.reynolds**0.243
-            rb_original = np.log(0.000125 + 13.67 / original_point.reynolds) / np.log(
-                original_point.surface_roughness.to("in").m
-                + (13.67 / original_point.reynolds)
-            )
-            ra_original = (
-                0.066
-                + 0.934
-                * ((4.8e6 * original_point.b.to("ft").m) / original_point.reynolds)
-                ** rc_original
-            )
-
-            reynolds_converted = reynolds(
-                suc=suc, speed=speed, b=original_point.b, D=original_point.D
-            )
-            rc_converted = 0.988 / reynolds_converted**0.243
-            rb_converted = np.log(0.000125 + 13.67 / reynolds_converted) / np.log(
-                original_point.surface_roughness.to("in").m
-                + (13.67 / reynolds_converted)
-            )
-            ra_converted = (
-                0.066
-                + 0.934
-                * ((4.8e6 * original_point.b.to("ft").m) / reynolds_converted)
-                ** rc_converted
-            )
-
-            eff_converted = 1 - (1 - original_point.eff) * (
-                ra_converted / ra_original
-            ) * (rb_converted / rb_original)
+            eff_converted = correct_eff_reynolds_1997(suc, speed, original_point)            
             psi_converted = original_point.psi * (eff_converted / original_point.eff)
 
         convert_point_options = {
@@ -2609,3 +2582,52 @@ def mach(suc, speed, D):
     ma = u / a
 
     return ma.to("dimensionless")
+
+def correct_eff_reynolds_1997(suc, speed, original_point):
+    """Correct the efficiency based on ASME PTC 10 1997.
+
+    Parameters
+    ----------
+    suc : ccp.State
+        New suction state.
+    speed : pint.Quantity, float
+        Impeller speed (rad/s).
+    original_point : ccp.Point
+        Original operating point.
+
+    Returns
+    -------
+    eff_converted : pint.Quantity
+        Converted efficiency (dimensionless).
+    """
+    rc_original = 0.988 / original_point.reynolds**0.243
+    rb_original = np.log(0.000125 + 13.67 / original_point.reynolds) / np.log(
+        original_point.surface_roughness.to("in").m
+        + (13.67 / original_point.reynolds)
+    )
+    ra_original = (
+        0.066
+        + 0.934
+        * ((4.8e6 * original_point.b.to("ft").m) / original_point.reynolds)
+        ** rc_original
+    )
+    reynolds_converted = reynolds(
+        suc=suc, speed=speed, b=original_point.b, D=original_point.D
+    )
+    rc_converted = 0.988 / reynolds_converted**0.243
+    rb_converted = np.log(0.000125 + 13.67 / reynolds_converted) / np.log(
+        original_point.surface_roughness.to("in").m
+        + (13.67 / reynolds_converted)
+    )
+    ra_converted = (
+        0.066
+        + 0.934
+        * ((4.8e6 * original_point.b.to("ft").m) / reynolds_converted)
+        ** rc_converted
+    )
+
+    eff_converted = 1 - (1 - original_point.eff) * (
+        ra_converted / ra_original
+    ) * (rb_converted / rb_original)
+
+    return eff_converted
