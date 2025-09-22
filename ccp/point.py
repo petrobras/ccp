@@ -968,19 +968,19 @@ class Point:
         """
         if mmsp is None:
             mmsp = self.mach.m
-        if 0 <= mmsp < 0.214:
-            lower_limit = -mmsp
-            upper_limit = -0.25 * mmsp + 0.286
-        elif 0.214 <= mmsp < 0.86:
-            lower_limit = 0.266 * mmsp - 0.271
-            upper_limit = -0.25 * mmsp + 0.286
-        elif mmsp >= 0.86:
-            lower_limit = -0.042
-            upper_limit = 0.07
+        if 0 <= mmsp < 0.215:
+            lower_limit = 0
+            upper_limit = 0.286 + 0.75 * mmsp
+        elif 0.215 <= mmsp <= 0.86:
+            lower_limit = 1.266 * mmsp - 0.271
+            upper_limit = 0.286 + 0.75 * mmsp
+        elif mmsp > 0.86:
+            lower_limit = mmsp - 0.042
+            upper_limit = mmsp + 0.07
         else:
             raise ValueError("Mach number out of specified range.")
 
-        if lower_limit < self.mach_diff < upper_limit:
+        if lower_limit < self.mach_diff + self.mach < upper_limit:
             within_limits = True
         else:
             within_limits = False
@@ -1013,32 +1013,86 @@ class Point:
         # build acceptable region
         upper_limit = []
         lower_limit = []
-        mmsp_range = np.linspace(0, 1.6, 300)
+        mmsp_range = np.linspace(0, 1.2, 300)
         for mmsp in mmsp_range:
             mach_limits = self.mach_limits(mmsp)
             lower_limit.append(mach_limits["lower"])
             upper_limit.append(mach_limits["upper"])
 
         fig.add_trace(
-            go.Scatter(x=mmsp_range, y=lower_limit, marker=dict(color="black"))
+            go.Scatter(x=mmsp_range, y=lower_limit, marker=dict(color="blue"))
         )
-        fig.add_trace(
-            go.Scatter(x=mmsp_range, y=upper_limit, marker=dict(color="black"))
-        )
+        fig.add_trace(go.Scatter(x=mmsp_range, y=upper_limit, marker=dict(color="red")))
 
         # add point
         fig.add_trace(
-            go.Scatter(x=[self.mach.m], y=[self.mach_diff], marker=dict(color="red"))
+            go.Scatter(
+                x=[self.mach.m],
+                y=[self.mach_diff + self.mach],
+                marker=dict(color="black"),
+            )
         )
 
         # subscripts for t and sp
         _t = "\u209c"
         _sp = "\u209b\u209a"
         fig.update_xaxes(
-            title=f"Machine Mach No. Specified - Mm{_sp}",
+            title=f"Specified Machine Mach Number - Mm{_sp}",
         )
         fig.update_yaxes(
-            title=f"Mm{_t} - Mm{_sp}",
+            title=f"Test Machine Mach Number - Mm{_t}",
+        )
+        fig.update_xaxes(range=[0, 1.2], tickformat=".1f", dtick=0.1)
+        fig.update_yaxes(range=[0, 1.2], tickformat=".1f", dtick=0.1)
+        # Upper Limit text
+        upper_text = (
+            "<b>Upper Limit</b><br>"
+            "Mtm = 0.286 + 0.75·Mmsp &nbsp;&nbsp;(for Mmsp ≤ 0.86)<br>"
+            "Mtm = Mmsp + 0.07 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;(for Mmsp &gt; 0.86)"
+        )
+
+        # Lower Limit text
+        lower_text = (
+            "<b>Lower Limit</b><br>"
+            "Mtm = 1.266·Mmsp - 0.271 &nbsp;(for Mmsp &lt; 0.215)<br>"
+            "Mtm = Mmsp - 0.042 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;(for 0.215 ≤ Mmsp ≤ 0.86)<br>"
+            "Mtm = Mmsp - 0.086 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;(for Mmsp &gt; 0.86)"
+        )
+
+        # Annotation: Upper Limit (top-left corner)
+        fig.add_annotation(
+            xref="paper",
+            yref="paper",
+            x=0.02,
+            y=0.96,
+            xanchor="left",
+            yanchor="top",
+            align="left",
+            showarrow=False,
+            text=upper_text,
+            font=dict(size=12),
+            bgcolor="rgba(255,255,255,0.90)",
+            bordercolor="rgba(0,0,0,0.45)",
+            borderwidth=1,
+            borderpad=6,
+        )
+
+        # Annotation: Lower Limit (bottom-right corner)
+        fig.add_annotation(
+            xref="paper",
+            yref="paper",
+            x=0.98,
+            y=0.08,
+            xanchor="right",
+            yanchor="bottom",
+            align="left",
+            showarrow=False,
+            text=lower_text,
+            font=dict(size=12),
+            bgcolor="rgba(255,255,255,0.90)",
+            bordercolor="rgba(0,0,0,0.45)",
+            borderwidth=1,
+            borderpad=6,
         )
         fig.update_layout(showlegend=False)
 
