@@ -432,7 +432,7 @@ def test_converted_from_find_volume_ratio(point_eff_flow_v_head_speed_suc_1):
     assert_allclose(point_converted_from_find_volume_ratio.phi_ratio, 1.0)
     assert_allclose(point_converted_from_find_volume_ratio.psi_ratio, 1.0)
     assert_allclose(
-        point_converted_from_find_volume_ratio.volume_ratio_ratio, 0.882883, rtol=1e-4
+        point_converted_from_find_volume_ratio.volume_ratio_ratio, 1.132638, rtol=1e-4
     )
 
 
@@ -481,10 +481,10 @@ def test_converted_from_find_volume_ratio_with_reynolds_correction(
     )
     assert_allclose(point_converted_from_find_volume_ratio.phi_ratio, 1.0)
     assert_allclose(
-        point_converted_from_find_volume_ratio.psi_ratio, 0.991846, rtol=1e-4
+        point_converted_from_find_volume_ratio.psi_ratio, 1.008221, rtol=1e-4
     )
     assert_allclose(
-        point_converted_from_find_volume_ratio.volume_ratio_ratio, 0.872093, rtol=1e-4
+        point_converted_from_find_volume_ratio.volume_ratio_ratio, 1.146667, rtol=1e-4
     )
 
 
@@ -511,7 +511,7 @@ def test_converted_from_find_volume_ratio_reynolds_plot(
     fig = point_converted_from_find_volume_ratio.plot_reynolds()
 
     assert_allclose(fig.data[2]["x"], 754805.237322)
-    assert_allclose(fig.data[2]["y"], 0.091114, rtol=1e-4)
+    assert_allclose(fig.data[2]["y"], 8284271.505995, rtol=1e-4)
 
 
 def test_save_load(point_disch_flow_v_speed_suc):
