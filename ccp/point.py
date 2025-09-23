@@ -892,15 +892,15 @@ class Point:
         }
 
         converted_point = cls(**convert_point_options[find])
-        converted_point.phi_ratio = converted_point.phi / original_point.phi
-        converted_point.psi_ratio = converted_point.psi / original_point.psi
+        converted_point.phi_ratio = original_point.phi / converted_point.phi
+        converted_point.psi_ratio = original_point.psi / converted_point.psi
         converted_point.volume_ratio_ratio = (
-            converted_point.volume_ratio / original_point.volume_ratio
+            original_point.volume_ratio / converted_point.volume_ratio
         )
         converted_point.reynolds_ratio = (
-            converted_point.reynolds / original_point.reynolds
+            original_point.reynolds / converted_point.reynolds
         )
-        converted_point.mach_diff = converted_point.mach - original_point.mach
+        converted_point.mach_diff = original_point.mach - converted_point.mach
 
         return converted_point
 
@@ -997,6 +997,9 @@ class Point:
         This will plot the allowable Mach range and the point according to the
         PTC criteria.
 
+        The x-axis represents the Specified Machine Mach Number for the point.
+        The y-axis represents the Test Machine Mach Number from the original point.
+
         Parameters
         ----------
         fig : plotly.Figure
@@ -1020,22 +1023,31 @@ class Point:
             upper_limit.append(mach_limits["upper"])
 
         fig.add_trace(
-            go.Scatter(x=mmsp_range, y=lower_limit, marker=dict(color="blue"))
+            go.Scatter(
+                x=mmsp_range, y=lower_limit, line=dict(color="blue", dash="dash")
+            )
         )
-        fig.add_trace(go.Scatter(x=mmsp_range, y=upper_limit, marker=dict(color="red")))
+        fig.add_trace(
+            go.Scatter(x=mmsp_range, y=upper_limit, line=dict(color="red", dash="dash"))
+        )
 
         # add point
         fig.add_trace(
             go.Scatter(
-                x=[self.mach.m],
+                x=[self.mach],
                 y=[self.mach_diff + self.mach],
                 marker=dict(color="black"),
+                mode="markers",
+                hovertemplate=(
+                    "Specified Mach (Mm<sub>sp</sub>): %{x:.3f}<br>"
+                    "Test Mach (Mm<sub>t</sub>): %{y:.3f}<extra></extra>"
+                ),
             )
         )
-
         # subscripts for t and sp
         _t = "\u209c"
         _sp = "\u209b\u209a"
+        space_str = "&nbsp;"
         fig.update_xaxes(
             title=f"Specified Machine Mach Number - Mm{_sp}",
         )
@@ -1047,16 +1059,16 @@ class Point:
         # Upper Limit text
         upper_text = (
             "<b>Upper Limit</b><br>"
-            "Mtm = 0.286 + 0.75·Mmsp &nbsp;&nbsp;(for Mmsp ≤ 0.86)<br>"
-            "Mtm = Mmsp + 0.07 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;(for Mmsp &gt; 0.86)"
+            f"Mm{_t} = (0.286 + 0.75·Mm{_sp}) {2 * space_str}for Mm{_sp} ≤ 0.86<br>"
+            f"Mm{_t} = (Mm{_sp} + 0.07) {13 * space_str}for Mm{_sp} > 0.86"
         )
 
         # Lower Limit text
         lower_text = (
             "<b>Lower Limit</b><br>"
-            "Mtm = 1.266·Mmsp - 0.271 &nbsp;(for Mmsp &lt; 0.215)<br>"
-            "Mtm = Mmsp - 0.042 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;(for 0.215 ≤ Mmsp ≤ 0.86)<br>"
-            "Mtm = Mmsp - 0.086 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;(for Mmsp &gt; 0.86)"
+            f"Mm{_t} = 0 {36 * space_str}for Mm{_sp} < 0.215<br>"
+            f"Mm{_t} = (1.266·Mm{_sp} - 0.271) {2 * space_str}for 0.215 ≤ Mm{_sp} ≤ 0.86<br>"
+            f"Mm{_t} = (Mm{_sp} - 0.042) {13 * space_str}for Mm{_sp} > 0.86"
         )
 
         # Annotation: Upper Limit (top-left corner)
@@ -1070,7 +1082,7 @@ class Point:
             align="left",
             showarrow=False,
             text=upper_text,
-            font=dict(size=12),
+            font=dict(size=10),
             bgcolor="rgba(255,255,255,0.90)",
             bordercolor="rgba(0,0,0,0.45)",
             borderwidth=1,
@@ -1088,7 +1100,7 @@ class Point:
             align="left",
             showarrow=False,
             text=lower_text,
-            font=dict(size=12),
+            font=dict(size=10),
             bgcolor="rgba(255,255,255,0.90)",
             bordercolor="rgba(0,0,0,0.45)",
             borderwidth=1,
@@ -1114,22 +1126,23 @@ class Point:
         if remsp is None:
             remsp = self.reynolds
 
-        x = (remsp / 1e7) ** 0.3
-        if 9e4 <= remsp < 1e7:
-            upper_limit = 100**x
-        elif 1e7 <= remsp:
-            upper_limit = 100
+        ul = 68.205 + 16.13 * np.log10(remsp) - 64.008 * np.sqrt(np.log10(remsp))
+        if 9e4 <= remsp < 8e5:
+            upper_limit = 10**ul
+        elif remsp >= 8e5:
+            upper_limit = remsp * 100
         else:
             raise ValueError("Reynolds number out of specified range.")
 
-        if 9e4 <= remsp < 1e6:
-            lower_limit = 0.01**x
-        elif 1e6 <= remsp:
-            lower_limit = 0.1
+        ll = -22.733 - 4.247 * np.log10(remsp) + 21.63 * np.sqrt(np.log10(remsp))
+        if 9e4 <= remsp < 5e5:
+            lower_limit = 10**ll
+        elif remsp >= 5e5:
+            lower_limit = remsp * 0.1
         else:
             raise ValueError("Reynolds number out of specified range.")
 
-        if lower_limit < self.reynolds_ratio < upper_limit:
+        if lower_limit < self.reynolds_ratio * self.reynolds < upper_limit:
             within_limits = True
         else:
             within_limits = False
@@ -1146,6 +1159,9 @@ class Point:
         This will plot the allowable Mach range and the point according to the
         PTC criteria.
 
+        The x-axis represents the Specified Machine Reynolds Number for the point.
+        The y-axis represents the Test Machine Reynolds Number from the original point.
+
         Parameters
         ----------
         fig : plotly.Figure
@@ -1159,7 +1175,7 @@ class Point:
         # build acceptable region
         upper_limit = []
         lower_limit = []
-        remsp_range = np.geomspace(9e4, 1e9, 300)
+        remsp_range = np.geomspace(9e4, 1e10, 300)
         for remsp in remsp_range:
             reynolds_limits = self.reynolds_limits(remsp)
             lower_limit.append(reynolds_limits["lower"])
@@ -1167,36 +1183,123 @@ class Point:
 
         fig = go.Figure()
         fig.add_trace(
-            go.Scatter(x=remsp_range, y=lower_limit, marker=dict(color="black"))
+            go.Scatter(
+                x=remsp_range, y=lower_limit, line=dict(color="blue", dash="dash")
+            )
         )
         fig.add_trace(
-            go.Scatter(x=remsp_range, y=upper_limit, marker=dict(color="black"))
+            go.Scatter(
+                x=remsp_range, y=upper_limit, line=dict(color="red", dash="dash")
+            )
         )
 
         # add point
         fig.add_trace(
             go.Scatter(
-                x=[self.reynolds.m], y=[self.reynolds_ratio], marker=dict(color="red")
+                x=[self.reynolds.m],
+                y=[self.reynolds_ratio * self.reynolds.m],
+                marker=dict(color="black"),
+                mode="markers",
+                hovertemplate=(
+                    "Specified Reynolds (Rem<sub>sp</sub>): %{x:.3e}<br>"
+                    "Test Reynolds (Rem<sub>t</sub>): %{y:.3e}<extra></extra>"
+                ),
             )
         )
 
         # subscripts for t and sp
         _t = "\u209c"
         _sp = "\u209b\u209a"
+        space_str = "&nbsp;"
         fig.update_xaxes(
             type="log",
             tickformat=".1e",
             tickmode="array",
-            tickvals=[10**i for i in range(4, 9)],
-            title=f"Machine Reynolds No. Specified - Rem{_sp}",
+            tickvals=[10**i for i in range(4, 11)],  # Show tick labels only at 1eX
+            showgrid=True,
+            gridcolor="lightgray",
+            gridwidth=1,
+            minor=dict(
+                tickvals=[j * 10**i for i in range(4, 11) for j in range(2, 10)],
+                showgrid=True,
+                gridcolor="rgba(200,200,200,0.4)",
+                gridwidth=0.5,
+            ),
+            title=f"Specified Machine Reynolds Number- Rem{_sp}",
+            range=[4, 10],
         )
         fig.update_yaxes(
             type="log",
             tickformat=".1e",
             tickmode="array",
-            tickvals=[10**i for i in range(-3, 3)],
-            title=f"Rem{_t} / Rem{_sp}",
+            tickvals=[10**i for i in range(4, 13)],
+            showgrid=True,
+            gridcolor="lightgray",
+            gridwidth=1,
+            minor=dict(
+                tickvals=[j * 10**i for i in range(4, 12) for j in range(2, 10)],
+                showgrid=True,
+                gridcolor="rgba(200,200,200,0.4)",
+                gridwidth=0.5,
+            ),
+            title=f"Test Machine Reynolds Number - Rem{_t}",
+            range=[4, 12],
         )
+
+        # upper limit text
+        upper_text = (
+            "<b>Upper Limit</b><br>"
+            f"Rem{_t} = 10<sup>ul</sup> {17 * space_str} for 9e4 ≤ Rem{_sp} < 8e5<br>"
+            f"Rem{_t} = Rem{_sp} * 100 {2 * space_str} for Rem{_sp} ≥ 8e5<br><br>"
+            "where<br>"
+            f"ul = 68.205 + 16.13 * log10(Rem{_sp}) - 64.008 * \u221alog10(Rem{_sp})"
+        )
+
+        # lower limit text
+        lower_text = (
+            "<b>Lower Limit</b><br>"
+            f"Rem{_t} = 10<sup>ll</sup> {2 * space_str}for 9e4 ≤ Rem{_sp} < 5e5<br>"
+            f"Rem{_t} = Rem{_sp} * 0.1 {2 * space_str}for Rem{_sp} ≥ 5e5<br><br>"
+            "where<br>"
+            f"ll = -22.733 - 4.247 * log10(Rem{_sp}) + 21.63 * \u221alog10(Rem{_sp})"
+        )
+
+        # Annotation: Upper Limit (top-left corner)
+        fig.add_annotation(
+            xref="paper",
+            yref="paper",
+            x=0.02,
+            y=0.96,
+            xanchor="left",
+            yanchor="top",
+            align="left",
+            showarrow=False,
+            text=upper_text,
+            font=dict(size=10),
+            bgcolor="rgba(255,255,255,0.90)",
+            bordercolor="rgba(0,0,0,0.45)",
+            borderwidth=1,
+            borderpad=6,
+        )
+
+        # Annotation: Lower Limit (bottom-right corner)
+        fig.add_annotation(
+            xref="paper",
+            yref="paper",
+            x=0.99,
+            y=0.02,
+            xanchor="right",
+            yanchor="bottom",
+            align="left",
+            showarrow=False,
+            text=lower_text,
+            font=dict(size=10),
+            bgcolor="rgba(255,255,255,0.90)",
+            bordercolor="rgba(0,0,0,0.45)",
+            borderwidth=1,
+            borderpad=6,
+        )
+
         fig.update_layout(showlegend=False)
 
         return fig
