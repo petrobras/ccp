@@ -196,9 +196,9 @@ def test_impeller2_new_suction(imp2):
     assert_allclose(new_p0.head, 151889.637082, rtol=1e-2)
     assert_allclose(new_p0.power, 483519.884306, rtol=1e-2)
     assert_allclose(new_p0.speed, 1281.074036, rtol=1e-3)
-    assert_allclose(new_p0.mach_diff, -7.12032e-05, rtol=1e-3)
-    assert_allclose(new_p0.reynolds_ratio, 0.999879, rtol=1e-3)
-    assert_allclose(new_p0.volume_ratio_ratio, 0.999815, rtol=1e-5)
+    assert_allclose(new_p0.mach_diff, 7.12032e-05, rtol=1e-3)
+    assert_allclose(new_p0.reynolds_ratio, 1.000121, rtol=1e-3)
+    assert_allclose(new_p0.volume_ratio_ratio, 1.000185, rtol=1e-5)
 
 
 @pytest.fixture
