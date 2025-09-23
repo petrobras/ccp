@@ -1122,22 +1122,25 @@ class Point:
         if remsp is None:
             remsp = self.reynolds
 
-        x = (remsp / 1e7) ** 0.3
-        if 9e4 <= remsp < 1e7:
-            upper_limit = 100**x
-        elif 1e7 <= remsp:
-            upper_limit = 100
+        # x = (remsp / 1e7) ** 0.3
+        ll = -22.733 - 4.247 * np.log(remsp) + 21.63 * np.sqrt(np.log(remsp))
+        ul = 68.205 + 16.13 * np.log(remsp) - 64.008 * np.sqrt(np.log(remsp))
+
+        if 9e4 <= remsp < 8e5:
+            upper_limit = 10**ul
+        elif remsp >= 8e5:
+            upper_limit = remsp * 100
         else:
             raise ValueError("Reynolds number out of specified range.")
 
-        if 9e4 <= remsp < 1e6:
-            lower_limit = 0.01**x
-        elif 1e6 <= remsp:
-            lower_limit = 0.1
+        if 9e4 <= remsp < 5e5:
+            lower_limit = 10**ll
+        elif remsp >= 5e5:
+            lower_limit = remsp * 0.1
         else:
             raise ValueError("Reynolds number out of specified range.")
 
-        if lower_limit < self.reynolds_ratio < upper_limit:
+        if lower_limit < self.reynolds_ratio * self.reynolds < upper_limit:
             within_limits = True
         else:
             within_limits = False
