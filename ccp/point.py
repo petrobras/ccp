@@ -997,6 +997,9 @@ class Point:
         This will plot the allowable Mach range and the point according to the
         PTC criteria.
 
+        The x-axis represents the Specified Machine Mach Number for the point.
+        The y-axis represents the Test Machine Mach Number from the original point.
+
         Parameters
         ----------
         fig : plotly.Figure
@@ -1020,15 +1023,19 @@ class Point:
             upper_limit.append(mach_limits["upper"])
 
         fig.add_trace(
-            go.Scatter(x=mmsp_range, y=lower_limit, marker=dict(color="blue"))
+            go.Scatter(
+                x=mmsp_range, y=lower_limit, line=dict(color="blue", dash="dash")
+            )
         )
-        fig.add_trace(go.Scatter(x=mmsp_range, y=upper_limit, marker=dict(color="red")))
+        fig.add_trace(
+            go.Scatter(x=mmsp_range, y=upper_limit, line=dict(color="red", dash="dash"))
+        )
 
         # add point
         fig.add_trace(
             go.Scatter(
                 x=[self.mach.m],
-                y=[self.mach_diff + self.mach],
+                y=[self.mach - self.mach_diff],
                 marker=dict(color="black"),
             )
         )
@@ -1036,6 +1043,7 @@ class Point:
         # subscripts for t and sp
         _t = "\u209c"
         _sp = "\u209b\u209a"
+        space_str = "&nbsp;"
         fig.update_xaxes(
             title=f"Specified Machine Mach Number - Mm{_sp}",
         )
@@ -1047,16 +1055,16 @@ class Point:
         # Upper Limit text
         upper_text = (
             "<b>Upper Limit</b><br>"
-            "Mtm = 0.286 + 0.75·Mmsp &nbsp;&nbsp;(for Mmsp ≤ 0.86)<br>"
-            "Mtm = Mmsp + 0.07 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;(for Mmsp &gt; 0.86)"
+            f"Mm{_t} = (0.286 + 0.75·Mm{_sp}) {2 * space_str}for Mm{_sp} ≤ 0.86<br>"
+            f"Mm{_t} = (Mm{_sp} + 0.07) {13 * space_str}for Mm{_sp} > 0.86"
         )
 
         # Lower Limit text
         lower_text = (
             "<b>Lower Limit</b><br>"
-            "Mtm = 1.266·Mmsp - 0.271 &nbsp;(for Mmsp &lt; 0.215)<br>"
-            "Mtm = Mmsp - 0.042 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;(for 0.215 ≤ Mmsp ≤ 0.86)<br>"
-            "Mtm = Mmsp - 0.086 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;(for Mmsp &gt; 0.86)"
+            f"Mm{_t} = 0 {36 * space_str}for Mm{_sp} < 0.215<br>"
+            f"Mm{_t} = (1.266·Mm{_sp} - 0.271) {2 * space_str}for 0.215 ≤ Mm{_sp} ≤ 0.86<br>"
+            f"Mm{_t} = (Mm{_sp} - 0.042) {13 * space_str}for Mm{_sp} > 0.86"
         )
 
         # Annotation: Upper Limit (top-left corner)
@@ -1145,6 +1153,9 @@ class Point:
 
         This will plot the allowable Mach range and the point according to the
         PTC criteria.
+
+        The x-axis represents the Specified Machine Reynolds Number for the point.
+        The y-axis represents the Test Machine Reynolds Number from the original point.
 
         Parameters
         ----------

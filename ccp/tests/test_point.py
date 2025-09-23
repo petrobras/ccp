@@ -497,7 +497,7 @@ def test_converted_from_find_volume_ratio_mach_plot(point_eff_flow_v_head_speed_
     fig = point_converted_from_find_volume_ratio.plot_mach()
 
     assert_allclose(fig.data[2]["x"], 0.6012691126466259)
-    assert_allclose(fig.data[2]["y"], 0.611357, rtol=1e-4)
+    assert_allclose(fig.data[2]["y"], 0.591181, rtol=1e-4)
 
 
 def test_converted_from_find_volume_ratio_reynolds_plot(
