@@ -71,6 +71,9 @@ def get_name(name):
 
     try:
         fluid_name = CP.get_REFPROPname(name)
+        # CoolProp returns empty string for invalid fluid names
+        if not fluid_name:
+            raise ValueError(f"Fluid {name} not available. See ccp.fluid_list. ")
     except RuntimeError:
         raise ValueError(f"Fluid {name} not available. See ccp.fluid_list. ")
 

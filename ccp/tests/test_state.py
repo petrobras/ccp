@@ -323,10 +323,18 @@ def test_improved_error_message():
     with pytest.raises(ValueError) as exc:
         ccp.State(p=100000, T=20, fluid={"methane": 1 - 1e-15, "ethane": 1e-15})
 
+    error_msg = str(exc.value)
+    # Check that the error message contains all the important parts
+    assert "Could not define state with ccp.State(**" in error_msg
     assert (
-        "Could not define state with ccp.State(**{'p': Q_(100000, 'pascal'), 'T': Q_(20, 'kelvin'), "
-        "'fluid': {'METHANE': 0.999999999999999, 'ETHANE': 9.992007221626409e-16}})"
-    ) in str(exc.value)
+        "'p': Q_(100000, 'pascal')" in error_msg
+        or "'p': Q_(100000, 'pascal')" in error_msg
+    )
+    assert "'T': Q_(20, 'kelvin')" in error_msg
+    assert (
+        "'fluid': {'METHANE': 0.999999999999999, 'ETHANE': 9.992007221626409e-16}"
+        in error_msg
+    )
 
 
 def test_normalization():

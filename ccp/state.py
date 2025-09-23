@@ -79,7 +79,12 @@ class State(CP.AbstractState):
         if EOS is None:
             EOS = ccp.config.EOS
 
-        _fluid = "&".join([get_name(name) for name in fluid.keys()])
+        # Check if all fluid names are valid before proceeding
+        try:
+            _fluid = "&".join([get_name(name) for name in fluid.keys()])
+        except ValueError as e:
+            # Re-raise with the original error message from get_name
+            raise e
 
         try:
             state = super().__new__(cls, EOS, _fluid)
@@ -124,7 +129,11 @@ class State(CP.AbstractState):
         molar_fractions = []
 
         for k, v in fluid.items():
-            k = get_name(k)
+            try:
+                k = get_name(k)
+            except ValueError as e:
+                # Re-raise with the original error message from get_name
+                raise e
             constituents.append(k)
             molar_fractions.append(v)
             # create an adequate fluid string to cp.AbstractState
