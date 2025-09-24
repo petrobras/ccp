@@ -99,6 +99,7 @@ class Point1Sec(Point):
         oil_inlet_temperature=None,
         oil_outlet_temperature_de=None,
         oil_outlet_temperature_nde=None,
+        leakages=True,
         **kwargs,
     ):
         super().__init__(
@@ -114,8 +115,9 @@ class Point1Sec(Point):
         self.oil_inlet_temperature = oil_inlet_temperature
         self.oil_outlet_temperature_de = oil_outlet_temperature_de
         self.oil_outlet_temperature_nde = oil_outlet_temperature_nde
+        self.leakages = leakages
 
-        if self.balance_line_flow_m is None:
+        if not self.leakages:
             self.balance_line_flow_m = Q_(0, "kg/s")
             self.seal_gas_flow_m = Q_(0, "kg/s")
             self.seal_gas_temperature = self.suc.T()
@@ -145,7 +147,11 @@ class StraightThrough(Impeller):
 
     @check_units
     def __init__(
-        self, guarantee_point, test_points, speed_operational=None, reynolds_correction=False
+        self,
+        guarantee_point,
+        test_points,
+        speed_operational=None,
+        reynolds_correction=False,
     ):
         self.guarantee_point = guarantee_point
         self.test_points = test_points
@@ -449,6 +455,7 @@ class PointFirstSection(Point):
         oil_inlet_temperature=None,
         oil_outlet_temperature_de=None,
         oil_outlet_temperature_nde=None,
+        leakages=True,
         **kwargs,
     ):
         super().__init__(
@@ -478,14 +485,11 @@ class PointFirstSection(Point):
         self.oil_inlet_temperature = oil_inlet_temperature
         self.oil_outlet_temperature_de = oil_outlet_temperature_de
         self.oil_outlet_temperature_nde = oil_outlet_temperature_nde
+        self.leakages = leakages
 
         # check case for no leakage. If no leakage, div_wall_flow_m and first_section_discharge_flow_m are zero
         # and we equate the seal/div wall states to avoid errors
-        if (
-            self.div_wall_flow_m is None
-            and self.first_section_discharge_flow_m is None
-            and self.balance_line_flow_m is None
-        ):
+        if not self.leakages:
             self.div_wall_flow_m = Q_(0, "kg/s")
             self.balance_line_flow_m = Q_(0, "kg/s")
             self.seal_gas_flow_m = Q_(0, "kg/s")
@@ -809,7 +813,9 @@ class BackToBack(Impeller):
             )
 
             Ts1f_sp = guarantee_point_sec1.suc.T()
-            qs1r_sp = flow_from_phi(D=point.D, phi=point.phi, speed=self.speed_operational)
+            qs1r_sp = flow_from_phi(
+                D=point.D, phi=point.phi, speed=self.speed_operational
+            )
             ps1r_sp = guarantee_point_sec1.suc.p()
             vs1f_sp = guarantee_point_sec1.suc.v()
             dummy_suc = copy(guarantee_point_sec1.suc)
@@ -920,7 +926,9 @@ class BackToBack(Impeller):
             imp_sec2_flow_m = point_r_sp.flow_m
             if imp_sec2_flow_m > imp_sec2_conv.flow_m.max():
                 imp_sec2_flow_m = imp_sec2_conv.flow_m.max()
-            sec2_point = imp_sec2_conv.point(flow_m=imp_sec2_flow_m, speed=self.speed_operational)
+            sec2_point = imp_sec2_conv.point(
+                flow_m=imp_sec2_flow_m, speed=self.speed_operational
+            )
             sec2_disch = ccp.point.disch_from_suc_head_eff(
                 suc=suc_sec2, head=sec2_point.head, eff=sec2_point.eff
             )
