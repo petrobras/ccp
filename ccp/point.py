@@ -1336,21 +1336,21 @@ class Point:
             fig = go.Figure()
 
         quantity = ["Ratio of Specific Volume", "Mach Number", "Reynolds Number"]
-        abbrev = ["$v_i / v_d$", "Mm", "Rem"]
+        abbrev = ["v<sub>i</sub> / v<sub>d</sub>", "Mm", "Rem"]
         point_value = [
             f"{self.volume_ratio.m:.3f}",
             f"{self.mach.m:.3f}",
             f"{self.reynolds.m:.3e}",
         ]
         formula = [
-            "$(v_i / v_d)_c / (v_i / v_d)_o = $",
-            "$Mm_c - Mm_o = $",
-            "$Rem_c / Rem_o = $",
+            "(v<sub>i</sub> / v<sub>d</sub>)<sub>c</sub> / (v<sub>i</sub> / v<sub>d</sub>)<sub>o</sub>",
+            "Mm<sub>c</sub>",
+            "Rem<sub>c</sub>",
         ]
         relation = [
             f"{self.volume_ratio_ratio.m:.3f}",
-            f"{self.mach_diff.m:.3f}",
-            f"{self.reynolds_ratio.m:.3e}",
+            f"{self.mach_diff.m + self.mach.m:.3f}",
+            f"{self.reynolds_ratio.m * self.reynolds.m:.3e}",
         ]
         mach_limits = self.mach_limits()
         reynolds_limits = self.reynolds_limits()
@@ -1398,7 +1398,7 @@ class Point:
                             "<b></b>",
                             "<b>Point Value</b>",
                             "<b></b>",
-                            "<b>Relation</b>",
+                            "<b>Original Point Value</b>",
                             "<b>Lower Limit</b>",
                             "<b>Upper Limit</b>",
                         ],
