@@ -444,7 +444,7 @@ def test_converted_from_find_volume_ratio_with_reynolds_correction(
         original_point=point_eff_flow_v_head_speed_suc_1,
         suc=suc_2,
         find="volume_ratio",
-        reynolds_correction=True,
+        reynolds_correction="ptc1997",
     )
 
     assert_allclose(
@@ -610,8 +610,17 @@ def test_ptc10_c6_sample_calculation():
     point_sp = ccp.Point.convert_from(
         point_t,
         suc=suc_sp,
-        reynolds_correction=True,
+        reynolds_correction="ptc1997",
         speed=Q_(3600, "rpm"),
         find="volume_ratio",
     )
     assert_allclose(point_sp.eff, 0.792242)
+    point_sp = ccp.Point.convert_from(
+        point_t,
+        suc=suc_sp,
+        reynolds_correction="ptc2022",
+        speed=Q_(3600, "rpm"),
+        find="volume_ratio",
+    )
+    assert_allclose(point_sp.eff, 0.792242)
+
