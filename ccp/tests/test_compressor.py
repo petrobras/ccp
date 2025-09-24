@@ -96,6 +96,7 @@ def test_point1sec_no_leakage():
         casing_area=7.5,
         casing_temperature=Q_(31.309, "degC"),
         ambient_temperature=Q_(0, "degC"),
+        leakages=False,
     )
 
     assert_allclose(p.eff, 0.735723, rtol=1e-6)
@@ -488,6 +489,7 @@ def test_point2sec_no_leakages():
         casing_area=5.5,
         casing_temperature=Q_(23.895, "degC"),
         ambient_temperature=Q_(0, "degC"),
+        leakages=False,
     )
 
     assert_allclose(p.eff, 0.793154028573233, rtol=1e-6)
@@ -982,9 +984,9 @@ def test_back_to_back(back_to_back):
     assert_allclose(p0f_sp.suc.T(), 313.15)
     assert_allclose(p0f_sp.suc.p(), 13350788.401188, rtol=1e-5)
     assert_allclose(p0f_sp.head, 30603.247711, rtol=1e-4)
-    assert_allclose(p0f_sp.eff, 0.47459, rtol=1e-4)
+    assert_allclose(p0f_sp.eff, 0.474652, rtol=1e-4)
     # power in this case is the 'real' power consumed by the rotor
-    assert_allclose(p0f_sp.power, 3359509.626922, 1e-4)
+    assert_allclose(p0f_sp.power, 3359047.172704, 1e-4)
 
 
 def test_back_to_back_with_reynolds_correction(back_to_back):
@@ -1198,6 +1200,7 @@ def back_to_back_no_leakage():
             casing_area=5.5,
             casing_temperature=Q_(23.895, "degC"),
             ambient_temperature=Q_(0, "degC"),
+            leakages=False,
         ),
         PointFirstSection(
             flow_m=Q_(5.724, "kg/s"),
@@ -1227,6 +1230,7 @@ def back_to_back_no_leakage():
             casing_area=5.5,
             casing_temperature=Q_(23.895, "degC"),
             ambient_temperature=Q_(0, "degC"),
+            leakages=False,
         ),
         PointFirstSection(
             flow_m=Q_(4.325, "kg/s"),
@@ -1256,6 +1260,7 @@ def back_to_back_no_leakage():
             casing_area=5.5,
             casing_temperature=Q_(23.895, "degC"),
             ambient_temperature=Q_(0, "degC"),
+            leakages=False,
         ),
         PointFirstSection(
             flow_m=Q_(3.888, "kg/s"),
@@ -1285,6 +1290,7 @@ def back_to_back_no_leakage():
             casing_area=5.5,
             casing_temperature=Q_(23.895, "degC"),
             ambient_temperature=Q_(0, "degC"),
+            leakages=False,
         ),
         PointFirstSection(
             flow_m=Q_(3.277, "kg/s"),
@@ -1314,6 +1320,7 @@ def back_to_back_no_leakage():
             casing_area=5.5,
             casing_temperature=Q_(23.895, "degC"),
             ambient_temperature=Q_(0, "degC"),
+            leakages=False,
         ),
     ]
 
@@ -1340,6 +1347,7 @@ def back_to_back_no_leakage():
             casing_area=5.5,
             casing_temperature=Q_(17.97, "degC"),
             ambient_temperature=Q_(0, "degC"),
+            leakages=False,
         ),
         PointSecondSection(
             flow_m=Q_(4.105, "kg/s"),
@@ -1363,6 +1371,7 @@ def back_to_back_no_leakage():
             casing_area=5.5,
             casing_temperature=Q_(17.97, "degC"),
             ambient_temperature=Q_(0, "degC"),
+            leakages=False,
         ),
         PointSecondSection(
             flow_m=Q_(3.36, "kg/s"),
@@ -1386,6 +1395,7 @@ def back_to_back_no_leakage():
             casing_area=5.5,
             casing_temperature=Q_(17.97, "degC"),
             ambient_temperature=Q_(0, "degC"),
+            leakages=False,
         ),
         PointSecondSection(
             flow_m=Q_(2.587, "kg/s"),
@@ -1409,6 +1419,7 @@ def back_to_back_no_leakage():
             casing_area=5.5,
             casing_temperature=Q_(17.97, "degC"),
             ambient_temperature=Q_(0, "degC"),
+            leakages=False,
         ),
         PointSecondSection(
             flow_m=Q_(2.075, "kg/s"),
@@ -1432,6 +1443,7 @@ def back_to_back_no_leakage():
             casing_area=5.5,
             casing_temperature=Q_(17.97, "degC"),
             ambient_temperature=Q_(0, "degC"),
+            leakages=False,
         ),
     ]
 
@@ -1440,7 +1452,7 @@ def back_to_back_no_leakage():
         guarantee_point_sec2=guarantee_point_sec2,
         test_points_sec1=test_points_sec1,
         test_points_sec2=test_points_sec2,
-        speed=Q_(12152.45187, "RPM"),
+        speed_operational=Q_(12152.45187, "RPM"),
     )
 
     return compressor_kwargs
@@ -1544,7 +1556,7 @@ def test_back_to_back_no_leakage(back_to_back_no_leakage):
     # imp_sec1 specified
     p0f_sp = back_to_back.point_sec1(
         flow_m=Q_(153951.321926329, "kg/h"),
-        speed=back_to_back.speed,
+        speed=back_to_back.speed_operational,
     )
     assert_allclose(p0f_sp.flow_m, Q_(153951.321926329, "kg/h").to("kg/s"), rtol=1e-2)
     assert_allclose(p0f_sp.suc.T(), 313.15, rtol=1e-3)
@@ -1558,7 +1570,7 @@ def test_back_to_back_no_leakage(back_to_back_no_leakage):
     # imp_sec2 specified
     p0f_sp = back_to_back.point_sec2(
         flow_m=Q_(53.092244, "kg/s"),
-        speed=back_to_back.speed,
+        speed=back_to_back.speed_operational,
     )
     assert_allclose(p0f_sp.flow_m, 53.092244)
     assert_allclose(p0f_sp.suc.T(), 313.15)
