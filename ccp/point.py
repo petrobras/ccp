@@ -1054,21 +1054,35 @@ class Point:
         fig.update_yaxes(
             title=f"Test Machine Mach Number - Mm{_t}",
         )
-        fig.update_xaxes(range=[0, 1.2], tickformat=".1f", dtick=0.1)
-        fig.update_yaxes(range=[0, 1.2], tickformat=".1f", dtick=0.1)
+        fig.update_xaxes(
+            range=[0, 1.2],
+            tickformat=".1f",
+            dtick=0.1,
+            showgrid=True,
+            gridcolor="lightgray",
+            gridwidth=1,
+        )
+        fig.update_yaxes(
+            range=[0, 1.2],
+            tickformat=".1f",
+            dtick=0.1,
+            showgrid=True,
+            gridcolor="lightgray",
+            gridwidth=1,
+        )
         # Upper Limit text
         upper_text = (
             "<b>Upper Limit</b><br>"
             f"Mm{_t} = (0.286 + 0.75·Mm{_sp}) {2 * space_str}for Mm{_sp} ≤ 0.86<br>"
-            f"Mm{_t} = (Mm{_sp} + 0.07) {13 * space_str}for Mm{_sp} > 0.86"
+            f"Mm{_t} = (Mm{_sp} + 0.07) {8 * space_str}for Mm{_sp} > 0.86"
         )
 
         # Lower Limit text
         lower_text = (
             "<b>Lower Limit</b><br>"
-            f"Mm{_t} = 0 {36 * space_str}for Mm{_sp} < 0.215<br>"
-            f"Mm{_t} = (1.266·Mm{_sp} - 0.271) {2 * space_str}for 0.215 ≤ Mm{_sp} ≤ 0.86<br>"
-            f"Mm{_t} = (Mm{_sp} - 0.042) {13 * space_str}for Mm{_sp} > 0.86"
+            f"Mm{_t} = 0 {20 * space_str}for Mm{_sp} < 0.215<br>"
+            f"Mm{_t} = (1.266·Mm{_sp} - 0.271) {space_str}for 0.215 ≤ Mm{_sp} ≤ 0.86<br>"
+            f"Mm{_t} = (Mm{_sp} - 0.042) {7 * space_str}for Mm{_sp} > 0.86"
         )
 
         # Annotation: Upper Limit (top-left corner)
@@ -1082,7 +1096,7 @@ class Point:
             align="left",
             showarrow=False,
             text=upper_text,
-            font=dict(size=10),
+            font=dict(size=10, family="monospace"),
             bgcolor="rgba(255,255,255,0.90)",
             bordercolor="rgba(0,0,0,0.45)",
             borderwidth=1,
@@ -1100,7 +1114,7 @@ class Point:
             align="left",
             showarrow=False,
             text=lower_text,
-            font=dict(size=10),
+            font=dict(size=10, family="monospace"),
             bgcolor="rgba(255,255,255,0.90)",
             bordercolor="rgba(0,0,0,0.45)",
             borderwidth=1,
@@ -1249,19 +1263,21 @@ class Point:
         # upper limit text
         upper_text = (
             "<b>Upper Limit</b><br>"
-            f"Rem{_t} = 10<sup>ul</sup> {17 * space_str} for 9e4 ≤ Rem{_sp} < 8e5<br>"
-            f"Rem{_t} = Rem{_sp} * 100 {2 * space_str} for Rem{_sp} ≥ 8e5<br><br>"
+            f"Rem{_t} = 10<sup>ul</sup> {9 * space_str} for 9e4 ≤ Rem{_sp} < 8e5<br>"
+            f"Rem{_t} = Rem{_sp} * 100 {space_str} for Rem{_sp} ≥ 8e5<br>"
             "where<br>"
-            f"ul = 68.205 + 16.13 * log10(Rem{_sp}) - 64.008 * \u221alog10(Rem{_sp})"
+            f"ul = 68.205 + 16.13 * log10(Rem{_sp})<br>"
+            f"- 64.008 * \u221alog10(Rem{_sp})"
         )
 
         # lower limit text
         lower_text = (
             "<b>Lower Limit</b><br>"
-            f"Rem{_t} = 10<sup>ll</sup> {2 * space_str}for 9e4 ≤ Rem{_sp} < 5e5<br>"
-            f"Rem{_t} = Rem{_sp} * 0.1 {2 * space_str}for Rem{_sp} ≥ 5e5<br><br>"
+            f"Rem{_t} = 10<sup>ll</sup> {10 * space_str}for 9e4 ≤ Rem{_sp} < 5e5<br>"
+            f"Rem{_t} = Rem{_sp} * 0.1 {2 * space_str}for Rem{_sp} ≥ 5e5<br>"
             "where<br>"
-            f"ll = -22.733 - 4.247 * log10(Rem{_sp}) + 21.63 * \u221alog10(Rem{_sp})"
+            f"ll = -22.733 - 4.247 * log10(Rem{_sp})<br>"
+            f"+ 21.63 * \u221alog10(Rem{_sp})"
         )
 
         # Annotation: Upper Limit (top-left corner)
@@ -1275,7 +1291,7 @@ class Point:
             align="left",
             showarrow=False,
             text=upper_text,
-            font=dict(size=10),
+            font=dict(size=10, family="monospace"),
             bgcolor="rgba(255,255,255,0.90)",
             bordercolor="rgba(0,0,0,0.45)",
             borderwidth=1,
@@ -1293,7 +1309,7 @@ class Point:
             align="left",
             showarrow=False,
             text=lower_text,
-            font=dict(size=10),
+            font=dict(size=10, family="monospace"),
             bgcolor="rgba(255,255,255,0.90)",
             bordercolor="rgba(0,0,0,0.45)",
             borderwidth=1,
