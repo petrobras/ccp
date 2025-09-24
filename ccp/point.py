@@ -834,17 +834,33 @@ class Point:
 
         eff_converted = original_point.eff
         psi_converted = original_point.psi
+        phi_converted = original_point.phi
 
-        if reynolds_correction:
-            eff_converted = correct_eff_reynolds_1997(suc, speed, original_point)
-            psi_converted = original_point.psi * (eff_converted / original_point.eff)
+        if reynolds_correction == "ptc1997":
+            rem_corr_eff, rem_corr_psi, rem_corr_phi = correct_reynolds_1997(
+                suc,
+                speed,
+                original_point,
+            )
+            eff_converted = rem_corr_eff * original_point.eff
+            psi_converted = rem_corr_psi * original_point.psi
+            phi_converted = rem_corr_phi * original_point.phi
+        elif reynolds_correction == "ptc2022" or reynolds_correction is True:
+            rem_corr_eff, rem_corr_psi, rem_corr_phi = correct_reynolds_2022(
+                suc,
+                speed,
+                original_point,
+            )
+            eff_converted = rem_corr_eff * original_point.eff
+            psi_converted = rem_corr_psi * original_point.psi
+            phi_converted = rem_corr_phi * original_point.phi
 
         convert_point_options = {
             "speed": dict(
                 suc=suc,
                 eff=eff_converted,
                 power_losses=original_point.power_losses,
-                phi=original_point.phi,
+                phi=phi_converted,
                 psi=psi_converted,
                 volume_ratio=original_point.volume_ratio,
                 b=original_point.b,
@@ -855,7 +871,7 @@ class Point:
                 suc=suc,
                 eff=eff_converted,
                 power_losses=original_point.power_losses,
-                phi=original_point.phi,
+                phi=phi_converted,
                 psi=psi_converted,
                 speed=speed,
                 b=original_point.b,
@@ -2584,7 +2600,7 @@ def mach(suc, speed, D):
     return ma.to("dimensionless")
 
 
-def correct_eff_reynolds_1997(suc, speed, original_point):
+def correct_reynolds_1997(suc, speed, original_point):
     """Correct the efficiency based on ASME PTC 10 1997.
 
     Parameters
@@ -2598,8 +2614,8 @@ def correct_eff_reynolds_1997(suc, speed, original_point):
 
     Returns
     -------
-    eff_converted : pint.Quantity
-        Converted efficiency (dimensionless).
+    rem_corr_eff, rem_corr_psi, rem_corr_phi
+        Correction factors for eff, psi and phi.
     """
     rc_original = 0.988 / original_point.reynolds**0.243
     rb_original = np.log(0.000125 + 13.67 / original_point.reynolds) / np.log(
@@ -2628,11 +2644,14 @@ def correct_eff_reynolds_1997(suc, speed, original_point):
         rb_converted / rb_original
     )
 
-    return eff_converted
+    rem_corr_eff = rem_corr_psi = eff_converted / original_point.eff
+    rem_corr_phi = 1
+
+    return rem_corr_eff, rem_corr_psi, rem_corr_phi
 
 
-def correct_eff_reynolds_2022(suc, speed, original_point):
-    """Correct the efficiency based on ASME PTC 10 2022.
+def correct_reynolds_2022(suc, speed, original_point):
+    """Correct efficiency, head coefficient and flow coefficient based on ASME PTC 10 2022.
 
     Parameters
     ----------
@@ -2642,6 +2661,12 @@ def correct_eff_reynolds_2022(suc, speed, original_point):
         Impeller speed (rad/s).
     original_point : ccp.Point
         Original operating point.
+
+    Returns
+    -------
+    rem_corr_eff, rem_corr_psi, rem_corr_phi
+        Correction factors for eff, psi and phi.
+
     """
     if original_point.surface_roughness < original_point.b / 1e6:
         ra = original_point.b / 1e6
@@ -2670,5 +2695,7 @@ def correct_eff_reynolds_2022(suc, speed, original_point):
     rem_corr_eff = 1 / original_point.eff + (1 - 1 / original_point.eff) * (
         (0.3 + 0.7 * lambda_sp / lambda_inf) / (0.3 + 0.7 * lambda_t / lambda_inf)
     )
+    rem_corr_psi = 0.5 + 0.5 * rem_corr_eff
+    rem_corr_phi = np.sqrt(rem_corr_psi)
 
-    return rem_corr_eff * original_point.eff
+    return rem_corr_eff, rem_corr_psi, rem_corr_phi
