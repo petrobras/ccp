@@ -2648,7 +2648,11 @@ def correct_eff_reynolds_2022(suc, speed, original_point):
     elif original_point.surface_roughness < original_point.b / 20:
         ra = original_point.b / 20
 
-    crit_friction_factor = (1.74 - np.log10(2 * ra / original_point.b)) ** (-2)
+    reynolds_converted = reynolds(
+        suc=suc, speed=speed, b=original_point.b, D=original_point.D
+    )
+
+    lambda_inf = (1.74 - np.log10(2 * ra / original_point.b)) ** (-2)
 
     def colebrook(lamda, reynolds):
         return (
@@ -2657,8 +2661,14 @@ def correct_eff_reynolds_2022(suc, speed, original_point):
             * np.log10(
                 1 + (18.7 * original_point.b) / (reynolds * 2 * ra * np.sqrt(lamda))
             )
-            - 1 / np.sqrt(crit_friction_factor)
+            - 1 / np.sqrt(lambda_inf)
         )
 
-    lambda_t = newton(colebrook, x0=crit_friction_factor)
-    lambda_sp = newton(colebrook, x0=crit_friction_factor)
+    lambda_t = newton(colebrook, x0=lambda_inf, args=(original_point.reynolds,))
+    lambda_sp = newton(colebrook, x0=lambda_inf, args=(reynolds_converted,))
+
+    rem_corr_eff = 1 / original_point.eff + (1 - 1 / original_point.eff) * (
+        (0.3 + 0.7 * lambda_sp / lambda_inf) / (0.3 + 0.7 * lambda_t / lambda_inf)
+    )
+
+    return rem_corr_eff * original_point.eff
