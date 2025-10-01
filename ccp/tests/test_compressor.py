@@ -1113,7 +1113,7 @@ def test_back_to_back_with_reynolds_correction(back_to_back):
 
 
 def test_back_to_back_calculate_speed(back_to_back):
-    back_to_back = BackToBack(**back_to_back, reynolds_correction=True)
+    back_to_back = BackToBack(**back_to_back, reynolds_correction="ptc1997")
     back_to_back = back_to_back.calculate_speed_to_match_discharge_pressure()
     point_sp = back_to_back.point_sec2(
         speed=back_to_back.speed_operational,
@@ -1123,7 +1123,7 @@ def test_back_to_back_calculate_speed(back_to_back):
 
 
 def test_save_and_load(back_to_back):
-    back_to_back = BackToBack(**back_to_back, reynolds_correction=True)
+    back_to_back = BackToBack(**back_to_back, reynolds_correction="ptc1997")
 
     file = Path(tempdir) / "back_to_back.toml"
     back_to_back.save(file)

@@ -814,6 +814,8 @@ class Point:
         ----------
         original_point : ccp.Point
             Original point from which the desired point will be converted.
+        suc : ccp.State
+            New suction state.
         find : str, optional
             If the calculation will find a new speed keeping constant volume ratio,
             or a new volume ratio for the desired speed.
@@ -832,46 +834,33 @@ class Point:
 
         eff_converted = original_point.eff
         psi_converted = original_point.psi
+        phi_converted = original_point.phi
 
-        if reynolds_correction:
-            rc_original = 0.988 / original_point.reynolds**0.243
-            rb_original = np.log(0.000125 + 13.67 / original_point.reynolds) / np.log(
-                original_point.surface_roughness.to("in").m
-                + (13.67 / original_point.reynolds)
+        if reynolds_correction == "ptc1997":
+            rem_corr_eff, rem_corr_psi, rem_corr_phi = correct_reynolds_1997(
+                suc,
+                speed,
+                original_point,
             )
-            ra_original = (
-                0.066
-                + 0.934
-                * ((4.8e6 * original_point.b.to("ft").m) / original_point.reynolds)
-                ** rc_original
+            eff_converted = rem_corr_eff * original_point.eff
+            psi_converted = rem_corr_psi * original_point.psi
+            phi_converted = rem_corr_phi * original_point.phi
+        elif reynolds_correction == "ptc2022" or reynolds_correction is True:
+            rem_corr_eff, rem_corr_psi, rem_corr_phi = correct_reynolds_2022(
+                suc,
+                speed,
+                original_point,
             )
-
-            reynolds_converted = reynolds(
-                suc=suc, speed=speed, b=original_point.b, D=original_point.D
-            )
-            rc_converted = 0.988 / reynolds_converted**0.243
-            rb_converted = np.log(0.000125 + 13.67 / reynolds_converted) / np.log(
-                original_point.surface_roughness.to("in").m
-                + (13.67 / reynolds_converted)
-            )
-            ra_converted = (
-                0.066
-                + 0.934
-                * ((4.8e6 * original_point.b.to("ft").m) / reynolds_converted)
-                ** rc_converted
-            )
-
-            eff_converted = 1 - (1 - original_point.eff) * (
-                ra_converted / ra_original
-            ) * (rb_converted / rb_original)
-            psi_converted = original_point.psi * (eff_converted / original_point.eff)
+            eff_converted = rem_corr_eff * original_point.eff
+            psi_converted = rem_corr_psi * original_point.psi
+            phi_converted = rem_corr_phi * original_point.phi
 
         convert_point_options = {
             "speed": dict(
                 suc=suc,
                 eff=eff_converted,
                 power_losses=original_point.power_losses,
-                phi=original_point.phi,
+                phi=phi_converted,
                 psi=psi_converted,
                 volume_ratio=original_point.volume_ratio,
                 b=original_point.b,
@@ -882,7 +871,7 @@ class Point:
                 suc=suc,
                 eff=eff_converted,
                 power_losses=original_point.power_losses,
-                phi=original_point.phi,
+                phi=phi_converted,
                 psi=psi_converted,
                 speed=speed,
                 b=original_point.b,
@@ -2609,3 +2598,102 @@ def mach(suc, speed, D):
     ma = u / a
 
     return ma.to("dimensionless")
+
+
+def correct_reynolds_1997(suc, speed, original_point):
+    """Correct the efficiency based on ASME PTC 10 1997.
+
+    Parameters
+    ----------
+    suc : ccp.State
+        New suction state.
+    speed : pint.Quantity, float
+        Impeller speed (rad/s).
+    original_point : ccp.Point
+        Original operating point.
+
+    Returns
+    -------
+    rem_corr_eff, rem_corr_psi, rem_corr_phi
+        Correction factors for eff, psi and phi.
+    """
+    rc_original = 0.988 / original_point.reynolds**0.243
+    rb_original = np.log(0.000125 + 13.67 / original_point.reynolds) / np.log(
+        original_point.surface_roughness.to("in").m + (13.67 / original_point.reynolds)
+    )
+    ra_original = (
+        0.066
+        + 0.934
+        * ((4.8e6 * original_point.b.to("ft").m) / original_point.reynolds)
+        ** rc_original
+    )
+    reynolds_converted = reynolds(
+        suc=suc, speed=speed, b=original_point.b, D=original_point.D
+    )
+    rc_converted = 0.988 / reynolds_converted**0.243
+    rb_converted = np.log(0.000125 + 13.67 / reynolds_converted) / np.log(
+        original_point.surface_roughness.to("in").m + (13.67 / reynolds_converted)
+    )
+    ra_converted = (
+        0.066
+        + 0.934
+        * ((4.8e6 * original_point.b.to("ft").m) / reynolds_converted) ** rc_converted
+    )
+
+    eff_converted = 1 - (1 - original_point.eff) * (ra_converted / ra_original) * (
+        rb_converted / rb_original
+    )
+
+    rem_corr_eff = rem_corr_psi = eff_converted / original_point.eff
+    rem_corr_phi = 1
+
+    return rem_corr_eff, rem_corr_psi, rem_corr_phi
+
+
+def correct_reynolds_2022(suc, speed, original_point):
+    """Correct efficiency, head coefficient and flow coefficient based on ASME PTC 10 2022.
+
+    Parameters
+    ----------
+    suc : ccp.State
+        New suction state.
+    speed : pint.Quantity, float
+        Impeller speed (rad/s).
+    original_point : ccp.Point
+        Original operating point.
+
+    Returns
+    -------
+    rem_corr_eff, rem_corr_psi, rem_corr_phi
+        Correction factors for eff, psi and phi.
+
+    """
+    ra = original_point.surface_roughness
+    reynolds_converted = reynolds(
+        suc=suc, speed=speed, b=original_point.b, D=original_point.D
+    )
+
+    lambda_inf = (
+        1.74 - 2 * np.log10(2 * original_point.surface_roughness / original_point.b)
+    ) ** (-2)
+
+    def colebrook(lamda, reynolds):
+        return (
+            1 / np.sqrt(lamda)
+            + 2
+            * np.log10(
+                1 + (18.7 * original_point.b) / (reynolds * 2 * ra * np.sqrt(lamda))
+            )
+            - 1 / np.sqrt(lambda_inf)
+        )
+
+    lambda_t = newton(colebrook, x0=lambda_inf, args=(original_point.reynolds,))
+    lambda_sp = newton(colebrook, x0=lambda_inf, args=(reynolds_converted,))
+
+    rem_corr_eff = 1 / original_point.eff + (1 - 1 / original_point.eff) * (
+        (0.3 + 0.7 * lambda_sp / lambda_inf) / (0.3 + 0.7 * lambda_t / lambda_inf)
+    )
+    rem_corr_psi = 0.5 + 0.5 * rem_corr_eff
+    rem_corr_phi = np.sqrt(rem_corr_psi)
+
+    return rem_corr_eff, rem_corr_psi, rem_corr_phi

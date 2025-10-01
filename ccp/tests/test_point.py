@@ -436,7 +436,7 @@ def test_converted_from_find_volume_ratio(point_eff_flow_v_head_speed_suc_1):
     )
 
 
-def test_converted_from_find_volume_ratio_with_reynolds_correction(
+def test_converted_from_find_volume_ratio_with_reynolds_correction_1997(
     point_eff_flow_v_head_speed_suc_1,
 ):
     suc_2 = State(p=Q_(0.2, "MPa"), T=301.58, fluid={"n2": 1 - 1e-15, "co2": 1e-15})
@@ -444,7 +444,7 @@ def test_converted_from_find_volume_ratio_with_reynolds_correction(
         original_point=point_eff_flow_v_head_speed_suc_1,
         suc=suc_2,
         find="volume_ratio",
-        reynolds_correction=True,
+        reynolds_correction="ptc1997",
     )
 
     assert_allclose(
@@ -485,6 +485,59 @@ def test_converted_from_find_volume_ratio_with_reynolds_correction(
     )
     assert_allclose(
         point_converted_from_find_volume_ratio.volume_ratio_ratio, 1.146667, rtol=1e-4
+    )
+
+
+def test_converted_from_find_volume_ratio_with_reynolds_correction_2022(
+    point_eff_flow_v_head_speed_suc_1,
+):
+    suc_2 = State(p=Q_(0.2, "MPa"), T=301.58, fluid={"n2": 1 - 1e-15, "co2": 1e-15})
+    point_converted_from_find_volume_ratio = Point.convert_from(
+        original_point=point_eff_flow_v_head_speed_suc_1,
+        suc=suc_2,
+        find="volume_ratio",
+        reynolds_correction="ptc2022",
+    )
+
+    assert_allclose(
+        point_converted_from_find_volume_ratio.b, point_eff_flow_v_head_speed_suc_1.b
+    )
+    assert_allclose(
+        point_converted_from_find_volume_ratio.D, point_eff_flow_v_head_speed_suc_1.D
+    )
+    assert_allclose(
+        point_converted_from_find_volume_ratio.eff,
+        0.811481,
+        rtol=1e-4,
+    )
+    assert_allclose(
+        point_converted_from_find_volume_ratio.phi,
+        0.080670,
+        rtol=1e-4,
+    )
+    assert_allclose(
+        point_converted_from_find_volume_ratio.psi,
+        7.832131,
+        rtol=1e-4,
+    )
+    assert_allclose(
+        point_converted_from_find_volume_ratio.volume_ratio, 2.648807, rtol=1e-4
+    )
+    assert_allclose(point_converted_from_find_volume_ratio.speed, 1167.101671)
+    assert_allclose(
+        point_converted_from_find_volume_ratio.head, 177661.399250, rtol=1e-4
+    )
+    assert_allclose(
+        point_converted_from_find_volume_ratio.power, 879781.798593, rtol=1e-4
+    )
+    assert_allclose(
+        point_converted_from_find_volume_ratio.phi_ratio, 1.004531, rtol=1e-4
+    )
+    assert_allclose(
+        point_converted_from_find_volume_ratio.psi_ratio, 1.009082, rtol=1e-4
+    )
+    assert_allclose(
+        point_converted_from_find_volume_ratio.volume_ratio_ratio, 1.155822, rtol=1e-4
     )
 
 
@@ -610,7 +663,15 @@ def test_ptc10_c6_sample_calculation():
     point_sp = ccp.Point.convert_from(
         point_t,
         suc=suc_sp,
-        reynolds_correction=True,
+        reynolds_correction="ptc1997",
+        speed=Q_(3600, "rpm"),
+        find="volume_ratio",
+    )
+    assert_allclose(point_sp.eff, 0.792242)
+    point_sp = ccp.Point.convert_from(
+        point_t,
+        suc=suc_sp,
+        reynolds_correction="ptc2022",
         speed=Q_(3600, "rpm"),
         find="volume_ratio",
     )
