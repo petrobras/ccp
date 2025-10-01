@@ -2668,16 +2668,14 @@ def correct_reynolds_2022(suc, speed, original_point):
         Correction factors for eff, psi and phi.
 
     """
-    if original_point.surface_roughness < original_point.b / 1e6:
-        ra = original_point.b / 1e6
-    elif original_point.surface_roughness < original_point.b / 20:
-        ra = original_point.b / 20
-
+    ra = original_point.surface_roughness
     reynolds_converted = reynolds(
         suc=suc, speed=speed, b=original_point.b, D=original_point.D
     )
 
-    lambda_inf = (1.74 - np.log10(2 * ra / original_point.b)) ** (-2)
+    lambda_inf = (
+        1.74 - 2 * np.log10(2 * original_point.surface_roughness / original_point.b)
+    ) ** (-2)
 
     def colebrook(lamda, reynolds):
         return (
