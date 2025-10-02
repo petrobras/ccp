@@ -990,7 +990,7 @@ def test_back_to_back(back_to_back):
 
 
 def test_back_to_back_with_reynolds_correction(back_to_back):
-    back_to_back = BackToBack(**back_to_back, reynolds_correction=True)
+    back_to_back = BackToBack(**back_to_back, reynolds_correction="ptc1997")
     # check flows for first point sec1
     p0f = back_to_back.points_flange_t_sec1[0]
     assert_allclose(p0f.end_seal_flow_m, Q_(386.62, "kg/h").to("kg/s"), rtol=1e-5)

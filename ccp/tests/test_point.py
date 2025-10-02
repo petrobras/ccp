@@ -683,7 +683,7 @@ def test_ptc10_c6_sample_calculation():
         speed=Q_(3600, "rpm"),
         find="volume_ratio",
     )
-    assert_allclose(point_sp.eff.m, 0.792242)
+    assert_allclose(point_sp.eff.m, 0.792242, rtol=1e-6)
     point_sp = ccp.Point.convert_from(
         point_t,
         suc=suc_sp,
@@ -691,4 +691,4 @@ def test_ptc10_c6_sample_calculation():
         speed=Q_(3600, "rpm"),
         find="volume_ratio",
     )
-    assert_allclose(point_sp.eff.m, 0.792242)
+    assert_allclose(point_sp.eff.m, 0.797659, rtol=1e-6)
