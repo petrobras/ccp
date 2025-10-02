@@ -350,19 +350,19 @@ class Evaluation:
             print("Calculating expected points...")
             expected_points += tqdm(pool.imap(get_interpolated_point, args_list))
 
-        # start column with -1, if this value remains, it means that the point was not calculated due to invalid data
-        df["eff"] = -1
-        df["head"] = -1
-        df["power"] = -1
-        df["p_disch"] = -1
-        df["expected_eff"] = -1
-        df["expected_head"] = -1
-        df["expected_power"] = -1
-        df["expected_p_disch"] = -1
-        df["delta_eff"] = -1
-        df["delta_head"] = -1
-        df["delta_power"] = -1
-        df["delta_p_disch"] = -1
+        # start column with -1.0, if this value remains, it means that the point was not calculated due to invalid data
+        df["eff"] = -1.0
+        df["head"] = -1.0
+        df["power"] = -1.0
+        df["p_disch"] = -1.0
+        df["expected_eff"] = -1.0
+        df["expected_head"] = -1.0
+        df["expected_power"] = -1.0
+        df["expected_p_disch"] = -1.0
+        df["delta_eff"] = -1.0
+        df["delta_head"] = -1.0
+        df["delta_power"] = -1.0
+        df["delta_p_disch"] = -1.0
 
         for i, point_op, point_expected in zip(df.index, points, expected_points):
             # if point_op is None, it means that the point was not calculated due to invalid data
@@ -393,7 +393,7 @@ class Evaluation:
         total_time = df.index[-1] - df.index[0]
 
         # create column for timescale
-        df["timescale"] = 0
+        df["timescale"] = 0.0
 
         if len(df) > 1:
             for i, row in df.iterrows():
