@@ -48,12 +48,12 @@ def impeller_lp_sec1_from_csv():
 
 def test_impeller_lp_sec1_from_csv(impeller_lp_sec1_from_csv):
     p0 = impeller_lp_sec1_from_csv[0]
-    assert_allclose(p0.flow_v.to("m³/h"), 11250)
-    assert_allclose(p0.speed.to("RPM"), 6882.0)
-    assert_allclose(p0.disch.p().to("bar"), 9.028826)
-    assert_allclose(p0.head.to("kJ/kg"), 82.870085)
-    assert_allclose(p0.eff, 0.789412, rtol=1e-5)
-    assert_allclose(p0.power.to("kW"), 1432.555494, rtol=1e-4)
+    assert_allclose(p0.flow_v.to("m³/h").m, 11250)
+    assert_allclose(p0.speed.to("RPM").m, 6882.0)
+    assert_allclose(p0.disch.p().to("bar").m, 9.028826)
+    assert_allclose(p0.head.to("kJ/kg").m, 82.870085)
+    assert_allclose(p0.eff.m, 0.789412, rtol=1e-5)
+    assert_allclose(p0.power.to("kW").m, 1432.555494, rtol=1e-4)
 
 
 def test_fluctuation():
@@ -154,13 +154,13 @@ def test_filter_real_data():
     # load data.parquet
     df = pd.read_parquet(data_path / "data.parquet")
     data_type = {
-            "ps": "pressure",
-            "Ts": "temperature",
-            "pd": "pressure",
-            "Td": "temperature",
-            "speed": "speed",
-            "delta_p": "delta_p",
-        }
+        "ps": "pressure",
+        "Ts": "temperature",
+        "pd": "pressure",
+        "Td": "temperature",
+        "speed": "speed",
+        "delta_p": "delta_p",
+    }
 
     df = ccp.data_io.filter_data(
         df,
