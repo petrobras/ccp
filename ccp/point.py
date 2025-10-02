@@ -333,8 +333,8 @@ class Point:
         )
 
     def _calc_from_disch_flow_v_speed_suc(self):
-        self.head = self.head_calc_func(self.suc, self.disch)
-        self.eff = self.eff_calc_func(self.suc, self.disch)
+        self.head = self.head_calc_func(self.suc, self.disch, self._dummy_state)
+        self.eff = self.eff_calc_func(self.suc, self.disch, self._dummy_state)
         self.volume_ratio = self.suc.v() / self.disch.v()
         self.flow_m = self.suc.rho() * self.flow_v
         self.phi = phi(self.flow_v, self.speed, self.D)
@@ -370,8 +370,8 @@ class Point:
         self.torque = self.power_shaft / self.speed
 
     def _calc_from_disch_flow_m_speed_suc(self):
-        self.head = self.head_calc_func(self.suc, self.disch)
-        self.eff = self.eff_calc_func(self.suc, self.disch)
+        self.head = self.head_calc_func(self.suc, self.disch, self._dummy_state)
+        self.eff = self.eff_calc_func(self.suc, self.disch, self._dummy_state)
         self.volume_ratio = self.suc.v() / self.disch.v()
         self.flow_v = self.flow_m / self.suc.rho()
         if self.casing_temperature is not None:
@@ -437,7 +437,7 @@ class Point:
             newton(update_state, disch.p().magnitude, args=("pressure",), tol=1e-1)
 
         self.disch = disch
-        self.head = self.head_calc_func(suc, disch)
+        self.head = self.head_calc_func(suc, disch, self._dummy_state)
         self.speed = speed_from_psi(self.D, self.head, self.psi)
         self.flow_v = flow_from_phi(self.D, self.phi, self.speed)
         self.flow_m = self.flow_v * self.suc.rho()
@@ -536,7 +536,7 @@ class Point:
         suc = self.suc
         disch = disch_from_suc_disch_p_eff(suc, self.disch_p, eff)
         self.disch = disch
-        self.head = self.head_calc_func(suc, disch)
+        self.head = self.head_calc_func(suc, disch, self._dummy_state)
         self.flow_m = self.flow_v * self.suc.rho()
         self.power = power_calc(self.flow_m, self.head, self.eff)
         self.phi = phi(self.flow_v, self.speed, self.D)
@@ -562,7 +562,7 @@ class Point:
         suc = self.suc
         disch = disch_from_suc_disch_p_eff(suc, self.disch_p, eff)
         self.disch = disch
-        self.head = self.head_calc_func(suc, disch)
+        self.head = self.head_calc_func(suc, disch, self._dummy_state)
         self.flow_v = self.flow_m / self.suc.rho()
         self.power = power_calc(self.flow_m, self.head, self.eff)
         self.phi = phi(self.flow_v, self.speed, self.D)
@@ -1633,7 +1633,7 @@ def eff_pol(suc, disch):
     return wp / dh
 
 
-def head_isentropic(suc, disch):
+def head_isentropic(suc, disch, disch_s=None):
     """Isentropic head.
 
     Parameters
@@ -1642,6 +1642,10 @@ def head_isentropic(suc, disch):
         Suction state.
     disch : ccp.State
         Discharge state.
+    disch_s : ccp.State, optional
+        Reusable state object to avoid copying. If provided, this state
+        will be updated and used for calculations. If None, a copy of
+        disch will be created.
 
     Returns
     -------
@@ -1649,7 +1653,9 @@ def head_isentropic(suc, disch):
         Isentropic head.
     """
     # define state to isentropic discharge using dummy state
-    disch_s = copy(disch)
+    if disch_s is None:
+        disch_s = copy(disch)
+
     disch_s.update(p=disch.p(), s=suc.s())
 
     return head_pol(suc, disch_s).to("joule/kilogram")
@@ -1676,7 +1682,7 @@ def eff_isentropic(suc, disch):
     return ws / dh
 
 
-def f_schultz(suc, disch):
+def f_schultz(suc, disch, disch_s=None):
     r"""Correction factor as per :cite:`schultz1962` eq 32:
 
     .. math::
@@ -1692,6 +1698,10 @@ def f_schultz(suc, disch):
         Suction state.
     disch : ccp.State
         Discharge state.
+    disch_s : ccp.State, optional
+        Reusable state object to avoid copying. If provided, this state
+        will be updated and used for calculations. If None, a copy of
+        disch will be created.
 
     Returns
     -------
@@ -1700,16 +1710,18 @@ def f_schultz(suc, disch):
     """
 
     # define state to isentropic discharge using dummy state
-    disch_s = copy(disch)
+    if disch_s is None:
+        disch_s = copy(disch)
+
     disch_s.update(p=disch.p(), s=suc.s())
 
     h2s_h1 = disch_s.h() - suc.h()
-    h_isen = head_isentropic(suc, disch)
+    h_isen = head_isentropic(suc, disch, disch_s)
 
     return h2s_h1 / h_isen
 
 
-def head_pol_schultz(suc, disch):
+def head_pol_schultz(suc, disch, disch_s=None):
     r"""Polytropic head corrected by the :cite:`schultz1962` factor.
 
     .. math::
@@ -1727,19 +1739,22 @@ def head_pol_schultz(suc, disch):
         Suction state.
     disch : ccp.State
         Discharge state.
+    disch_s : ccp.State, optional
+        Reusable state object to avoid copying. If provided, this state
+        will be passed to f_schultz for reuse.
 
     Returns
     -------
     head_pol_schultz : pint.Quantity
         Schultz polytropic head (J/kg).
     """
-    f = f_schultz(suc, disch)
+    f = f_schultz(suc, disch, disch_s)
     head = head_pol(suc, disch)
 
     return f * head
 
 
-def eff_pol_schultz(suc, disch):
+def eff_pol_schultz(suc, disch, disch_s=None):
     """Polytropic efficiency as per :cite:`schultz1962`.
 
     Parameters
@@ -1748,19 +1763,22 @@ def eff_pol_schultz(suc, disch):
         Suction state.
     disch : ccp.State
         Discharge state.
+    disch_s : ccp.State, optional
+        Reusable state object to avoid copying. If provided, this state
+        will be passed to head_pol_schultz for reuse.
 
     Returns
     -------
     eff_pol_schultz : pint.Quantity
         Schultz polytropic efficiency (dimensionless).
     """
-    wp = head_pol_schultz(suc, disch)
+    wp = head_pol_schultz(suc, disch, disch_s)
     dh = disch.h() - suc.h()
 
     return (wp / dh).to("dimensionless")
 
 
-def head_pol_mallen_saville(suc, disch):
+def head_pol_mallen_saville(suc, disch, disch_s=None):
     r"""Polytropic head as per :cite:`mallen1977polytropic` calculated with:
 
     .. math::
@@ -1789,7 +1807,7 @@ def head_pol_mallen_saville(suc, disch):
     return head
 
 
-def eff_pol_mallen_saville(suc, disch):
+def eff_pol_mallen_saville(suc, disch, disch_s=None):
     """Polytropic efficiency as per :cite:`mallen1977polytropic`.
 
     Parameters
@@ -2021,7 +2039,7 @@ def f_sandberg_colby(suc, disch):
     return f_sandberg_colby.to("dimensionless")
 
 
-def head_pol_sandberg_colby(suc, disch):
+def head_pol_sandberg_colby(suc, disch, disch_s=None):
     r"""Polytropic head corrected by the :cite:`sandberg2013limitations` factor.
 
     .. math::
@@ -2050,7 +2068,7 @@ def head_pol_sandberg_colby(suc, disch):
     return h
 
 
-def head_pol_sandberg_colby_f(suc, disch):
+def head_pol_sandberg_colby_f(suc, disch, disch_s=None):
     r"""Polytropic head corrected by the :cite:`sandberg2013limitations` factor (original implementation).
 
     .. math::
@@ -2078,7 +2096,7 @@ def head_pol_sandberg_colby_f(suc, disch):
     return h
 
 
-def eff_pol_sandberg_colby(suc, disch):
+def eff_pol_sandberg_colby(suc, disch, disch_s=None):
     """Sandberg-Colby polytropic efficiency.
 
     Parameters
@@ -2099,7 +2117,7 @@ def eff_pol_sandberg_colby(suc, disch):
     return (wp / dh).to("dimensionless")
 
 
-def head_pol_huntington(suc, disch):
+def head_pol_huntington(suc, disch, disch_s=None):
     r"""Polytropic head calculated by the 3 point method described by :cite:`huntington1985`.
 
     The polytropic head in this case is calculated from the polytropic efficiency with:
@@ -2162,7 +2180,7 @@ def head_pol_huntington(suc, disch):
     return head
 
 
-def eff_pol_huntington(suc, disch):
+def eff_pol_huntington(suc, disch, disch_s=None):
     """Polytropic efficiency calculated by the 3 point method described by :cite:`huntington1985`.
 
     Parameters
