@@ -116,11 +116,11 @@ def test_new_binary_pairs():
     state = State(
         p=100000, T=300, fluid={"r134a": 0.6, "co2": 0.2, "n2": 0.1, "o2": 0.1}
     )
-    assert_allclose(state.rho(), 3.076654, rtol=1e-6)
+    assert_allclose(state.rho().m, 3.076654, rtol=1e-6)
     state = State(
         p=100000, T=300, fluid={"r1234ze": 0.6, "co2": 0.2, "n2": 0.1, "o2": 0.1}
     )
-    assert_allclose(state.rho(), 3.373371, rtol=1e-6)
+    assert_allclose(state.rho().m, 3.373371, rtol=1e-6)
 
 
 def test_binary_pairs_error():
@@ -396,16 +396,16 @@ def test_normalization():
 
 def test_fluids_not_in_coolprop_json_fluid_library():
     s = ccp.State(p=100000, T=300, fluid={"13Butadiene": 1})
-    assert_allclose(s.rho(), 2.222332)
+    assert_allclose(s.rho().m, 2.222332)
     s = ccp.State(p=100000, T=300, fluid={"1-Pentene": 1})
-    assert_allclose(s.rho(), 633.523164)
+    assert_allclose(s.rho().m, 633.523164)
 
 
 def test_fluids_not_in_coolprop_json_fluid_library():
     s = ccp.State(p=100000, T=300, fluid={"13Butadiene": 1})
-    assert_allclose(s.rho(), 2.222332)
+    assert_allclose(s.rho().m, 2.222332)
     s = ccp.State(p=100000, T=300, fluid={"1-Pentene": 1})
-    assert_allclose(s.rho(), 633.523164)
+    assert_allclose(s.rho().m, 633.523164)
 
 
 def test_ps_gas_update():
