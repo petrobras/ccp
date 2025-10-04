@@ -92,8 +92,15 @@ else:
 
 _library_path = _path / _shared_library
 
+# Auto-switch to HEOS if REFPROP is not available
+import ccp.config as _config
+
 if not _library_path.is_file():
-    _warnings.warn(f"{_library_path}.\nREFPROP not configured.")
+    _warnings.warn(
+        f"{_library_path}.\nREFPROP not configured. "
+        f"Automatically switching to EOS='HEOS' (CoolProp backend)."
+    )
+    _config.EOS = "HEOS"
 
 __version__ = "0.3.22"
 
