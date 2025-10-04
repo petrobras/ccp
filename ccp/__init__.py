@@ -102,7 +102,7 @@ if not _library_path.is_file():
     )
     _config.EOS = "HEOS"
 
-__version__ = "0.3.22"
+__version__ = "0.3.23"
 
 __version__full = (
     f"ccp: {__version__} | "
