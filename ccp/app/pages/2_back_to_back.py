@@ -17,7 +17,12 @@ from pathlib import Path
 # import everything that is common to ccp_app_straight_through and ccp_app_back_to_back
 from ccp.app.common import (
     pressure_units,
+    specific_heat_units,
+    density_units,
     parameters_map,
+    oil_iso_options,
+    specific_heat_calculate,
+    density_calculate,
     get_gas_composition,
     to_excel,
     convert,
@@ -90,6 +95,12 @@ def main():
             for curve in ["head", "power", "eff", "discharge_pressure"]:
                 if f"fig_{curve}_{sec}" not in st.session_state:
                     st.session_state[f"fig_{curve}_{sec}"] = ""
+        if "bearing_mechanical_losses" not in st.session_state:
+            st.session_state.bearing_mechanical_losses = False
+        if "oil_specific_heat" not in st.session_state:
+            st.session_state.oil_specific_heat = False
+        if "oil_iso" not in st.session_state:
+            st.session_state.oil_iso = False
 
     get_session()
 
@@ -141,7 +152,9 @@ def main():
             session_state_data_copy = session_state_data.copy()
             # remove keys that cannot be set with st.session_state.update
             for key in session_state_data.keys():
-                if key.startswith(("FormSubmitter", "my_form", "uploaded", "form", "table")):
+                if key.startswith(
+                    ("FormSubmitter", "my_form", "uploaded", "form", "table")
+                ):
                     del session_state_data_copy[key]
             st.session_state.update(session_state_data_copy)
             st.session_state.session_name = file.name.replace(".ccp", "")
@@ -208,13 +221,15 @@ def main():
                     "Gas Name",
                     value=f"gas_{i}",
                     key=f"gas_{i}",
-                    help="""
+                    help=(
+                        """
                     Gas name will be selected in Data Sheet and Test Data.
 
                     Fill in gas components and molar fractions for each gas.
                     """
-                    if i == 0
-                    else None,
+                        if i == 0
+                        else None
+                    ),
                 )
 
                 default_components = [
@@ -241,13 +256,20 @@ def main():
                         for column in st.session_state[key][f"gas_{i}"]:
                             if "component" in column:
                                 idx = column.split("_")[1]
-                                gas_composition_list.append({
-                                    "component": st.session_state[key][f"gas_{i}"][column],
-                                    "molar_fraction": st.session_state[key][f"gas_{i}"][f"molar_fraction_{idx}"]
-                                })
+                                gas_composition_list.append(
+                                    {
+                                        "component": st.session_state[key][f"gas_{i}"][
+                                            column
+                                        ],
+                                        "molar_fraction": st.session_state[key][
+                                            f"gas_{i}"
+                                        ][f"molar_fraction_{idx}"],
+                                    }
+                                )
                 if not gas_composition_list:
                     gas_composition_list = [
-                        {"component": molecule, "molar_fraction": 0.0} for molecule in default_components
+                        {"component": molecule, "molar_fraction": 0.0}
+                        for molecule in default_components
                     ]
 
                 gas_composition_df = pd.DataFrame(gas_composition_list)
@@ -269,8 +291,8 @@ def main():
                             default=0.0,
                             required=True,
                             format="%.3f",
-                        )
-                    }
+                        ),
+                    },
                 )
 
                 for column in gas_composition_df_edited:
@@ -286,8 +308,10 @@ def main():
     with st.sidebar.expander("⚙️ Options"):
         reynolds_correction = st.checkbox("Reynolds Correction", value=True)
         casing_heat_loss = st.checkbox("Casing Heat Loss", value=True)
+        bearing_mechanical_losses = st.checkbox("Bearing Mechanical Losses", value=True)
         calculate_leakages = st.checkbox(
-            "Calculate Leakages", value=True,
+            "Calculate Leakages",
+            value=True,
         )
         seal_gas_flow = st.checkbox(
             "Seal Gas Flow",
@@ -361,6 +385,102 @@ def main():
         ).to("bar")
         ureg.define(f"barg = 1 * bar; offset: {ambient_pressure.magnitude}")
 
+        def on_oil_specific_heat_change():
+            if st.session_state.oil_specific_heat:
+                st.session_state.oil_iso = False
+
+        def on_oil_iso_change():
+            if st.session_state.oil_iso:
+                st.session_state.oil_specific_heat = False
+
+        # add text input for the test lube oil specific heat
+        st.text("Test Lube Oil")
+        # select box for oil specific heat input
+        (
+            oil_specific_heat_checkbox_col,
+            oil_specific_heat_magnitude_col,
+            oil_specific_heat_unit_col,
+        ) = st.columns([0.5, 0.2, 0.3])
+        with oil_specific_heat_checkbox_col:
+            oil_specific_heat = st.checkbox(
+                "Specific Heat",
+                key="oil_specific_heat",
+                value=False,
+                on_change=on_oil_specific_heat_change,
+                help="If marked, uses this oil specific heat "
+                "and density for bearing mechanical losses calculation "
+                "and disables ISO oil classification.",
+            )
+        with oil_specific_heat_magnitude_col:
+            oil_specific_heat_magnitude = st.text_input(
+                "Oil Specific Heat",
+                value=2.03,
+                key="oil_specific_heat_magnitude",
+                label_visibility="collapsed",
+                disabled=not st.session_state.oil_specific_heat,
+            )
+        with oil_specific_heat_unit_col:
+            oil_specific_heat_unit = st.selectbox(
+                "Unit",
+                options=specific_heat_units,
+                index=specific_heat_units.index("kJ/kg/degK"),
+                key="oil_specific_heat_unit",
+                label_visibility="collapsed",
+                disabled=not st.session_state.oil_specific_heat,
+            )
+
+        oil_density_col, oil_density_magnitude_col, oil_density_unit_col = st.columns(
+            [0.5, 0.2, 0.3]
+        )
+        with oil_density_col:
+            st.text("Density")
+        with oil_density_magnitude_col:
+            oil_density_magnitude = st.text_input(
+                "Oil Density",
+                value=846.9,
+                key="oil_density_magnitude",
+                label_visibility="collapsed",
+                disabled=not st.session_state.oil_specific_heat,
+            )
+        with oil_density_unit_col:
+            oil_density_unit = st.selectbox(
+                "Unit",
+                options=density_units,
+                index=density_units.index("kg/m³"),
+                key="oil_density_unit",
+                label_visibility="collapsed",
+                disabled=not st.session_state.oil_specific_heat,
+            )
+        if oil_specific_heat:
+            oil_specific_heat_value = Q_(
+                float(oil_specific_heat_magnitude), oil_specific_heat_unit
+            ).to("kJ/kg/kelvin")
+            oil_density_value = Q_(float(oil_density_magnitude), oil_density_unit).to(
+                "kg/m³"
+            )
+
+        # select box for oil ISO classification input
+        oil_iso_checkbox_col, oil_iso_select_box_col = st.columns([0.6, 0.4])
+        with oil_iso_checkbox_col:
+            oil_iso = st.checkbox(
+                "Oil ISO Classification",
+                value=True,
+                key="oil_iso",
+                on_change=on_oil_iso_change,
+                help="If marked, uses the ISO oil classification "
+                "for bearing mechanical losses calculation "
+                "and disables specific heat and density input.",
+            )
+        with oil_iso_select_box_col:
+            oil_iso_classification = st.selectbox(
+                "ISO",
+                options=oil_iso_options,
+                index=oil_iso_options.index("VG 32"),
+                key="oil_iso_classification",
+                label_visibility="collapsed",
+                disabled=not st.session_state.oil_iso,
+            )
+
     # add dict to each section to store the values for guarantee and test points
     # in the parameters_map
     number_of_test_points = 6
@@ -423,6 +543,7 @@ def main():
             "discharge_pressure",
             "discharge_temperature",
             "power",
+            "power_shaft",
             "speed",
             "head",
             "eff",
@@ -613,6 +734,12 @@ def main():
                 "first_section_discharge_flow_m",
                 "seal_gas_flow_m",
                 "seal_gas_temperature",
+                "oil_flow_journal_bearing_de",
+                "oil_flow_journal_bearing_nde",
+                "oil_flow_thrust_bearing_nde",
+                "oil_inlet_temperature",
+                "oil_outlet_temperature_de",
+                "oil_outlet_temperature_nde",
             ]:
                 parameter_container = st.container()
                 parameter_columns = parameter_container.columns(
@@ -698,6 +825,12 @@ def main():
                 "speed",
                 "balance_line_flow_m",
                 "seal_gas_flow_m",
+                "oil_flow_journal_bearing_de",
+                "oil_flow_journal_bearing_nde",
+                "oil_flow_thrust_bearing_nde",
+                "oil_inlet_temperature",
+                "oil_outlet_temperature_de",
+                "oil_outlet_temperature_nde",
             ]:
                 parameter_container = st.container()
                 parameter_columns = parameter_container.columns(
@@ -850,6 +983,26 @@ def main():
                 float(st.session_state[f"D_{section}_point_guarantee"]),
                 parameters_map["D"][section]["data_sheet_units"],
             )
+            power_guarantee = Q_(
+                float(st.session_state[f"power_{section}_point_guarantee"]),
+                parameters_map["power"][section]["data_sheet_units"],
+            )
+            if bearing_mechanical_losses:
+                if st.session_state[f"power_shaft_{section}_point_guarantee"] == "":
+                    power_shaft_guarantee = Q_(
+                        float(st.session_state[f"power_{section}_point_guarantee"]),
+                        parameters_map["power"][section]["data_sheet_units"],
+                    ).to("kW")
+                else:
+                    power_shaft_guarantee = Q_(
+                        float(
+                            st.session_state[f"power_shaft_{section}_point_guarantee"]
+                        ),
+                        parameters_map["power_shaft"][section]["data_sheet_units"],
+                    ).to("kW")
+                section_kws["power_losses"] = power_shaft_guarantee - power_guarantee
+            else:
+                section_kws["power_losses"] = Q_(0, "W")
 
         time.sleep(0.1)
         progress_value += 5
@@ -1113,6 +1266,151 @@ def main():
                         pass
                         # TODO implement calculation without leakages
 
+                    kwargs["bearing_mechanical_losses"] = bearing_mechanical_losses
+                    if bearing_mechanical_losses:
+                        if (
+                            st.session_state[
+                                f"oil_flow_journal_bearing_de_{section}_point_{i}"
+                            ]
+                            != ""
+                        ):
+                            kwargs["oil_flow_journal_bearing_de"] = Q_(
+                                float(
+                                    st.session_state[
+                                        f"oil_flow_journal_bearing_de_{section}_point_{i}"
+                                    ]
+                                ),
+                                parameters_map["oil_flow_journal_bearing_de"][section][
+                                    "test_units"
+                                ],
+                            )
+                        else:
+                            kwargs["oil_flow_journal_bearing_nde"] = None
+                        if (
+                            st.session_state[
+                                f"oil_flow_journal_bearing_nde_{section}_point_{i}"
+                            ]
+                            != ""
+                        ):
+                            kwargs["oil_flow_journal_bearing_nde"] = Q_(
+                                float(
+                                    st.session_state[
+                                        f"oil_flow_journal_bearing_nde_{section}_point_{i}"
+                                    ]
+                                ),
+                                parameters_map["oil_flow_journal_bearing_nde"][section][
+                                    "test_units"
+                                ],
+                            )
+                        else:
+                            kwargs["oil_flow_thrust_bearing_nde"] = None
+                        if (
+                            st.session_state[
+                                f"oil_flow_thrust_bearing_nde_{section}_point_{i}"
+                            ]
+                            != ""
+                        ):
+                            kwargs["oil_flow_thrust_bearing_nde"] = Q_(
+                                float(
+                                    st.session_state[
+                                        f"oil_flow_thrust_bearing_nde_{section}_point_{i}"
+                                    ]
+                                ),
+                                parameters_map["oil_flow_thrust_bearing_nde"][section][
+                                    "test_units"
+                                ],
+                            )
+                        else:
+                            kwargs["oil_inlet_temperature"] = None
+                        if (
+                            st.session_state[
+                                f"oil_inlet_temperature_{section}_point_{i}"
+                            ]
+                            != ""
+                        ):
+                            kwargs["oil_inlet_temperature"] = Q_(
+                                float(
+                                    st.session_state[
+                                        f"oil_inlet_temperature_{section}_point_{i}"
+                                    ]
+                                ),
+                                parameters_map["oil_inlet_temperature"][section][
+                                    "test_units"
+                                ],
+                            )
+                        else:
+                            kwargs["oil_outlet_temperature_de"] = None
+                        if (
+                            st.session_state[
+                                f"oil_outlet_temperature_de_{section}_point_{i}"
+                            ]
+                            != ""
+                        ):
+                            kwargs["oil_outlet_temperature_de"] = Q_(
+                                float(
+                                    st.session_state[
+                                        f"oil_outlet_temperature_de_{section}_point_{i}"
+                                    ]
+                                ),
+                                parameters_map["oil_outlet_temperature_de"][section][
+                                    "test_units"
+                                ],
+                            )
+                        else:
+                            kwargs["oil_outlet_temperature_nde"] = None
+                        if (
+                            st.session_state[
+                                f"oil_outlet_temperature_nde_{section}_point_{i}"
+                            ]
+                            != ""
+                        ):
+                            kwargs["oil_outlet_temperature_nde"] = Q_(
+                                float(
+                                    st.session_state[
+                                        f"oil_outlet_temperature_nde_{section}_point_{i}"
+                                    ]
+                                ),
+                                parameters_map["oil_outlet_temperature_nde"][section][
+                                    "test_units"
+                                ],
+                            )
+                        else:
+                            kwargs["oil_outlet_temperature_nde"] = None
+                    if oil_iso and bearing_mechanical_losses:
+                        oil_specific_heat_de = specific_heat_calculate(
+                            kwargs["oil_inlet_temperature"],
+                            kwargs["oil_outlet_temperature_de"],
+                            oil_iso_classification,
+                        )
+                        oil_specific_heat_nde = specific_heat_calculate(
+                            kwargs["oil_inlet_temperature"],
+                            kwargs["oil_outlet_temperature_nde"],
+                            oil_iso_classification,
+                        )
+
+                        oil_density_de = density_calculate(
+                            kwargs["oil_inlet_temperature"],
+                            kwargs["oil_outlet_temperature_de"],
+                            oil_iso_classification,
+                        )
+                        oil_density_nde = density_calculate(
+                            kwargs["oil_inlet_temperature"],
+                            kwargs["oil_outlet_temperature_nde"],
+                            oil_iso_classification,
+                        )
+
+                        kwargs["oil_specific_heat_de"] = oil_specific_heat_de
+                        kwargs["oil_specific_heat_nde"] = oil_specific_heat_nde
+
+                        kwargs["oil_density_de"] = oil_density_de
+                        kwargs["oil_density_nde"] = oil_density_nde
+
+                    elif oil_specific_heat and bearing_mechanical_losses:
+                        kwargs["oil_specific_heat_de"] = oil_specific_heat_value
+                        kwargs["oil_specific_heat_nde"] = oil_specific_heat_value
+                        kwargs["oil_density_de"] = oil_density_value
+                        kwargs["oil_density_nde"] = oil_density_value
+
                     kwargs["b"] = Q_(
                         float(st.session_state[f"b_{section}_point_guarantee"]),
                         parameters_map["b"][section]["data_sheet_units"],
@@ -1151,12 +1449,6 @@ def main():
                                     ),
                                     parameters_map["speed"][section]["test_units"],
                                 ),
-                                oil_flow_journal_bearing_de=Q_(31.515, "l/min"),
-                                oil_flow_journal_bearing_nde=Q_(22.67, "l/min"),
-                                oil_flow_thrust_bearing_nde=Q_(126.729, "l/min"),
-                                oil_inlet_temperature=Q_(41.544, "degC"),
-                                oil_outlet_temperature_de=Q_(49.727, "degC"),
-                                oil_outlet_temperature_nde=Q_(50.621, "degC"),
                                 **kwargs,
                             )
                         )
@@ -1181,6 +1473,7 @@ def main():
             test_points_sec1=first_section_test_points,
             test_points_sec2=second_section_test_points,
             reynolds_correction=reynolds_correction,
+            bearing_mechanical_losses=bearing_mechanical_losses,
         )
 
         if calculate_speed_button:
@@ -1345,33 +1638,93 @@ def main():
                         for p in getattr(back_to_back, f"points_flange_sp_{sec}")
                     ]
                     results[f"W{_t} (kW)"] = [
-                        round(p.power.to("kW").m, 5)
+                        round(p.power_shaft.to("kW").m, 5)
                         for p in getattr(back_to_back, f"points_rotor_t_{sec}")
                     ]
-                    results[f"W{_t}/W{_sp}"] = [
-                        round(
-                            p.power.to("kW").m
-                            / getattr(back_to_back, f"guarantee_point_{sec}")
-                            .power.to("kW")
-                            .m,
-                            5,
-                        )
-                        for p in getattr(back_to_back, f"points_rotor_t_{sec}")
-                    ]
+                    if bearing_mechanical_losses:
+                        results[f"W{_t}/W{_sp}"] = [
+                            round(
+                                p.power_shaft.to("kW").m
+                                / Q_(
+                                    float(
+                                        st.session_state[
+                                            f"power_shaft_{section}_point_guarantee"
+                                        ]
+                                    ),
+                                    parameters_map["power_shaft"][section][
+                                        "data_sheet_units"
+                                    ],
+                                )
+                                .to("kW")
+                                .m,
+                                5,
+                            )
+                            for p in getattr(back_to_back, f"points_rotor_t_{sec}")
+                        ]
+                    else:
+                        results[f"W{_t}/W{_sp}"] = [
+                            round(
+                                p.power.to("kW").m
+                                / Q_(
+                                    float(
+                                        st.session_state[
+                                            f"power_{section}_point_guarantee"
+                                        ]
+                                    ),
+                                    parameters_map["power"][section][
+                                        "data_sheet_units"
+                                    ],
+                                )
+                                .to("kW")
+                                .m,
+                                5,
+                            )
+                            for p in getattr(back_to_back, f"points_rotor_t_{sec}")
+                        ]
                     results[f"W{conv} (kW)"] = [
-                        round(p.power.to("kW").m, 5)
+                        round(p.power_shaft.to("kW").m, 5)
                         for p in getattr(back_to_back, f"points_rotor_sp_{sec}")
                     ]
-                    results[f"W{conv}/W{_sp}"] = [
-                        round(
-                            p.power.to("kW").m
-                            / getattr(back_to_back, f"guarantee_point_{sec}")
-                            .power.to("kW")
-                            .m,
-                            5,
-                        )
-                        for p in getattr(back_to_back, f"points_rotor_sp_{sec}")
-                    ]
+                    if bearing_mechanical_losses:
+                        results[f"W{conv}/W{_sp}"] = [
+                            round(
+                                p.power_shaft.to("kW").m
+                                / Q_(
+                                    float(
+                                        st.session_state[
+                                            f"power_shaft_{section}_point_guarantee"
+                                        ]
+                                    ),
+                                    parameters_map["power_shaft"][section][
+                                        "data_sheet_units"
+                                    ],
+                                )
+                                .to("kW")
+                                .m,
+                                5,
+                            )
+                            for p in getattr(back_to_back, f"points_rotor_sp_{sec}")
+                        ]
+                    else:
+                        results[f"W{conv}/W{_sp}"] = [
+                            round(
+                                p.power.to("kW").m
+                                / Q_(
+                                    float(
+                                        st.session_state[
+                                            f"power_{section}_point_guarantee"
+                                        ]
+                                    ),
+                                    parameters_map["power"][section][
+                                        "data_sheet_units"
+                                    ],
+                                )
+                                .to("kW")
+                                .m,
+                                5,
+                            )
+                            for p in getattr(back_to_back, f"points_rotor_sp_{sec}")
+                        ]
                     results[f"Eff{_t}"] = [
                         round(p.eff.m, 5)
                         for p in getattr(back_to_back, f"points_flange_t_{sec}")
@@ -1469,23 +1822,50 @@ def main():
                     )
                     results[f"W{_t} (kW)"].append(None)
                     results[f"W{_t}/W{_sp}"].append(None)
-                    results[f"W{conv} (kW)"].append(
-                        round(point_interpolated.power.to("kW").m, 5)
-                    )
-                    results[f"W{conv}/W{_sp}"].append(
-                        round(
-                            point_interpolated.power.to("kW").m
-                            / Q_(
-                                float(
-                                    st.session_state[f"power_{section}_point_guarantee"]
-                                ),
-                                parameters_map["power"][section]["data_sheet_units"],
-                            )
-                            .to("kW")
-                            .m,
-                            5,
+                    if bearing_mechanical_losses:
+                        results[f"W{conv} (kW)"].append(
+                            round(point_interpolated.power_shaft.to("kW").m, 5)
                         )
-                    )
+                        results[f"W{conv}/W{_sp}"].append(
+                            round(
+                                point_interpolated.power_shaft.to("kW").m
+                                / Q_(
+                                    float(
+                                        st.session_state[
+                                            f"power_shaft_{section}_point_guarantee"
+                                        ]
+                                    ),
+                                    parameters_map["power_shaft"][section][
+                                        "data_sheet_units"
+                                    ],
+                                )
+                                .to("kW")
+                                .m,
+                                5,
+                            )
+                        )
+                    else:
+                        results[f"W{conv} (kW)"].append(
+                            round(point_interpolated.power.to("kW").m, 5)
+                        )
+                        results[f"W{conv}/W{_sp}"].append(
+                            round(
+                                point_interpolated.power.to("kW").m
+                                / Q_(
+                                    float(
+                                        st.session_state[
+                                            f"power_{section}_point_guarantee"
+                                        ]
+                                    ),
+                                    parameters_map["power"][section][
+                                        "data_sheet_units"
+                                    ],
+                                )
+                                .to("kW")
+                                .m,
+                                5,
+                            )
+                        )
                     results[f"Eff{_t}"].append(round(point_interpolated.eff.m, 5))
                     results[f"Eff{conv}"].append(round(point_interpolated.eff.m, 5))
 
@@ -1509,49 +1889,111 @@ def main():
                                 )
                             )
                         elif key == f"W{conv} (kW)":
-                            results[key].append(
-                                round(
-                                    point_interpolated_sec1.power.to("kW").m
-                                    + point_interpolated_sec2.power.to("kW").m,
-                                    5,
-                                )
-                            )
-                        elif key == f"W{conv}/W{_sp}":
-                            results[key].append(
-                                round(
-                                    (
+                            if bearing_mechanical_losses:
+                                results[key].append(
+                                    round(
                                         point_interpolated_sec1.power.to("kW").m
                                         + point_interpolated_sec2.power.to("kW").m
+                                        + max(
+                                            point_interpolated_sec1.power_losses.to(
+                                                "kW"
+                                            ).m,
+                                            point_interpolated_sec2.power_losses.to(
+                                                "kW"
+                                            ).m,
+                                        ),
+                                        5,
                                     )
-                                    / (
-                                        Q_(
-                                            float(
-                                                st.session_state[
-                                                    "power_section_1_point_guarantee"
-                                                ]
-                                            ),
-                                            parameters_map["power"][section][
-                                                "data_sheet_units"
-                                            ],
-                                        )
-                                        .to("kW")
-                                        .m
-                                        + Q_(
-                                            float(
-                                                st.session_state[
-                                                    "power_section_2_point_guarantee"
-                                                ]
-                                            ),
-                                            parameters_map["power"][section][
-                                                "data_sheet_units"
-                                            ],
-                                        )
-                                        .to("kW")
-                                        .m
-                                    ),
-                                    5,
                                 )
-                            )
+                            else:
+                                results[key].append(
+                                    round(
+                                        point_interpolated_sec1.power.to("kW").m
+                                        + point_interpolated_sec2.power.to("kW").m,
+                                        5,
+                                    )
+                                )
+                        elif key == f"W{conv}/W{_sp}":
+                            if bearing_mechanical_losses:
+                                results[key].append(
+                                    round(
+                                        (
+                                            point_interpolated_sec1.power.to("kW").m
+                                            + point_interpolated_sec2.power.to("kW").m
+                                            + max(
+                                                point_interpolated_sec1.power_losses.to(
+                                                    "kW"
+                                                ).m,
+                                                point_interpolated_sec2.power_losses.to(
+                                                    "kW"
+                                                ).m,
+                                            )
+                                        )
+                                        / (
+                                            Q_(
+                                                float(
+                                                    st.session_state[
+                                                        "power_shaft_section_1_point_guarantee"
+                                                    ]
+                                                ),
+                                                parameters_map["power_shaft"][section][
+                                                    "data_sheet_units"
+                                                ],
+                                            )
+                                            .to("kW")
+                                            .m
+                                            + Q_(
+                                                float(
+                                                    st.session_state[
+                                                        "power_shaft_section_2_point_guarantee"
+                                                    ]
+                                                ),
+                                                parameters_map["power_shaft"][section][
+                                                    "data_sheet_units"
+                                                ],
+                                            )
+                                            .to("kW")
+                                            .m
+                                        ),
+                                        5,
+                                    )
+                                )
+                            else:
+                                results[key].append(
+                                    round(
+                                        (
+                                            point_interpolated_sec1.power.to("kW").m
+                                            + point_interpolated_sec2.power.to("kW").m
+                                        )
+                                        / (
+                                            Q_(
+                                                float(
+                                                    st.session_state[
+                                                        "power_section_1_point_guarantee"
+                                                    ]
+                                                ),
+                                                parameters_map["power"][section][
+                                                    "data_sheet_units"
+                                                ],
+                                            )
+                                            .to("kW")
+                                            .m
+                                            + Q_(
+                                                float(
+                                                    st.session_state[
+                                                        "power_section_2_point_guarantee"
+                                                    ]
+                                                ),
+                                                parameters_map["power"][section][
+                                                    "data_sheet_units"
+                                                ],
+                                            )
+                                            .to("kW")
+                                            .m
+                                        ),
+                                        5,
+                                    )
+                                )
                         else:
                             results[key].append(None)
 
@@ -1607,24 +2049,28 @@ def main():
                             cell_value = df.loc[row_index, col_index]
                             if cell_value >= lower_limit and cell_value <= higher_limit:
                                 styled_df = styled_df.map(
-                                    lambda x: "background-color: #C8E6C9"
-                                    if x == cell_value
-                                    else ""
+                                    lambda x: (
+                                        "background-color: #C8E6C9"
+                                        if x == cell_value
+                                        else ""
+                                    )
                                 ).map(
-                                    lambda x: "font-color: #33691E"
-                                    if x == cell_value
-                                    else ""
+                                    lambda x: (
+                                        "font-color: #33691E" if x == cell_value else ""
+                                    )
                                 )
 
                             else:
                                 styled_df = styled_df.map(
-                                    lambda x: "background-color: #FFCDD2"
-                                    if x == cell_value
-                                    else ""
+                                    lambda x: (
+                                        "background-color: #FFCDD2"
+                                        if x == cell_value
+                                        else ""
+                                    )
                                 ).map(
-                                    lambda x: "font-color: #FFCDD2"
-                                    if x == cell_value
-                                    else ""
+                                    lambda x: (
+                                        "font-color: #FFCDD2" if x == cell_value else ""
+                                    )
                                 )
 
                             return styled_df
@@ -1834,13 +2280,17 @@ def main():
                                 plots_dict[curve].data[1].update(
                                     name=f"Flow: {point_interpolated.flow_v.to(flow_v_units):.~2f}, {curve.capitalize()}: {r_getattr(point_interpolated, curve_plot_method)(curve_units):.~2f}".replace(
                                         "m ** 3 / h", "m³/h"
-                                    ).replace("Discharge_pressure", "Disch. p")
+                                    ).replace(
+                                        "Discharge_pressure", "Disch. p"
+                                    )
                                 )
                             else:
                                 plots_dict[curve].data[1].update(
                                     name=f"Flow: {point_interpolated.flow_v.to(flow_v_units):.~2f}, {curve.capitalize()}: {r_getattr(point_interpolated, curve_plot_method).to(curve_units):.~2f}".replace(
                                         "m ** 3 / h", "m³/h"
-                                    ).replace("Discharge_pressure", "Disch. p")
+                                    ).replace(
+                                        "Discharge_pressure", "Disch. p"
+                                    )
                                 )
 
                             plots_dict[curve].update_layout(

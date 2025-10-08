@@ -39,6 +39,7 @@ units = {
     "o_d": "meter",
     "speed": "radian/second",
     "frequency": "radian/second",
+    "specific_heat": "J/kg/degK",
     "mx": "kg",
     "my": "kg",
     "Ip": "kg*m**2",
