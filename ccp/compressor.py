@@ -36,6 +36,14 @@ class Point1Sec(Point):
         Oil outlet temperature journal bearing drive end side (degK).
     oil_outlet_temperature_nde : float, pint.Quantity
         Oil outlet temperature bearing non-drive end side (degK).
+    oil_specific_heat_de : float, pint.Quantity
+        Oil specific heat bearing drive end side (J/kg/degK).
+    oil_specific_heat_nde : float, pint.Quantity
+        Oil specific heat bearing non-drive end side (J/kg/degK).
+    oil_density_de : float, pint.Quantity
+        Oil Density bearing drive end side (kg/m³).
+    oil_density_nde : float, pint.Quantity
+        Oil density bearing non-drive end side (kg/m³).
 
     Returns
     -------
@@ -79,6 +87,10 @@ class Point1Sec(Point):
     ...     oil_inlet_temperature=Q_(42.184, "degC"),
     ...     oil_outlet_temperature_de=Q_(48.111, "degC"),
     ...     oil_outlet_temperature_nde=Q_(46.879, "degC"),
+    ...     oil_specific_heat_de=Q_(2.02, "kJ/kg/degK"),
+    ...     oil_specific_heat_nde=Q_(2.02, "kJ/kg/degK"),
+    ...     oil_density_de=Q_(846.9, "kg/m³"),
+    ...     oil_density_nde=Q_(846.9, "kg/m³"),
     ...     casing_area=7.5,
     ...     casing_temperature=Q_(31.309, "degC"),
     ...     ambient_temperature=Q_(0, "degC"),
@@ -99,7 +111,12 @@ class Point1Sec(Point):
         oil_inlet_temperature=None,
         oil_outlet_temperature_de=None,
         oil_outlet_temperature_nde=None,
+        oil_specific_heat_de=None,
+        oil_specific_heat_nde=None,
+        oil_density_de=None,
+        oil_density_nde=None,
         leakages=True,
+        bearing_mechanical_losses=True,
         **kwargs,
     ):
         super().__init__(
@@ -115,12 +132,29 @@ class Point1Sec(Point):
         self.oil_inlet_temperature = oil_inlet_temperature
         self.oil_outlet_temperature_de = oil_outlet_temperature_de
         self.oil_outlet_temperature_nde = oil_outlet_temperature_nde
+        self.oil_specific_heat_de = oil_specific_heat_de
+        self.oil_specific_heat_nde = oil_specific_heat_nde
+        self.oil_density_de = oil_density_de
+        self.oil_density_nde = oil_density_nde
         self.leakages = leakages
+        self.bearing_mechanical_losses = bearing_mechanical_losses
 
         if not self.leakages:
             self.balance_line_flow_m = Q_(0, "kg/s")
             self.seal_gas_flow_m = Q_(0, "kg/s")
             self.seal_gas_temperature = self.suc.T()
+
+        if not self.bearing_mechanical_losses:
+            self.oil_flow_journal_bearing_de = Q_(0, "m³/s")
+            self.oil_flow_journal_bearing_nde = Q_(0, "m³/s")
+            self.oil_flow_thrust_bearing_nde = Q_(0, "m³/s")
+            self.oil_inlet_temperature = self.suc.T()
+            self.oil_outlet_temperature_de = self.suc.T()
+            self.oil_outlet_temperature_nde = self.suc.T()
+            oil_specific_heat_de = (Q_(2.02, "kJ/kg/degK"),)
+            oil_specific_heat_nde = (Q_(2.02, "kJ/kg/degK"),)
+            oil_density_de = (Q_(846.9, "kg/m³"),)
+            oil_density_nde = (Q_(846.9, "kg/m³"),)
 
     def _dict_to_save(self):
         """Returns a dict that will be saved to a toml file."""
@@ -135,6 +169,10 @@ class Point1Sec(Point):
             "oil_inlet_temperature",
             "oil_outlet_temperature_de",
             "oil_outlet_temperature_nde",
+            "oil_specific_heat_de",
+            "oil_specific_heat_nde",
+            "oil_density_de",
+            "oil_density_nde",
         ]:
             if getattr(self, param):
                 dict_to_save[param] = str(getattr(self, param))
@@ -152,6 +190,7 @@ class StraightThrough(Impeller):
         test_points,
         speed_operational=None,
         reynolds_correction=False,
+        bearing_mechanical_losses=False,
     ):
         self.guarantee_point = guarantee_point
         self.test_points = test_points
@@ -159,6 +198,7 @@ class StraightThrough(Impeller):
             speed_operational = guarantee_point.speed
         self.speed_operational = speed_operational
         self.reynolds_correction = reynolds_correction
+        self.bearing_mechanical_losses = bearing_mechanical_losses
 
         # points for test flange conditions
         self.points_flange_t = test_points
@@ -193,6 +233,26 @@ class StraightThrough(Impeller):
             k_end = k_seal(flow_m=mend, state_up=point.disch, state_down=point.suc)
             self.k_end_seal.append(k_end)
             suc_rotor = State(p=point.suc.p(), T=point.Ts1r, fluid=point.suc.fluid)
+
+            # calculate power losses
+            if bearing_mechanical_losses:
+                power_losses = (
+                    point.oil_density_de
+                    * point.oil_flow_journal_bearing_de
+                    * point.oil_specific_heat_de
+                    * (point.oil_outlet_temperature_de - point.oil_inlet_temperature)
+                    + point.oil_density_nde
+                    * point.oil_flow_journal_bearing_nde
+                    * point.oil_specific_heat_nde
+                    * (point.oil_outlet_temperature_nde - point.oil_inlet_temperature)
+                    + point.oil_density_nde
+                    * point.oil_flow_thrust_bearing_nde
+                    * point.oil_specific_heat_nde
+                    * (point.oil_outlet_temperature_nde - point.oil_inlet_temperature)
+                )
+            else:
+                power_losses = 0
+
             test_points_rotor.append(
                 Point(
                     suc=suc_rotor,
@@ -201,6 +261,7 @@ class StraightThrough(Impeller):
                     speed=point.speed,
                     b=point.b,
                     D=point.D,
+                    power_losses=power_losses,
                     surface_roughness=point.surface_roughness,
                     casing_area=point.casing_area,
                     casing_temperature=point.casing_temperature,
@@ -257,6 +318,7 @@ class StraightThrough(Impeller):
                     speed=speed_operational,
                     b=guarantee_point.b,
                     D=guarantee_point.D,
+                    power_losses=initial_point_rotor_sp.power_losses,
                     surface_roughness=guarantee_point.surface_roughness,
                     casing_area=guarantee_point.casing_area,
                     casing_temperature=guarantee_point.casing_temperature,
@@ -337,6 +399,7 @@ class StraightThrough(Impeller):
                 test_points=self.test_points,
                 speed_operational=x,
                 reynolds_correction=self.reynolds_correction,
+                bearing_mechanical_losses=self.bearing_mechanical_losses,
             )
 
             point = compressor.point(flow_m=self.guarantee_point.flow_m, speed=x)
@@ -349,6 +412,7 @@ class StraightThrough(Impeller):
             test_points=self.test_points,
             speed_operational=new_speed,
             reynolds_correction=self.reynolds_correction,
+            bearing_mechanical_losses=self.bearing_mechanical_losses,
         )
 
 
@@ -387,6 +451,14 @@ class PointFirstSection(Point):
         Oil outlet temperature journal bearing drive end side (degK).
     oil_outlet_temperature_nde : float, pint.Quantity
         Oil outlet temperature bearing non-drive end side (degK).
+    oil_specific_heat_de : float, pint.Quantity
+        Oil specific heat bearing drive end side (J/kg/degK).
+    oil_specific_heat_nde : float, pint.Quantity
+        Oil specific heat bearing non-drive end side (J/kg/degK).
+    oil_density_de : float, pint.Quantity
+        Oil Density bearing drive end side (kg/m³).
+    oil_density_nde : float, pint.Quantity
+        Oil density bearing non-drive end side (kg/m³).
 
     Returns
     -------
@@ -430,6 +502,10 @@ class PointFirstSection(Point):
     ...     oil_inlet_temperature=Q_(41.544, "degC"),
     ...     oil_outlet_temperature_de=Q_(49.727, "degC"),
     ...     oil_outlet_temperature_nde=Q_(50.621, "degC"),
+    ...     oil_specific_heat_de=Q_(2.02, "kJ/kg/degK"),
+    ...     oil_specific_heat_nde=Q_(2.02, "kJ/kg/degK"),
+    ...     oil_density_de=Q_(846.9, "kg/m³"),
+    ...     oil_density_nde=Q_(846.9, "kg/m³"),
     ...     casing_area=5.5,
     ...     casing_temperature=Q_(23.895, "degC"),
     ...     ambient_temperature=Q_(0, "degC"),
@@ -455,7 +531,12 @@ class PointFirstSection(Point):
         oil_inlet_temperature=None,
         oil_outlet_temperature_de=None,
         oil_outlet_temperature_nde=None,
+        oil_specific_heat_de=None,
+        oil_specific_heat_nde=None,
+        oil_density_de=None,
+        oil_density_nde=None,
         leakages=True,
+        bearing_mechanical_losses=True,
         **kwargs,
     ):
         super().__init__(
@@ -485,7 +566,12 @@ class PointFirstSection(Point):
         self.oil_inlet_temperature = oil_inlet_temperature
         self.oil_outlet_temperature_de = oil_outlet_temperature_de
         self.oil_outlet_temperature_nde = oil_outlet_temperature_nde
+        self.oil_specific_heat_de = oil_specific_heat_de
+        self.oil_specific_heat_nde = oil_specific_heat_nde
+        self.oil_density_de = oil_density_de
+        self.oil_density_nde = oil_density_nde
         self.leakages = leakages
+        self.bearing_mechanical_losses = bearing_mechanical_losses
 
         # check case for no leakage. If no leakage, div_wall_flow_m and first_section_discharge_flow_m are zero
         # and we equate the seal/div wall states to avoid errors
@@ -498,6 +584,18 @@ class PointFirstSection(Point):
             self.end_seal_upstream_pressure = self.suc.p()
             self.div_wall_upstream_temperature = self.disch.T()
             self.div_wall_upstream_pressure = self.disch.p()
+
+        if not self.bearing_mechanical_losses:
+            self.oil_flow_journal_bearing_de = Q_(0, "m³/s")
+            self.oil_flow_journal_bearing_nde = Q_(0, "m³/s")
+            self.oil_flow_thrust_bearing_nde = Q_(0, "m³/s")
+            self.oil_inlet_temperature = self.suc.T()
+            self.oil_outlet_temperature_de = self.suc.T()
+            self.oil_outlet_temperature_nde = self.suc.T()
+            oil_specific_heat_de = (Q_(2.02, "kJ/kg/degK"),)
+            oil_specific_heat_nde = (Q_(2.02, "kJ/kg/degK"),)
+            oil_density_de = (Q_(846.9, "kg/m³"),)
+            oil_density_nde = (Q_(846.9, "kg/m³"),)
 
         self.end_seal_upstream_state = State(
             p=self.end_seal_upstream_pressure,
@@ -544,6 +642,10 @@ class PointFirstSection(Point):
             "oil_inlet_temperature",
             "oil_outlet_temperature_de",
             "oil_outlet_temperature_nde",
+            "oil_specific_heat_de",
+            "oil_specific_heat_nde",
+            "oil_density_de",
+            "oil_density_nde",
         ]
         for parameter in parameters:
             if getattr(self, parameter) is not None:
@@ -569,6 +671,7 @@ class BackToBack(Impeller):
         guarantee_point_sec2,
         test_points_sec2,
         reynolds_correction=False,
+        bearing_mechanical_losses=False,
         speed_operational=None,
     ):
         self.guarantee_point_sec1 = guarantee_point_sec1
@@ -579,6 +682,7 @@ class BackToBack(Impeller):
             speed_operational = guarantee_point_sec1.speed
         self.speed_operational = speed_operational
         self.reynolds_correction = reynolds_correction
+        self.bearing_mechanical_losses = bearing_mechanical_losses
 
         # points for test flange conditions
         self.points_flange_t_sec1 = test_points_sec1
@@ -602,6 +706,24 @@ class BackToBack(Impeller):
                     + 0.95 * point.seal_gas_flow_m / 2
                 )
         for i, point in enumerate(test_points_sec1):
+            # calculate power losses
+            if bearing_mechanical_losses:
+                power_losses = (
+                    point.oil_density_de
+                    * point.oil_flow_journal_bearing_de
+                    * point.oil_specific_heat_de
+                    * (point.oil_outlet_temperature_de - point.oil_inlet_temperature)
+                    + point.oil_density_nde
+                    * point.oil_flow_journal_bearing_nde
+                    * point.oil_specific_heat_nde
+                    * (point.oil_outlet_temperature_nde - point.oil_inlet_temperature)
+                    + point.oil_density_nde
+                    * point.oil_flow_thrust_bearing_nde
+                    * point.oil_specific_heat_nde
+                    * (point.oil_outlet_temperature_nde - point.oil_inlet_temperature)
+                )
+            else:
+                power_losses = 0
             # Here we check for _first_section_discharge_flow_m because we want to use the
             # value given in the test point, not the calculated value.
             # This way we can guarantee that everytime we create the compressor, the same
@@ -656,6 +778,7 @@ class BackToBack(Impeller):
                     speed=point.speed,
                     b=point.b,
                     D=point.D,
+                    power_losses=power_losses,
                     casing_area=point.casing_area,
                     casing_temperature=point.casing_temperature,
                     ambient_temperature=point.ambient_temperature,
@@ -683,6 +806,24 @@ class BackToBack(Impeller):
                 )
 
         for i, point in enumerate(test_points_sec1):
+            # calculate power losses
+            if bearing_mechanical_losses:
+                power_losses = (
+                    point.oil_density_de
+                    * point.oil_flow_journal_bearing_de
+                    * point.oil_specific_heat_de
+                    * (point.oil_outlet_temperature_de - point.oil_inlet_temperature)
+                    + point.oil_density_nde
+                    * point.oil_flow_journal_bearing_nde
+                    * point.oil_specific_heat_nde
+                    * (point.oil_outlet_temperature_nde - point.oil_inlet_temperature)
+                    + point.oil_density_nde
+                    * point.oil_flow_thrust_bearing_nde
+                    * point.oil_specific_heat_nde
+                    * (point.oil_outlet_temperature_nde - point.oil_inlet_temperature)
+                )
+            else:
+                power_losses = 0
             if not point._first_section_discharge_flow_m:
                 self.k_end_seal[i] = k_end_seal_mean
                 end_seal_flow_m = flow_m_seal(
@@ -699,6 +840,8 @@ class BackToBack(Impeller):
                 )
 
                 # calculate balance line and rotor suction flow
+                if point.seal_gas_flow_m == None:  ##################
+                    point.seal_gas_flow_m = 0
                 mseal_t = point.seal_gas_flow_m
                 mend_t = end_seal_flow_m
                 point.end_seal_flow_m = mend_t
@@ -738,6 +881,7 @@ class BackToBack(Impeller):
                     speed=point.speed,
                     b=point.b,
                     D=point.D,
+                    power_losses=power_losses,
                     casing_area=point.casing_area,
                     casing_temperature=point.casing_temperature,
                     ambient_temperature=point.ambient_temperature,
@@ -752,8 +896,29 @@ class BackToBack(Impeller):
         # calculate rotor condition for sec2
         test_points_sec2_rotor = np.full(len(test_points_sec1), np.nan, dtype=object)
         for i, point_f in enumerate(test_points_sec2):
+            # calculate power losses
+            if bearing_mechanical_losses:
+                power_losses = (
+                    point.oil_density_de
+                    * point.oil_flow_journal_bearing_de
+                    * point.oil_specific_heat_de
+                    * (point.oil_outlet_temperature_de - point.oil_inlet_temperature)
+                    + point.oil_density_nde
+                    * point.oil_flow_journal_bearing_nde
+                    * point.oil_specific_heat_nde
+                    * (point.oil_outlet_temperature_nde - point.oil_inlet_temperature)
+                    + point.oil_density_nde
+                    * point.oil_flow_thrust_bearing_nde
+                    * point.oil_specific_heat_nde
+                    * (point.oil_outlet_temperature_nde - point.oil_inlet_temperature)
+                )
+            else:
+                power_losses = 0
+
             ms2f_t = point_f.flow_m
             mbal_t = point_f.balance_line_flow_m
+            if point_f.seal_gas_flow_m == None:  ##################
+                point_f.seal_gas_flow_m = 0
             mseal_t = point_f.seal_gas_flow_m
             mend_t = mbal_t - 0.95 * mseal_t / 2
             ms2r_t = ms2f_t - mend_t
@@ -764,6 +929,7 @@ class BackToBack(Impeller):
                 speed=point_f.speed,
                 b=point_f.b,
                 D=point_f.D,
+                power_losses=power_losses,
                 casing_area=point_f.casing_area,
                 casing_temperature=point_f.casing_temperature,
                 ambient_temperature=point_f.ambient_temperature,
@@ -858,7 +1024,7 @@ class BackToBack(Impeller):
             self.points_rotor_sp_sec1.append(point_r_sp)
         self.imp_rotor_sp_sec1 = Impeller(self.points_rotor_sp_sec1)
 
-        # estimate rotor guarantee flow using fd conditions
+        # estimate rotor guarantee flow using datasheet conditions
         end_seal_flow_m_sp = flow_m_seal(
             k_seal=k_end_seal,
             state_up=guarantee_point_sec2.suc,
@@ -899,6 +1065,7 @@ class BackToBack(Impeller):
                 disch=point_r_sp.disch,
                 flow_m=ms2f_sp,
                 speed=point_r_sp.speed,
+                power_losses=point_r_sp.power_losses,
                 b=point_r_sp.b,
                 D=point_r_sp.D,
             )
@@ -967,6 +1134,7 @@ class BackToBack(Impeller):
                 self.points_flange_sp_sec1, self.points_rotor_sp_sec1
             ):
                 p_flange.power = p_rotor.power
+                p_flange.power_losses = p_rotor.power_losses
         self.imp_flange_sp_sec1 = Impeller(self.points_flange_sp_sec1)
 
     def __eq__(self, other):
@@ -1078,6 +1246,8 @@ class BackToBack(Impeller):
         # calculate 'real' power from rotor conditions
         p_sec1_rotor = self.imp_rotor_sp_sec1.point(flow_m=ms1r_sp, speed=p_sec1.speed)
         p_sec1.power = p_sec1_rotor.power
+        p_sec1.power_losses = p_sec1_rotor.power_losses
+        p_sec1.power_shaft = p_sec1_rotor.power_shaft
 
         # set mach number and mach_diff
         mach_interpolation = parameter_interpolation(
@@ -1118,6 +1288,7 @@ class BackToBack(Impeller):
         )
         ms2r_sp = p_sec2.flow_m - end_seal_flow_m_sp
         p_sec2.power = ms2r_sp * p_sec2.head / p_sec2.eff
+        p_sec2.power_shaft = p_sec2.power + p_sec2.power_losses
 
         # set mach number and mach_diff
         mach_interpolation = parameter_interpolation(
@@ -1156,6 +1327,7 @@ class BackToBack(Impeller):
                 test_points_sec2=self.test_points_sec2,
                 speed_operational=x,
                 reynolds_correction=self.reynolds_correction,
+                bearing_mechanical_losses=self.bearing_mechanical_losses,
             )
 
             point = compressor.point_sec2(
@@ -1174,6 +1346,7 @@ class BackToBack(Impeller):
             test_points_sec2=self.test_points_sec2,
             speed_operational=new_speed,
             reynolds_correction=self.reynolds_correction,
+            bearing_mechanical_losses=self.bearing_mechanical_losses,
         )
 
 

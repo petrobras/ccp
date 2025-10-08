@@ -4,6 +4,8 @@ import io
 import pandas as pd
 import toml
 from packaging.version import Version
+from ccp import Q_
+import numpy as np
 
 # parameters with name and label
 flow_m_units = ["kg/h", "kg/min", "kg/s", "lbm/h", "lbm/min", "lbm/s"]
@@ -15,6 +17,17 @@ head_units = ["kJ/kg", "J/kg", "m*g0", "ft"]
 power_units = ["kW", "hp", "W", "Btu/h", "MW"]
 speed_units = ["rpm", "Hz"]
 length_units = ["m", "mm", "ft", "in"]
+specific_heat_units = ["kJ/kg/degK", "J/kg/degK", "cal/g/degC", "Btu/lb/degF"]
+oil_iso_options = ["VG 32", "VG 46"]
+oil_flow_units = ["l/min", "l/h", "gal/min", "m³/h", "m³/min", "m³/s"]
+density_units = ["kg/m³", "g/cm³", "g/ml", "g/l"]
+
+polytropic_methods = {
+    "Sandberg-Colby": "sandberg_colby",
+    "Huntington": "huntington",
+    "Mallen-Saville": "mallen_saville",
+    "Schultz": "schultz",
+}
 
 parameters_map = {
     "flow": {
@@ -94,6 +107,30 @@ parameters_map = {
         "label": "Seal Gas Temperature",
         "units": temperature_units,
     },
+    "oil_flow_journal_bearing_de": {
+        "label": "Oil Flow Journal Bearing DE",
+        "units": oil_flow_units,
+    },
+    "oil_flow_journal_bearing_nde": {
+        "label": "Oil Flow Journal Bearing NDE",
+        "units": oil_flow_units,
+    },
+    "oil_flow_thrust_bearing_nde": {
+        "label": "Oil Flow Thrust Bearing NDE",
+        "units": oil_flow_units,
+    },
+    "oil_inlet_temperature": {
+        "label": "Oil Inlet Temperature",
+        "units": temperature_units,
+    },
+    "oil_outlet_temperature_de": {
+        "label": "Oil Outlet Temperature DE",
+        "units": temperature_units,
+    },
+    "oil_outlet_temperature_nde": {
+        "label": "Oil Outlet Temperature NDE",
+        "units": temperature_units,
+    },
     "head": {
         "label": "Head",
         "units": head_units,
@@ -104,6 +141,10 @@ parameters_map = {
     },
     "power": {
         "label": "Gas Power",
+        "units": power_units,
+    },
+    "power_shaft": {
+        "label": "Shaft Power",
         "units": power_units,
     },
     "b": {
@@ -157,7 +198,52 @@ parameters_map = {
         "label": "Mass Flow (Result)",
         "units": ["kg/h", "lbm/h", "kg/s", "lbm/s"],
     },
+    "oil_specific_heat": {
+        "label": "Oil Specific Heat",
+        "units": specific_heat_units,
+    },
+    "oil_density": {
+        "label": "Oil Density",
+        "units": density_units,
+    },
 }
+
+
+# @check_units
+def specific_heat_calculate(T_in, T_out, oil_iso_classification):
+    T_in = T_in.to("degC").m
+    T_out = T_out.to("degC").m
+
+    if oil_iso_classification[3:] == "32":
+        a = -0.0000019
+        b = 0.0042
+        c = 1.80
+    else:
+        a = -0.0000018
+        b = 0.0040
+        c = 1.83
+    Cp = (
+        a * (T_out**3 - T_in**3) / 3 + b * (T_out**2 - T_in**2) / 2 + c * (T_out - T_in)
+    ) / (T_out - T_in)
+    return Q_(Cp, "kJ/kg/degK")
+
+
+def density_calculate(T_in, T_out, oil_iso_classification):
+    T_in = T_in.to("degC").m
+    T_out = T_out.to("degC").m
+    beta = Q_(0.00075, "1/degC").m
+
+    if oil_iso_classification[3:] == "32":
+        rho_15 = Q_(870, "kg/m³").m
+    else:
+        rho_15 = Q_(876, "kg/m³").m
+
+    density = (
+        rho_15
+        / (beta * (T_out - T_in))
+        * (np.log(1 + beta * T_out - 15 * beta) - np.log(1 + beta * T_in - 15 * beta))
+    )
+    return Q_(density, "kg/m³")
 
 
 def convert(data, version):
