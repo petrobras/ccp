@@ -314,9 +314,11 @@ class Point:
             (
                 self.suc,
                 round(self.speed.to_base_units().magnitude, 8) if self.speed else None,
-                round(self.flow_v.to_base_units().magnitude, 8)
-                if self.flow_v
-                else None,
+                (
+                    round(self.flow_v.to_base_units().magnitude, 8)
+                    if self.flow_v
+                    else None
+                ),
                 round(self.head.to_base_units().magnitude, 8) if self.head else None,
                 round(self.eff.to_base_units().magnitude, 8) if self.eff else None,
             )
@@ -830,6 +832,10 @@ class Point:
         if speed is None:
             speed = original_point.speed
 
+        power_losses = (
+            original_point.power_losses * (speed / original_point.speed) ** 2.5
+        )
+
         eff_converted = original_point.eff
         psi_converted = original_point.psi
 
@@ -870,7 +876,7 @@ class Point:
             "speed": dict(
                 suc=suc,
                 eff=eff_converted,
-                power_losses=original_point.power_losses,
+                power_losses=power_losses,
                 phi=original_point.phi,
                 psi=psi_converted,
                 volume_ratio=original_point.volume_ratio,
@@ -881,7 +887,7 @@ class Point:
             "volume_ratio": dict(
                 suc=suc,
                 eff=eff_converted,
-                power_losses=original_point.power_losses,
+                power_losses=power_losses,
                 phi=original_point.phi,
                 psi=psi_converted,
                 speed=speed,
