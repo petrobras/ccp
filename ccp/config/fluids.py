@@ -1,5 +1,6 @@
 """Module to organize fluids."""
 
+from functools import lru_cache
 from warnings import warn
 import CoolProp.CoolProp as CP
 
@@ -52,8 +53,13 @@ fluid_list["EthylBenzene"].possible_names.extend(
 )
 
 
+@lru_cache(maxsize=256)
 def get_name(name):
-    """Seach for compatible fluid name."""
+    """Seach for compatible fluid name.
+
+    This function is cached to improve performance when the same fluid names
+    are looked up repeatedly.
+    """
 
     # block to treat fluids that are not available in CoolProp JSONFluidLibrary
     fluid_not_in_coolprop = {

@@ -26,32 +26,32 @@ def curve0():
 
 def test_curve_suc_parameters(curve0):
     assert curve0.suc.p().units == "pascal"
-    assert_allclose(curve0.suc.p(), np.array([100000.0, 100000.0]))
+    assert_allclose(curve0.suc.p().m, np.array([100000.0, 100000.0]))
     assert curve0.suc.T().units == "kelvin"
-    assert_allclose(curve0.suc.T(), np.array([300.0, 300.0]))
+    assert_allclose(curve0.suc.T().m, np.array([300.0, 300.0]))
 
 
 def test_curve_disch_parameters(curve0):
     assert curve0.disch.p().units == "pascal"
-    assert_allclose(curve0.disch.p(), np.array([200000.0, 250000.0]))
+    assert_allclose(curve0.disch.p().m, np.array([200000.0, 250000.0]))
     assert curve0.disch.T().units == "kelvin"
-    assert_allclose(curve0.disch.T(), np.array([370.0, 375.0]))
+    assert_allclose(curve0.disch.T().m, np.array([370.0, 375.0]))
 
 
 def test_curve_performance_parameters(curve0):
     assert curve0.head.units == "joule/kilogram"
     assert curve0.eff.units == ureg.dimensionless
     assert curve0.power.units == "watt"
-    assert_allclose(curve0.head, np.array([43527.78012, 57942.686265]))
-    assert_allclose(curve0.eff, np.array([0.709246, 0.881994]), rtol=1e-6)
-    assert_allclose(curve0.power, np.array([108814.010351, 232958.372613]), rtol=1e-6)
+    assert_allclose(curve0.head.m, np.array([43527.78012, 57942.686265]))
+    assert_allclose(curve0.eff.m, np.array([0.709246, 0.881994]), rtol=1e-6)
+    assert_allclose(curve0.power.m, np.array([108814.010351, 232958.372613]), rtol=1e-6)
 
 
 def test_curve_interpolation(curve0):
-    assert_allclose(curve0.disch.T_interpolated(1), 370.0)
+    assert_allclose(curve0.disch.T_interpolated(1).m, 370.0)
     #  test for mutation of quantity magnitude
     a = Q_(1.0, "m**3/h")
-    assert_allclose(curve0.disch.T_interpolated(a), 370.0)
+    assert_allclose(curve0.disch.T_interpolated(a).m, 370.0)
     assert isinstance(a.m, float)
 
 

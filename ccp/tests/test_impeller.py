@@ -101,12 +101,12 @@ def test_impeller_new_suction(imp1):
     p0 = imp1[0]
     new_p0 = imp2[0]
 
-    assert_allclose(new_p0.eff, p0.eff, rtol=1e-4)
-    assert_allclose(new_p0.phi, p0.phi, rtol=1e-2)
-    assert_allclose(new_p0.psi, p0.psi, rtol=1e-2)
-    assert_allclose(new_p0.head, 208933.668804, rtol=1e-2)
-    assert_allclose(new_p0.power, 1101698.5104, rtol=1e-2)
-    assert_allclose(new_p0.speed, 1257.17922, rtol=1e-3)
+    assert_allclose(new_p0.eff.m, p0.eff.m, rtol=1e-4)
+    assert_allclose(new_p0.phi.m, p0.phi.m, rtol=1e-2)
+    assert_allclose(new_p0.psi.m, p0.psi.m, rtol=1e-2)
+    assert_allclose(new_p0.head.m, 208933.668804, rtol=1e-2)
+    assert_allclose(new_p0.power.m, 1101698.5104, rtol=1e-2)
+    assert_allclose(new_p0.speed.m, 1257.17922, rtol=1e-3)
 
 
 @pytest.fixture()
@@ -190,15 +190,15 @@ def test_impeller2_new_suction(imp2):
     p0 = imp2[0]
     new_p0 = imp2_new[0]
 
-    assert_allclose(new_p0.eff, p0.eff, rtol=1e-4)
-    assert_allclose(new_p0.phi, p0.phi, rtol=1e-2)
-    assert_allclose(new_p0.psi, p0.psi, rtol=1e-2)
-    assert_allclose(new_p0.head, 151889.637082, rtol=1e-2)
-    assert_allclose(new_p0.power, 483519.884306, rtol=1e-2)
-    assert_allclose(new_p0.speed, 1281.074036, rtol=1e-3)
-    assert_allclose(new_p0.mach_diff, 7.12032e-05, rtol=1e-3)
-    assert_allclose(new_p0.reynolds_ratio, 1.000121, rtol=1e-3)
-    assert_allclose(new_p0.volume_ratio_ratio, 1.000185, rtol=1e-5)
+    assert_allclose(new_p0.eff.m, p0.eff.m, rtol=1e-4)
+    assert_allclose(new_p0.phi.m, p0.phi.m, rtol=1e-2)
+    assert_allclose(new_p0.psi.m, p0.psi.m, rtol=1e-2)
+    assert_allclose(new_p0.head.m, 151889.637082, rtol=1e-2)
+    assert_allclose(new_p0.power.m, 483519.884306, rtol=1e-2)
+    assert_allclose(new_p0.speed.m, 1281.074036, rtol=1e-3)
+    assert_allclose(new_p0.mach_diff.m, 7.12032e-05, rtol=1e-3)
+    assert_allclose(new_p0.reynolds_ratio.m, 1.000121, rtol=1e-3)
+    assert_allclose(new_p0.volume_ratio_ratio.m, 1.000185, rtol=1e-5)
 
 
 @pytest.fixture
@@ -237,9 +237,9 @@ def imp3():
 
 def test_impeller_point(imp3):
     p0 = imp3.point(flow_m=Q_(90184, "kg/h"), speed=Q_(9300, "RPM"))
-    assert_allclose(p0.eff, 0.782169, rtol=1e-4)
-    assert_allclose(p0.head, 97729.49349, rtol=1e-4)
-    assert_allclose(p0.power, 3130330.074989, rtol=1e-4)
+    assert_allclose(p0.eff.m, 0.782169, rtol=1e-4)
+    assert_allclose(p0.head.m, 97729.49349, rtol=1e-4)
+    assert_allclose(p0.power.m, 3130330.074989, rtol=1e-4)
 
     # test interpolation warning
     with pytest.warns(UserWarning) as record:
@@ -504,18 +504,18 @@ def test_impeller_from_head_power(imp3):
         head_units="J/kg",
     )
 
-    assert_allclose(imp.head, imp3.head)
-    assert_allclose(imp.power, imp3.power)
-    assert_allclose(imp.eff, imp3.eff)
+    assert_allclose(imp.head.m, imp3.head.m)
+    assert_allclose(imp.power.m, imp3.power.m)
+    assert_allclose(imp.eff.m, imp3.eff.m)
 
 
 def test_impeller_curve():
     imp = impeller_example()
     c0 = imp.curve(speed=900)
     p0 = c0[0]
-    assert_allclose(p0.eff, 0.821433, rtol=1e-4)
-    assert_allclose(p0.head, 137188.459805, rtol=1e-4)
-    assert_allclose(p0.power, 2959311.563661, rtol=1e-4)
+    assert_allclose(p0.eff.m, 0.821433, rtol=1e-4)
+    assert_allclose(p0.head.m, 137188.459805, rtol=1e-4)
+    assert_allclose(p0.power.m, 2959311.563661, rtol=1e-4)
 
 
 def test_impeller_plot():
@@ -841,9 +841,9 @@ def test_load_from_dict_isis():
         head_units="kJ/kg",
     )
     p0 = imp.point(flow_m=Q_(90184, "kg/h"), speed=Q_(9300, "RPM"))
-    assert_allclose(p0.eff, 0.782169, rtol=1e-4)
-    assert_allclose(p0.head, 97729.49349, rtol=1e-4)
-    assert_allclose(p0.power, 3130330.074989, rtol=1e-4)
+    assert_allclose(p0.eff.m, 0.782169, rtol=1e-4)
+    assert_allclose(p0.head.m, 97729.49349, rtol=1e-4)
+    assert_allclose(p0.power.m, 3130330.074989, rtol=1e-4)
 
 
 def test_pickle(imp0):

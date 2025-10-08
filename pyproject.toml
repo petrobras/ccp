@@ -1,0 +1,99 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "ccp-performance"
+dynamic = ["version"]
+description = "Centrifugal Compressor Performance calculation."
+readme = "README.md"
+authors = [
+    {name = "Raphael Timbó", email = "raphaelts@petrobras.com.br"}
+]
+license = {text = "Apache-2.0"}
+classifiers = [
+    "Programming Language :: Python",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.6",
+    "Programming Language :: Python :: 3.7",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: Implementation :: CPython",
+    "Operating System :: OS Independent",
+]
+requires-python = ">=3.6"
+dependencies = [
+    "numpy",
+    "scipy",
+    "pandas>=0.23",
+    "CoolProp",
+    "pint>=0.18",
+    "plotly>=4.7.0",
+    "toml>=0.10.1",
+    "openpyxl",
+    "tqdm",
+    "ctREFPROP",
+    "xlsxwriter",
+    "scikit-learn",
+    "xlwings; sys_platform == 'win32' or sys_platform == 'cygwin' or sys_platform == 'msys'",
+]
+
+[project.urls]
+Documentation = "https://ccp-centrifugal-compressor-performance.readthedocs.io/en/stable/"
+"Bug Tracker" = "https://github.com/petrobras/ccp/issues"
+"Source Code" = "https://github.com/petrobras/ccp"
+
+[project.optional-dependencies]
+dev = [
+    "pytest",
+    "pytest-cov",
+    "coverage",
+    "codecov",
+    "sphinx",
+    "nbsphinx",
+    "numpydoc",
+    "sphinxcontrib-bibtex",
+    "ruff",
+    "myst-nb",
+    "linkify-it-py",
+    "sphinx-book-theme",
+    "sphinx-panels",
+    "sphinx-copybutton",
+    "sphinx-rtd-theme",
+]
+app = [
+    "streamlit>=1.21.0",
+    "sentry-sdk",
+]
+
+[tool.setuptools]
+include-package-data = true
+
+[tool.setuptools.dynamic]
+version = {attr = "ccp.__version__"}
+
+[tool.setuptools.packages.find]
+include = ["ccp*"]
+
+[tool.setuptools.package-data]
+"ccp.config" = ["new_units.txt"]
+"ccp.tests" = ["*.py"]
+"ccp.tests.data" = ["*"]
+
+[tool.ruff]
+line-length = 88
+target-version = "py38"
+
+[tool.ruff.lint]
+select = [
+    "E",  # pycodestyle errors
+    "W",  # pycodestyle warnings
+    "F",  # pyflakes
+    "I",  # isort
+]
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"

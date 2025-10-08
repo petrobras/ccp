@@ -774,26 +774,34 @@ class State(CP.AbstractState):
                     super().update(CP.PT_INPUTS, p.magnitude, T.magnitude)
                 except ValueError:
                     # handle convergence error by forcing gas state directly with REFPROP
-                    # calculate with p and T and update with their values
-                    r = self._call_REFPROP(
-                        p=p.magnitude,
-                        T=T.magnitude,
-                        phase="gas",
-                    )
-                    super().update(CP.HmassP_INPUTS, r["h"], r["p"])
+                    # only try REFPROP if we're using REFPROP backend
+                    if self.backend_name() == "REFPROP":
+                        r = self._call_REFPROP(
+                            p=p.magnitude,
+                            T=T.magnitude,
+                            phase="gas",
+                        )
+                        super().update(CP.HmassP_INPUTS, r["h"], r["p"])
+                    else:
+                        # re-raise the error if not using REFPROP
+                        raise
 
             elif p is not None and rho is not None:
                 try:
                     super().update(CP.DmassP_INPUTS, rho.magnitude, p.magnitude)
                 except ValueError:
                     # handle convergence error by forcing gas state directly with REFPROP
-                    # calculate with p and T and update with their values
-                    r = self._call_REFPROP(
-                        rho=rho.magnitude,
-                        p=p.magnitude,
-                        phase="gas",
-                    )
-                    super().update(CP.PT_INPUTS, r["p"], r["T"])
+                    # only try REFPROP if we're using REFPROP backend
+                    if self.backend_name() == "REFPROP":
+                        r = self._call_REFPROP(
+                            rho=rho.magnitude,
+                            p=p.magnitude,
+                            phase="gas",
+                        )
+                        super().update(CP.PT_INPUTS, r["p"], r["T"])
+                    else:
+                        # re-raise the error if not using REFPROP
+                        raise
 
             elif p is not None and h is not None:
                 super().update(CP.HmassP_INPUTS, h.magnitude, p.magnitude)
