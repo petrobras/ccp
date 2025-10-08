@@ -804,7 +804,28 @@ class State(CP.AbstractState):
                         raise
 
             elif p is not None and h is not None:
-                super().update(CP.HmassP_INPUTS, h.magnitude, p.magnitude)
+                try:
+                    super().update(CP.HmassP_INPUTS, h.magnitude, p.magnitude)
+                except ValueError:
+                    # handle convergence error
+                    # only try REFPROP if we're using REFPROP backend
+                    if self.backend_name() == "REFPROP":
+                        r = self._call_REFPROP(
+                            p=p.magnitude,
+                            h=h.magnitude,
+                            phase="gas",
+                        )
+                        super().update(CP.PT_INPUTS, r["p"], r["T"])
+                    else:
+                        # HEOS workaround: use Newton method to find T from h,p
+                        def objective(T):
+                            super(State, self).update(CP.PT_INPUTS, p.magnitude, T)
+                            return self.hmass() - h.magnitude
+
+                        T0 = self.T().m
+                        if T0 == float("-inf"):
+                            T0 = 300
+                        newton(objective, x0=T0)
             elif p is not None and s is not None:
                 if ccp.config.EOS == "REFPROP":
                     try:
