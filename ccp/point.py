@@ -61,7 +61,7 @@ class Point:
         Default value is 13.6.
     polytropic_method : str, optional
         Polytropic method used for head and efficiency calculation.
-        Options are: "mallen_saveille", "sandberg_colby", "schultz" and "huntington".
+        Options are: "mallen_saveille", "sandberg_colby", "sandberg_colby_multistep", "schultz" and "huntington".
         The default is "schultz".
         The default value can be changed in a global level with:
         ccp.config.POLYTROPIC_METHOD = "<desired value>"
@@ -2066,6 +2066,95 @@ def head_pol_sandberg_colby(suc, disch, disch_s=None):
     Tm = (suc.T() + disch.T()) / 2
     h = (disch.h() - suc.h()) - Tm * (disch.s() - suc.s())
     return h
+
+
+def eff_pol_sandberg_colby_multistep(suc, disch):
+    """Sandberg-Colby multistep polytropic efficiency.
+
+    Parameters
+    ----------
+    suc : ccp.State
+        Suction state.
+    disch : ccp.State
+        Discharge state.
+
+    Returns
+    -------
+    eff_pol_sandberg_colby_multistep: pint.Quantity
+        Sandberg-Colby multistep polytropic efficiency (dimensionless).
+    """
+    wp = head_pol_sandberg_colby_multistep(suc, disch)
+    dh = disch.h() - suc.h()
+
+    return wp / dh
+
+
+def head_pol_sandberg_colby_multistep(suc, disch, n_steps=10):
+    r"""Polytropic head multistep procedure proposed by the :cite:`sandberg2013limitations`.
+
+    Parameters
+    ----------
+    suc : ccp.State
+        Suction state.
+    disch : ccp.State
+        Discharge state.
+
+    Returns
+    -------
+    head_pol_sandberg_colby_multistep : pint.Quantity
+        Incremental head as described by :cite:`sandberg2013limitations` (J/kg).
+    """
+
+    eff_incr = eff_pol_sandberg_colby(suc, disch) * 100
+
+    R_c = (disch.p() / suc.p()) ** (1 / n_steps)
+    head_incremental = []
+
+    def calculate(eff):
+        eff /= 100
+        pd_seg = R_c * suc.p()
+        suc_seg = copy(suc)
+        head_incremental.clear()
+
+        for _ in range(n_steps):
+
+            disch_seg = ccp.State(p=pd_seg, s=suc_seg.s(), fluid=suc_seg.fluid)
+
+            def update_state(x):
+                disch_seg = ccp.State(p=pd_seg, T=x, fluid=suc_seg.fluid)
+                wp = head_pol_sandberg_colby(suc_seg, disch_seg)
+                new_eff = wp / (disch_seg.h() - suc_seg.h())
+                return (new_eff - eff).m
+
+            def fprime(x):
+                dT = .1
+                fx = update_state(x)
+                dfx = (update_state(x + dT) - fx) / dT
+
+                return dfx
+
+            T_end = newton(
+                update_state,
+                x0=disch_seg.T().magnitude,
+                # fprime=fprime,
+            )
+
+            disch_seg = ccp.State(
+                p=pd_seg,
+                T=T_end,
+                fluid=suc_seg.fluid,
+            )
+
+            head_incremental.append(head_pol_sandberg_colby(suc_seg, disch_seg))
+            suc_seg.update(p=disch_seg.p(), T=disch_seg.T())
+            pd_seg *= R_c
+
+        return (disch_seg.T() - disch.T()).m
+
+    newton(calculate, eff_incr, tol=0.1)
+    head = Q_(np.sum([h.m for h in head_incremental]), "J/kg")
+
+    return head
 
 
 def head_pol_sandberg_colby_f(suc, disch, disch_s=None):
