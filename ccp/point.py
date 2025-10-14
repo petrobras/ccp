@@ -61,7 +61,7 @@ class Point:
         Default value is 13.6.
     polytropic_method : str, optional
         Polytropic method used for head and efficiency calculation.
-        Options are: "mallen_saveille", "sandberg_colby", "schultz" and "huntington".
+        Options are: "mallen_saville", "sandberg_colby", "schultz" and "huntington".
         The default is "schultz".
         The default value can be changed in a global level with:
         ccp.config.POLYTROPIC_METHOD = "<desired value>"

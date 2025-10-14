@@ -7,8 +7,6 @@ from packaging.version import Version
 from ccp import Q_
 import numpy as np
 
-# from ccp.config.units import check_units
-
 # parameters with name and label
 flow_m_units = ["kg/h", "kg/min", "kg/s", "lbm/h", "lbm/min", "lbm/s"]
 flow_v_units = ["m³/h", "m³/min", "m³/s"]
@@ -23,6 +21,13 @@ specific_heat_units = ["kJ/kg/degK", "J/kg/degK", "cal/g/degC", "Btu/lb/degF"]
 oil_iso_options = ["VG 32", "VG 46"]
 oil_flow_units = ["l/min", "l/h", "gal/min", "m³/h", "m³/min", "m³/s"]
 density_units = ["kg/m³", "g/cm³", "g/ml", "g/l"]
+
+polytropic_methods = {
+    "Sandberg-Colby": "sandberg_colby",
+    "Huntington": "huntington",
+    "Mallen-Saville": "mallen_saville",
+    "Schultz": "schultz",
+}
 
 parameters_map = {
     "flow": {

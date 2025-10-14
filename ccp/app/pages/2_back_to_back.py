@@ -19,6 +19,7 @@ from ccp.app.common import (
     pressure_units,
     specific_heat_units,
     density_units,
+    polytropic_methods,
     parameters_map,
     oil_iso_options,
     specific_heat_calculate,
@@ -464,7 +465,6 @@ def main():
         with oil_iso_checkbox_col:
             oil_iso = st.checkbox(
                 "Oil ISO Classification",
-                value=True,
                 key="oil_iso",
                 on_change=on_oil_iso_change,
                 help="If marked, uses the ISO oil classification "
@@ -480,6 +480,17 @@ def main():
                 label_visibility="collapsed",
                 disabled=not st.session_state.oil_iso,
             )
+
+        st.text("Polytropic method")
+        polytropic_method = st.selectbox(
+            "Polytropic",
+            options=polytropic_methods.keys(),
+            index=list(polytropic_methods.keys()).index("Sandberg-Colby"),
+            key="polytropic_method",
+            label_visibility="collapsed",
+        )
+
+    ccp.config.POLYTROPIC_METHOD = polytropic_methods[polytropic_method]
 
     # add dict to each section to store the values for guarantee and test points
     # in the parameters_map
