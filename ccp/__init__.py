@@ -78,7 +78,15 @@ except KeyError:
     else:
         _path = _Path.cwd()
 
-_CP.set_config_string(_CP.ALTERNATIVE_REFPROP_PATH, str(_path))
+try:
+    _CP.set_config_string(_CP.ALTERNATIVE_REFPROP_PATH, str(_path))
+except UnicodeEncodeError:
+    _warnings.warn(
+        f"Unable to set REFPROP path due to non-ASCII characters in path: {_path}\n"
+        f"CoolProp does not support non-ASCII characters in paths. "
+        f"Consider renaming the directory or using an ASCII-only path.\n"
+        f"Proceeding without setting REFPROP path."
+    )
 try:
     _RP = _REFPROPFunctionLibrary(_path)
     _RP.SETPATHdll(str(_path))
