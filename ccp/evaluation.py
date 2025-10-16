@@ -129,6 +129,34 @@ class Evaluation:
             self.impellers_new = kwargs.get("impellers_new")
             self.df = kwargs.get("df")
 
+    def _get_fluid_composition(self, row_or_series):
+        """Extract and convert fluid composition from a row or series.
+
+        Parameters
+        ----------
+        row_or_series : pandas.Series
+            Row or series containing fluid_* columns.
+
+        Returns
+        -------
+        dict
+            Dictionary with component names and mole fractions.
+        """
+        fluid = {}
+        for col in self.fluid_columns:
+            comp_name = col[len("fluid_") :]
+            value = row_or_series[col]
+
+            # Check if unit is specified as ppm
+            if self.data_units and col in self.data_units:
+                if self.data_units[col] == "ppm":
+                    # Convert ppm to mole fraction
+                    value = value / 1e6
+
+            fluid[comp_name] = value
+
+        return fluid
+
     def _run(self):
         df = self.data.copy()
         df = filter_data(
@@ -177,10 +205,7 @@ class Evaluation:
             if self.operation_fluid is not None:
                 fluid = self.operation_fluid
             else:
-                fluid = {
-                    col[len("fluid_") :]: cluster_series[col]
-                    for col in self.fluid_columns
-                }
+                fluid = self._get_fluid_composition(cluster_series)
             suc_new = State(
                 p=Q_(cluster_series.ps_center, self.data_units["ps"]),
                 T=Q_(cluster_series.Ts_center, self.data_units["Ts"]),
@@ -205,7 +230,7 @@ class Evaluation:
             if self.operation_fluid is not None:
                 fluid = self.operation_fluid
             else:
-                fluid = {col[len("fluid_") :]: row[col] for col in self.fluid_columns}
+                fluid = self._get_fluid_composition(row)
 
             if calculate_flow:
                 if "p_downstream" in df.columns:
@@ -323,7 +348,7 @@ class Evaluation:
             if self.operation_fluid is not None:
                 fluid = self.operation_fluid
             else:
-                fluid = {col[len("fluid_") :]: row[col] for col in self.fluid_columns}
+                fluid = self._get_fluid_composition(row)
 
             arg_dict = {
                 "flow_v": row.flow_v,

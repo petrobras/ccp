@@ -137,6 +137,66 @@ def test_evaluation_fluid_columns():
     assert_allclose(evaluation.df["delta_eff"].mean(), 11.27249, rtol=1e-2)
 
 
+def test_evaluation_fluid_columns_ppm():
+    data_path = Path(ccp.__file__).parent / "tests/data"
+    df = pd.read_parquet(data_path / "data.parquet")
+
+    fluid_a = {
+        "methane": 58.976,
+        "ethane": 3.099,
+        "propane": 0.6,
+        "n-butane": 0.08,
+        "i-butane": 0.05,
+        "n-pentane": 0.01,
+        "i-pentane": 0.01,
+        "n2": 0.55,
+        "h2s": 0.02,
+        "co2": 36.605,
+    }
+    suc_a = ccp.State(p=Q_(4, "bar"), T=Q_(40, "degC"), fluid=fluid_a)
+    imp_a = ccp.Impeller.load_from_engauge_csv(
+        suc=suc_a,
+        curve_name="eval-lp-sec1-caso-a",
+        curve_path=data_path,
+        flow_units="m³/h",
+        head_units="kJ/kg",
+        number_of_points=4,
+    )
+
+    operation_fluid = {
+        "methane": 44.04,
+        "ethane": 3.18,
+        "propane": 0.66,
+        "n-butane": 0.15,
+        "i-butane": 0.05,
+        "n-pentane": 0.03 * 1e6,  # check with ppm
+        "i-pentane": 0.02,
+        "n2": 0.25,
+        "h2s": 0.06,
+        "co2": 51.55,
+    }
+
+    for comp, frac in operation_fluid.items():
+        df[f"fluid_{comp}"] = frac
+
+    evaluation = ccp.Evaluation(
+        data=df,
+        data_units={
+            "ps": "bar",
+            "Ts": "degC",
+            "pd": "bar",
+            "Td": "degC",
+            "flow_v": "m³/s",
+            "speed": "RPM",
+            "fluid_n-pentane": "ppm",
+        },
+        impellers=[imp_a],
+        n_clusters=2,
+    )
+
+    assert_allclose(evaluation.df["delta_eff"].mean(), 11.27249, rtol=1e-2)
+
+
 def test_evaluation_calculate_points():
     data_path = Path(ccp.__file__).parent / "tests/data"
     # load data.parquet
