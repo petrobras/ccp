@@ -175,6 +175,8 @@ class Evaluation:
         # normalize
         data_mean = data.mean()
         data_std = data.std()
+        # Replace 0 std with 1 to avoid division by zero (constant features will become 0)
+        data_std = data_std.replace(0, 1)
         data_norm = (data - data_mean) / data_std
         self.data_mean = data_mean
         self.data_std = data_std
