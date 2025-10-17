@@ -134,7 +134,7 @@ class ImpellerPlotFunction:
             attr_str = attr.split(".")[-1]
         else:
             attr_str = attr
-        
+
         try:
             attr_units = kwargs.get(
                 f"{attr_str}_units", r_getattr(impeller_object.curves[0], attr).units
@@ -647,27 +647,40 @@ class Impeller:
                 )
             original_impeller = original_impeller[np.argmin(np.abs(speed_sound_diff))]
 
+        # Collect all converter arguments from all curves
+        all_converter_args = []
+        curve_lengths = []
         for curve in original_impeller.curves:
-            with multiprocessing.Pool() as pool:
-                converter_args = [(p, suc, find) for p in curve]
-                converted_points = pool.map(converter, converter_args)
+            converter_args = [(p, suc, find) for p in curve]
+            all_converter_args.extend(converter_args)
+            curve_lengths.append(len(converter_args))
 
-                if speed is None or speed == "same":
-                    speed_mean = np.mean([p.speed.magnitude for p in converted_points])
-                else:
-                    speed_mean = speed
+        # Convert all points in parallel using a single pool
+        with multiprocessing.Pool() as pool:
+            all_converted = pool.map(converter, all_converter_args)
 
-                converted_points = [
-                    Point.convert_from(
-                        p,
-                        suc=p.suc,
-                        find="volume_ratio",
-                        speed=speed_mean,
-                    )
-                    for p in converted_points
-                ]
+        # Split results back into curves and apply speed correction
+        start_idx = 0
+        for curve_len in curve_lengths:
+            converted_points = all_converted[start_idx : start_idx + curve_len]
 
-                all_converted_points += converted_points
+            if speed is None or speed == "same":
+                speed_mean = np.mean([p.speed.magnitude for p in converted_points])
+            else:
+                speed_mean = speed
+
+            converted_points = [
+                Point.convert_from(
+                    p,
+                    suc=p.suc,
+                    find="volume_ratio",
+                    speed=speed_mean,
+                )
+                for p in converted_points
+            ]
+
+            all_converted_points += converted_points
+            start_idx += curve_len
 
         converted_impeller = cls(all_converted_points)
         if speed == "same":
@@ -1407,8 +1420,23 @@ def impeller_example():
 
 def converter(x):
     """Helper function used to parallelize conversion of points."""
+    import traceback
+
     point, suc, find = x
-    return Point.convert_from(point, suc=suc, find=find)
+    try:
+        return Point.convert_from(point, suc=suc, find=find)
+    except Exception as e:
+        # Print full traceback before re-raising
+        print(f"\n{'='*60}")
+        print(f"ERROR in converter function (multiprocessing worker):")
+        print(f"{'='*60}")
+        print(f"Point: {point}")
+        print(f"Suc: {suc}")
+        print(f"Find: {find}")
+        print(f"\nFull traceback:")
+        traceback.print_exc()
+        print(f"{'='*60}\n")
+        raise
 
 
 def create_points_parallel(x):
