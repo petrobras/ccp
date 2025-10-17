@@ -9,11 +9,38 @@ import pint
 
 new_units_path = Path(__file__).parent / "new_units.txt"
 ureg = pint.get_application_registry()
+
+# Check if registry is lazy or already initialized
 if isinstance(ureg.get(), pint.registry.LazyRegistry):
+    # Registry not yet initialized, create new one
     ureg = pint.UnitRegistry()
-    ureg.load_definitions(str(new_units_path))
-    # set ureg to make pickle possible
-    pint.set_application_registry(ureg)
+else:
+    # Registry already initialized, get it
+    ureg = ureg.get()
+
+# Check if water column units already exist (pint >= 0.24)
+# If they don't exist, we'll use the legacy definitions
+has_water_units = False
+try:
+    # Try to create a quantity with meter_H2O and convert it
+    # This will succeed in pint >= 0.24
+    test_qty = ureg.Quantity(1, 'meter_H2O')
+    test_qty.to('pascal')
+    has_water_units = True
+except (pint.errors.UndefinedUnitError, AttributeError, RecursionError):
+    has_water_units = False
+
+# Load custom unit definitions
+ureg.load_definitions(str(new_units_path))
+
+# If water units don't exist in pint, load legacy definitions
+if not has_water_units:
+    legacy_units_path = Path(__file__).parent / "legacy_water_units.txt"
+    if legacy_units_path.exists():
+        ureg.load_definitions(str(legacy_units_path))
+
+# set ureg to make pickle possible
+pint.set_application_registry(ureg)
 
 Q_ = ureg.Quantity
 

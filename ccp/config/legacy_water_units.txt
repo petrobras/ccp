@@ -1,0 +1,9 @@
+# Legacy water column pressure units for pint < 0.24
+# These definitions are only loaded if pint doesn't already have meter_H2O defined
+# In pint >= 0.24, these units are included in the default registry
+
+# Water column pressure units
+# Based on conventional water density at 4°C (9.80665 kPa per meter of water)
+meter_H2O = 9806.65 * pascal = mH2O = meterh2o
+centimeter_H2O = meter_H2O / 100 = cmH2O = cmh2o
+millimeter_H2O = meter_H2O / 1000 = mmH2O = mmh2o

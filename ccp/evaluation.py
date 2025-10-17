@@ -168,6 +168,15 @@ class Evaluation:
             speed_fluctuation=self.speed_fluctuation,
         )
 
+        # Check if dataframe is empty after filtering
+        if df.empty:
+            raise ValueError(
+                "DataFrame is empty after filtering. "
+                "All rows were removed due to fluctuation criteria. "
+                "Please check your data or adjust the filtering parameters "
+                "(temperature_fluctuation, pressure_fluctuation, speed_fluctuation)."
+            )
+
         df = self.calculate_flow(df)
 
         # create clusters based on speed_sound, ps and Ts
@@ -175,6 +184,8 @@ class Evaluation:
         # normalize
         data_mean = data.mean()
         data_std = data.std()
+        # Replace 0 std with 1 to avoid division by zero (constant features will become 0)
+        data_std = data_std.replace(0, 1)
         data_norm = (data - data_mean) / data_std
         self.data_mean = data_mean
         self.data_std = data_std
@@ -326,6 +337,15 @@ class Evaluation:
                 speed_fluctuation=self.speed_fluctuation,
                 drop_invalid_values=drop_invalid_values,
             )
+
+            # Check if dataframe is empty after filtering
+            if df.empty:
+                raise ValueError(
+                    "DataFrame is empty after filtering. "
+                    "All rows were removed due to fluctuation criteria. "
+                    "Please check your data or adjust the filtering parameters "
+                    "(temperature_fluctuation, pressure_fluctuation, speed_fluctuation)."
+                )
 
         df = self.calculate_flow(df)
 
