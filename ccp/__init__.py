@@ -120,7 +120,7 @@ if not _library_path.is_file():
     )
     _config.EOS = "HEOS"
 
-__version__ = "0.3.27"
+__version__ = "0.3.28"
 
 with _warnings.catch_warnings():
     if unicode_error:
