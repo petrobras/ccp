@@ -271,7 +271,7 @@ def main():
                     num_rows="dynamic",
                     key=f"table_gas_{i}_composition",
                     height=int((len(default_components) + 1) * 37.35),
-                    use_container_width=True,
+                    width='stretch',
                     column_config={
                         "component": st.column_config.SelectboxColumn(
                             st.session_state[f"gas_{i}"],
@@ -878,19 +878,19 @@ def main():
         calculate_button = calculate_col.button(
             "Calculate",
             type="primary",
-            use_container_width=True,
+            width='stretch',
             help="Calculate results using the data sheet speed.",
         )
         calculate_speed_button = calculate_speed_col.button(
             "Calculate Speed",
             type="primary",
-            use_container_width=True,
+            width='stretch',
             help="Calculate speed to match the discharge pressure.",
         )
         calculate_flowrate = calculate_flowrate_col.button(
             "Calculate Flowrate",
             type="primary",
-            use_container_width=True,
+            width='stretch',
             on_click=fo_calc,
             help="Calculate flowrate with orifice plate data.",
         )
@@ -1742,16 +1742,16 @@ def main():
                     data=table_excel,
                     file_name="results.xlsx",
                     mime="application/vnd.ms-excel",
-                    use_container_width=True,
+                    width='stretch',
                 )
 
                 with st.container():
                     mach_col, reynolds_col = st.columns(2)
                     mach_col.plotly_chart(
-                        point_interpolated.plot_mach(), use_container_width=True
+                        point_interpolated.plot_mach(), width='stretch'
                     )
                     reynolds_col.plotly_chart(
-                        point_interpolated.plot_reynolds(), use_container_width=True
+                        point_interpolated.plot_reynolds(), width='stretch'
                     )
 
                 def add_background_image(curve_name=None, fig=None, image=None):
@@ -1890,16 +1890,16 @@ def main():
 
                 with st.container():
                     head_col, eff_col = st.columns(2)
-                    head_col.plotly_chart(plots_dict["head"], use_container_width=True)
-                    eff_col.plotly_chart(plots_dict["eff"], use_container_width=True)
+                    head_col.plotly_chart(plots_dict["head"], width='stretch')
+                    eff_col.plotly_chart(plots_dict["eff"], width='stretch')
 
                 with st.container():
                     disch_p_col, power_col = st.columns(2)
                     disch_p_col.plotly_chart(
-                        plots_dict["discharge_pressure"], use_container_width=True
+                        plots_dict["discharge_pressure"], width='stretch'
                     )
                     power_col.plotly_chart(
-                        plots_dict["power"], use_container_width=True
+                        plots_dict["power"], width='stretch'
                     )
 
 
