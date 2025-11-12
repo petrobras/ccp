@@ -1664,7 +1664,7 @@ def main():
                     styled_df_results,
                     df_results,
                     "Guarantee Point",
-                    f"Mach{_t} - Mach{_sp}",
+                    f"Mach{_t}",
                     mach_limits["lower"],
                     mach_limits["upper"],
                 )
@@ -1673,7 +1673,7 @@ def main():
                     styled_df_results,
                     df_results,
                     "Guarantee Point",
-                    f"Re{_t} / Re{_sp}",
+                    f"Re{_t}",
                     reynolds_limits["lower"],
                     reynolds_limits["upper"],
                 )
