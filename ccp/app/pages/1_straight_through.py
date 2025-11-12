@@ -1685,6 +1685,14 @@ def main():
                     0.95,
                     1.05,
                 )
+                styled_df_results = highlight_cell(
+                    styled_df_results,
+                    df_results,
+                    "Guarantee Point",
+                    f"φ{_t} / φ{_sp}",
+                    0.96,
+                    1.04,
+                )
 
                 if variable_speed:
                     power_limit = 1.04
