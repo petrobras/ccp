@@ -122,15 +122,67 @@ class PlotFunction:
             ),
             **plot_kws,
         )
-        if show_points:
-            fig.add_trace(
-                go.Scatter(
-                    x=flow_v_points,
-                    y=values_points,
-                    marker=dict(color=color, symbol="circle-open"),
-                    mode="markers",
-                    name=name,
-                    showlegend=False,
+
+        if attr == 'head' or attr == 'eff':
+            data_similarity = {
+                'volume_ratio_ratio' : [p.volume_ratio_ratio.m for p in curve_state_object.points],
+                'phi_ratio' : [p.phi_ratio.m for p in curve_state_object.points],
+                'mach' : [p.mach.m for p in curve_state_object.points],
+                'reynolds' : [p.reynolds.m for p in curve_state_object.points],
+                'volume_ratio_limits': [[0.95, 1.05, True if p.volume_ratio_ratio > 0.95 and p.volume_ratio_ratio < 1.05 
+                            else False] for p in curve_state_object.points],
+                'phi_ratio_limits': [[0.96, 1.04, True if p.phi_ratio > 0.96 and p.phi_ratio < 1.04 
+                                    else False] for p in curve_state_object.points],
+                'mach_limits' : [[l["lower"].m, l["upper"].m, l["within_limits"]] for l in [p.mach_limits(mmsp=p.mach-p.mach_diff) for p in curve_state_object.points]],
+                'reynolds_limits' : [[l["lower"].m, l["upper"].m, l["within_limits"]] for l in [p.reynolds_limits(remsp=p.reynolds/p.reynolds_ratio) for p in curve_state_object.points]]
+                }
+            df_similarity = pd.DataFrame(data_similarity)
+        
+        if show_points or similarity:
+            hovertemplate = None
+            customdata = None
+            hoverlabel = None
+            color_marker = color
+            line = None
+            hoverlabel=None
+            size=None
+            line = dict(color=color, width=1)   
+
+            for i in range(len(curve_state_object.points)):
+                symbol = 'circle'
+                if similarity and (attr == 'head' or attr == 'eff'):
+                    customdata = df_similarity[['volume_ratio_ratio','phi_ratio','mach','reynolds', 
+                            'volume_ratio_limits', 'phi_ratio_limits', 
+                            'mach_limits','reynolds_limits']].iloc[i].values.tolist()
+                    color_marker = ["#7EE38D" if np.all([customdata[i][2] for i in range(4,7)]) == True 
+                                                    else "#FC9FB0"]
+                    size=8
+                    hoverlabel=dict(namelength=-1) 
+                    hovertemplate =(
+                        "<b>(v<sub>i</sub> / v<sub>d</sub>)<sub>c</sub> / (v<sub>i</sub> / v<sub>d</sub>)<sub>o</sub>:</b> %{customdata[0]:.3f} " \
+                             "<b>limits:</b> %{customdata[4][0]:.3f} - %{customdata[4][1]:.3f}<br>" +
+                        "<b>φ<sub>c</sub> / φ<sub>o</sub>:</b> %{customdata[1]:.3f} "
+                        "             <b>limits:</b>     %{customdata[5][0]:.3f} - %{customdata[5][1]:.3f}<br>" +
+                        "<b>Mm<sub>c</sub>:</b>  %{customdata[2]:.4f} "
+                        "              <b>limits:</b> %{customdata[6][0]:.4f} - %{customdata[6][1]:.4f}<br>" +
+                        "<b>Rem<sub>c</sub>:</b> %{customdata[3]:.3e} "
+                        " <b>limits:</b> %{customdata[7][0]:.3e} - %{customdata[7][1]:.3e}" +
+                        "<extra></extra>",
+                        )
+                else:
+                    symbol= symbol + '-open'
+                fig.add_trace(
+                    go.Scatter(
+                        x=[flow_v_points[i]],
+                        y=[values_points[i]],
+                        marker=dict(color=color_marker, symbol=symbol, size=size, line=line),
+                        mode="markers",
+                        name=name,
+                        showlegend=False,
+                        customdata=[customdata],
+                        hovertemplate=hovertemplate,
+                        hoverlabel=hoverlabel
+                    )
                 )
             )
 

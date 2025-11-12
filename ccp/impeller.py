@@ -70,6 +70,7 @@ class ImpellerPlotFunction:
         speed_units="RPM",
         plot_kws=None,
         show_points=False,
+        similarity=False,
         **kwargs,
     ):
         """Plot parameter versus volumetric flow.
@@ -94,6 +95,8 @@ class ImpellerPlotFunction:
             Speed units for the plot. Default is 'RPM'.
         show_points : bool, optional
             If True, the points will be plotted as markers.
+        similarity : bool, optional
+            If True, the points shows a hover with similarity table and limits for converted values.
 
         Returns
         -------
@@ -153,6 +156,7 @@ class ImpellerPlotFunction:
                 plot_kws=plot_kws,
                 color=color,
                 show_points=show_points,
+                similarity=similarity,
                 **kwargs,
             )
             surge_flow_list.append(curve.flow_v[0].to(flow_v_units).m)
@@ -170,6 +174,7 @@ class ImpellerPlotFunction:
                 color=color,
                 speed_units=speed_units,
                 show_points=show_points,
+                simililarity=similarity,
                 **kwargs,
             )
 
@@ -181,6 +186,7 @@ class ImpellerPlotFunction:
                     speed_units=speed_units,
                     plot_kws=plot_kws,
                     color=color,
+                    similarity=similarity,
                     **kwargs,
                 )
 
