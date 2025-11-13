@@ -33,10 +33,10 @@ def test_point_disch_flow_v_speed_suc(suc_0, disch_0, point_disch_flow_v_speed_s
     assert_allclose(point_disch_flow_v_speed_suc.flow_v.m, 1.0)
     assert_allclose(point_disch_flow_v_speed_suc.flow_m.m, 3.072307, rtol=1e-4)
     assert_allclose(point_disch_flow_v_speed_suc.speed.m, 1.0)
-    assert_allclose(point_disch_flow_v_speed_suc.head.m, 82877.366038, rtol=1e-4)
-    assert_allclose(point_disch_flow_v_speed_suc.eff.m, 0.797811, rtol=1e-4)
+    assert_allclose(point_disch_flow_v_speed_suc.head.m, 82816.596731, rtol=1e-4)
+    assert_allclose(point_disch_flow_v_speed_suc.eff.m, 0.797226, rtol=1e-4)
     assert_allclose(point_disch_flow_v_speed_suc.phi.m, 2.546479)
-    assert_allclose(point_disch_flow_v_speed_suc.psi.m, 663018.928304)
+    assert_allclose(point_disch_flow_v_speed_suc.psi.m, 662532.773850)
     assert_allclose(point_disch_flow_v_speed_suc.volume_ratio.m, 2.304738, rtol=1e-4)
     assert_allclose(point_disch_flow_v_speed_suc.power.m, 319154.332272)
 
@@ -58,10 +58,10 @@ def point_eff_phi_psi_suc_volume_ratio(suc_0):
 def test_point_eff_suc_volume_ratio(suc_0, disch_0, point_eff_phi_psi_suc_volume_ratio):
     assert point_eff_phi_psi_suc_volume_ratio.suc == suc_0
     assert point_eff_phi_psi_suc_volume_ratio.disch == disch_0
-    assert_allclose(point_eff_phi_psi_suc_volume_ratio.flow_v.m, 1.0, rtol=1e-4)
-    assert_allclose(point_eff_phi_psi_suc_volume_ratio.flow_m.m, 3.072307, rtol=1e-4)
-    assert_allclose(point_eff_phi_psi_suc_volume_ratio.speed.m, 1.0, rtol=1e-4)
-    assert_allclose(point_eff_phi_psi_suc_volume_ratio.head.m, 82876.226229, rtol=1e-4)
+    assert_allclose(point_eff_phi_psi_suc_volume_ratio.flow_v.m, 0.999411, rtol=1e-4)
+    assert_allclose(point_eff_phi_psi_suc_volume_ratio.flow_m.m, 3.070496, rtol=1e-4)
+    assert_allclose(point_eff_phi_psi_suc_volume_ratio.speed.m, 0.999411, rtol=1e-4)
+    assert_allclose(point_eff_phi_psi_suc_volume_ratio.head.m, 82779.695820, rtol=1e-4)
     assert_allclose(point_eff_phi_psi_suc_volume_ratio.eff.m, 0.797811, rtol=1e-4)
     assert_allclose(point_eff_phi_psi_suc_volume_ratio.phi, 2.546479, rtol=1e-4)
     assert_allclose(point_eff_phi_psi_suc_volume_ratio.psi, 663018.928304, rtol=1e-4)
@@ -69,7 +69,7 @@ def test_point_eff_suc_volume_ratio(suc_0, disch_0, point_eff_phi_psi_suc_volume
         point_eff_phi_psi_suc_volume_ratio.volume_ratio, 2.304738, rtol=1e-4
     )
     assert_allclose(
-        point_eff_phi_psi_suc_volume_ratio.power.m, 319154.332272, rtol=1e-3
+        point_eff_phi_psi_suc_volume_ratio.power.m, 318590.196620, rtol=1e-3
     )
 
 
@@ -93,7 +93,7 @@ def test_point_eff_flow_v_head_speed_suc(
     assert_allclose(point_eff_flow_v_head_speed_suc.eff.m, 0.797811, rtol=1e-4)
     assert_allclose(point_eff_flow_v_head_speed_suc.phi.m, 2.546479, rtol=1e-4)
     assert_allclose(point_eff_flow_v_head_speed_suc.psi.m, 663009.809832, rtol=1e-4)
-    assert_allclose(point_eff_flow_v_head_speed_suc.volume_ratio.m, 2.304715, rtol=1e-4)
+    assert_allclose(point_eff_flow_v_head_speed_suc.volume_ratio.m, 2.306675, rtol=1e-4)
     assert_allclose(point_eff_flow_v_head_speed_suc.power.m, 319149.832746, rtol=1e-4)
 
 
@@ -117,8 +117,8 @@ def test_point_eff_flow_m_head_speed_suc(
     assert_allclose(point_eff_flow_m_head_speed_suc.eff.m, 0.797811, rtol=1e-4)
     assert_allclose(point_eff_flow_m_head_speed_suc.phi.m, 2.546479, rtol=1e-4)
     assert_allclose(point_eff_flow_m_head_speed_suc.psi.m, 663009.809832, rtol=1e-4)
-    assert_allclose(point_eff_flow_m_head_speed_suc.volume_ratio.m, 2.304715, rtol=1e-4)
-    assert_allclose(point_eff_flow_m_head_speed_suc.power.m, 319149.832746, rtol=1e-4)
+    assert_allclose(point_eff_flow_m_head_speed_suc.volume_ratio.m, 2.306675, rtol=1e-4)
+    assert_allclose(point_eff_flow_m_head_speed_suc.power.m, 319149.786073, rtol=1e-4)
 
 
 @pytest.fixture
@@ -143,15 +143,15 @@ def test_point_disch_p_eff_flow_m_head_speed_suc(
     assert_allclose(point_disch_p_eff_flow_m_speed_suc.flow_v.m, 1.0, rtol=1e-4)
     assert_allclose(point_disch_p_eff_flow_m_speed_suc.flow_m.m, 3.072307, rtol=1e-4)
     assert_allclose(point_disch_p_eff_flow_m_speed_suc.speed.m, 1.0, rtol=1e-4)
-    assert_allclose(point_disch_p_eff_flow_m_speed_suc.head.m, 82876.226229, rtol=1e-4)
+    assert_allclose(point_disch_p_eff_flow_m_speed_suc.head.m, 82806.904136, rtol=1e-4)
     assert_allclose(point_disch_p_eff_flow_m_speed_suc.eff.m, 0.797811, rtol=1e-4)
     assert_allclose(point_disch_p_eff_flow_m_speed_suc.phi.m, 2.546479, rtol=1e-4)
-    assert_allclose(point_disch_p_eff_flow_m_speed_suc.psi.m, 663009.809832, rtol=1e-4)
+    assert_allclose(point_disch_p_eff_flow_m_speed_suc.psi.m, 662455.233087, rtol=1e-4)
     assert_allclose(
-        point_disch_p_eff_flow_m_speed_suc.volume_ratio.m, 2.304715, rtol=1e-4
+        point_disch_p_eff_flow_m_speed_suc.volume_ratio.m, 2.305269, rtol=1e-4
     )
     assert_allclose(
-        point_disch_p_eff_flow_m_speed_suc.power.m, 319149.832746, rtol=1e-4
+        point_disch_p_eff_flow_m_speed_suc.power.m, 318882.832181, rtol=1e-4
     )
 
 
@@ -171,15 +171,15 @@ def test_point_disch_p_eff_flow_v_head_speed_suc(
     assert_allclose(point_disch_p_eff_flow_v_speed_suc.flow_v.m, 1.0, rtol=1e-4)
     assert_allclose(point_disch_p_eff_flow_v_speed_suc.flow_m.m, 3.072307, rtol=1e-4)
     assert_allclose(point_disch_p_eff_flow_v_speed_suc.speed.m, 1.0, rtol=1e-4)
-    assert_allclose(point_disch_p_eff_flow_v_speed_suc.head.m, 82876.226229, rtol=1e-4)
+    assert_allclose(point_disch_p_eff_flow_v_speed_suc.head.m, 82806.904136, rtol=1e-4)
     assert_allclose(point_disch_p_eff_flow_v_speed_suc.eff.m, 0.797811, rtol=1e-4)
     assert_allclose(point_disch_p_eff_flow_v_speed_suc.phi.m, 2.546479, rtol=1e-4)
-    assert_allclose(point_disch_p_eff_flow_v_speed_suc.psi.m, 663009.809832, rtol=1e-4)
+    assert_allclose(point_disch_p_eff_flow_v_speed_suc.psi.m, 662455.233087, rtol=1e-4)
     assert_allclose(
-        point_disch_p_eff_flow_v_speed_suc.volume_ratio.m, 2.304715, rtol=1e-4
+        point_disch_p_eff_flow_v_speed_suc.volume_ratio.m, 2.305269, rtol=1e-4
     )
     assert_allclose(
-        point_disch_p_eff_flow_v_speed_suc.power.m, 319149.832746, rtol=1e-4
+        point_disch_p_eff_flow_v_speed_suc.power.m, 318882.878815, rtol=1e-4
     )
 
 
@@ -212,24 +212,24 @@ def testpoint_disch_T_flow_v_pressure_ratio_speed_suc(
         point_disch_T_flow_v_pressure_ratio_speed_suc.speed.m, 1.0, rtol=1e-4
     )
     assert_allclose(
-        point_disch_T_flow_v_pressure_ratio_speed_suc.head.m, 82876.226229, rtol=1e-4
+        point_disch_T_flow_v_pressure_ratio_speed_suc.head.m, 82816.596731, rtol=1e-4
     )
     assert_allclose(
-        point_disch_T_flow_v_pressure_ratio_speed_suc.eff.m, 0.797811, rtol=1e-4
+        point_disch_T_flow_v_pressure_ratio_speed_suc.eff.m, 0.797226, rtol=1e-4
     )
     assert_allclose(
         point_disch_T_flow_v_pressure_ratio_speed_suc.phi.m, 2.546479, rtol=1e-4
     )
     assert_allclose(
-        point_disch_T_flow_v_pressure_ratio_speed_suc.psi.m, 663009.809832, rtol=1e-4
+        point_disch_T_flow_v_pressure_ratio_speed_suc.psi.m, 662532.773850, rtol=1e-4
     )
     assert_allclose(
         point_disch_T_flow_v_pressure_ratio_speed_suc.volume_ratio.m,
-        2.304715,
+        2.304738,
         rtol=1e-4,
     )
     assert_allclose(
-        point_disch_T_flow_v_pressure_ratio_speed_suc.power.m, 319149.832746, rtol=1e-4
+        point_disch_T_flow_v_pressure_ratio_speed_suc.power.m, 319154.332272, rtol=1e-4
     )
 
 
@@ -399,9 +399,9 @@ def test_converted_from_find_speed(point_eff_flow_v_head_speed_suc_1):
         rtol=1e-2,
     )
     assert_allclose(point_converted_from_find_speed.volume_ratio_ratio.m, 1.0)
-    assert_allclose(point_converted_from_find_speed.speed.m, 1259.934797, rtol=1e-5)
-    assert_allclose(point_converted_from_find_speed.head.m, 208933.668804, rtol=1e-2)
-    assert_allclose(point_converted_from_find_speed.power.m, 1101698.5104, rtol=1e-2)
+    assert_allclose(point_converted_from_find_speed.speed.m, 1253.498131, rtol=1e-5)
+    assert_allclose(point_converted_from_find_speed.head.m, 206799.617316, rtol=1e-2)
+    assert_allclose(point_converted_from_find_speed.power.m, 1084977.717171, rtol=1e-2)
 
 
 def test_converted_from_find_volume_ratio(point_eff_flow_v_head_speed_suc_1):
@@ -434,7 +434,7 @@ def test_converted_from_find_volume_ratio(point_eff_flow_v_head_speed_suc_1):
         rtol=1e-2,
     )
     assert_allclose(
-        point_converted_from_find_volume_ratio.volume_ratio.m, 2.703027, rtol=1e-4
+        point_converted_from_find_volume_ratio.volume_ratio.m, 2.719926, rtol=1e-4
     )
     assert_allclose(point_converted_from_find_volume_ratio.speed.m, 1167.101671)
     assert_allclose(point_converted_from_find_volume_ratio.head.m, 179275.0, rtol=1e-2)
@@ -444,7 +444,7 @@ def test_converted_from_find_volume_ratio(point_eff_flow_v_head_speed_suc_1):
     assert_allclose(point_converted_from_find_volume_ratio.phi_ratio.m, 1.0)
     assert_allclose(point_converted_from_find_volume_ratio.psi_ratio.m, 1.0)
     assert_allclose(
-        point_converted_from_find_volume_ratio.volume_ratio_ratio.m, 1.132638, rtol=1e-4
+        point_converted_from_find_volume_ratio.volume_ratio_ratio.m, 1.125238, rtol=1e-4
     )
 
 
@@ -486,10 +486,12 @@ def test_converted_from_find_volume_ratio_with_reynolds_correction_1997(
         rtol=1e-6,
     )
     assert_allclose(
-        point_converted_from_find_volume_ratio.volume_ratio.m, 2.669956, rtol=1e-4
+        point_converted_from_find_volume_ratio.volume_ratio.m, 2.687329, rtol=1e-4
     )
     assert_allclose(point_converted_from_find_volume_ratio.speed.m, 1167.101671)
-    assert_allclose(point_converted_from_find_volume_ratio.head.m, 179275.0, rtol=1e-2)
+    assert_allclose(
+        point_converted_from_find_volume_ratio.head.m, 177813.215677, rtol=1e-2
+    )
     assert_allclose(
         point_converted_from_find_volume_ratio.power.m, 875741.275802, rtol=1e-2
     )
@@ -498,7 +500,7 @@ def test_converted_from_find_volume_ratio_with_reynolds_correction_1997(
         point_converted_from_find_volume_ratio.psi_ratio.m, 1.008221, rtol=1e-4
     )
     assert_allclose(
-        point_converted_from_find_volume_ratio.volume_ratio_ratio.m, 1.146667, rtol=1e-4
+        point_converted_from_find_volume_ratio.volume_ratio_ratio.m, 1.138887, rtol=1e-4
     )
 
 
@@ -537,7 +539,7 @@ def test_converted_from_find_volume_ratio_with_reynolds_correction_2022(
         rtol=1e-4,
     )
     assert_allclose(
-        point_converted_from_find_volume_ratio.volume_ratio.m, 2.648807, rtol=1e-4
+        point_converted_from_find_volume_ratio.volume_ratio.m, 2.667214, rtol=1e-4
     )
     assert_allclose(point_converted_from_find_volume_ratio.speed.m, 1167.101671)
     assert_allclose(
@@ -553,7 +555,7 @@ def test_converted_from_find_volume_ratio_with_reynolds_correction_2022(
         point_converted_from_find_volume_ratio.psi_ratio.m, 1.009082, rtol=1e-4
     )
     assert_allclose(
-        point_converted_from_find_volume_ratio.volume_ratio_ratio.m, 1.155822, rtol=1e-4
+        point_converted_from_find_volume_ratio.volume_ratio_ratio.m, 1.147477, rtol=1e-4
     )
 
 

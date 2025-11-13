@@ -50,10 +50,10 @@ def test_impeller_lp_sec1_from_csv(impeller_lp_sec1_from_csv):
     p0 = impeller_lp_sec1_from_csv[0]
     assert_allclose(p0.flow_v.to("m³/h").m, 11250)
     assert_allclose(p0.speed.to("RPM").m, 6882.0)
-    assert_allclose(p0.disch.p().to("bar").m, 9.028826)
-    assert_allclose(p0.head.to("kJ/kg").m, 82.870085)
+    assert_allclose(p0.disch.p().to("bar").m, 9.028963080391938)
+    assert_allclose(p0.head.to("kJ/kg").m, 82.87008516878088)
     assert_allclose(p0.eff.m, 0.789412, rtol=1e-5)
-    assert_allclose(p0.power.to("kW").m, 1432.555494, rtol=1e-4)
+    assert_allclose(p0.power.to("kW").m, 1432.5554941076675, rtol=1e-4)
 
 
 def test_fluctuation():

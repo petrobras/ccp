@@ -1,6 +1,3 @@
 RPM = rpm * 1
 hour = 60 * minute = h = hr
 percent = 0.01*count
-cmh2o = cmH2O
-millimeterh2o = cmh2o / 10 = mmH2O = mmh2o
-meterh2o = cmh2o * 100 = mH2O = mh2o

@@ -67,10 +67,13 @@ from pathlib import Path as _Path
 import CoolProp.CoolProp as _CP
 from ctREFPROP.ctREFPROP import REFPROPFunctionLibrary as _REFPROPFunctionLibrary
 
+# import ccp.config as _config
+from . import config as _config
 # use _ to avoid polluting the namespace when importing
 
 try:
     _path = _Path(_os.environ["RPPREFIX"])
+    # _path = _Path("/home/raphael/REFPROP-cmåke/build")
 except KeyError:
     if _os.path.exists("C:\\Users\\Public\\REFPROP"):
         _os.environ["RPprefix"] = "C:\\Users\\Public\\REFPROP"
@@ -78,7 +81,23 @@ except KeyError:
     else:
         _path = _Path.cwd()
 
-_CP.set_config_string(_CP.ALTERNATIVE_REFPROP_PATH, str(_path))
+# Check if path contains non-ASCII characters
+try:
+    unicode_error = False
+    str(_path).encode("ascii")
+    # Path is ASCII-safe, proceed normally
+except UnicodeEncodeError:
+    unicode_error = True
+    _warnings.warn(
+        f"Unable to set REFPROP path due to non-ASCII characters in path: {_path}\n"
+        f"CoolProp does not support non-ASCII characters in paths. "
+        f"Consider renaming the directory or using an ASCII-only path.\n"
+        f"Proceeding without setting REFPROP path."
+    )
+
+if not unicode_error:
+    _CP.set_config_string(_CP.ALTERNATIVE_REFPROP_PATH, str(_path))
+
 try:
     _RP = _REFPROPFunctionLibrary(_path)
     _RP.SETPATHdll(str(_path))
@@ -93,7 +112,6 @@ else:
 _library_path = _path / _shared_library
 
 # Auto-switch to HEOS if REFPROP is not available
-import ccp.config as _config
 
 if not _library_path.is_file():
     _warnings.warn(
@@ -102,13 +120,22 @@ if not _library_path.is_file():
     )
     _config.EOS = "HEOS"
 
-__version__ = "0.3.24"
+__version__ = "0.3.28"
 
-__version__full = (
-    f"ccp: {__version__} | "
-    + f'CP : {_CP.get_global_param_string("version")} | '
-    + f'REFPROP : {_CP.get_global_param_string("REFPROP_version")}'
-)
+with _warnings.catch_warnings():
+    if unicode_error:
+        _warnings.filterwarnings("ignore", category=Warning)
+        __version__full = (
+            f"ccp: {__version__} | "
+            + f'CP : {_CP.get_global_param_string("version")} | '
+            + f"REFPROP : not available"
+        )
+    else:
+        __version__full = (
+            f"ccp: {__version__} | "
+            + f'CP : {_CP.get_global_param_string("version")} | '
+            + f'REFPROP : {_CP.get_global_param_string("REFPROP_version")}'
+        )
 
 ###############################################################################
 # pint

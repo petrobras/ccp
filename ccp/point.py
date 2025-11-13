@@ -61,7 +61,7 @@ class Point:
         Default value is 13.6.
     polytropic_method : str, optional
         Polytropic method used for head and efficiency calculation.
-        Options are: "mallen_saveille", "sandberg_colby", "sandberg_colby_multistep", "schultz" and "huntington".
+        Options are: "mallen_saville", "sandberg_colby", "sandberg_colby_multistep", "schultz" and "huntington".
         The default is "schultz".
         The default value can be changed in a global level with:
         ccp.config.POLYTROPIC_METHOD = "<desired value>"
@@ -314,9 +314,11 @@ class Point:
             (
                 self.suc,
                 round(self.speed.to_base_units().magnitude, 8) if self.speed else None,
-                round(self.flow_v.to_base_units().magnitude, 8)
-                if self.flow_v
-                else None,
+                (
+                    round(self.flow_v.to_base_units().magnitude, 8)
+                    if self.flow_v
+                    else None
+                ),
                 round(self.head.to_base_units().magnitude, 8) if self.head else None,
                 round(self.eff.to_base_units().magnitude, 8) if self.eff else None,
             )
@@ -832,6 +834,10 @@ class Point:
         if speed is None:
             speed = original_point.speed
 
+        power_losses = (
+            original_point.power_losses * (speed / original_point.speed) ** 2.5
+        )
+
         eff_converted = original_point.eff
         psi_converted = original_point.psi
         phi_converted = original_point.phi
@@ -859,7 +865,7 @@ class Point:
             "speed": dict(
                 suc=suc,
                 eff=eff_converted,
-                power_losses=original_point.power_losses,
+                power_losses=power_losses,
                 phi=phi_converted,
                 psi=psi_converted,
                 volume_ratio=original_point.volume_ratio,
@@ -870,7 +876,7 @@ class Point:
             "volume_ratio": dict(
                 suc=suc,
                 eff=eff_converted,
-                power_losses=original_point.power_losses,
+                power_losses=power_losses,
                 phi=phi_converted,
                 psi=psi_converted,
                 speed=speed,
@@ -1345,13 +1351,13 @@ class Point:
         reynolds_limits = self.reynolds_limits()
         lower_limit = [
             0.95,
-            f'{mach_limits["lower"]:.3f}',
-            f'{reynolds_limits["lower"]:.3e}',
+            f"{mach_limits['lower']:.3f}",
+            f"{reynolds_limits['lower']:.3e}",
         ]
         upper_limit = [
             1.05,
-            f'{mach_limits["upper"]:.3f}',
-            f'{reynolds_limits["upper"]:.3e}',
+            f"{mach_limits['upper']:.3f}",
+            f"{reynolds_limits['upper']:.3e}",
         ]
 
         if 0.95 < self.volume_ratio_ratio < 1.05:
@@ -2201,6 +2207,14 @@ def eff_pol_sandberg_colby(suc, disch, disch_s=None):
         Sandberg-Colby polytropic efficiency (dimensionless).
     """
     wp = head_pol_sandberg_colby(suc, disch)
+    dh = disch.h() - suc.h()
+
+    return (wp / dh).to("dimensionless")
+
+
+def eff_pol_sandberg_colby_f(suc, disch, disch_s=None):
+    """Sandberg-Colby polytropic efficiency with correction factor."""
+    wp = head_pol_sandberg_colby_f(suc, disch)
     dh = disch.h() - suc.h()
 
     return (wp / dh).to("dimensionless")
