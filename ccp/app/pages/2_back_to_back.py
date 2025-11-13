@@ -279,7 +279,7 @@ def main():
                     num_rows="dynamic",
                     key=f"table_gas_{i}_composition",
                     height=int((len(default_components) + 1) * 37.35),
-                    use_container_width=True,
+                    width='stretch',
                     column_config={
                         "component": st.column_config.SelectboxColumn(
                             st.session_state[f"gas_{i}"],
@@ -888,13 +888,13 @@ def main():
         calculate_button = calculate_col.button(
             "Calculate",
             type="primary",
-            use_container_width=True,
+            width='stretch',
             help="Calculate results using the data sheet speed.",
         )
         calculate_speed_button = calculate_speed_col.button(
             "Calculate Speed",
             type="primary",
-            use_container_width=True,
+            width='stretch',
             help="Calculate speed to match the second section discharge pressure.",
         )
 
@@ -2093,7 +2093,7 @@ def main():
                             styled_df_results,
                             df_results,
                             "Guarantee Point",
-                            f"Mach{_t} - Mach{_sp}",
+                            f"Mach{_t}",
                             mach_limits["lower"],
                             mach_limits["upper"],
                         )
@@ -2102,7 +2102,7 @@ def main():
                             styled_df_results,
                             df_results,
                             "Guarantee Point",
-                            f"Re{_t} / Re{_sp}",
+                            f"Re{_t}",
                             reynolds_limits["lower"],
                             reynolds_limits["upper"],
                         )
@@ -2113,6 +2113,14 @@ def main():
                             f"(vi/vd){_t}/(vi/vd){_sp}",
                             0.95,
                             1.05,
+                        )
+                        styled_df_results = highlight_cell(
+                            styled_df_results,
+                            df_results,
+                            "Guarantee Point",
+                            f"φ{_t} / φ{_sp}",
+                            0.96,
+                            1.04,
                         )
 
                         if variable_speed:
@@ -2171,17 +2179,17 @@ def main():
                             data=table_excel,
                             file_name=f"{sec}.xlsx",
                             mime="application/vnd.ms-excel",
-                            use_container_width=True,
+                            width='stretch',
                         )
 
                         with st.container():
                             mach_col, reynolds_col = st.columns(2)
                             mach_col.plotly_chart(
-                                point_interpolated.plot_mach(), use_container_width=True
+                                point_interpolated.plot_mach(), width='stretch'
                             )
                             reynolds_col.plotly_chart(
                                 point_interpolated.plot_reynolds(),
-                                use_container_width=True,
+                                width='stretch',
                             )
 
                         def add_background_image(
@@ -2375,20 +2383,20 @@ def main():
                         with st.container():
                             head_col, eff_col = st.columns(2)
                             head_col.plotly_chart(
-                                plots_dict["head"], use_container_width=True
+                                plots_dict["head"], width='stretch'
                             )
                             eff_col.plotly_chart(
-                                plots_dict["eff"], use_container_width=True
+                                plots_dict["eff"], width='stretch'
                             )
 
                         with st.container():
                             disch_p_col, power_col = st.columns(2)
                             disch_p_col.plotly_chart(
                                 plots_dict["discharge_pressure"],
-                                use_container_width=True,
+                                width='stretch',
                             )
                             power_col.plotly_chart(
-                                plots_dict["power"], use_container_width=True
+                                plots_dict["power"], width='stretch'
                             )
 
     # this part will only show if we start streamlit with --client.toolbarMode developer
