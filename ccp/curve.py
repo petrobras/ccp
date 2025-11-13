@@ -305,7 +305,10 @@ class Curve:
             [p.disch for p in self], flow_v=self.flow_v, speed=self.speed
         )
 
-        for param in [
+            [p.disch for p in self],
+            flow_v=self.flow_v,
+            speed=self.speed,
+            extrapolated=extrapolated
             "head",
             "eff",
             "power",

@@ -66,6 +66,9 @@ class Point:
         The default is "schultz".
         The default value can be changed in a global level with:
         ccp.config.POLYTROPIC_METHOD = "<desired value>"
+    extrapolated: bool, optional
+        If true, the point is an extrapolation from other curves or its flow is outside surge and choke limits.
+        The default is False.
 
     Returns
     -------
@@ -134,6 +137,9 @@ class Point:
         Ratio between volume_ratio for this point and the original point from which it was converted from.
     polytropic_method : str
         Polytropic method used for head and efficiency calculation.
+    extrapolated : bool
+        If true, the point is an extrapolation from other curves or its flow is outside surge and choke limits.
+    The default is False.
     """
 
     @check_units
@@ -166,10 +172,14 @@ class Point:
         polytropic_method=None,
     ):
         if polytropic_method is None:
-            polytropic_method = ccp.config.POLYTROPIC_METHOD
+            self.polytropic_method = ccp.config.POLYTROPIC_METHOD
+        else:
+            self.polytropic_method = polytropic_method
 
-        self.head_calc_func = globals()[f"head_pol_{polytropic_method}"]
-        self.eff_calc_func = globals()[f"eff_pol_{polytropic_method}"]
+        self.head_calc_func = globals()[f"head_pol_{self.polytropic_method}"]
+        self.eff_calc_func = globals()[f"eff_pol_{self.polytropic_method}"]
+
+        self._extrapolated = extrapolated
 
         self.suc = suc
         self.disch = disch
@@ -933,8 +943,21 @@ class Point:
             T=Q_(dict_parameters.pop("T")),
             fluid=dict_parameters.pop("fluid"),
         )
+        try:
+            extrapolated = dict_parameters.pop("extrapolated")
+        except:
+            extrapolated = False
+        try:
+            polytropic_method = dict_parameters.pop("polytropic_method")
+        except:
+            polytropic_method = None
 
-        return dict(suc=suc, **{k: Q_(v) for k, v in dict_parameters.items()})
+        return dict(
+            suc=suc,
+            extrapolated=extrapolated,
+            polytropic_method=polytropic_method,
+            **{k: Q_(v) for k, v in dict_parameters.items()},
+        )
 
     def save(self, file_name):
         """Save point to toml file."""
@@ -1576,16 +1599,27 @@ def plot_func(self, attr):
         units = getattr(point_attr, "units")
 
         flow_v = self.flow_v
-
         name = kwargs.get(
             "name", f"Flow: {flow_v.to(flow_v_units).m:.2f}, {attr}: {value:.2f}"
         )
+
+        if self._extrapolated:
+            name = name + "<br>(extrapolated)"
 
         if flow_v_units is not None:
             flow_v = flow_v.to(flow_v_units)
 
         fig.add_trace(
-            go.Scatter(x=[flow_v], y=[value], name=name, marker_color=color, **plot_kws)
+            go.Scatter(
+                x=[flow_v],
+                y=[value],
+                name=name,
+                marker=marker,
+                customdata=[customdata],
+                hovertemplate=hovertemplate,
+                hoverlabel=hoverlabel,
+                **plot_kws,
+            )
         )
 
         return fig

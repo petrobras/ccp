@@ -137,7 +137,7 @@ class ImpellerPlotFunction:
             attr_str = attr.split(".")[-1]
         else:
             attr_str = attr
-        
+
         try:
             attr_units = kwargs.get(
                 f"{attr_str}_units", r_getattr(impeller_object.curves[0], attr).units
@@ -370,6 +370,7 @@ class Impeller:
                             power_losses=losses,
                             b=p.b,
                             D=p.D,
+                            extrapolated=p._extrapolated,
                         )
                     else:
                         p_new = deepcopy(p)
@@ -378,7 +379,11 @@ class Impeller:
             else:
                 points = [point for point in grouped_points]
                 points_update = points_init
-            curve = Curve(points)
+            if np.all([p._extrapolated for p in points]) == True:
+                extrapolated = True
+            else:
+                extrapolated = False
+            curve = Curve(points, extrapolated)
             curves.append(curve)
             setattr(self, f"curve_{int(curve.speed.magnitude)}", curve)
         self.points = points_update
@@ -479,6 +484,11 @@ class Impeller:
                 f"Interpolation limits: {min_flow_v:.3f~P} ~ {max_flow_v:.3f~P}\n"
                 f"Expected point flow: {flow_v:.3f~P}"
             )
+            extrapolated = True
+        elif current_curve._extrapolated:
+            extrapolated = True
+        else:
+            extrapolated = False
 
         flow_at_min_p = (
             np.log(current_curve[-1].disch.p().m + np.exp(4 * max_flow_v.m))
@@ -575,8 +585,18 @@ class Impeller:
         ]
 
         # calculate factor
-        speed_range = curves[1].speed.magnitude - curves[0].speed.magnitude
-        factor = (speed.magnitude - curves[0].speed.magnitude) / speed_range
+        speed_range = curves[1].speed.m - curves[0].speed.m
+        factor_0 = (speed.m - curves[0].speed.m) / speed_range
+        factor_1 = (curves[1].speed.m - speed.m) / speed_range
+        # if curve was extrapolated from two other curves extrapolated is true
+        if np.all([p._extrapolated for p in curves[0].points]) or np.all(
+            [p._extrapolated for p in curves[1].points]
+        ):
+            extrapolated = True
+        elif speed.m >= curves[0].speed.m and speed.m <= curves[1].speed.m:
+            extrapolated = False
+        else:
+            extrapolated = True
 
         current_curve = []
         p0 = self.points[0]
@@ -612,7 +632,7 @@ class Impeller:
 
             current_curve.append(p)
 
-        current_curve = Curve(current_curve)
+        current_curve = Curve(current_curve, extrapolated)
 
         return current_curve
 
