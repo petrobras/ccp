@@ -1588,7 +1588,7 @@ def plot_func(self, attr):
         """
         fig = kwargs.pop("fig", None)
         color = kwargs.pop("color", None)
-        symbol = 'circle'
+        symbol = "circle"
         size = 6
         line = None
         customdata = None
@@ -1597,40 +1597,93 @@ def plot_func(self, attr):
         color_marker = color
 
         if similarity:
-            line = dict(color='black', width=1) 
+            line = dict(color="black", width=1)
             data_similarity = {
-            'volume_ratio_ratio' : [self.volume_ratio_ratio.m],
-            'phi_ratio' : [self.phi_ratio.m],
-            'mach' : [self.mach.m],
-            'reynolds' : [self.reynolds.m],
-            'volume_ratio_limits': [[0.95, 1.05, True if self.volume_ratio_ratio > 0.95 and self.volume_ratio_ratio < 1.05 
-                        else False]],
-            'phi_ratio_limits': [[0.96, 1.04, True if self.phi_ratio > 0.96 and self.phi_ratio < 1.04 
-                                else False]],
-            'mach_limits' : [[v.m if i != 2 else v for i, v in enumerate(self.mach_limits(mmsp=self.mach-self.mach_diff).values())]],
-            'reynolds_limits' : [[v.m if i != 2 else v for i, v in enumerate(self.reynolds_limits(remsp=self.reynolds/self.reynolds_ratio).values())]],
+                "volume_ratio_ratio": [self.volume_ratio_ratio.m],
+                "phi_ratio": [self.phi_ratio.m],
+                "mach": [self.mach.m],
+                "reynolds": [self.reynolds.m],
+                "volume_ratio_limits": [
+                    [
+                        0.95,
+                        1.05,
+                        (
+                            True
+                            if self.volume_ratio_ratio > 0.95
+                            and self.volume_ratio_ratio < 1.05
+                            else False
+                        ),
+                    ]
+                ],
+                "phi_ratio_limits": [
+                    [
+                        0.96,
+                        1.04,
+                        (
+                            True
+                            if self.phi_ratio > 0.96 and self.phi_ratio < 1.04
+                            else False
+                        ),
+                    ]
+                ],
+                "mach_limits": [
+                    [
+                        v.m if i != 2 else v
+                        for i, v in enumerate(
+                            self.mach_limits(mmsp=self.mach - self.mach_diff).values()
+                        )
+                    ]
+                ],
+                "reynolds_limits": [
+                    [
+                        v.m if i != 2 else v
+                        for i, v in enumerate(
+                            self.reynolds_limits(
+                                remsp=self.reynolds / self.reynolds_ratio
+                            ).values()
+                        )
+                    ]
+                ],
             }
             df_similarity = pd.DataFrame(data_similarity)
-            customdata = df_similarity[['volume_ratio_ratio','phi_ratio','mach','reynolds', 
-                    'volume_ratio_limits', 'phi_ratio_limits', 
-                    'mach_limits','reynolds_limits']].iloc[0].values.tolist()
-            color_marker = ["#7EE38D" if np.all([customdata[i][2] for i in range(4,7)]) == True 
-                                            else "#FC9FB0"]
-            size=6
-            hoverlabel=dict(namelength=-1) 
-            hovertemplate =(
-                "<b>(v<sub>i</sub> / v<sub>d</sub>)<sub>c</sub> / (v<sub>i</sub> / v<sub>d</sub>)<sub>o</sub>:</b> %{customdata[0]:.3f} " \
-                        "<b>limits:</b> %{customdata[4][0]:.3f} - %{customdata[4][1]:.3f}<br>" +
-                "<b>φ<sub>c</sub> / φ<sub>o</sub>:</b> %{customdata[1]:.3f} "
-                "             <b>limits:</b>     %{customdata[5][0]:.3f} - %{customdata[5][1]:.3f}<br>" +
-                "<b>Mm<sub>c</sub>:</b>  %{customdata[2]:.4f} "
-                "              <b>limits:</b> %{customdata[6][0]:.4f} - %{customdata[6][1]:.4f}<br>" +
-                "<b>Rem<sub>c</sub>:</b> %{customdata[3]:.3e} "
-                " <b>limits:</b> %{customdata[7][0]:.3e} - %{customdata[7][1]:.3e}" +
-                "<extra></extra>",
+            customdata = (
+                df_similarity[
+                    [
+                        "volume_ratio_ratio",
+                        "phi_ratio",
+                        "mach",
+                        "reynolds",
+                        "volume_ratio_limits",
+                        "phi_ratio_limits",
+                        "mach_limits",
+                        "reynolds_limits",
+                    ]
+                ]
+                .iloc[0]
+                .values.tolist()
+            )
+            color_marker = [
+                (
+                    "#7EE38D"
+                    if np.all([customdata[i][2] for i in range(4, 7)]) == True
+                    else "#FC9FB0"
                 )
+            ]
+            size = 6
+            hoverlabel = dict(namelength=-1)
+            hovertemplate = (
+                "<b>(v<sub>i</sub> / v<sub>d</sub>)<sub>c</sub> / (v<sub>i</sub> / v<sub>d</sub>)<sub>o</sub>:</b> %{customdata[0]:.3f} "
+                "<b>limits:</b> %{customdata[4][0]:.3f} - %{customdata[4][1]:.3f}<br>"
+                + "<b>φ<sub>c</sub> / φ<sub>o</sub>:</b> %{customdata[1]:.3f} "
+                "             <b>limits:</b>     %{customdata[5][0]:.3f} - %{customdata[5][1]:.3f}<br>"
+                + "<b>Mm<sub>c</sub>:</b>  %{customdata[2]:.4f} "
+                "              <b>limits:</b> %{customdata[6][0]:.4f} - %{customdata[6][1]:.4f}<br>"
+                + "<b>Rem<sub>c</sub>:</b> %{customdata[3]:.3e} "
+                " <b>limits:</b> %{customdata[7][0]:.3e} - %{customdata[7][1]:.3e}"
+                + "<extra></extra>",
+            )
 
-        marker=dict(color=color_marker, symbol=symbol, size=size, line=line)
+        marker = dict(color=color_marker, symbol=symbol, size=size, line=line)
 
         if fig is None:
             fig = go.Figure()
@@ -2628,7 +2681,6 @@ def disch_from_suc_head_eff(suc, head, eff, polytropic_method=None):
     def update_pressure(p):
         disch.update(h=h_disch, p=p)
         new_head = head_calc_func(suc, disch)
-
         return (new_head - head).magnitude
 
     newton(update_pressure, disch.p().magnitude, tol=1e-1)

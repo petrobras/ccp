@@ -311,6 +311,9 @@ class Curve:
             extrapolated=extrapolated
             "head",
             "eff",
+        )
+
+        for param in [
             "power",
             "power_shaft",
             "torque",
