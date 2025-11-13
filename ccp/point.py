@@ -1423,14 +1423,14 @@ class Point:
         lower_limit = [
             0.95,
             0.96,
-            f'{mach_limits["lower"]:.3f}',
-            f'{reynolds_limits["lower"]:.3e}',
+            f"{mach_limits["lower"]:.3f}",
+            f"{reynolds_limits["lower"]:.3e}",
         ]
         upper_limit = [
             1.05,
             1.04,
-            f'{mach_limits["upper"]:.3f}',
-            f'{reynolds_limits["upper"]:.3e}',
+            f"{mach_limits['lower']:.3f}",
+            f"{reynolds_limits['lower']:.3e}",
         ]
 
         if 0.95 < self.volume_ratio_ratio < 1.05:
@@ -2304,6 +2304,14 @@ def eff_pol_sandberg_colby(suc, disch, disch_s=None):
         Sandberg-Colby polytropic efficiency (dimensionless).
     """
     wp = head_pol_sandberg_colby(suc, disch)
+    dh = disch.h() - suc.h()
+
+    return (wp / dh).to("dimensionless")
+
+
+def eff_pol_sandberg_colby_f(suc, disch, disch_s=None):
+    """Sandberg-Colby polytropic efficiency with correction factor."""
+    wp = head_pol_sandberg_colby_f(suc, disch)
     dh = disch.h() - suc.h()
 
     return (wp / dh).to("dimensionless")

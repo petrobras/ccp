@@ -78,7 +78,7 @@ version = {attr = "ccp.__version__"}
 include = ["ccp*"]
 
 [tool.setuptools.package-data]
-"ccp.config" = ["new_units.txt"]
+"ccp.config" = ["new_units.txt", "legacy_water_units.txt"]
 "ccp.tests" = ["*.py"]
 "ccp.tests.data" = ["*"]
 
