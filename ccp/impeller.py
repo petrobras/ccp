@@ -469,12 +469,53 @@ class Impeller:
         if flow_m:
             flow_v = current_curve.points[0].suc.v() * flow_m
 
-        func_T = interp1d(
-            current_curve.flow_v.m, current_curve.disch.T().m, fill_value="extrapolate"
+        func_head = interp1d(
+            current_curve.flow_v.m, current_curve.head.m, fill_value="extrapolate"
         )
-        func_p = interp1d(
-            current_curve.flow_v.m, current_curve.disch.p().m, fill_value="extrapolate"
+        func_eff = interp1d(
+            current_curve.flow_v.m, current_curve.eff.m, fill_value="extrapolate"
         )
+
+        # interpolate similarity parameters for converted points
+        if not np.all(
+            np.concatenate(
+                (
+                    [p.phi_ratio.m for p in current_curve.points],
+                    [p.psi_ratio.m for p in current_curve.points],
+                    [p.reynolds_ratio.m for p in current_curve.points],
+                    [p.volume_ratio_ratio.m for p in current_curve.points],
+                )
+            )
+            == 1
+        ) or not np.all(np.array([p.mach_diff.m for p in current_curve.points]) == 0):
+            converted_curve = True
+            func_phi_ratio = interp1d(
+                current_curve.flow_v.m,
+                [p.phi_ratio.m for p in current_curve.points],
+                fill_value="extrapolate",
+            )
+            func_psi_ratio = interp1d(
+                current_curve.flow_v.m,
+                [p.psi_ratio.m for p in current_curve.points],
+                fill_value="extrapolate",
+            )
+            func_reynolds_ratio = interp1d(
+                current_curve.flow_v.m,
+                [p.reynolds_ratio.m for p in current_curve.points],
+                fill_value="extrapolate",
+            )
+            func_mach_diff = interp1d(
+                current_curve.flow_v.m,
+                [p.mach_diff.m for p in current_curve.points],
+                fill_value="extrapolate",
+            )
+            func_volume_ratio_ratio = interp1d(
+                current_curve.flow_v.m,
+                [p.volume_ratio_ratio.m for p in current_curve.points],
+                fill_value="extrapolate",
+            )
+        else:
+            converted_curve = False
 
         min_flow_v = min(current_curve.flow_v)
         max_flow_v = max(current_curve.flow_v)
@@ -490,35 +531,31 @@ class Impeller:
         else:
             extrapolated = False
 
-        flow_at_min_p = (
-            np.log(current_curve[-1].disch.p().m + np.exp(4 * max_flow_v.m))
+        flow_at_min_head = (
+            np.log(current_curve[-1].head.m + np.exp(4 * max_flow_v.m))
         ) / 4
-        flow_at_min_T = (
-            np.log(
-                current_curve[-1].disch.T().m
-                - current_curve.points[0].suc.T().m
-                + np.exp(4 * max_flow_v.m)
-            )
+        flow_at_min_eff = (
+            np.log(current_curve[-1].eff.m + np.exp(4 * max_flow_v.m))
         ) / 4
 
         # Extrapolation code for choke region
         if flow_v <= max_flow_v:
-            disch_p = func_p(flow_v)
-        elif flow_v.m < flow_at_min_p:
-            disch_p = round(
-                current_curve[-1].disch.p().m
+            head = float(func_head(flow_v))
+        elif flow_v.m < flow_at_min_head:
+            head = round(
+                current_curve[-1].head.m
                 + np.exp(4 * current_curve[-1].flow_v.m)
                 - np.exp(4 * flow_v.m),
                 2,
             )
         else:
-            disch_p = 0.001
+            head = 0.001
 
         if flow_v <= max_flow_v:
-            disch_T = func_T(flow_v)
-        elif flow_v.m < flow_at_min_T:
-            disch_T = round(
-                current_curve[-1].disch.T().m
+            eff = float(func_eff(flow_v))
+        elif flow_v.m < flow_at_min_eff:
+            eff = round(
+                current_curve[-1].eff.m
                 + np.exp(4 * current_curve[-1].flow_v.m)
                 - np.exp(4 * flow_v.m),
                 2,
@@ -549,7 +586,8 @@ class Impeller:
 
         point = Point(
             suc=p0.suc,
-            disch=disch,
+            head=head,
+            eff=eff,
             flow_v=flow_v,
             speed=current_curve.speed,
             b=p0.b,
@@ -625,19 +663,21 @@ class Impeller:
         number_of_points = len(curves[0])
 
         for i in range(number_of_points):
-            flow_T, disch_T = get_interpolated_values(
-                factor,
-                curves[0].flow_v.magnitude[i],
-                curves[0][i].disch.T().m,
-                curves[1].flow_v.magnitude[i],
-                curves[1][i].disch.T().m,
+            flow_eff, eff = get_interpolated_values(
+                factor_0,
+                factor_1,
+                curves[0][i].flow_v.magnitude,
+                curves[0][i].eff.m,
+                curves[1][i].flow_v.magnitude,
+                curves[1][i].eff.m,
             )
-            flow_p, disch_p = get_interpolated_values(
-                factor,
-                curves[0].flow_v.magnitude[i],
-                curves[0][i].disch.p().m,
-                curves[1].flow_v.magnitude[i],
-                curves[1][i].disch.p().m,
+            flow_head, head = get_interpolated_values(
+                factor_0,
+                factor_1,
+                curves[0][i].flow_v.magnitude,
+                curves[0][i].head.m,
+                curves[1][i].flow_v.magnitude,
+                curves[1][i].head.m,
             )
 
             phi_ratio = (
@@ -660,8 +700,9 @@ class Impeller:
 
             p = Point(
                 suc=p0.suc,
-                disch=disch,
-                flow_v=(flow_T + flow_p) / 2,
+                head=head,
+                eff=eff,
+                flow_v=(flow_eff + flow_head) / 2,
                 speed=speed,
                 power_losses=power_losses,
                 b=p0.b,
@@ -1416,12 +1457,14 @@ def find_closest_speeds(array, value):
     return np.array(idx)
 
 
-def get_interpolated_values(fac, flow_0, val_0, flow_1, val_1):
+def get_interpolated_values(fac_0, fac_1, flow_0, val_0, flow_1, val_1):
     x0 = [flow_0, val_0]
-    if fac > 0.5:
+    if fac_0 > 0.5:
         x0 = [flow_1, val_1]
 
-    result = fsolve(system_to_interpolate, x0, args=(fac, flow_0, val_0, flow_1, val_1))
+    result = fsolve(
+        system_to_interpolate, x0, args=(fac_0, fac_1, flow_0, val_0, flow_1, val_1)
+    )
 
     flow_x = result[0]
     val_x = result[1]
@@ -1430,9 +1473,13 @@ def get_interpolated_values(fac, flow_0, val_0, flow_1, val_1):
 
 
 def system_to_interpolate(x, *args):
-    fac, flow_0, val_0, flow_1, val_1 = args
-    eq_1 = -x[1] + val_0 + (x[0] - flow_0) * (val_1 - val_0) / (flow_1 - flow_0)
-    eq_2 = -fac * (flow_1 - flow_0) + x[0] - flow_0
+    fac_0, fac_1, flow_0, val_0, flow_1, val_1 = args
+    if val_1 > val_0:
+        eq_1 = -x[1] + val_0 + (x[0] - flow_0) * (val_1 - val_0) / (flow_1 - flow_0)
+        eq_2 = -fac_0 * (flow_1 - flow_0) + x[0] - flow_0
+    else:
+        eq_1 = -x[1] + val_1 + (flow_1 - x[0]) * (val_0 - val_1) / (flow_1 - flow_0)
+        eq_2 = -fac_1 * (flow_1 - flow_0) + flow_1 - x[0]
 
     return [eq_1, eq_2]
 
