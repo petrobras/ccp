@@ -85,6 +85,11 @@ units = {
     "head": "joule/kilogram",
     "eff": "dimensionless",
     "power": "watt",
+    "phi_ratio": "dimensionless",
+    "psi_ratio": "dimensionless",
+    "reynolds_ratio": "dimensionless",
+    "mach_diff": "dimensionless",
+    "volume_ratio_ratio": "dimensionless",
 }
 for i, unit in zip(["k", "c"], ["N/m", "N*s/m"]):
     for j in ["x", "y", "z"]:
