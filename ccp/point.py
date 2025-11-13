@@ -1391,32 +1391,44 @@ class Point:
         if fig is None:
             fig = go.Figure()
 
-        quantity = ["Ratio of Specific Volume", "Mach Number", "Reynolds Number"]
-        abbrev = ["v<sub>i</sub> / v<sub>d</sub>", "Mm", "Rem"]
-        point_value = [
-            f"{self.volume_ratio.m:.3f}",
-            f"{self.mach.m:.3f}",
-            f"{self.reynolds.m:.3e}",
+        quantity = [
+            "Ratio of Specific Volume",
+            "Flow Coefficient",
+            "Mach Number",
+            "Reynolds Number",
+        ]
+        abbrev = ["v<sub>i</sub> / v<sub>d</sub>", "φ", "Mm", "Rem"]
+        original_point_value = [
+            f"{self.volume_ratio.m / self.volume_ratio_ratio.m:.3f}",
+            f"{self.phi.m / self.phi_ratio.m:.3f}",
+            f"{self.mach.m - self.mach_diff.m:.3f}",
+            f"{self.reynolds.m / self.reynolds_ratio.m:.3e}",
         ]
         formula = [
             "(v<sub>i</sub> / v<sub>d</sub>)<sub>c</sub> / (v<sub>i</sub> / v<sub>d</sub>)<sub>o</sub>",
+            "φ<sub>c</sub> / φ<sub>o</sub>",
             "Mm<sub>c</sub>",
             "Rem<sub>c</sub>",
         ]
         relation = [
             f"{self.volume_ratio_ratio.m:.3f}",
-            f"{self.mach_diff.m + self.mach.m:.3f}",
-            f"{self.reynolds_ratio.m * self.reynolds.m:.3e}",
+            f"{self.phi_ratio.m:.3f}",
+            f"{self.mach.m:.3f}",
+            f"{self.reynolds.m:.3e}",
         ]
-        mach_limits = self.mach_limits()
-        reynolds_limits = self.reynolds_limits()
+        mmsp = self.mach - self.mach_diff
+        remsp = self.reynolds / self.reynolds_ratio
+        mach_limits = self.mach_limits(mmsp=mmsp)
+        reynolds_limits = self.reynolds_limits(remsp=remsp)
         lower_limit = [
             0.95,
+            0.96,
             f'{mach_limits["lower"]:.3f}',
             f'{reynolds_limits["lower"]:.3e}',
         ]
         upper_limit = [
             1.05,
+            1.04,
             f'{mach_limits["upper"]:.3f}',
             f'{reynolds_limits["upper"]:.3e}',
         ]
@@ -1425,6 +1437,11 @@ class Point:
             volume_ratio_within_limits = True
         else:
             volume_ratio_within_limits = False
+
+        if 0.96 < self.volume_ratio_ratio < 1.04:
+            phi_within_limits = True
+        else:
+            phi_within_limits = False
 
         light_green = "#D8F3DC"
         dark_green = "#2D6A4F"
@@ -1435,6 +1452,7 @@ class Point:
         rel_font_color = []
         for status in [
             volume_ratio_within_limits,
+            phi_within_limits,
             mach_limits["within_limits"],
             reynolds_limits["within_limits"],
         ]:
@@ -1452,9 +1470,9 @@ class Point:
                         values=[
                             "<b>Quantity</b>",
                             "<b></b>",
-                            "<b>Point Value</b>",
-                            "<b></b>",
                             "<b>Original Point Value</b>",
+                            "<b></b>",
+                            "<b>Converted Point Value</b>",
                             "<b>Lower Limit</b>",
                             "<b>Upper Limit</b>",
                         ],
@@ -1467,7 +1485,7 @@ class Point:
                         values=[
                             quantity,
                             abbrev,
-                            point_value,
+                            original_point_value,
                             formula,
                             relation,
                             lower_limit,
