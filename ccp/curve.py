@@ -4,6 +4,8 @@ import numpy as np
 import toml
 from scipy.interpolate import interp1d
 import plotly.graph_objects as go
+import pandas as pd
+import numpy as np
 
 from ccp import Q_, ureg, Point
 
@@ -33,7 +35,9 @@ class PlotFunction:
         self.curve_state_object = curve_state_object
         self.attr = attr
 
-    def __call__(self, *args, plot_kws=None, show_points=False, **kwargs):
+    def __call__(
+        self, *args, plot_kws=None, show_points=False, similarity=False, **kwargs
+    ):
         """Plot parameter versus volumetric flow.
 
         You can choose units with the arguments flow_v_units='...' and
@@ -45,6 +49,8 @@ class PlotFunction:
             Keyword arguments to be passed to the plotly figure.
         show_points: bool, optional
             If True, the points will be plotted as markers.
+        similarity : bool, optional
+            If True, the points shows a hover with similarity table and limits for converted values.
 
         """
         curve_state_object = self.curve_state_object
@@ -71,7 +77,24 @@ class PlotFunction:
         y_units = ureg.Unit(y_units)
         speed_units = kwargs.get("speed_units", curve_state_object.speed.units)
         speed_units = ureg.Unit(speed_units)
-        name = kwargs.get("name", str(round(curve_state_object.speed.to(speed_units))))
+        # if curve was extrapolated from two other curves extrapolated is true
+        try:
+            curve_extrapolated = curve_state_object._extrapolated
+        except:
+            curve_extrapolated = False
+
+        if curve_extrapolated:
+            line = dict(dash="dashdot")
+            name = kwargs.get(
+                "name",
+                str(round(curve_state_object.speed.to(speed_units), 0))
+                + "<br>(extrapolated)",
+            )
+        else:
+            line = None
+            name = kwargs.get(
+                "name", str(round(curve_state_object.speed.to(speed_units), 0))
+            )
 
         flow_v = flow_v_points = curve_state_object.flow_v
         flow_v_range = np.linspace(min(flow_v), max(flow_v), 30)
@@ -119,72 +142,125 @@ class PlotFunction:
                 y=values_range,
                 name=name,
                 line_color=color,
+                line=line,
             ),
             **plot_kws,
         )
 
-        if attr == 'head' or attr == 'eff':
+        if attr == "head" or attr == "eff":
             data_similarity = {
-                'volume_ratio_ratio' : [p.volume_ratio_ratio.m for p in curve_state_object.points],
-                'phi_ratio' : [p.phi_ratio.m for p in curve_state_object.points],
-                'mach' : [p.mach.m for p in curve_state_object.points],
-                'reynolds' : [p.reynolds.m for p in curve_state_object.points],
-                'volume_ratio_limits': [[0.95, 1.05, True if p.volume_ratio_ratio > 0.95 and p.volume_ratio_ratio < 1.05 
-                            else False] for p in curve_state_object.points],
-                'phi_ratio_limits': [[0.96, 1.04, True if p.phi_ratio > 0.96 and p.phi_ratio < 1.04 
-                                    else False] for p in curve_state_object.points],
-                'mach_limits' : [[l["lower"].m, l["upper"].m, l["within_limits"]] for l in [p.mach_limits(mmsp=p.mach-p.mach_diff) for p in curve_state_object.points]],
-                'reynolds_limits' : [[l["lower"].m, l["upper"].m, l["within_limits"]] for l in [p.reynolds_limits(remsp=p.reynolds/p.reynolds_ratio) for p in curve_state_object.points]]
-                }
+                "volume_ratio_ratio": [
+                    p.volume_ratio_ratio.m for p in curve_state_object.points
+                ],
+                "phi_ratio": [p.phi_ratio.m for p in curve_state_object.points],
+                "mach": [p.mach.m for p in curve_state_object.points],
+                "reynolds": [p.reynolds.m for p in curve_state_object.points],
+                "volume_ratio_limits": [
+                    [
+                        0.95,
+                        1.05,
+                        (
+                            True
+                            if p.volume_ratio_ratio > 0.95
+                            and p.volume_ratio_ratio < 1.05
+                            else False
+                        ),
+                    ]
+                    for p in curve_state_object.points
+                ],
+                "phi_ratio_limits": [
+                    [
+                        0.96,
+                        1.04,
+                        True if p.phi_ratio > 0.96 and p.phi_ratio < 1.04 else False,
+                    ]
+                    for p in curve_state_object.points
+                ],
+                "mach_limits": [
+                    [l["lower"].m, l["upper"].m, l["within_limits"]]
+                    for l in [
+                        p.mach_limits(mmsp=p.mach - p.mach_diff)
+                        for p in curve_state_object.points
+                    ]
+                ],
+                "reynolds_limits": [
+                    [l["lower"].m, l["upper"].m, l["within_limits"]]
+                    for l in [
+                        p.reynolds_limits(remsp=p.reynolds / p.reynolds_ratio)
+                        for p in curve_state_object.points
+                    ]
+                ],
+            }
             df_similarity = pd.DataFrame(data_similarity)
-        
+
         if show_points or similarity:
             hovertemplate = None
             customdata = None
             hoverlabel = None
             color_marker = color
             line = None
-            hoverlabel=None
-            size=None
-            line = dict(color=color, width=1)   
+            hoverlabel = None
+            size = None
+            line = dict(color=color, width=1)
 
             for i in range(len(curve_state_object.points)):
-                symbol = 'circle'
-                if similarity and (attr == 'head' or attr == 'eff'):
-                    customdata = df_similarity[['volume_ratio_ratio','phi_ratio','mach','reynolds', 
-                            'volume_ratio_limits', 'phi_ratio_limits', 
-                            'mach_limits','reynolds_limits']].iloc[i].values.tolist()
-                    color_marker = ["#7EE38D" if np.all([customdata[i][2] for i in range(4,7)]) == True 
-                                                    else "#FC9FB0"]
-                    size=8
-                    hoverlabel=dict(namelength=-1) 
-                    hovertemplate =(
-                        "<b>(v<sub>i</sub> / v<sub>d</sub>)<sub>c</sub> / (v<sub>i</sub> / v<sub>d</sub>)<sub>o</sub>:</b> %{customdata[0]:.3f} " \
-                             "<b>limits:</b> %{customdata[4][0]:.3f} - %{customdata[4][1]:.3f}<br>" +
-                        "<b>φ<sub>c</sub> / φ<sub>o</sub>:</b> %{customdata[1]:.3f} "
-                        "             <b>limits:</b>     %{customdata[5][0]:.3f} - %{customdata[5][1]:.3f}<br>" +
-                        "<b>Mm<sub>c</sub>:</b>  %{customdata[2]:.4f} "
-                        "              <b>limits:</b> %{customdata[6][0]:.4f} - %{customdata[6][1]:.4f}<br>" +
-                        "<b>Rem<sub>c</sub>:</b> %{customdata[3]:.3e} "
-                        " <b>limits:</b> %{customdata[7][0]:.3e} - %{customdata[7][1]:.3e}" +
-                        "<extra></extra>",
+                symbol = "circle"
+                if similarity and (attr == "head" or attr == "eff"):
+                    customdata = (
+                        df_similarity[
+                            [
+                                "volume_ratio_ratio",
+                                "phi_ratio",
+                                "mach",
+                                "reynolds",
+                                "volume_ratio_limits",
+                                "phi_ratio_limits",
+                                "mach_limits",
+                                "reynolds_limits",
+                            ]
+                        ]
+                        .iloc[i]
+                        .values.tolist()
+                    )
+                    color_marker = [
+                        (
+                            "#7EE38D"
+                            if np.all([customdata[i][2] for i in range(4, 7)]) == True
+                            else "#FC9FB0"
                         )
+                    ]
+                    size = 8
+                    hoverlabel = dict(namelength=-1)
+                    hovertemplate = (
+                        "<b>(v<sub>i</sub> / v<sub>d</sub>)<sub>c</sub> / (v<sub>i</sub> / v<sub>d</sub>)<sub>o</sub>:</b> %{customdata[0]:.3f} "
+                        "<b>limits:</b> %{customdata[4][0]:.3f} - %{customdata[4][1]:.3f}<br>"
+                        + "<b>φ<sub>c</sub> / φ<sub>o</sub>:</b> %{customdata[1]:.3f} "
+                        "             <b>limits:</b>     %{customdata[5][0]:.3f} - %{customdata[5][1]:.3f}<br>"
+                        + "<b>Mm<sub>c</sub>:</b>  %{customdata[2]:.4f} "
+                        "              <b>limits:</b> %{customdata[6][0]:.4f} - %{customdata[6][1]:.4f}<br>"
+                        + "<b>Rem<sub>c</sub>:</b> %{customdata[3]:.3e} "
+                        " <b>limits:</b> %{customdata[7][0]:.3e} - %{customdata[7][1]:.3e}"
+                        + "<extra></extra>",
+                    )
                 else:
-                    symbol= symbol + '-open'
+                    symbol = symbol + "-open"
                 fig.add_trace(
                     go.Scatter(
                         x=[flow_v_points[i]],
                         y=[values_points[i]],
-                        marker=dict(color=color_marker, symbol=symbol, size=size, line=line),
+                        marker=dict(
+                            color=color_marker, symbol=symbol, size=size, line=line
+                        ),
                         mode="markers",
                         name=name,
                         showlegend=False,
                         customdata=[customdata],
                         hovertemplate=hovertemplate,
-                        hoverlabel=hoverlabel
+                        hoverlabel=hoverlabel,
                     )
                 )
-            )
+                if similarity:
+                    fig.update_layout(hovermode="closest", hoverdistance=10)
 
         fig.update_layout(
             xaxis=dict(title=f"Volume Flow ({x_units:~H})"),
@@ -249,10 +325,11 @@ class _CurveState:
 
     """
 
-    def __init__(self, points, flow_v, speed):
+    def __init__(self, points, flow_v, speed, extrapolated=False):
         self.flow_v = flow_v
         self.points = points
         self.speed = speed
+        self._extrapolated = extrapolated
 
         # set a method for each suction attribute in the list
         for attr in ["p", "T", "h", "s", "rho"]:
@@ -282,10 +359,15 @@ class Curve:
         List with the points
     """
 
-    def __init__(self, points):
+    def __init__(self, points, extrapolated=False):
         if len(points) < 2:
             raise TypeError("At least 2 points should be given.")
         self.points = sorted(points, key=lambda p: p.flow_v)
+        # if curve was extrapolated from two other curves extrapolated is true
+        self._extrapolated = extrapolated
+        if self._extrapolated:
+            for p in points:
+                p._extrapolated = True
 
         _flow_v_values = [p.flow_v.magnitude for p in self]
         _flow_v_units = self[0].flow_v.units
@@ -299,21 +381,21 @@ class Curve:
                 raise ValueError("Speed for each point should be equal")
 
         self.suc = _CurveState(
-            [p.suc for p in self], flow_v=self.flow_v, speed=self.speed
+            [p.suc for p in self],
+            flow_v=self.flow_v,
+            speed=self.speed,
+            extrapolated=extrapolated
         )
         self.disch = _CurveState(
-            [p.disch for p in self], flow_v=self.flow_v, speed=self.speed
-        )
-
             [p.disch for p in self],
             flow_v=self.flow_v,
             speed=self.speed,
             extrapolated=extrapolated
-            "head",
-            "eff",
         )
 
         for param in [
+            "head",
+            "eff",
             "power",
             "power_shaft",
             "torque",
