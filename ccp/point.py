@@ -170,6 +170,12 @@ class Point:
         ambient_temperature=None,
         convection_constant=Q_(13.6, "W/(m²*degK)"),
         polytropic_method=None,
+        phi_ratio=None,
+        psi_ratio=None,
+        reynolds_ratio=None,
+        mach_diff=None,
+        volume_ratio_ratio=None,
+        extrapolated=False,
     ):
         if polytropic_method is None:
             self.polytropic_method = ccp.config.POLYTROPIC_METHOD
@@ -275,14 +281,28 @@ class Point:
 
         self.reynolds = reynolds(self.suc, self.speed, self.b, self.D)
         self.mach = mach(self.suc, self.speed, self.D)
-
-        self.phi_ratio = Q_(1.0, "dimensionless")
-        self.psi_ratio = Q_(1.0, "dimensionless")
-        self.reynolds_ratio = Q_(1.0, "dimensionless")
+        if phi_ratio == None:
+            self.phi_ratio = Q_(1.0, "dimensionless")
+        else:
+            self.phi_ratio = phi_ratio
+        if psi_ratio == None:
+            self.psi_ratio = Q_(1.0, "dimensionless")
+        else:
+            self.psi_ratio = psi_ratio
+        if reynolds_ratio == None:
+            self.reynolds_ratio = Q_(1.0, "dimensionless")
+        else:
+            self.reynolds_ratio = reynolds_ratio
         # mach in the ptc 10 is compared with Mmt - Mmsp
-        self.mach_diff = Q_(0.0, "dimensionless")
+        if mach_diff == None:
+            self.mach_diff = Q_(0.0, "dimensionless")
+        else:
+            self.mach_diff = mach_diff
         # ratio between specific volume ratios in original and converted conditions
-        self.volume_ratio_ratio = Q_(1.0, "dimensionless")
+        if volume_ratio_ratio == None:
+            self.volume_ratio_ratio = Q_(1.0, "dimensionless")
+        else:
+            self.volume_ratio_ratio = volume_ratio_ratio
 
         self._add_point_plot()
 
@@ -821,7 +841,7 @@ class Point:
         5. Calculate head based on the new discharge state
         6. Calculate speed based on head and psi
 
-        This procedure is followed whe we have find="speed".
+        This procedure is followed when we have find="speed".
 
         Parameters
         ----------
@@ -898,15 +918,25 @@ class Point:
         }
 
         converted_point = cls(**convert_point_options[find])
-        converted_point.phi_ratio = original_point.phi / converted_point.phi
-        converted_point.psi_ratio = original_point.psi / converted_point.psi
+        # a curve is first converted to find the new speed and then converted to
+        # the mean speed. Therefore, it can be considered:
+        # original point as the base point (reference for the conversion)
+        # original point as the test point for Performance Test app conversion
+        converted_point.phi_ratio = (
+            converted_point.phi / original_point.phi
+        ) * original_point.phi_ratio
+        converted_point.psi_ratio = (
+            converted_point.psi / original_point.psi
+        ) * original_point.psi_ratio
         converted_point.volume_ratio_ratio = (
-            original_point.volume_ratio / converted_point.volume_ratio
-        )
+            converted_point.volume_ratio / original_point.volume_ratio
+        ) * original_point.volume_ratio_ratio
         converted_point.reynolds_ratio = (
-            original_point.reynolds / converted_point.reynolds
-        )
-        converted_point.mach_diff = original_point.mach - converted_point.mach
+            converted_point.reynolds / original_point.reynolds
+        ) * original_point.reynolds_ratio
+        converted_point.mach_diff = (
+            converted_point.mach - original_point.mach
+        ) + original_point.mach_diff
 
         return converted_point
 
@@ -933,6 +963,13 @@ class Point:
             power_losses=str(self.power_losses),
             b=str(self.b),
             D=str(self.D),
+            polytropic_method=str(self.polytropic_method),
+            phi_ratio=str(self.phi_ratio),
+            psi_ratio=str(self.psi_ratio),
+            reynolds_ratio=str(self.reynolds_ratio),
+            mach_diff=str(self.mach_diff),
+            volume_ratio_ratio=str(self.volume_ratio_ratio),
+            extrapolated=str(self._extrapolated),
         )
 
     @staticmethod
@@ -986,7 +1023,7 @@ class Point:
             Dict with keys: 'lower', 'upper' and 'within_limits'.
         """
         if mmsp is None:
-            mmsp = self.mach.m
+            mmsp = self.mach.m - self.mach_diff.m
         if 0 <= mmsp < 0.215:
             lower_limit = 0
             upper_limit = 0.286 + 0.75 * mmsp
@@ -999,7 +1036,7 @@ class Point:
         else:
             raise ValueError("Mach number out of specified range.")
 
-        if lower_limit < self.mach_diff + self.mach < upper_limit:
+        if lower_limit <= self.mach_diff + mmsp <= upper_limit:
             within_limits = True
         else:
             within_limits = False
@@ -1157,7 +1194,7 @@ class Point:
             Dict with keys: 'lower', 'upper' and 'within_range'.
         """
         if remsp is None:
-            remsp = self.reynolds
+            remsp = self.reynolds / self.reynolds_ratio.m
 
         ul = 68.205 + 16.13 * np.log10(remsp) - 64.008 * np.sqrt(np.log10(remsp))
         if 9e4 <= remsp < 8e5:
@@ -1175,7 +1212,7 @@ class Point:
         else:
             raise ValueError("Reynolds number out of specified range.")
 
-        if lower_limit < self.reynolds_ratio * self.reynolds < upper_limit:
+        if lower_limit <= self.reynolds_ratio * remsp <= upper_limit:
             within_limits = True
         else:
             within_limits = False

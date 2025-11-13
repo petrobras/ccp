@@ -524,11 +524,27 @@ class Impeller:
                 2,
             )
         else:
-            disch_T = current_curve.points[0].suc.T().m
+            eff = round(
+                current_curve[-1].eff.m
+                + np.exp(4 * flow_at_min_eff)
+                - np.exp(4 * flow_at_min_eff),
+                2,
+            )
 
+        # interpolate similarity parameters for converted curves
+        if flow_v >= min_flow_v and flow_v <= max_flow_v and converted_curve:
+            phi_ratio = float(func_phi_ratio(flow_v))
+            psi_ratio = float(func_psi_ratio(flow_v))
+            reynolds_ratio = float(func_reynolds_ratio(flow_v))
+            mach_diff = float(func_mach_diff(flow_v))
+            volume_ratio_ratio = float(func_volume_ratio_ratio(flow_v))
+        else:
+            phi_ratio = None
+            psi_ratio = None
+            reynolds_ratio = None
+            mach_diff = None
+            volume_ratio_ratio = None
         p0 = self.points[0]
-        disch = State(p=disch_p, T=disch_T, fluid=p0.suc.fluid)
-
         power_losses = current_curve.power_losses
 
         point = Point(
@@ -539,6 +555,12 @@ class Impeller:
             b=p0.b,
             D=p0.D,
             power_losses=power_losses,
+            phi_ratio=phi_ratio,
+            psi_ratio=psi_ratio,
+            reynolds_ratio=reynolds_ratio,
+            mach_diff=mach_diff,
+            volume_ratio_ratio=volume_ratio_ratio,
+            extrapolated=extrapolated,
         )
 
         return point
@@ -618,7 +640,23 @@ class Impeller:
                 curves[1][i].disch.p().m,
             )
 
-            disch = State(p=disch_p, T=disch_T, fluid=p0.suc.fluid)
+            phi_ratio = (
+                factor_1 * curves[0][i].phi_ratio + factor_0 * curves[1][i].phi_ratio
+            )
+            psi_ratio = (
+                factor_1 * curves[0][i].psi_ratio + factor_0 * curves[1][i].psi_ratio
+            )
+            volume_ratio_ratio = (
+                factor_1 * curves[0][i].volume_ratio_ratio
+                + factor_0 * curves[1][i].volume_ratio_ratio
+            )
+            reynolds_ratio = (
+                factor_1 * curves[0][i].reynolds_ratio
+                + factor_0 * curves[1][i].reynolds_ratio
+            )
+            mach_diff = (
+                factor_1 * curves[0][i].mach_diff + factor_0 * curves[1][i].mach_diff
+            )
 
             p = Point(
                 suc=p0.suc,
@@ -628,6 +666,12 @@ class Impeller:
                 power_losses=power_losses,
                 b=p0.b,
                 D=p0.D,
+                phi_ratio=phi_ratio,
+                psi_ratio=psi_ratio,
+                volume_ratio_ratio=volume_ratio_ratio,
+                reynolds_ratio=reynolds_ratio,
+                mach_diff=mach_diff,
+                extrapolated=extrapolated,
             )
 
             current_curve.append(p)
