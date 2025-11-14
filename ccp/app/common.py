@@ -24,6 +24,7 @@ density_units = ["kg/m³", "g/cm³", "g/ml", "g/l"]
 
 polytropic_methods = {
     "Sandberg-Colby": "sandberg_colby",
+    "Sandberg-Colby Multistep": "sandberg_colby_multistep",
     "Huntington": "huntington",
     "Mallen-Saville": "mallen_saville",
     "Schultz": "schultz",

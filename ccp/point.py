@@ -2046,16 +2046,13 @@ def f_sandberg_colby(suc, disch):
 
 
 def head_pol_sandberg_colby(suc, disch, disch_s=None):
-    r"""Polytropic head corrected by the :cite:`sandberg2013limitations` factor.
+    r"""Polytropic head method as described in section 5-2.2 of :cite:`asmePTC10_2022`.
 
     .. math::
 
        \begin{equation}
-          H_{p_{s-c}} = f_{s-c} H_p
+          w_{p} = (h_{d} - h_{i}) - (\frac{T_{i} + T_{d}}{2}) (s_{d} - s_{i})
        \end{equation}
-
-    Where :math:`f_{s-c}` is calculated by :py:func:`f_sandberg_colby` and
-    :math:`H_p` is calculated by :py:func:`head_pol`.
 
     Parameters
     ----------
@@ -2067,7 +2064,7 @@ def head_pol_sandberg_colby(suc, disch, disch_s=None):
     Returns
     -------
     head_pol_sandberg_colby : pint.Quantity
-       Reference head as described by :cite:`sandberg2013limitations` (J/kg).
+       Polytropic head as described in :cite:`asmePTC10_2022` (J/kg).
     """
     Tm = (suc.T() + disch.T()) / 2
     h = (disch.h() - suc.h()) - Tm * (disch.s() - suc.s())
@@ -2092,11 +2089,11 @@ def eff_pol_sandberg_colby_multistep(suc, disch):
     wp = head_pol_sandberg_colby_multistep(suc, disch)
     dh = disch.h() - suc.h()
 
-    return wp / dh
+    return (wp / dh).to("dimensionless")
 
 
 def head_pol_sandberg_colby_multistep(suc, disch, n_steps=10):
-    r"""Polytropic head multistep procedure proposed by the :cite:`sandberg2013limitations`.
+    r"""Polytropic head multistep method as described in section 5-2.4 :cite:`asmePTC10_2022`.
 
     Parameters
     ----------
@@ -2108,57 +2105,75 @@ def head_pol_sandberg_colby_multistep(suc, disch, n_steps=10):
     Returns
     -------
     head_pol_sandberg_colby_multistep : pint.Quantity
-        Incremental head as described by :cite:`sandberg2013limitations` (J/kg).
+        Incremental head as described by :cite:`asmePTC10_2022` (J/kg).
     """
 
-    eff_incr = eff_pol_sandberg_colby(suc, disch) * 100
+    eff_incr = eff_pol_sandberg_colby(suc, disch)
+    error_limit = 1e-5
+    not_converged = True
 
-    R_c = (disch.p() / suc.p()) ** (1 / n_steps)
-    head_incremental = []
+    while not_converged:
+        R_c = (disch.p() / suc.p()) ** (1 / n_steps)
 
-    def calculate(eff):
-        eff /= 100
-        pd_seg = R_c * suc.p()
-        suc_seg = copy(suc)
-        head_incremental.clear()
+        def calculate(eff):
+            disch_p_segment = R_c * suc.p()
+            suc_seg = copy(suc)
 
-        for _ in range(n_steps):
+            for _ in range(n_steps):
 
-            disch_seg = ccp.State(p=pd_seg, s=suc_seg.s(), fluid=suc_seg.fluid)
+                disch_seg = ccp.State(p=disch_p_segment, s=suc_seg.s(), fluid=suc_seg.fluid)
 
-            def update_state(x):
-                disch_seg = ccp.State(p=pd_seg, T=x, fluid=suc_seg.fluid)
-                wp = head_pol_sandberg_colby(suc_seg, disch_seg)
-                new_eff = wp / (disch_seg.h() - suc_seg.h())
-                return (new_eff - eff).m
+                def update_state(x):
+                    disch_seg = ccp.State(p=disch_p_segment, T=x, fluid=suc_seg.fluid)
+                    wp = head_pol_sandberg_colby(suc_seg, disch_seg)
+                    new_eff = wp / (disch_seg.h() - suc_seg.h())
+                    return (new_eff - eff).m
+                
+                def update_state_derivative(x):
+                    dx = 0.1
+                    dfx = (update_state(x+dx) - update_state(x)) / dx
+                    return dfx
 
-            def fprime(x):
-                dT = .1
-                fx = update_state(x)
-                dfx = (update_state(x + dT) - fx) / dT
+                try:
+                    T_end = newton(
+                        update_state,
+                        x0=disch_seg.T().magnitude,
+                    )
+                except RuntimeError:
+                    T_end = newton(
+                        update_state,
+                        x0=disch_seg.T().magnitude,
+                        fprime=update_state_derivative,
+                        rtol=1e-3,
+                    )
 
-                return dfx
+                disch_seg = ccp.State(
+                    p=disch_p_segment,
+                    T=T_end,
+                    fluid=suc_seg.fluid,
+                )
 
-            T_end = newton(
-                update_state,
-                x0=disch_seg.T().magnitude,
-                # fprime=fprime,
-            )
+                suc_seg.update(p=disch_seg.p(), T=disch_seg.T())
+                disch_p_segment *= R_c
 
-            disch_seg = ccp.State(
-                p=pd_seg,
-                T=T_end,
-                fluid=suc_seg.fluid,
-            )
+            return (disch_seg.T() - disch.T()).m
 
-            head_incremental.append(head_pol_sandberg_colby(suc_seg, disch_seg))
-            suc_seg.update(p=disch_seg.p(), T=disch_seg.T())
-            pd_seg *= R_c
+        def calculate_derivative(eff):
+            d_eff = 1e-2
+            fx = calculate(eff)
+            fx_l = calculate(eff + d_eff)
+            return (fx_l - fx) / d_eff
+        
+        try:
+            eff = newton(calculate, eff_incr)
+        except RuntimeError:
+            eff = newton(calculate, eff_incr, fprime=calculate_derivative)
 
-        return (disch_seg.T() - disch.T()).m
+        not_converged = np.abs((eff - eff_incr) / eff) > error_limit
+        n_steps += 5
+        eff_incr = eff
 
-    newton(calculate, eff_incr, tol=0.1)
-    head = Q_(np.sum([h.m for h in head_incremental]), "J/kg")
+    head = eff * (disch.h() - suc.h())
 
     return head
 
