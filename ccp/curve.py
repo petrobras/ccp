@@ -230,17 +230,15 @@ class PlotFunction:
                         )
                     ]
                     size = 8
-                    hoverlabel = dict(namelength=-1)
+                    hoverlabel = dict(namelength=-1, font=dict(family="monospace"))
+                    # Using non-breaking spaces for alignment, same as plot_mach
+                    space_str = "&nbsp;"
                     hovertemplate = (
-                        "<b>(v<sub>i</sub> / v<sub>d</sub>)<sub>c</sub> / (v<sub>i</sub> / v<sub>d</sub>)<sub>o</sub>:</b> %{customdata[0]:.3f} "
-                        "<b>limits:</b> %{customdata[4][0]:.3f} - %{customdata[4][1]:.3f}<br>"
-                        + "<b>φ<sub>c</sub> / φ<sub>o</sub>:</b> %{customdata[1]:.3f} "
-                        "             <b>limits:</b>     %{customdata[5][0]:.3f} - %{customdata[5][1]:.3f}<br>"
-                        + "<b>Mm<sub>c</sub>:</b>  %{customdata[2]:.4f} "
-                        "              <b>limits:</b> %{customdata[6][0]:.4f} - %{customdata[6][1]:.4f}<br>"
-                        + "<b>Rem<sub>c</sub>:</b> %{customdata[3]:.3e} "
-                        " <b>limits:</b> %{customdata[7][0]:.3e} - %{customdata[7][1]:.3e}"
-                        + "<extra></extra>",
+                        f"<b>(v<sub>i</sub>/v<sub>d</sub>)<sub>c</sub>/(v<sub>i</sub>/v<sub>d</sub>)<sub>o</sub>:</b> %{{customdata[0]:.3f}}{4 * space_str}<b>limits:</b> %{{customdata[4][0]:.3f}} - %{{customdata[4][1]:.3f}}<br>"
+                        f"{11*space_str}<b>φ<sub>c</sub>/φ<sub>o</sub>:</b> %{{customdata[1]:.3f}}{4 * space_str}<b>limits:</b> %{{customdata[5][0]:.3f}} - %{{customdata[5][1]:.3f}}<br>"
+                        f"{13*space_str}<b>Mm<sub>c</sub>:</b> %{{customdata[2]:.4f}}{3 * space_str}<b>limits:</b> %{{customdata[6][0]:.4f}} - %{{customdata[6][1]:.4f}}<br>"
+                        f"{12*space_str}<b>Rem<sub>c</sub>:</b> %{{customdata[3]:.3e}}{space_str}<b>limits:</b> %{{customdata[7][0]:.3e}} - %{{customdata[7][1]:.3e}}"
+                        "<extra></extra>"
                     )
                 else:
                     symbol = symbol + "-open"
