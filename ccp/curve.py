@@ -233,11 +233,16 @@ class PlotFunction:
                     hoverlabel = dict(namelength=-1, font=dict(family="monospace"))
                     # Using non-breaking spaces for alignment, same as plot_mach
                     space_str = "&nbsp;"
+                    # Validation icons: green check or red X
+                    volume_icon = "✓" if customdata[4][2] else "✗"
+                    phi_icon = "✓" if customdata[5][2] else "✗"
+                    mach_icon = "✓" if customdata[6][2] else "✗"
+                    reynolds_icon = "✓" if customdata[7][2] else "✗"
                     hovertemplate = (
-                        f"<b>(v<sub>i</sub>/v<sub>d</sub>)<sub>c</sub>/(v<sub>i</sub>/v<sub>d</sub>)<sub>o</sub>:</b> %{{customdata[0]:.3f}}{4 * space_str}<b>limits:</b> %{{customdata[4][0]:.3f}} - %{{customdata[4][1]:.3f}}<br>"
-                        f"{11*space_str}<b>φ<sub>c</sub>/φ<sub>o</sub>:</b> %{{customdata[1]:.3f}}{4 * space_str}<b>limits:</b> %{{customdata[5][0]:.3f}} - %{{customdata[5][1]:.3f}}<br>"
-                        f"{13*space_str}<b>Mm<sub>c</sub>:</b> %{{customdata[2]:.4f}}{3 * space_str}<b>limits:</b> %{{customdata[6][0]:.4f}} - %{{customdata[6][1]:.4f}}<br>"
-                        f"{12*space_str}<b>Rem<sub>c</sub>:</b> %{{customdata[3]:.3e}}{space_str}<b>limits:</b> %{{customdata[7][0]:.3e}} - %{{customdata[7][1]:.3e}}"
+                        f"<span style='color: {'green' if customdata[4][2] else 'red'}'>{volume_icon}</span><b>(v<sub>i</sub>/v<sub>d</sub>)<sub>c</sub>/(v<sub>i</sub>/v<sub>d</sub>)<sub>o</sub>:</b> %{{customdata[0]:.3f}}{4 * space_str}<b>limits:</b> %{{customdata[4][0]:.3f}} - %{{customdata[4][1]:.3f}}<br>"
+                        f"<span style='color: {'green' if customdata[5][2] else 'red'}'>{phi_icon}</span> {10*space_str}<b>φ<sub>c</sub>/φ<sub>o</sub>:</b> %{{customdata[1]:.3f}}{4 * space_str}<b>limits:</b> %{{customdata[5][0]:.3f}} - %{{customdata[5][1]:.3f}}<br>"
+                        f"<span style='color: {'green' if customdata[6][2] else 'red'}'>{mach_icon}</span> {12*space_str}<b>Mm<sub>c</sub>:</b> %{{customdata[2]:.4f}}{3 * space_str}<b>limits:</b> %{{customdata[6][0]:.4f}} - %{{customdata[6][1]:.4f}}<br>"
+                        f"<span style='color: {'green' if customdata[7][2] else 'red'}'>{reynolds_icon}</span> {11*space_str}<b>Rem<sub>c</sub>:</b> %{{customdata[3]:.3e}}{space_str}<b>limits:</b> %{{customdata[7][0]:.3e}} - %{{customdata[7][1]:.3e}}"
                         "<extra></extra>"
                     )
                 else:
