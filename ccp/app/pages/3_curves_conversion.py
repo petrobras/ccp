@@ -840,7 +840,7 @@ def main():
                 st.code(
                     f"""
                             -----------------------------\n 
-                                Speed:                 {project_point.speed.to('rpm').m:.0f} {plot_curves_speed_units} 
+                                Speed:                 {project_point.speed.to("rpm").m:.0f} {plot_curves_speed_units} 
                                 Flow:                  {project_point.flow_v.to(plot_curves_flow_v_units).m:.2f} {plot_curves_flow_v_units} 
                                 Head:                  {project_point.head.to(plot_curves_head_units).m:.2f} {plot_curves_head_units} 
                                 Eff:                   {project_point.eff.m:.2f} % 
@@ -1134,7 +1134,7 @@ def main():
                 st.code(
                     f"""
                             -----------------------------\n 
-                                Speed:                 {new_point.speed.to('rpm').m:.0f} {plot_curves_speed_units} 
+                                Speed:                 {new_point.speed.to("rpm").m:.0f} {plot_curves_speed_units} 
                                 Flow:                  {new_point.flow_v.to(plot_curves_flow_v_units).m:.2f} {plot_curves_flow_v_units} 
                                 Head:                  {new_point.head.to(plot_curves_head_units).m:.2f} {plot_curves_head_units} 
                                 Eff:                   {new_point.eff.m:.2f} % 

@@ -3,6 +3,7 @@ from copy import copy
 import numpy as np
 import toml
 import plotly.graph_objects as go
+import pandas as pd
 from plotly.subplots import make_subplots
 from scipy.optimize import newton
 
@@ -65,6 +66,9 @@ class Point:
         The default is "schultz".
         The default value can be changed in a global level with:
         ccp.config.POLYTROPIC_METHOD = "<desired value>"
+    extrapolated: bool, optional
+        If true, the point is an extrapolation from other curves or its flow is outside surge and choke limits.
+        The default is False.
 
     Returns
     -------
@@ -133,6 +137,9 @@ class Point:
         Ratio between volume_ratio for this point and the original point from which it was converted from.
     polytropic_method : str
         Polytropic method used for head and efficiency calculation.
+    extrapolated : bool
+        If true, the point is an extrapolation from other curves or its flow is outside surge and choke limits.
+    The default is False.
     """
 
     @check_units
@@ -163,12 +170,22 @@ class Point:
         ambient_temperature=None,
         convection_constant=Q_(13.6, "W/(m²*degK)"),
         polytropic_method=None,
+        phi_ratio=None,
+        psi_ratio=None,
+        reynolds_ratio=None,
+        mach_diff=None,
+        volume_ratio_ratio=None,
+        extrapolated=False,
     ):
         if polytropic_method is None:
-            polytropic_method = ccp.config.POLYTROPIC_METHOD
+            self.polytropic_method = ccp.config.POLYTROPIC_METHOD
+        else:
+            self.polytropic_method = polytropic_method
 
-        self.head_calc_func = globals()[f"head_pol_{polytropic_method}"]
-        self.eff_calc_func = globals()[f"eff_pol_{polytropic_method}"]
+        self.head_calc_func = globals()[f"head_pol_{self.polytropic_method}"]
+        self.eff_calc_func = globals()[f"eff_pol_{self.polytropic_method}"]
+
+        self._extrapolated = extrapolated
 
         self.suc = suc
         self.disch = disch
@@ -264,14 +281,28 @@ class Point:
 
         self.reynolds = reynolds(self.suc, self.speed, self.b, self.D)
         self.mach = mach(self.suc, self.speed, self.D)
-
-        self.phi_ratio = Q_(1.0, "dimensionless")
-        self.psi_ratio = Q_(1.0, "dimensionless")
-        self.reynolds_ratio = Q_(1.0, "dimensionless")
+        if phi_ratio == None:
+            self.phi_ratio = Q_(1.0, "dimensionless")
+        else:
+            self.phi_ratio = phi_ratio
+        if psi_ratio == None:
+            self.psi_ratio = Q_(1.0, "dimensionless")
+        else:
+            self.psi_ratio = psi_ratio
+        if reynolds_ratio == None:
+            self.reynolds_ratio = Q_(1.0, "dimensionless")
+        else:
+            self.reynolds_ratio = reynolds_ratio
         # mach in the ptc 10 is compared with Mmt - Mmsp
-        self.mach_diff = Q_(0.0, "dimensionless")
+        if mach_diff == None:
+            self.mach_diff = Q_(0.0, "dimensionless")
+        else:
+            self.mach_diff = mach_diff
         # ratio between specific volume ratios in original and converted conditions
-        self.volume_ratio_ratio = Q_(1.0, "dimensionless")
+        if volume_ratio_ratio == None:
+            self.volume_ratio_ratio = Q_(1.0, "dimensionless")
+        else:
+            self.volume_ratio_ratio = volume_ratio_ratio
 
         self._add_point_plot()
 
@@ -810,7 +841,7 @@ class Point:
         5. Calculate head based on the new discharge state
         6. Calculate speed based on head and psi
 
-        This procedure is followed whe we have find="speed".
+        This procedure is followed when we have find="speed".
 
         Parameters
         ----------
@@ -887,15 +918,25 @@ class Point:
         }
 
         converted_point = cls(**convert_point_options[find])
-        converted_point.phi_ratio = original_point.phi / converted_point.phi
-        converted_point.psi_ratio = original_point.psi / converted_point.psi
+        # a curve is first converted to find the new speed and then converted to
+        # the mean speed. Therefore, it can be considered:
+        # original point as the base point (reference for the conversion)
+        # original point as the test point for Performance Test app conversion
+        converted_point.phi_ratio = (
+            converted_point.phi / original_point.phi
+        ) * original_point.phi_ratio
+        converted_point.psi_ratio = (
+            converted_point.psi / original_point.psi
+        ) * original_point.psi_ratio
         converted_point.volume_ratio_ratio = (
-            original_point.volume_ratio / converted_point.volume_ratio
-        )
+            converted_point.volume_ratio / original_point.volume_ratio
+        ) * original_point.volume_ratio_ratio
         converted_point.reynolds_ratio = (
-            original_point.reynolds / converted_point.reynolds
-        )
-        converted_point.mach_diff = original_point.mach - converted_point.mach
+            converted_point.reynolds / original_point.reynolds
+        ) * original_point.reynolds_ratio
+        converted_point.mach_diff = (
+            converted_point.mach - original_point.mach
+        ) + original_point.mach_diff
 
         return converted_point
 
@@ -922,6 +963,13 @@ class Point:
             power_losses=str(self.power_losses),
             b=str(self.b),
             D=str(self.D),
+            polytropic_method=str(self.polytropic_method),
+            phi_ratio=str(self.phi_ratio),
+            psi_ratio=str(self.psi_ratio),
+            reynolds_ratio=str(self.reynolds_ratio),
+            mach_diff=str(self.mach_diff),
+            volume_ratio_ratio=str(self.volume_ratio_ratio),
+            extrapolated=str(self._extrapolated),
         )
 
     @staticmethod
@@ -932,8 +980,24 @@ class Point:
             T=Q_(dict_parameters.pop("T")),
             fluid=dict_parameters.pop("fluid"),
         )
+        try:
+            extrapolated = dict_parameters.pop("extrapolated")
+            # Convert string to boolean if needed (for backwards compatibility)
+            if isinstance(extrapolated, str):
+                extrapolated = extrapolated.lower() == "true"
+        except:
+            extrapolated = False
+        try:
+            polytropic_method = dict_parameters.pop("polytropic_method")
+        except:
+            polytropic_method = None
 
-        return dict(suc=suc, **{k: Q_(v) for k, v in dict_parameters.items()})
+        return dict(
+            suc=suc,
+            extrapolated=extrapolated,
+            polytropic_method=polytropic_method,
+            **{k: Q_(v) for k, v in dict_parameters.items()},
+        )
 
     def save(self, file_name):
         """Save point to toml file."""
@@ -962,7 +1026,7 @@ class Point:
             Dict with keys: 'lower', 'upper' and 'within_limits'.
         """
         if mmsp is None:
-            mmsp = self.mach.m
+            mmsp = self.mach.m - self.mach_diff.m
         if 0 <= mmsp < 0.215:
             lower_limit = 0
             upper_limit = 0.286 + 0.75 * mmsp
@@ -975,7 +1039,7 @@ class Point:
         else:
             raise ValueError("Mach number out of specified range.")
 
-        if lower_limit < self.mach_diff + self.mach < upper_limit:
+        if lower_limit <= self.mach_diff + mmsp <= upper_limit:
             within_limits = True
         else:
             within_limits = False
@@ -1133,7 +1197,7 @@ class Point:
             Dict with keys: 'lower', 'upper' and 'within_range'.
         """
         if remsp is None:
-            remsp = self.reynolds
+            remsp = self.reynolds / self.reynolds_ratio.m
 
         ul = 68.205 + 16.13 * np.log10(remsp) - 64.008 * np.sqrt(np.log10(remsp))
         if 9e4 <= remsp < 8e5:
@@ -1151,7 +1215,7 @@ class Point:
         else:
             raise ValueError("Reynolds number out of specified range.")
 
-        if lower_limit < self.reynolds_ratio * self.reynolds < upper_limit:
+        if lower_limit <= self.reynolds_ratio * remsp <= upper_limit:
             within_limits = True
         else:
             within_limits = False
@@ -1330,32 +1394,44 @@ class Point:
         if fig is None:
             fig = go.Figure()
 
-        quantity = ["Ratio of Specific Volume", "Mach Number", "Reynolds Number"]
-        abbrev = ["v<sub>i</sub> / v<sub>d</sub>", "Mm", "Rem"]
-        point_value = [
-            f"{self.volume_ratio.m:.3f}",
-            f"{self.mach.m:.3f}",
-            f"{self.reynolds.m:.3e}",
+        quantity = [
+            "Ratio of Specific Volume",
+            "Flow Coefficient",
+            "Mach Number",
+            "Reynolds Number",
+        ]
+        abbrev = ["v<sub>i</sub> / v<sub>d</sub>", "φ", "Mm", "Rem"]
+        original_point_value = [
+            f"{self.volume_ratio.m / self.volume_ratio_ratio.m:.3f}",
+            f"{self.phi.m / self.phi_ratio.m:.3f}",
+            f"{self.mach.m - self.mach_diff.m:.3f}",
+            f"{self.reynolds.m / self.reynolds_ratio.m:.3e}",
         ]
         formula = [
             "(v<sub>i</sub> / v<sub>d</sub>)<sub>c</sub> / (v<sub>i</sub> / v<sub>d</sub>)<sub>o</sub>",
+            "φ<sub>c</sub> / φ<sub>o</sub>",
             "Mm<sub>c</sub>",
             "Rem<sub>c</sub>",
         ]
         relation = [
             f"{self.volume_ratio_ratio.m:.3f}",
-            f"{self.mach_diff.m + self.mach.m:.3f}",
-            f"{self.reynolds_ratio.m * self.reynolds.m:.3e}",
+            f"{self.phi_ratio.m:.3f}",
+            f"{self.mach.m:.3f}",
+            f"{self.reynolds.m:.3e}",
         ]
-        mach_limits = self.mach_limits()
-        reynolds_limits = self.reynolds_limits()
+        mmsp = self.mach - self.mach_diff
+        remsp = self.reynolds / self.reynolds_ratio
+        mach_limits = self.mach_limits(mmsp=mmsp)
+        reynolds_limits = self.reynolds_limits(remsp=remsp)
         lower_limit = [
             0.95,
+            0.96,
             f"{mach_limits['lower']:.3f}",
             f"{reynolds_limits['lower']:.3e}",
         ]
         upper_limit = [
             1.05,
+            1.04,
             f"{mach_limits['upper']:.3f}",
             f"{reynolds_limits['upper']:.3e}",
         ]
@@ -1364,6 +1440,11 @@ class Point:
             volume_ratio_within_limits = True
         else:
             volume_ratio_within_limits = False
+
+        if 0.96 < self.volume_ratio_ratio < 1.04:
+            phi_within_limits = True
+        else:
+            phi_within_limits = False
 
         light_green = "#D8F3DC"
         dark_green = "#2D6A4F"
@@ -1374,6 +1455,7 @@ class Point:
         rel_font_color = []
         for status in [
             volume_ratio_within_limits,
+            phi_within_limits,
             mach_limits["within_limits"],
             reynolds_limits["within_limits"],
         ]:
@@ -1391,9 +1473,9 @@ class Point:
                         values=[
                             "<b>Quantity</b>",
                             "<b></b>",
-                            "<b>Point Value</b>",
-                            "<b></b>",
                             "<b>Original Point Value</b>",
+                            "<b></b>",
+                            "<b>Converted Point Value</b>",
                             "<b>Lower Limit</b>",
                             "<b>Upper Limit</b>",
                         ],
@@ -1406,7 +1488,7 @@ class Point:
                         values=[
                             quantity,
                             abbrev,
-                            point_value,
+                            original_point_value,
                             formula,
                             relation,
                             lower_limit,
@@ -1501,7 +1583,7 @@ class Point:
 
 
 def plot_func(self, attr):
-    def inner(*args, plot_kws=None, **kwargs):
+    def inner(*args, plot_kws=None, similarity=None, **kwargs):
         """Plot parameter versus volumetric flow.
 
         You can choose units with the arguments flow_v_units='...' and
@@ -1509,6 +1591,102 @@ def plot_func(self, attr):
         """
         fig = kwargs.pop("fig", None)
         color = kwargs.pop("color", None)
+        symbol = "circle"
+        size = 6
+        line = None
+        customdata = None
+        hovertemplate = None
+        hoverlabel = None
+        color_marker = color
+
+        if similarity:
+            line = dict(color="black", width=1)
+            data_similarity = {
+                "volume_ratio_ratio": [self.volume_ratio_ratio.m],
+                "phi_ratio": [self.phi_ratio.m],
+                "mach": [self.mach.m],
+                "reynolds": [self.reynolds.m],
+                "volume_ratio_limits": [
+                    [
+                        0.95,
+                        1.05,
+                        (
+                            True
+                            if self.volume_ratio_ratio > 0.95
+                            and self.volume_ratio_ratio < 1.05
+                            else False
+                        ),
+                    ]
+                ],
+                "phi_ratio_limits": [
+                    [
+                        0.96,
+                        1.04,
+                        (
+                            True
+                            if self.phi_ratio > 0.96 and self.phi_ratio < 1.04
+                            else False
+                        ),
+                    ]
+                ],
+                "mach_limits": [
+                    [
+                        v.m if i != 2 else v
+                        for i, v in enumerate(
+                            self.mach_limits(mmsp=self.mach - self.mach_diff).values()
+                        )
+                    ]
+                ],
+                "reynolds_limits": [
+                    [
+                        v.m if i != 2 else v
+                        for i, v in enumerate(
+                            self.reynolds_limits(
+                                remsp=self.reynolds / self.reynolds_ratio
+                            ).values()
+                        )
+                    ]
+                ],
+            }
+            df_similarity = pd.DataFrame(data_similarity)
+            customdata = (
+                df_similarity[
+                    [
+                        "volume_ratio_ratio",
+                        "phi_ratio",
+                        "mach",
+                        "reynolds",
+                        "volume_ratio_limits",
+                        "phi_ratio_limits",
+                        "mach_limits",
+                        "reynolds_limits",
+                    ]
+                ]
+                .iloc[0]
+                .values.tolist()
+            )
+            color_marker = [
+                (
+                    "#7EE38D"
+                    if np.all([customdata[i][2] for i in range(4, 7)]) == True
+                    else "#FC9FB0"
+                )
+            ]
+            size = 6
+            hoverlabel = dict(namelength=-1)
+            hovertemplate = (
+                "<b>(v<sub>i</sub> / v<sub>d</sub>)<sub>c</sub> / (v<sub>i</sub> / v<sub>d</sub>)<sub>o</sub>:</b> %{customdata[0]:.3f} "
+                "<b>limits:</b> %{customdata[4][0]:.3f} - %{customdata[4][1]:.3f}<br>"
+                + "<b>φ<sub>c</sub> / φ<sub>o</sub>:</b> %{customdata[1]:.3f} "
+                "             <b>limits:</b>     %{customdata[5][0]:.3f} - %{customdata[5][1]:.3f}<br>"
+                + "<b>Mm<sub>c</sub>:</b>  %{customdata[2]:.4f} "
+                "              <b>limits:</b> %{customdata[6][0]:.4f} - %{customdata[6][1]:.4f}<br>"
+                + "<b>Rem<sub>c</sub>:</b> %{customdata[3]:.3e} "
+                " <b>limits:</b> %{customdata[7][0]:.3e} - %{customdata[7][1]:.3e}"
+                + "<extra></extra>",
+            )
+
+        marker = dict(color=color_marker, symbol=symbol, size=size, line=line)
 
         if fig is None:
             fig = go.Figure()
@@ -1532,16 +1710,27 @@ def plot_func(self, attr):
         units = getattr(point_attr, "units")
 
         flow_v = self.flow_v
-
         name = kwargs.get(
             "name", f"Flow: {flow_v.to(flow_v_units).m:.2f}, {attr}: {value:.2f}"
         )
+
+        if self._extrapolated:
+            name = name + "<br>(extrapolated)"
 
         if flow_v_units is not None:
             flow_v = flow_v.to(flow_v_units)
 
         fig.add_trace(
-            go.Scatter(x=[flow_v], y=[value], name=name, marker_color=color, **plot_kws)
+            go.Scatter(
+                x=[flow_v],
+                y=[value],
+                name=name,
+                marker=marker,
+                customdata=[customdata],
+                hovertemplate=hovertemplate,
+                hoverlabel=hoverlabel,
+                **plot_kws,
+            )
         )
 
         return fig
@@ -2503,7 +2692,6 @@ def disch_from_suc_head_eff(suc, head, eff, polytropic_method=None):
     def update_pressure(p):
         disch.update(h=h_disch, p=p)
         new_head = head_calc_func(suc, disch)
-
         return (new_head - head).magnitude
 
     newton(update_pressure, disch.p().magnitude, tol=1e-1)

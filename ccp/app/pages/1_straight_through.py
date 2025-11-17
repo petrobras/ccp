@@ -271,7 +271,7 @@ def main():
                     num_rows="dynamic",
                     key=f"table_gas_{i}_composition",
                     height=int((len(default_components) + 1) * 37.35),
-                    use_container_width=True,
+                    width="stretch",
                     column_config={
                         "component": st.column_config.SelectboxColumn(
                             st.session_state[f"gas_{i}"],
@@ -799,61 +799,61 @@ def main():
         for i, col in enumerate(parameter_columns):
             if i > 1:
                 if (
-                    st.session_state[f"outer_diameter_fo_{i-1}"] == ""
-                    or st.session_state[f"inner_diameter_fo_{i-1}"] == ""
-                    or st.session_state[f"upstream_pressure_fo_{i-1}"] == ""
-                    or st.session_state[f"upstream_temperature_fo_{i-1}"] == ""
-                    or st.session_state[f"pressure_drop_fo_{i-1}"] == ""
+                    st.session_state[f"outer_diameter_fo_{i - 1}"] == ""
+                    or st.session_state[f"inner_diameter_fo_{i - 1}"] == ""
+                    or st.session_state[f"upstream_pressure_fo_{i - 1}"] == ""
+                    or st.session_state[f"upstream_temperature_fo_{i - 1}"] == ""
+                    or st.session_state[f"pressure_drop_fo_{i - 1}"] == ""
                 ):
                     missed_points.append(i - 1)
                     parameters_map["mass_flow_fo"]["points_fo"][f"point_fo_{i - 1}"][
                         "value"
                     ] = ""
-                    st.session_state[f"mass_flow_fo_{i-1}"] = ""
+                    st.session_state[f"mass_flow_fo_{i - 1}"] = ""
                     continue
                 else:
                     kwargs["state"] = ccp.State(
                         p=Q_(
-                            float(st.session_state[f"upstream_pressure_fo_{i-1}"]),
+                            float(st.session_state[f"upstream_pressure_fo_{i - 1}"]),
                             parameters_map["upstream_pressure_fo"]["points_fo"][
                                 "test_fo_units"
                             ],
                         ),
                         T=Q_(
-                            float(st.session_state[f"upstream_temperature_fo_{i-1}"]),
+                            float(st.session_state[f"upstream_temperature_fo_{i - 1}"]),
                             parameters_map["upstream_temperature_fo"]["points_fo"][
                                 "test_fo_units"
                             ],
                         ),
                         fluid=get_gas_composition(
-                            st.session_state[f"gas_fo_{i-1}"],
+                            st.session_state[f"gas_fo_{i - 1}"],
                             gas_compositions_table,
                             default_components,
                         ),
                     )
 
                     kwargs["delta_p"] = Q_(
-                        float(st.session_state[f"pressure_drop_fo_{i-1}"]),
+                        float(st.session_state[f"pressure_drop_fo_{i - 1}"]),
                         parameters_map["pressure_drop_fo"]["points_fo"][
                             "test_fo_units"
                         ],
                     )
 
                     kwargs["D"] = Q_(
-                        float(st.session_state[f"outer_diameter_fo_{i-1}"]),
+                        float(st.session_state[f"outer_diameter_fo_{i - 1}"]),
                         parameters_map["outer_diameter_fo"]["points_fo"][
                             "test_fo_units"
                         ],
                     )
 
                     kwargs["d"] = Q_(
-                        float(st.session_state[f"inner_diameter_fo_{i-1}"]),
+                        float(st.session_state[f"inner_diameter_fo_{i - 1}"]),
                         parameters_map["inner_diameter_fo"]["points_fo"][
                             "test_fo_units"
                         ],
                     )
 
-                    kwargs["tappings"] = st.session_state[f"tappings_fo_{i-1}"]
+                    kwargs["tappings"] = st.session_state[f"tappings_fo_{i - 1}"]
 
                     fo_temp = ccp.FlowOrifice(**kwargs)
                     parameters_map["mass_flow_fo"]["points_fo"][f"point_fo_{i - 1}"][
@@ -861,7 +861,7 @@ def main():
                     ] = fo_temp.qm.to(
                         parameters_map["mass_flow_fo"]["points_fo"]["test_fo_units"]
                     ).m
-                    st.session_state[f"mass_flow_fo_{i-1}"] = str(
+                    st.session_state[f"mass_flow_fo_{i - 1}"] = str(
                         round(
                             parameters_map["mass_flow_fo"]["points_fo"][
                                 f"point_fo_{i - 1}"
@@ -878,19 +878,19 @@ def main():
         calculate_button = calculate_col.button(
             "Calculate",
             type="primary",
-            use_container_width=True,
+            width="stretch",
             help="Calculate results using the data sheet speed.",
         )
         calculate_speed_button = calculate_speed_col.button(
             "Calculate Speed",
             type="primary",
-            use_container_width=True,
+            width="stretch",
             help="Calculate speed to match the discharge pressure.",
         )
         calculate_flowrate = calculate_flowrate_col.button(
             "Calculate Flowrate",
             type="primary",
-            use_container_width=True,
+            width="stretch",
             on_click=fo_calc,
             help="Calculate flowrate with orifice plate data.",
         )
@@ -1606,7 +1606,7 @@ def main():
 
                 df_results = pd.DataFrame(results)
                 rename_index = {
-                    i: f"Point {i+1}"
+                    i: f"Point {i + 1}"
                     for i in range(len(getattr(straight_through, "points_flange_t")))
                 }
                 rename_index[len(getattr(straight_through, "points_flange_t"))] = (
@@ -1664,7 +1664,7 @@ def main():
                     styled_df_results,
                     df_results,
                     "Guarantee Point",
-                    f"Mach{_t} - Mach{_sp}",
+                    f"Mach{_t}",
                     mach_limits["lower"],
                     mach_limits["upper"],
                 )
@@ -1673,7 +1673,7 @@ def main():
                     styled_df_results,
                     df_results,
                     "Guarantee Point",
-                    f"Re{_t} / Re{_sp}",
+                    f"Re{_t}",
                     reynolds_limits["lower"],
                     reynolds_limits["upper"],
                 )
@@ -1684,6 +1684,14 @@ def main():
                     f"(vi/vd){_t}/(vi/vd){_sp}",
                     0.95,
                     1.05,
+                )
+                styled_df_results = highlight_cell(
+                    styled_df_results,
+                    df_results,
+                    "Guarantee Point",
+                    f"φ{_t} / φ{_sp}",
+                    0.96,
+                    1.04,
                 )
 
                 if variable_speed:
@@ -1742,16 +1750,16 @@ def main():
                     data=table_excel,
                     file_name="results.xlsx",
                     mime="application/vnd.ms-excel",
-                    use_container_width=True,
+                    width="stretch",
                 )
 
                 with st.container():
                     mach_col, reynolds_col = st.columns(2)
                     mach_col.plotly_chart(
-                        point_interpolated.plot_mach(), use_container_width=True
+                        point_interpolated.plot_mach(), width="stretch"
                     )
                     reynolds_col.plotly_chart(
-                        point_interpolated.plot_reynolds(), use_container_width=True
+                        point_interpolated.plot_reynolds(), width="stretch"
                     )
 
                 def add_background_image(curve_name=None, fig=None, image=None):
@@ -1828,17 +1836,13 @@ def main():
                         plots_dict[curve].data[1].update(
                             name=f"Flow: {point_interpolated.flow_v.to(flow_v_units):.~2f}, {curve.capitalize()}: {r_getattr(point_interpolated, curve_plot_method)(curve_units):.~2f}".replace(
                                 "m ** 3 / h", "m³/h"
-                            ).replace(
-                                "Discharge_pressure", "Disch. p"
-                            )
+                            ).replace("Discharge_pressure", "Disch. p")
                         )
                     else:
                         plots_dict[curve].data[1].update(
                             name=f"Flow: {point_interpolated.flow_v.to(flow_v_units):.~2f}, {curve.capitalize()}: {r_getattr(point_interpolated, curve_plot_method).to(curve_units):.~2f}".replace(
                                 "m ** 3 / h", "m³/h"
-                            ).replace(
-                                "Discharge_pressure", "Disch. p"
-                            )
+                            ).replace("Discharge_pressure", "Disch. p")
                         )
 
                     plots_dict[curve].update_layout(
@@ -1890,17 +1894,15 @@ def main():
 
                 with st.container():
                     head_col, eff_col = st.columns(2)
-                    head_col.plotly_chart(plots_dict["head"], use_container_width=True)
-                    eff_col.plotly_chart(plots_dict["eff"], use_container_width=True)
+                    head_col.plotly_chart(plots_dict["head"], width="stretch")
+                    eff_col.plotly_chart(plots_dict["eff"], width="stretch")
 
                 with st.container():
                     disch_p_col, power_col = st.columns(2)
                     disch_p_col.plotly_chart(
-                        plots_dict["discharge_pressure"], use_container_width=True
+                        plots_dict["discharge_pressure"], width="stretch"
                     )
-                    power_col.plotly_chart(
-                        plots_dict["power"], use_container_width=True
-                    )
+                    power_col.plotly_chart(plots_dict["power"], width="stretch")
 
 
 if __name__ == "__main__":
