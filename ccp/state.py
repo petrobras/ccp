@@ -868,7 +868,7 @@ class State(CP.AbstractState):
             elif T is not None and s is not None:
                 super().update(CP.SmassT_INPUTS, s.magnitude, T.magnitude)
             else:
-                raise KeyError(f"Update key " f"{args}" f" not implemented")
+                raise KeyError(f"Update key {args} not implemented")
         except ValueError as e:
             args_dict = {}
             for k in args:
@@ -948,7 +948,7 @@ class State(CP.AbstractState):
         p_dew = (p[: np.argmax(T)],)
 
         hovertemplate = (
-            f"Temperature ({T_units}): %{{x}}<br>" f"Pressure ({p_units}): %{{y}}"
+            f"Temperature ({T_units}): %{{x}}<br>Pressure ({p_units}): %{{y}}"
         )
 
         fig.add_trace(

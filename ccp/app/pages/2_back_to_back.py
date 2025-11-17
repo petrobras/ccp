@@ -279,7 +279,7 @@ def main():
                     num_rows="dynamic",
                     key=f"table_gas_{i}_composition",
                     height=int((len(default_components) + 1) * 37.35),
-                    width='stretch',
+                    width="stretch",
                     column_config={
                         "component": st.column_config.SelectboxColumn(
                             st.session_state[f"gas_{i}"],
@@ -888,13 +888,13 @@ def main():
         calculate_button = calculate_col.button(
             "Calculate",
             type="primary",
-            width='stretch',
+            width="stretch",
             help="Calculate results using the data sheet speed.",
         )
         calculate_speed_button = calculate_speed_col.button(
             "Calculate Speed",
             type="primary",
-            width='stretch',
+            width="stretch",
             help="Calculate speed to match the second section discharge pressure.",
         )
 
@@ -2010,7 +2010,7 @@ def main():
 
                     df_results = pd.DataFrame(results)
                     rename_index = {
-                        i: f"Point {i+1}"
+                        i: f"Point {i + 1}"
                         for i in range(
                             len(getattr(back_to_back, f"points_flange_t_{sec}"))
                         )
@@ -2179,17 +2179,17 @@ def main():
                             data=table_excel,
                             file_name=f"{sec}.xlsx",
                             mime="application/vnd.ms-excel",
-                            width='stretch',
+                            width="stretch",
                         )
 
                         with st.container():
                             mach_col, reynolds_col = st.columns(2)
                             mach_col.plotly_chart(
-                                point_interpolated.plot_mach(), width='stretch'
+                                point_interpolated.plot_mach(), width="stretch"
                             )
                             reynolds_col.plotly_chart(
                                 point_interpolated.plot_reynolds(),
-                                width='stretch',
+                                width="stretch",
                             )
 
                         def add_background_image(
@@ -2299,17 +2299,13 @@ def main():
                                 plots_dict[curve].data[1].update(
                                     name=f"Flow: {point_interpolated.flow_v.to(flow_v_units):.~2f}, {curve.capitalize()}: {r_getattr(point_interpolated, curve_plot_method)(curve_units):.~2f}".replace(
                                         "m ** 3 / h", "m³/h"
-                                    ).replace(
-                                        "Discharge_pressure", "Disch. p"
-                                    )
+                                    ).replace("Discharge_pressure", "Disch. p")
                                 )
                             else:
                                 plots_dict[curve].data[1].update(
                                     name=f"Flow: {point_interpolated.flow_v.to(flow_v_units):.~2f}, {curve.capitalize()}: {r_getattr(point_interpolated, curve_plot_method).to(curve_units):.~2f}".replace(
                                         "m ** 3 / h", "m³/h"
-                                    ).replace(
-                                        "Discharge_pressure", "Disch. p"
-                                    )
+                                    ).replace("Discharge_pressure", "Disch. p")
                                 )
 
                             plots_dict[curve].update_layout(
@@ -2382,22 +2378,16 @@ def main():
 
                         with st.container():
                             head_col, eff_col = st.columns(2)
-                            head_col.plotly_chart(
-                                plots_dict["head"], width='stretch'
-                            )
-                            eff_col.plotly_chart(
-                                plots_dict["eff"], width='stretch'
-                            )
+                            head_col.plotly_chart(plots_dict["head"], width="stretch")
+                            eff_col.plotly_chart(plots_dict["eff"], width="stretch")
 
                         with st.container():
                             disch_p_col, power_col = st.columns(2)
                             disch_p_col.plotly_chart(
                                 plots_dict["discharge_pressure"],
-                                width='stretch',
+                                width="stretch",
                             )
-                            power_col.plotly_chart(
-                                plots_dict["power"], width='stretch'
-                            )
+                            power_col.plotly_chart(plots_dict["power"], width="stretch")
 
     # this part will only show if we start streamlit with --client.toolbarMode developer
     if st.config.get_option("client.toolbarMode") == "developer":

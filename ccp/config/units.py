@@ -24,8 +24,8 @@ has_water_units = False
 try:
     # Try to create a quantity with meter_H2O and convert it
     # This will succeed in pint >= 0.24
-    test_qty = ureg.Quantity(1, 'meter_H2O')
-    test_qty.to('pascal')
+    test_qty = ureg.Quantity(1, "meter_H2O")
+    test_qty.to("pascal")
     has_water_units = True
 except (pint.errors.UndefinedUnitError, AttributeError, RecursionError):
     has_water_units = False

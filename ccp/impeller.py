@@ -835,7 +835,7 @@ class Impeller:
         """Export curves to excel file."""
         wb = Workbook()
         for curve in self.curves:
-            sheet_name = f'{curve.speed.to("RPM"):.0f~P}'
+            sheet_name = f"{curve.speed.to('RPM'):.0f~P}"
             ws = wb.create_sheet(sheet_name)
             for i, p in enumerate(curve):
                 i += 1  # openpyxl index
@@ -849,7 +849,7 @@ class Impeller:
                     ws.cell(row=i, column=3, value=p.eff.magnitude * 100)
 
         if path_name is None:
-            file_name = f'{self.suc.p().to("bar"):.0f~P}.xlsx'
+            file_name = f"{self.suc.p().to('bar'):.0f~P}.xlsx"
             file_name = file_name.replace(" ", "-")
             path_name = Path.cwd() / file_name
 
@@ -1432,7 +1432,7 @@ class Impeller:
 
         for curve in self.curves:
             curve.save_hysys_csv(
-                curve_dir / f'speed-{curve.speed.to("RPM").m:.0f}-RPM.csv'
+                curve_dir / f"speed-{curve.speed.to('RPM').m:.0f}-RPM.csv"
             )
             surge["Speed (RPM)"].append(curve.speed.to("RPM").m)
             stonewall["Speed (RPM)"].append(curve.speed.to("RPM").m)
@@ -1544,15 +1544,15 @@ def converter(x):
         return Point.convert_from(point, suc=suc, find=find)
     except Exception as e:
         # Print full traceback before re-raising
-        print(f"\n{'='*60}")
+        print(f"\n{'=' * 60}")
         print(f"ERROR in converter function (multiprocessing worker):")
-        print(f"{'='*60}")
+        print(f"{'=' * 60}")
         print(f"Point: {point}")
         print(f"Suc: {suc}")
         print(f"Find: {find}")
         print(f"\nFull traceback:")
         traceback.print_exc()
-        print(f"{'='*60}\n")
+        print(f"{'=' * 60}\n")
         raise
 
 

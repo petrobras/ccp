@@ -127,14 +127,14 @@ with _warnings.catch_warnings():
         _warnings.filterwarnings("ignore", category=Warning)
         __version__full = (
             f"ccp: {__version__} | "
-            + f'CP : {_CP.get_global_param_string("version")} | '
+            + f"CP : {_CP.get_global_param_string('version')} | "
             + f"REFPROP : not available"
         )
     else:
         __version__full = (
             f"ccp: {__version__} | "
-            + f'CP : {_CP.get_global_param_string("version")} | '
-            + f'REFPROP : {_CP.get_global_param_string("REFPROP_version")}'
+            + f"CP : {_CP.get_global_param_string('version')} | "
+            + f"REFPROP : {_CP.get_global_param_string('REFPROP_version')}"
         )
 
 ###############################################################################
