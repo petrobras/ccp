@@ -982,6 +982,9 @@ class Point:
         )
         try:
             extrapolated = dict_parameters.pop("extrapolated")
+            # Convert string to boolean if needed (for backwards compatibility)
+            if isinstance(extrapolated, str):
+                extrapolated = extrapolated.lower() == "true"
         except:
             extrapolated = False
         try:
@@ -1423,14 +1426,14 @@ class Point:
         lower_limit = [
             0.95,
             0.96,
-            f"{mach_limits["lower"]:.3f}",
-            f"{reynolds_limits["lower"]:.3e}",
+            f"{mach_limits['lower']:.3f}",
+            f"{reynolds_limits['lower']:.3e}",
         ]
         upper_limit = [
             1.05,
             1.04,
-            f"{mach_limits['lower']:.3f}",
-            f"{reynolds_limits['lower']:.3e}",
+            f"{mach_limits['upper']:.3f}",
+            f"{reynolds_limits['upper']:.3e}",
         ]
 
         if 0.95 < self.volume_ratio_ratio < 1.05:
