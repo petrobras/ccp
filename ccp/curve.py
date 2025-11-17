@@ -177,14 +177,14 @@ class PlotFunction:
                     for p in curve_state_object.points
                 ],
                 "mach_limits": [
-                    [l["lower"].m, l["upper"].m, l["within_limits"]]
+                    [l["lower"], l["upper"], l["within_limits"]]
                     for l in [
                         p.mach_limits(mmsp=p.mach - p.mach_diff)
                         for p in curve_state_object.points
                     ]
                 ],
                 "reynolds_limits": [
-                    [l["lower"].m, l["upper"].m, l["within_limits"]]
+                    [l["lower"], l["upper"], l["within_limits"]]
                     for l in [
                         p.reynolds_limits(remsp=p.reynolds / p.reynolds_ratio)
                         for p in curve_state_object.points
@@ -384,13 +384,13 @@ class Curve:
             [p.suc for p in self],
             flow_v=self.flow_v,
             speed=self.speed,
-            extrapolated=extrapolated
+            extrapolated=extrapolated,
         )
         self.disch = _CurveState(
             [p.disch for p in self],
             flow_v=self.flow_v,
             speed=self.speed,
-            extrapolated=extrapolated
+            extrapolated=extrapolated,
         )
 
         for param in [
