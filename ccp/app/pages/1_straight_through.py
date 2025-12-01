@@ -319,7 +319,7 @@ def main():
         show_points = st.checkbox(
             "Show Points",
             value=True,
-            help="If marked, show points in the plotted curves in addition to interpolation.",
+            help="If marked, shows points in the plotted curves in addition to interpolation.",
         )
         # add text input for the ambient pressure
         st.text("Ambient Pressure")
@@ -355,21 +355,16 @@ def main():
         # add text input for the test lube oil specific heat
         st.text("Test Lube Oil")
         # select box for oil specific heat input
-        (
-            oil_specific_heat_checkbox_col,
-            oil_specific_heat_magnitude_col,
-            oil_specific_heat_unit_col,
-        ) = st.columns([0.5, 0.2, 0.3])
-        with oil_specific_heat_checkbox_col:
-            oil_specific_heat = st.checkbox(
-                "Specific Heat",
-                key="oil_specific_heat",
-                value=False,
-                on_change=on_oil_specific_heat_change,
-                help="If marked, uses this oil specific heat "
-                "and density for bearing mechanical losses calculation "
-                "and disables ISO oil classification.",
-            )
+        oil_specific_heat = st.checkbox(
+            "Specific Heat",
+            key="oil_specific_heat",
+            value=False,
+            on_change=on_oil_specific_heat_change,
+            help="If marked, uses this oil specific heat "
+            "and density for bearing mechanical losses calculation "
+            "and disables ISO oil classification.",
+        )
+        oil_specific_heat_magnitude_col, oil_specific_heat_unit_col = st.columns(2)
         with oil_specific_heat_magnitude_col:
             oil_specific_heat_magnitude = st.text_input(
                 "Oil Specific Heat",
@@ -388,11 +383,8 @@ def main():
                 disabled=not st.session_state.oil_specific_heat,
             )
 
-        oil_density_col, oil_density_magnitude_col, oil_density_unit_col = st.columns(
-            [0.5, 0.2, 0.3]
-        )
-        with oil_density_col:
-            st.text("Density")
+        st.text("Density")
+        oil_density_magnitude_col, oil_density_unit_col = st.columns(2)
         with oil_density_magnitude_col:
             oil_density_magnitude = st.text_input(
                 "Oil Density",
@@ -419,25 +411,22 @@ def main():
             )
 
         # select box for oil ISO classification input
-        oil_iso_checkbox_col, oil_iso_select_box_col = st.columns([0.6, 0.4])
-        with oil_iso_checkbox_col:
-            oil_iso = st.checkbox(
-                "Oil ISO Classification",
-                key="oil_iso",
-                on_change=on_oil_iso_change,
-                help="If marked, uses the ISO oil classification "
-                "for bearing mechanical losses calculation "
-                "and disables specific heat and density input.",
-            )
-        with oil_iso_select_box_col:
-            oil_iso_classification = st.selectbox(
-                "ISO",
-                options=oil_iso_options,
-                index=oil_iso_options.index("VG 32"),
-                key="oil_iso_classification",
-                label_visibility="collapsed",
-                disabled=not st.session_state.oil_iso,
-            )
+        oil_iso = st.checkbox(
+            "Oil ISO Classification",
+            key="oil_iso",
+            on_change=on_oil_iso_change,
+            help="If marked, uses the ISO oil classification "
+            "for bearing mechanical losses calculation "
+            "and disables specific heat and density input.",
+        )
+        oil_iso_classification = st.selectbox(
+            "ISO",
+            options=oil_iso_options,
+            index=oil_iso_options.index("VG 32"),
+            key="oil_iso_classification",
+            label_visibility="collapsed",
+            disabled=not st.session_state.oil_iso,
+        )
 
         st.text("Polytropic Method")
         polytropic_method = st.selectbox(
