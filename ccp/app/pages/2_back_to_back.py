@@ -481,7 +481,7 @@ def main():
                 disabled=not st.session_state.oil_iso,
             )
 
-        st.text("Polytropic method")
+        st.text("Polytropic Method")
         polytropic_method = st.selectbox(
             "Polytropic",
             options=polytropic_methods.keys(),
