@@ -2281,8 +2281,11 @@ def eff_pol_sandberg_colby_multistep(suc, disch):
     return (wp / dh).to("dimensionless")
 
 
-def head_pol_sandberg_colby_multistep(suc, disch, n_steps=10):
+def head_pol_sandberg_colby_multistep(suc, disch, nstep=10):
     r"""Polytropic head multistep method as described in section 5-2.4 :cite:`asmePTC10_2022`.
+
+    This implements the numerical integration method from ASME PTC 10-2022
+    Figure 5-2.4-1 flowchart.
 
     Parameters
     ----------
@@ -2290,70 +2293,69 @@ def head_pol_sandberg_colby_multistep(suc, disch, n_steps=10):
         Suction state.
     disch : ccp.State
         Discharge state.
+    nstep : int, optional
+        Number of integration steps. Default is 10.
 
     Returns
     -------
     head_pol_sandberg_colby_multistep : pint.Quantity
-        Incremental head as described by :cite:`asmePTC10_2022` (J/kg).
+        Polytropic head as described by :cite:`asmePTC10_2022` (J/kg).
     """
+    # Initial efficiency estimate using single-step Sandberg-Colby method
+    eff_p_est = eff_pol_sandberg_colby(suc, disch)
+    epsilon = 1e-5
 
-    eff_incr = eff_pol_sandberg_colby(suc, disch)
-    error_limit = 1e-5
-    not_converged = True
+    while True:
+        # Pressure ratio per step: rp_step = (p_d / p_s)^(1/nstep)
+        rp_step = (disch.p() / suc.p()) ** (1 / nstep)
 
-    while not_converged:
-        R_c = (disch.p() / suc.p()) ** (1 / n_steps)
+        def calc_deltaT_d(eff_p):
+            """Calculate ΔT_d = T_d,calc - T_d for a given polytropic efficiency."""
+            pd_j = rp_step * suc.p()
+            suc_j = copy(suc)
 
-        def calculate(eff):
-            disch_p_segment = R_c * suc.p()
-            suc_seg = copy(suc)
+            for _ in range(nstep):
+                # Isentropic discharge state for step j
+                disch_j = ccp.State(p=pd_j, s=suc_j.s(), fluid=suc_j.fluid)
 
-            for _ in range(n_steps):
-                disch_seg = ccp.State(
-                    p=disch_p_segment, s=suc_seg.s(), fluid=suc_seg.fluid
-                )
+                def calc_delta_eff_p(Td_j):
+                    """Calculate Δη_p = η_p,j - η_p for step j."""
+                    disch_j = ccp.State(p=pd_j, T=Td_j, fluid=suc_j.fluid)
+                    wp_j = head_pol_sandberg_colby(suc_j, disch_j)
+                    eff_p_j = wp_j / (disch_j.h() - suc_j.h())
+                    return (eff_p_j - eff_p).m
 
-                def update_state(x):
-                    disch_seg = ccp.State(p=disch_p_segment, T=x, fluid=suc_seg.fluid)
-                    wp = head_pol_sandberg_colby(suc_seg, disch_seg)
-                    new_eff = wp / (disch_seg.h() - suc_seg.h())
-                    return (new_eff - eff).m
-
-                # Use brentq with a bracket [T_isen, T_isen + 20K].
+                # Use brentq with bracket [T_isen, T_isen + 20K].
                 # brentq is more robust than newton for functions with
                 # discontinuities near the critical point.
-                T_isen = disch_seg.T().magnitude
-                T_end = brentq(update_state, T_isen, T_isen + 20)
+                T_isen = disch_j.T().magnitude
+                Td_j = brentq(calc_delta_eff_p, T_isen, T_isen + 20)
 
-                disch_seg = ccp.State(
-                    p=disch_p_segment,
-                    T=T_end,
-                    fluid=suc_seg.fluid,
-                )
+                # Update discharge state with calculated temperature
+                disch_j = ccp.State(p=pd_j, T=Td_j, fluid=suc_j.fluid)
 
-                suc_seg.update(p=disch_seg.p(), T=disch_seg.T())
-                disch_p_segment *= R_c
+                # Prepare for next step: suc_j+1 = disch_j
+                suc_j.update(p=disch_j.p(), T=disch_j.T())
+                pd_j *= rp_step
 
-            return (disch_seg.T() - disch.T()).m
+            # Return temperature difference: ΔT_d = T_d,nstep - T_d
+            return (disch_j.T() - disch.T()).m
 
-        def calculate_derivative(eff):
-            d_eff = 1e-2
-            fx = calculate(eff)
-            fx_l = calculate(eff + d_eff)
-            return (fx_l - fx) / d_eff
+        # Solve for efficiency that gives ΔT_d = 0
+        eff_p = newton(calc_deltaT_d, eff_p_est)
 
-        try:
-            eff = newton(calculate, eff_incr)
-        except RuntimeError:
-            eff = newton(calculate, eff_incr, fprime=calculate_derivative)
+        # Check convergence: |η_p - η_p,est| / η_p ≤ ε
+        if np.abs((eff_p - eff_p_est) / eff_p) <= epsilon:
+            break
 
-        not_converged = np.abs((eff - eff_incr) / eff) > error_limit
-        n_steps += 5
-        eff_incr = eff
+        # Increase steps and update estimate for next iteration
+        nstep += 5
+        eff_p_est = eff_p
 
-    head = eff * (disch.h() - suc.h())
+    # Calculate polytropic head: wp = η_p × (h_d - h_s)
+    wp = eff_p * (disch.h() - suc.h())
 
-    return head
+    return wp
 
 
 def head_pol_sandberg_colby_f(suc, disch, disch_s=None):
