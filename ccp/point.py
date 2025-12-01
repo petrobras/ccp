@@ -5,7 +5,7 @@ import toml
 import plotly.graph_objects as go
 import pandas as pd
 from plotly.subplots import make_subplots
-from scipy.optimize import newton
+from scipy.optimize import newton, brentq
 
 import ccp.config
 from .state import State
@@ -62,7 +62,7 @@ class Point:
         Default value is 13.6.
     polytropic_method : str, optional
         Polytropic method used for head and efficiency calculation.
-        Options are: "mallen_saville", "sandberg_colby", "schultz" and "huntington".
+        Options are: "mallen_saville", "sandberg_colby", "sandberg_colby_multistep", "schultz" and "huntington".
         The default is "schultz".
         The default value can be changed in a global level with:
         ccp.config.POLYTROPIC_METHOD = "<desired value>"
@@ -2235,16 +2235,13 @@ def f_sandberg_colby(suc, disch):
 
 
 def head_pol_sandberg_colby(suc, disch, disch_s=None):
-    r"""Polytropic head corrected by the :cite:`sandberg2013limitations` factor.
+    r"""Polytropic head method as described in section 5-2.2 of :cite:`asmePTC10_2022`.
 
     .. math::
 
        \begin{equation}
-          H_{p_{s-c}} = f_{s-c} H_p
+          w_{p} = (h_{d} - h_{i}) - (\frac{T_{i} + T_{d}}{2}) (s_{d} - s_{i})
        \end{equation}
-
-    Where :math:`f_{s-c}` is calculated by :py:func:`f_sandberg_colby` and
-    :math:`H_p` is calculated by :py:func:`head_pol`.
 
     Parameters
     ----------
@@ -2256,11 +2253,109 @@ def head_pol_sandberg_colby(suc, disch, disch_s=None):
     Returns
     -------
     head_pol_sandberg_colby : pint.Quantity
-       Reference head as described by :cite:`sandberg2013limitations` (J/kg).
+       Polytropic head as described in :cite:`asmePTC10_2022` (J/kg).
     """
     Tm = (suc.T() + disch.T()) / 2
     h = (disch.h() - suc.h()) - Tm * (disch.s() - suc.s())
     return h
+
+
+def eff_pol_sandberg_colby_multistep(suc, disch):
+    """Sandberg-Colby multistep polytropic efficiency.
+
+    Parameters
+    ----------
+    suc : ccp.State
+        Suction state.
+    disch : ccp.State
+        Discharge state.
+
+    Returns
+    -------
+    eff_pol_sandberg_colby_multistep: pint.Quantity
+        Sandberg-Colby multistep polytropic efficiency (dimensionless).
+    """
+    wp = head_pol_sandberg_colby_multistep(suc, disch)
+    dh = disch.h() - suc.h()
+
+    return (wp / dh).to("dimensionless")
+
+
+def head_pol_sandberg_colby_multistep(suc, disch, nstep=10):
+    r"""Polytropic head multistep method as described in section 5-2.4 :cite:`asmePTC10_2022`.
+
+    This implements the numerical integration method from ASME PTC 10-2022
+    Figure 5-2.4-1 flowchart.
+
+    Parameters
+    ----------
+    suc : ccp.State
+        Suction state.
+    disch : ccp.State
+        Discharge state.
+    nstep : int, optional
+        Number of integration steps. Default is 10.
+
+    Returns
+    -------
+    head_pol_sandberg_colby_multistep : pint.Quantity
+        Polytropic head as described by :cite:`asmePTC10_2022` (J/kg).
+    """
+    # Initial efficiency estimate using single-step Sandberg-Colby method
+    eff_p_est = eff_pol_sandberg_colby(suc, disch)
+    epsilon = 1e-5
+
+    while True:
+        # Pressure ratio per step: rp_step = (p_d / p_s)^(1/nstep)
+        rp_step = (disch.p() / suc.p()) ** (1 / nstep)
+
+        def calc_deltaT_d(eff_p):
+            """Calculate ΔT_d = T_d,calc - T_d for a given polytropic efficiency."""
+            pd_j = rp_step * suc.p()
+            suc_j = copy(suc)
+
+            for _ in range(nstep):
+                # Isentropic discharge state for step j
+                disch_j = ccp.State(p=pd_j, s=suc_j.s(), fluid=suc_j.fluid)
+
+                def calc_delta_eff_p(Td_j):
+                    """Calculate Δη_p = η_p,j - η_p for step j."""
+                    disch_j = ccp.State(p=pd_j, T=Td_j, fluid=suc_j.fluid)
+                    wp_j = head_pol_sandberg_colby(suc_j, disch_j)
+                    eff_p_j = wp_j / (disch_j.h() - suc_j.h())
+                    return (eff_p_j - eff_p).m
+
+                # Use brentq with bracket [T_isen, T_isen + 20K].
+                # brentq is more robust than newton for functions with
+                # discontinuities near the critical point.
+                T_isen = disch_j.T().magnitude
+                Td_j = brentq(calc_delta_eff_p, T_isen, T_isen + 20)
+
+                # Update discharge state with calculated temperature
+                disch_j = ccp.State(p=pd_j, T=Td_j, fluid=suc_j.fluid)
+
+                # Prepare for next step: suc_j+1 = disch_j
+                suc_j.update(p=disch_j.p(), T=disch_j.T())
+                pd_j *= rp_step
+
+            # Return temperature difference: ΔT_d = T_d,nstep - T_d
+            return (disch_j.T() - disch.T()).m
+
+        # Solve for efficiency that gives ΔT_d = 0
+        eff_p = newton(calc_deltaT_d, eff_p_est)
+
+        # Check convergence: |η_p - η_p,est| / η_p ≤ ε
+        if np.abs((eff_p - eff_p_est) / eff_p) <= epsilon:
+            break
+
+        # Increase steps and update estimate for next iteration
+        nstep += 5
+        eff_p_est = eff_p
+
+    # Calculate polytropic head: wp = η_p × (h_d - h_s)
+    wp = eff_p * (disch.h() - suc.h())
+
+    return wp
 
 
 def head_pol_sandberg_colby_f(suc, disch, disch_s=None):
