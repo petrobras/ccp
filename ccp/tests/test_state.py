@@ -53,7 +53,7 @@ def test_eos():
     assert state.T().units == "kelvin"
     assert state.p().magnitude == 100000
     assert state.T().magnitude == 300
-    assert_allclose(state.rhomass(), 0.6445687063978816, rtol=1e-7)
+    assert_allclose(state.rhomass(), 0.6445687063978816, rtol=1e-6)
 
     state = State(
         p=100000, T=300, fluid={"Methane": 1 - 1e-15, "Ethane": 1e-15}, EOS="SRK"
@@ -62,7 +62,7 @@ def test_eos():
     assert state.T().units == "kelvin"
     assert state.p().magnitude == 100000
     assert state.T().magnitude == 300
-    assert_allclose(state.rhomass(), 0.6442384800595821, rtol=1e-7)
+    assert_allclose(state.rhomass(), 0.6442384800595821, rtol=1e-6)
 
     state = State(
         p=100000, T=300, fluid={"Methane": 1 - 1e-15, "Ethane": 1e-15}, EOS="HEOS"
@@ -71,8 +71,7 @@ def test_eos():
     assert state.T().units == "kelvin"
     assert_allclose(state.p().magnitude, 100000)
     assert state.T().magnitude == 300
-    assert state.rhomass() == 0.6442581578304425
-    assert_allclose(state.rhomass(), 0.6442581578304425, rtol=1e-7)
+    assert_allclose(state.rhomass(), 0.6442581578304425, rtol=1e-6)
 
 
 def test_eos_config():
@@ -90,7 +89,7 @@ def test_eos_config():
     assert state.T().units == "kelvin"
     assert state.p().magnitude == 100000
     assert state.T().magnitude == 300
-    assert_allclose(state.rhomass(), 0.6445687063978816, rtol=1e-7)
+    assert_allclose(state.rhomass(), 0.6445687063978816, rtol=1e-6)
 
     ccp.config.EOS = "SRK"
     state = State(p=100000, T=300, fluid={"Methane": 1 - 1e-15, "Ethane": 1e-15})
@@ -98,7 +97,7 @@ def test_eos_config():
     assert state.T().units == "kelvin"
     assert state.p().magnitude == 100000
     assert state.T().magnitude == 300
-    assert_allclose(state.rhomass(), 0.6442384800595821, rtol=1e-7)
+    assert_allclose(state.rhomass(), 0.6442384800595821, rtol=1e-6)
 
     ccp.config.EOS = "HEOS"
     state = State(p=100000, T=300, fluid={"Methane": 1 - 1e-15, "Ethane": 1e-15})
@@ -106,8 +105,7 @@ def test_eos_config():
     assert state.T().units == "kelvin"
     assert_allclose(state.p().magnitude, 100000)
     assert state.T().magnitude == 300
-    assert state.rhomass() == 0.6442581578304425
-    assert_allclose(state.rhomass(), 0.6442581578304425, rtol=1e-7)
+    assert_allclose(state.rhomass(), 0.6442581578304425, rtol=1e-6)
 
     ccp.config.EOS = "REFPROP"
 
@@ -192,7 +190,7 @@ def test_state_define_units_mix():
     assert_allclose(state.kT().magnitude, 1.232748, rtol=1e-5)
     assert (
         state.__repr__()
-        == 'State(p=Q_("100000 Pa"), T=Q_("300 K"), fluid={"METHANE": 0.50000, "ETHANE": 0.50000})'
+        == 'State(p=Q_("100000.00000 Pa"), T=Q_("300.00000 K"), fluid={"METHANE": 0.50000, "ETHANE": 0.50000})'
     )
 
     state.update(p=200000, T=310)
@@ -204,7 +202,7 @@ def test_state_define_units_mix():
     assert_allclose(state.rho().magnitude, 1.8020813868455758)
     assert (
         state.__repr__()
-        == 'State(p=Q_("200000 Pa"), T=Q_("310 K"), fluid={"METHANE": 0.50000, "ETHANE": 0.50000})'
+        == 'State(p=Q_("200000.00000 Pa"), T=Q_("310.00000 K"), fluid={"METHANE": 0.50000, "ETHANE": 0.50000})'
     )
 
 

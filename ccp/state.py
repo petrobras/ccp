@@ -162,7 +162,7 @@ class State(CP.AbstractState):
         try:
             args = {k: v for k, v in self.init_args.items() if v is not None}
             args_repr = [
-                f'{k}=Q_("{getattr(self, k)():.0f~P}")' for k, v in args.items()
+                f'{k}=Q_("{getattr(self, k)():.5f~P}")' for k, v in args.items()
             ]
             args_repr = ", ".join(args_repr)
 
@@ -177,12 +177,12 @@ class State(CP.AbstractState):
 
     def __eq__(self, other):
         if isinstance(other, self.__class__):
-            self_fluid_rounded = {k: round(v, 3) for k, v in self.fluid.items()}
-            other_fluid_rounded = {k: round(v, 3) for k, v in other.fluid.items()}
+            self_fluid_rounded = {k: round(v, 5) for k, v in self.fluid.items()}
+            other_fluid_rounded = {k: round(v, 5) for k, v in other.fluid.items()}
             if (
                 self_fluid_rounded == other_fluid_rounded
-                and np.allclose(self.p(), other.p(), rtol=1e-3)
-                and np.allclose(self.T(), other.T(), rtol=1e-3)
+                and np.allclose(self.p(), other.p(), rtol=1e-4)
+                and np.allclose(self.T(), other.T(), rtol=1e-4)
             ):
                 return True
         return False
@@ -190,18 +190,20 @@ class State(CP.AbstractState):
     def __hash__(self):
         try:
             fluid_hashable = tuple(
-                sorted((k, round(v, 3)) for k, v in self.fluid.items())
+                sorted((k, round(v, 4)) for k, v in self.fluid.items())
             )
 
-            # converte p e T para unidade base e aplica truncamento com a mesma lógica de tolerância de __eq__
-            def rounded_for_tol(x):
-                return round(
-                    x.to_base_units().magnitude,
-                    -int(np.floor(np.log10(abs(x.magnitude * 1e-3)))) + 1,
-                )
+            # Round to fewer significant figures than __eq__ tolerance (rtol=1e-4)
+            # to ensure equal states have equal hashes.
+            # Using 3 significant figures (rtol ~1e-3) is coarser than __eq__ tolerance.
+            def round_to_sig_figs(x, sig_figs=3):
+                mag = x.to_base_units().magnitude
+                if mag == 0:
+                    return 0
+                return round(mag, -int(np.floor(np.log10(abs(mag)))) + sig_figs - 1)
 
-            p_val = rounded_for_tol(self.p())
-            T_val = rounded_for_tol(self.T())
+            p_val = round_to_sig_figs(self.p())
+            T_val = round_to_sig_figs(self.T())
 
             return hash((fluid_hashable, p_val, T_val))
         except Exception:
@@ -775,7 +777,7 @@ class State(CP.AbstractState):
                 except ValueError:
                     # handle convergence error by forcing gas state directly with REFPROP
                     # only try REFPROP if we're using REFPROP backend
-                    if self.backend_name() == "REFPROP":
+                    if self.backend_name() in ["REFPROP", "REFPROPMixtureBackend"]:
                         r = self._call_REFPROP(
                             p=p.magnitude,
                             T=T.magnitude,
@@ -792,7 +794,7 @@ class State(CP.AbstractState):
                 except ValueError:
                     # handle convergence error by forcing gas state directly with REFPROP
                     # only try REFPROP if we're using REFPROP backend
-                    if self.backend_name() == "REFPROP":
+                    if self.backend_name() in ["REFPROP", "REFPROPMixtureBackend"]:
                         r = self._call_REFPROP(
                             rho=rho.magnitude,
                             p=p.magnitude,
@@ -809,7 +811,7 @@ class State(CP.AbstractState):
                 except ValueError:
                     # handle convergence error
                     # only try REFPROP if we're using REFPROP backend
-                    if self.backend_name() == "REFPROP":
+                    if self.backend_name() in ["REFPROP", "REFPROPMixtureBackend"]:
                         r = self._call_REFPROP(
                             p=p.magnitude,
                             h=h.magnitude,
