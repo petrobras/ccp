@@ -23,14 +23,26 @@ def disch_0():
 
 @pytest.fixture
 def suc_PTC10_22():
-    fluid = dict(Methane=0.86, Ethane=0.1125, Propane=0.0075, Nitrogen=0.0040, CarbonDioxide=0.016)
-    return State(p=Q_(17378.9, 'kPa'), T=Q_(37.78, 'degC'), fluid=fluid)
+    fluid = dict(
+        Methane=0.86,
+        Ethane=0.1125,
+        Propane=0.0075,
+        Nitrogen=0.0040,
+        CarbonDioxide=0.016,
+    )
+    return State(p=Q_(17378.9, "kPa"), T=Q_(37.78, "degC"), fluid=fluid)
 
 
 @pytest.fixture
 def disch_PTC10_22():
-    fluid = dict(Methane=0.86, Ethane=0.1125, Propane=0.0075, Nitrogen=0.0040, CarbonDioxide=0.016)
-    return State(p=Q_(44815.9, 'kPa'), T=Q_(137.78, 'degC'), fluid=fluid)
+    fluid = dict(
+        Methane=0.86,
+        Ethane=0.1125,
+        Propane=0.0075,
+        Nitrogen=0.0040,
+        CarbonDioxide=0.016,
+    )
+    return State(p=Q_(44815.9, "kPa"), T=Q_(137.78, "degC"), fluid=fluid)
 
 
 @pytest.fixture
@@ -274,10 +286,12 @@ def test_head_pol_sandberg_colby(suc_0, disch_0):
     assert h.units == "joule/kilogram"
     assert_allclose(h.m, 82816.596731, rtol=1e-6)
 
+
 def test_head_pol_sandberg_colby_PTC10_2022(suc_PTC10_22, disch_PTC10_22):
     h = head_pol_sandberg_colby(suc_PTC10_22, disch_PTC10_22)
     assert h.units == "joule/kilogram"
     assert_allclose(h.m, 146499, rtol=1e-5)
+
 
 def test_head_pol_sandberg_colby_f(suc_0, disch_0):
     h = head_pol_sandberg_colby_f(suc_0, disch_0)
@@ -321,12 +335,35 @@ def test_head_pol_sandberg_colby_multistep(suc_PTC10_22, disch_PTC10_22):
     assert_allclose(h.m, 146366.179986, rtol=1e-6)
 
 
+def test_head_pol_sandberg_colby_multistep_co2_methane():
+    """Test with CO2/methane mixture at high pressure near critical point."""
+    suc = ccp.State(
+        p=Q_("5516000.00000 Pa"),
+        T=Q_("310.93000 K"),
+        fluid={"CO2": 0.70000, "METHANE": 0.30000},
+    )
+    disch = ccp.State(
+        p=Q_("16547000.00000 Pa"),
+        T=Q_("416.48000 K"),
+        fluid={"CO2": 0.70000, "METHANE": 0.30000},
+    )
+    assert_allclose(
+        head_pol_sandberg_colby_multistep(suc, disch).m, 76766.1921194108, rtol=1e-6
+    )
+
+
 def test_point_eff_pol_sandberg_colby_multistep(suc_PTC10_22, disch_PTC10_22):
-    assert_allclose(eff_pol_sandberg_colby_multistep(suc_PTC10_22, disch_PTC10_22).m, 0.59299, rtol=1e-5)
+    assert_allclose(
+        eff_pol_sandberg_colby_multistep(suc_PTC10_22, disch_PTC10_22).m,
+        0.59299,
+        rtol=1e-5,
+    )
 
 
 def test_point_eff_pol_sandberg_colby(suc_PTC10_22, disch_PTC10_22):
-    assert_allclose(eff_pol_sandberg_colby(suc_PTC10_22, disch_PTC10_22).m, 0.593539, rtol=1e-5)
+    assert_allclose(
+        eff_pol_sandberg_colby(suc_PTC10_22, disch_PTC10_22).m, 0.593539, rtol=1e-5
+    )
 
 
 def test_point_eff_polytropic(suc_0, disch_0):

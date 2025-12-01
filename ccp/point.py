@@ -5,7 +5,7 @@ import toml
 import plotly.graph_objects as go
 import pandas as pd
 from plotly.subplots import make_subplots
-from scipy.optimize import newton
+from scipy.optimize import newton, brentq
 
 import ccp.config
 from .state import State
@@ -2309,32 +2309,21 @@ def head_pol_sandberg_colby_multistep(suc, disch, n_steps=10):
             suc_seg = copy(suc)
 
             for _ in range(n_steps):
-
-                disch_seg = ccp.State(p=disch_p_segment, s=suc_seg.s(), fluid=suc_seg.fluid)
+                disch_seg = ccp.State(
+                    p=disch_p_segment, s=suc_seg.s(), fluid=suc_seg.fluid
+                )
 
                 def update_state(x):
                     disch_seg = ccp.State(p=disch_p_segment, T=x, fluid=suc_seg.fluid)
                     wp = head_pol_sandberg_colby(suc_seg, disch_seg)
                     new_eff = wp / (disch_seg.h() - suc_seg.h())
                     return (new_eff - eff).m
-                
-                def update_state_derivative(x):
-                    dx = 0.1
-                    dfx = (update_state(x+dx) - update_state(x)) / dx
-                    return dfx
 
-                try:
-                    T_end = newton(
-                        update_state,
-                        x0=disch_seg.T().magnitude,
-                    )
-                except RuntimeError:
-                    T_end = newton(
-                        update_state,
-                        x0=disch_seg.T().magnitude,
-                        fprime=update_state_derivative,
-                        rtol=1e-3,
-                    )
+                # Use brentq with a bracket [T_isen, T_isen + 20K].
+                # brentq is more robust than newton for functions with
+                # discontinuities near the critical point.
+                T_isen = disch_seg.T().magnitude
+                T_end = brentq(update_state, T_isen, T_isen + 20)
 
                 disch_seg = ccp.State(
                     p=disch_p_segment,
@@ -2352,7 +2341,7 @@ def head_pol_sandberg_colby_multistep(suc, disch, n_steps=10):
             fx = calculate(eff)
             fx_l = calculate(eff + d_eff)
             return (fx_l - fx) / d_eff
-        
+
         try:
             eff = newton(calculate, eff_incr)
         except RuntimeError:
