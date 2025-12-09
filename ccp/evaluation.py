@@ -173,6 +173,7 @@ class Evaluation:
             raise ValueError(
                 "DataFrame is empty after filtering. "
                 "All rows were removed due to fluctuation criteria. "
+                "This can happen when sensors have frozen values (e.g., stuck at zero). "
                 "Please check your data or adjust the filtering parameters "
                 "(temperature_fluctuation, pressure_fluctuation, speed_fluctuation)."
             )
