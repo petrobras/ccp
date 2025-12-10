@@ -180,6 +180,9 @@ class Evaluation:
 
         df = self.calculate_flow(df)
 
+        # Remove rows with NaN values (can occur in two-phase region)
+        df = df.dropna(subset=["speed_sound", "v_s"])
+
         # create clusters based on speed_sound, ps and Ts
         data = df[["speed_sound", "ps", "Ts"]]
         # normalize
