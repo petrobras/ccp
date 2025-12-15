@@ -507,7 +507,7 @@ class Evaluation:
             evaluation = cls(
                 data=data,
                 impellers=impellers,
-                operation_fluid=args_dict["operation_fluid"],
+                operation_fluid=args_dict.get("operation_fluid"),
                 data_units=args_dict["data_units"],
                 window=args_dict["window"],
                 temperature_fluctuation=args_dict["temperature_fluctuation"],
