@@ -35,6 +35,7 @@ fluid_list["Isohexane"].possible_names.extend(["isohexane", "i-hexane", "iso-hex
 fluid_list["n-Heptane"].possible_names.extend(["heptane", "n-heptane"])
 fluid_list["n-Octane"].possible_names.extend(["octane", "n-octane"])
 fluid_list["n-Nonane"].possible_names.extend(["nonane", "n-nonane"])
+fluid_list["n-Decane"].possible_names.extend(["decane", "n-decane"])
 fluid_list["n-Undecane"].possible_names.extend(["undecane", "n-undecane"])
 fluid_list["n-Dodecane"].possible_names.extend(["dodecane", "n-dodecane"])
 fluid_list["HydrogenSulfide"].possible_names.extend(["hydrogen sulfide", "h2s"])
@@ -51,6 +52,9 @@ fluid_list["R134a"].possible_names.extend(["r134a"])
 fluid_list["EthylBenzene"].possible_names.extend(
     ["ethylbenzene", "e-benzene", "ebenzene"]
 )
+
+
+# refprop_fluid_list["3Methylpentane"].possible_names.extend(["iso-octane", "i-octane"])
 
 
 @lru_cache(maxsize=256)
