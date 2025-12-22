@@ -173,11 +173,15 @@ class Evaluation:
             raise ValueError(
                 "DataFrame is empty after filtering. "
                 "All rows were removed due to fluctuation criteria. "
+                "This can happen when sensors have frozen values (e.g., stuck at zero). "
                 "Please check your data or adjust the filtering parameters "
                 "(temperature_fluctuation, pressure_fluctuation, speed_fluctuation)."
             )
 
         df = self.calculate_flow(df)
+
+        # Remove rows with NaN values (can occur in two-phase region)
+        df = df.dropna(subset=["speed_sound", "v_s"])
 
         # create clusters based on speed_sound, ps and Ts
         data = df[["speed_sound", "ps", "Ts"]]
