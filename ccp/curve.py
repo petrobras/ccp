@@ -225,7 +225,7 @@ class PlotFunction:
                     color_marker = [
                         (
                             "#7EE38D"
-                            if np.all([customdata[i][2] for i in range(4, 7)]) == True
+                            if np.all([customdata[i][2] for i in range(4, 8)]) == True
                             else "#FC9FB0"
                         )
                     ]
