@@ -27,6 +27,7 @@ from ccp.app.common import (
     get_gas_composition,
     to_excel,
     convert,
+    gas_selection_form,
 )
 
 sentry_sdk.init(
@@ -203,99 +204,25 @@ def main():
     fluid_list = sorted(fluid_list)
     fluid_list.insert(0, "")
 
-    with st.form(key="form_gas_selection", enter_to_submit=False, border=False):
-        with st.expander("Gas Selection", expanded=st.session_state.expander_state):
-            gas_compositions_table = {}
-            gas_columns = st.columns(6)
-            for i, gas_column in enumerate(gas_columns):
-                gas_compositions_table[f"gas_{i}"] = {}
+    default_components = [
+        "methane",
+        "ethane",
+        "propane",
+        "n-butane",
+        "i-butane",
+        "n-pentane",
+        "i-pentane",
+        "n-hexane",
+        "n-heptane",
+        "n-octane",
+        "n-nonane",
+        "nitrogen",
+        "h2s",
+        "co2",
+        "h2o",
+    ]
 
-                gas_compositions_table[f"gas_{i}"]["name"] = gas_column.text_input(
-                    "Gas Name",
-                    value=f"gas_{i}",
-                    key=f"gas_{i}",
-                    help=(
-                        """
-                    Gas name will be selected in Data Sheet and Test Data.
-
-                    Fill in gas components and molar fractions for each gas.
-                    """
-                        if i == 0
-                        else None
-                    ),
-                )
-
-                default_components = [
-                    "methane",
-                    "ethane",
-                    "propane",
-                    "n-butane",
-                    "i-butane",
-                    "n-pentane",
-                    "i-pentane",
-                    "n-hexane",
-                    "n-heptane",
-                    "n-octane",
-                    "n-nonane",
-                    "nitrogen",
-                    "h2s",
-                    "co2",
-                    "h2o",
-                ]
-
-                gas_composition_list = []
-                for key in st.session_state:
-                    if "compositions_table" in key:
-                        for column in st.session_state[key][f"gas_{i}"]:
-                            if "component" in column:
-                                idx = column.split("_")[1]
-                                gas_composition_list.append(
-                                    {
-                                        "component": st.session_state[key][f"gas_{i}"][
-                                            column
-                                        ],
-                                        "molar_fraction": st.session_state[key][
-                                            f"gas_{i}"
-                                        ][f"molar_fraction_{idx}"],
-                                    }
-                                )
-                if not gas_composition_list:
-                    gas_composition_list = [
-                        {"component": molecule, "molar_fraction": 0.0}
-                        for molecule in default_components
-                    ]
-
-                gas_composition_df = pd.DataFrame(gas_composition_list)
-                gas_composition_df_edited = gas_column.data_editor(
-                    gas_composition_df,
-                    num_rows="dynamic",
-                    key=f"table_gas_{i}_composition",
-                    height=int((len(default_components) + 1) * 37.35),
-                    width="stretch",
-                    column_config={
-                        "component": st.column_config.SelectboxColumn(
-                            st.session_state[f"gas_{i}"],
-                            options=fluid_list,
-                            width="small",
-                        ),
-                        "molar_fraction": st.column_config.NumberColumn(
-                            "mol %",
-                            min_value=0.0,
-                            default=0.0,
-                            required=True,
-                            format="%.3f",
-                        ),
-                    },
-                )
-
-                for column in gas_composition_df_edited:
-                    for j, value in enumerate(gas_composition_df_edited[column]):
-                        gas_compositions_table[f"gas_{i}"][f"{column}_{j}"] = value
-
-            submit_composition = st.form_submit_button("Submit", type="primary")
-
-            if "gas_compositions_table" not in st.session_state or submit_composition:
-                st.session_state["gas_compositions_table"] = gas_compositions_table
+    gas_compositions_table = gas_selection_form(fluid_list, default_components)
 
     # add container with 4 columns and 2 rows
     with st.sidebar.expander("⚙️ Options"):
@@ -478,7 +405,7 @@ def main():
         points_gas_columns[0].markdown("Gas Selection")
         points_gas_columns[1].markdown("")
         gas_options = [
-            st.session_state[f"gas_{i}"] for i, gas in enumerate(gas_columns)
+            st.session_state[f"gas_{i}"] for i, gas in enumerate(gas_compositions_table)
         ]
 
         # fill the gas selection dropdowns with the gases selected
@@ -634,7 +561,7 @@ def main():
                 col.markdown("")
             else:
                 gas_options = [
-                    st.session_state[f"gas_{i}"] for i, gas in enumerate(gas_columns)
+                    st.session_state[f"gas_{i}"] for i, gas in enumerate(gas_compositions_table)
                 ]
                 col.selectbox(
                     f"gas_point_{i - 1}",
@@ -715,7 +642,7 @@ def main():
                 col.markdown("")
             else:
                 gas_options = [
-                    st.session_state[f"gas_{i}"] for i, gas in enumerate(gas_columns)
+                    st.session_state[f"gas_{i}"] for i, gas in enumerate(gas_compositions_table)
                 ]
                 col.selectbox(
                     f"gas_fo_{i - 1}",
