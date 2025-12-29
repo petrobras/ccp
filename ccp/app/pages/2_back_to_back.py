@@ -61,7 +61,11 @@ def main():
         with open(im, "rb") as image_file:
             encoded_string = base64.b64encode(image_file.read()).decode()
         encoded_image = "data:image/png;base64," + encoded_string
-        html_string = f'<img src="data:image/png;base64,{encoded_string}" style="text-align: center" width="250">'
+        html_string = f'''
+        <div style="text-align: center;">
+            <img src="data:image/png;base64,{encoded_string}" width="250">
+        </div>
+        '''
         return html_string
 
     with st.sidebar.container():
