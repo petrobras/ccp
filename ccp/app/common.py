@@ -340,6 +340,7 @@ def to_excel(df):
 
 
 def gas_selection_form(fluid_list, default_components):
+    """Formulary for gas selection."""
     with st.form(key="form_gas_selection", enter_to_submit=False, border=False):
         with st.expander("Gas Selection", expanded=st.session_state.expander_state):
             gas_compositions_table = {}
