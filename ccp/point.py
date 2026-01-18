@@ -36,17 +36,17 @@ class Point:
     suc, eff, volume_ratio : ccp.State, float, float
         Suction state, polytropic efficiency and volume ratio.
     suc, pres_ratio, disch_T : ccp.State, float, pint.Quantity or float
-        Suction state, pressure ration and discharge temperature.
+        Suction state, pressure ratio and discharge temperature.
     b : float, pint.Quantity
         Impeller width at the outer blade diameter (m).
     D : float, pint.Quantity
         Impeller outer diameter (m).
     power_shaft : float, pint.Quantity
         Shaft power (Watt), optional.
-    power_losses : float, pint.Quant
+    power_losses : float, pint.Quantity
         Mechanical power losses (Watt), optional.
     torque : float, pint.Quantity
-        load torque (N.m), optional.                                                                                                                                                       (N.m), optional.
+        Load torque (N.m), optional.
     surface_roughness : pint.Quantity, optional
         Gas passage mean surface roughness (m).
         Used in the reynolds correction calculation.
@@ -139,7 +139,7 @@ class Point:
         Polytropic method used for head and efficiency calculation.
     extrapolated : bool
         If true, the point is an extrapolation from other curves or its flow is outside surge and choke limits.
-    The default is False.
+        The default is False.
     """
 
     @check_units

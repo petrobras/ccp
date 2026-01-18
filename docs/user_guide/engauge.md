@@ -3,11 +3,11 @@
 
 In this guide we describe how to load a performance curve using the [Engauge Digitizer](https://markummitchell.github.io/engauge-digitizer/) application.
 
-The first step is to copy the performance map. In the gif bellow we have and example of a head curve.
+The first step is to copy the performance map. In the gif below we have an example of a head curve.
 
 ```{image} ../_static/img/step1.gif
 ```
-After that we go to Engauge -> Edit -> Paste as New.
+After that, go to Engauge -> Edit -> Paste as New.
 
 In the guide wizard we name the curves with the value of each speed:
 
@@ -44,7 +44,7 @@ It is recommended to select at least 8 points for each curve to have a good inte
 
 The last step is to configure the export format (Settings -> Export format).
 
-Select 'Raws Xs and Ys' and 'One curve for each line'
+Select 'Raw Xs and Ys' and 'One curve for each line'
 
 After that go to File -> Export and save the .csv file as <curve-name>-head.csv.
 
@@ -55,7 +55,7 @@ Files should be saved with the following convention:
 ```{image} ../_static/img/step5.gif
 ```
 
-To the same steps for the efficiency curve.
+Do the same steps for the efficiency curve.
 
 After that we can load the data with the following code:
 
