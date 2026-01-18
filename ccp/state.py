@@ -577,7 +577,7 @@ class State(CP.AbstractState):
         return dpdv_s
 
     def _X(self):
-        """Coeficiente de compressibilidade X de Schultz"""
+        """Schultz compressibility coefficient X."""
         T = self.T().to("K").magnitude
         V = self.v().to("m³/kg").magnitude
 
@@ -587,7 +587,7 @@ class State(CP.AbstractState):
         )
 
     def _Y(self):
-        """Coeficiente de compressibilidade X de Schultz"""
+        """Schultz compressibility coefficient Y."""
         P = self.p().to("Pa").magnitude
         V = self.v().to("m³/kg").magnitude
 

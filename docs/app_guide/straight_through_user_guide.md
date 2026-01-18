@@ -18,7 +18,7 @@
 
 ## Overview
 
-The Straight-Through Compressor page is a streamlit application designed for performance testing and analysis of straight-through centrifugal compressors according to ASME PTC 10 standards. 
+The Straight-Through Compressor page is a Streamlit application designed for performance testing and analysis of straight-through centrifugal compressors according to ASME PTC 10 standards. 
 
 ### Key Features
 - **Multi-gas support**: Define up to 6 different gas compositions

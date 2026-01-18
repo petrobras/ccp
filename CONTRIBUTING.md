@@ -1,7 +1,7 @@
 ## Feedback and Contribution
 
 We welcome any contribution via [ccp issue tracker](https://github.com/petrobras/ccp/issues).
-These include bug reports, problems on the documentation, feedback, enhancement proposals etc.
+These include bug reports, problems in the documentation, feedback, enhancement proposals etc.
 You can use the repository [Discussions](https://github.com/petrobras/ccp/discussions)
 section for questions and further information.
 
@@ -105,7 +105,7 @@ If you want to run all the tests you can do it with (from the `~/ccp/ccp` folder
 pytest
 ```
 
-Code is only merged to main if tests pass. This is checked by services GitHub Actions, so make sure
+Code is only merged to main if tests pass. This is checked by GitHub Actions, so make sure
 tests are passing before pushing your code to github.
 
 ### Step 6: Push changes to your git repository
@@ -130,8 +130,8 @@ To create a Pull Request (PR), refer to [the github PR guide](https://help.githu
 
 ## Docstrings for class and methods
 
-A new method must have a docstring presenting a summary for what the method does.
-ccp' docstrings follows the Numpy [docstring style](https://numpydoc.readthedocs.io/en/latest/format.html).
+A new method must have a docstring presenting a summary of what the method does.
+ccp's docstrings follow the Numpy [docstring style](https://numpydoc.readthedocs.io/en/latest/format.html).
 It's important to follow the Numpy's template due to the formatting that will be presented on the ccp website.
 
 Example of docstring:
@@ -156,7 +156,7 @@ References (if applicable)
 .. bibliography:: ../../../docs/refs.bib
 
 Raises (if there's any error message raised)
------
+------
 SomeError
     DESCRIPTION
 
@@ -181,7 +181,7 @@ It is possible to add other sections in addition to those previously presented (
 Just follow the same rules and it's good to go.
 
 When creating examples, be aware of code lines that return any result from a method or class.
-The example output must match what the method returns because `TRAVIS` and `APPVEYOR` (the CI's that runs tests for ccp) check the examples and raise errors,
+The example output must match what the method returns because the CI (GitHub Actions) checks the examples and raises errors
 if the example output does not match the actual output.
 
 Sometimes, it's not possible to represent all the output (e.g. a figure, a large matrix, etc),
@@ -223,7 +223,7 @@ GitHub Action.
 If you want to test the documentation locally:
 
 - Install [pandoc](https://pandoc.org/installing.html), which is needed to convert the notebook files;
-- Install ccp development version so that you have all packages required to build the documentation (see {ref}`setup_environment`).
+- Install ccp development version so that you have all packages required to build the documentation (see {ref}`setup-environment`).
 
 Go to the ~/ccp/docs folder and run:
 
@@ -231,7 +231,7 @@ Go to the ~/ccp/docs folder and run:
 make html
 ```
 
-Optionally, if you don't want run all notebooks you can use:
+Optionally, if you don't want to run all notebooks you can use:
 
 ```
 make EXECUTE_NOTEBOOKS='off' html

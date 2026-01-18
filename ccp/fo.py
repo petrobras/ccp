@@ -38,8 +38,8 @@ class FlowOrifice:
         qm : float, Quantity, optional
             Mass flow rate (kg/s).
         state_upstream : bool, optional
-            If the state given is upstream the flow orifice the value is True.
-            If it is downstream, the value should be false.
+            If the state given is upstream of the flow orifice the value is True.
+            If it is downstream, the value should be False.
             Default is True.
         Examples
         --------
