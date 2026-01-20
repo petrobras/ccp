@@ -236,9 +236,7 @@ def main():
         "Design Cases Suction Conditions", expanded=st.session_state.expander_state
     ):
         st.markdown("### Design Suction Conditions")
-        st.markdown(
-            "Define the suction conditions for each design case (A, B, C, D)."
-        )
+        st.markdown("Define the suction conditions for each design case (A, B, C, D).")
 
         gas_options = [st.session_state[f"gas_{i}"] for i in range(6)]
 
@@ -499,9 +497,7 @@ def main():
             # Show loaded impeller info
             if st.session_state.get(f"impeller_case_{case}") is not None:
                 imp = st.session_state[f"impeller_case_{case}"]
-                st.info(
-                    f"Loaded: {len(imp.points)} points, {len(imp.curves)} curves"
-                )
+                st.info(f"Loaded: {len(imp.points)} points, {len(imp.curves)} curves")
 
             st.markdown("---")
 
@@ -716,9 +712,7 @@ def main():
                     "p_downstream_tag", ""
                 )
 
-            if fetch_button or (
-                auto_refresh and "last_fetch" in st.session_state
-            ):
+            if fetch_button or (auto_refresh and "last_fetch" in st.session_state):
                 try:
                     # Fetch data
                     df_raw = fetch_pi_data(tag_mappings, n_points=3)
@@ -826,7 +820,10 @@ def main():
                     try:
                         head_fig = converted_impeller.head_plot(
                             flow_v=Q_(latest.flow_v, "m³/s"),
-                            speed=Q_(latest.speed, st.session_state.get("data_speed_unit", "RPM")),
+                            speed=Q_(
+                                latest.speed,
+                                st.session_state.get("data_speed_unit", "RPM"),
+                            ),
                             flow_v_units=plot_flow_units,
                             head_units=plot_head_units,
                         )
@@ -838,7 +835,10 @@ def main():
                     try:
                         power_fig = converted_impeller.power_plot(
                             flow_v=Q_(latest.flow_v, "m³/s"),
-                            speed=Q_(latest.speed, st.session_state.get("data_speed_unit", "RPM")),
+                            speed=Q_(
+                                latest.speed,
+                                st.session_state.get("data_speed_unit", "RPM"),
+                            ),
                             flow_v_units=plot_flow_units,
                             power_units=plot_power_units,
                         )
@@ -851,7 +851,10 @@ def main():
                     try:
                         eff_fig = converted_impeller.eff_plot(
                             flow_v=Q_(latest.flow_v, "m³/s"),
-                            speed=Q_(latest.speed, st.session_state.get("data_speed_unit", "RPM")),
+                            speed=Q_(
+                                latest.speed,
+                                st.session_state.get("data_speed_unit", "RPM"),
+                            ),
                             flow_v_units=plot_flow_units,
                         )
                         st.plotly_chart(eff_fig, use_container_width=True)
@@ -862,7 +865,10 @@ def main():
                     try:
                         disch_p_fig = converted_impeller.disch.p_plot(
                             flow_v=Q_(latest.flow_v, "m³/s"),
-                            speed=Q_(latest.speed, st.session_state.get("data_speed_unit", "RPM")),
+                            speed=Q_(
+                                latest.speed,
+                                st.session_state.get("data_speed_unit", "RPM"),
+                            ),
                             flow_v_units=plot_flow_units,
                             p_units=plot_p_units,
                         )
@@ -884,19 +890,25 @@ def main():
                     st.metric(
                         "Head",
                         f"{latest.head:.2f} kJ/kg" if latest.head > 0 else "N/A",
-                        f"{latest.delta_head:.2f} %" if latest.delta_head != -1 else None,
+                        f"{latest.delta_head:.2f} %"
+                        if latest.delta_head != -1
+                        else None,
                     )
                 with info_cols[2]:
                     st.metric(
                         "Power",
                         f"{latest.power:.2f} kW" if latest.power > 0 else "N/A",
-                        f"{latest.delta_power:.2f} %" if latest.delta_power != -1 else None,
+                        f"{latest.delta_power:.2f} %"
+                        if latest.delta_power != -1
+                        else None,
                     )
                 with info_cols[3]:
                     st.metric(
                         "Disch. Pressure",
                         f"{latest.p_disch:.2f} bar" if latest.p_disch > 0 else "N/A",
-                        f"{latest.delta_p_disch:.2f} %" if latest.delta_p_disch != -1 else None,
+                        f"{latest.delta_p_disch:.2f} %"
+                        if latest.delta_p_disch != -1
+                        else None,
                     )
 
                 # Historical Table
