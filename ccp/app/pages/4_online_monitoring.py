@@ -1,0 +1,937 @@
+import ccp
+import io
+import streamlit as st
+import pandas as pd
+import base64
+import time
+import sentry_sdk
+import logging
+import tempfile
+import shutil
+from pathlib import Path
+
+from ccp.app.common import (
+    pressure_units,
+    temperature_units,
+    flow_units,
+    flow_v_units,
+    speed_units,
+    head_units,
+    power_units,
+    get_gas_composition,
+)
+
+sentry_sdk.init(
+    dsn="https://8fd0e79dffa94dbb9747bf64e7e55047@o348313.ingest.sentry.io/4505046640623616",
+    traces_sample_rate=1.0,
+    auto_enabling_integrations=False,
+)
+
+
+def fetch_pi_data(tag_mappings, n_points=3):
+    """Mock PI data fetch - loads from test parquet files.
+
+    Parameters
+    ----------
+    tag_mappings : dict
+        Dictionary with tag mappings (used to determine which file to load).
+    n_points : int, optional
+        Number of points to return.
+
+    Returns
+    -------
+    pd.DataFrame
+        DataFrame with the requested number of points.
+    """
+    data_path = Path(ccp.__file__).parent / "tests/data"
+
+    if tag_mappings.get("delta_p_tag"):
+        df = pd.read_parquet(data_path / "data_delta_p.parquet")
+    else:
+        df = pd.read_parquet(data_path / "data.parquet")
+
+    return df.tail(n_points)
+
+
+def main():
+    """The code has to be inside this main function to allow sentry to work."""
+    Q_ = ccp.Q_
+
+    assets = Path(__file__).parent / "assets"
+    ccp_ico = assets / "favicon.ico"
+    ccp_logo = assets / "ccp.png"
+    css_path = assets / "style.css"
+    with open(css_path, "r") as f:
+        css = f.read()
+
+    st.set_page_config(
+        page_title="ccp - Online Monitoring",
+        page_icon=str(ccp_ico),
+        layout="wide",
+    )
+
+    def image_base64(im):
+        with open(im, "rb") as image_file:
+            encoded_string = base64.b64encode(image_file.read()).decode()
+        html_string = f'<img src="data:image/png;base64,{encoded_string}" style="text-align: center" width="250">'
+        return html_string
+
+    with st.sidebar.container():
+        st.sidebar.markdown(image_base64(ccp_logo), unsafe_allow_html=True)
+
+    st.markdown(f"<style>{css}</style>", unsafe_allow_html=True)
+
+    title_alignment = """
+    <p style="text-align: center; font-weight: bold; font-size:20px;">
+     ccp
+    </p>
+    """
+    st.sidebar.markdown(title_alignment, unsafe_allow_html=True)
+    st.markdown(
+        """
+    ## Online Monitoring
+    """
+    )
+
+    def get_session():
+        # Initialize session state variables
+        if "session_name" not in st.session_state:
+            st.session_state.session_name = ""
+        if "expander_state" not in st.session_state:
+            st.session_state.expander_state = True
+        if "ccp_version" not in st.session_state:
+            st.session_state.ccp_version = ccp.__version__
+        if "app_type" not in st.session_state:
+            st.session_state.app_type = "online_monitoring"
+
+        # Initialize impellers for each case
+        for case in ["A", "B", "C", "D"]:
+            if f"impeller_case_{case}" not in st.session_state:
+                st.session_state[f"impeller_case_{case}"] = None
+            if f"curves_file_1_case_{case}" not in st.session_state:
+                st.session_state[f"curves_file_1_case_{case}"] = None
+            if f"curves_file_2_case_{case}" not in st.session_state:
+                st.session_state[f"curves_file_2_case_{case}"] = None
+
+        # Initialize tag mappings
+        if "tag_mappings" not in st.session_state:
+            st.session_state.tag_mappings = {}
+
+        # Initialize evaluation
+        if "evaluation" not in st.session_state:
+            st.session_state.evaluation = None
+
+        # Initialize monitoring results
+        if "monitoring_results" not in st.session_state:
+            st.session_state.monitoring_results = None
+
+    get_session()
+
+    # Gas selection
+    fluid_list = []
+    for fluid in ccp.fluid_list.keys():
+        fluid_list.append(fluid.lower())
+        for possible_name in ccp.fluid_list[fluid].possible_names:
+            if possible_name != fluid.lower():
+                fluid_list.append(possible_name)
+    fluid_list = sorted(fluid_list)
+    fluid_list.insert(0, "")
+
+    default_components = [
+        "methane",
+        "ethane",
+        "propane",
+        "n-butane",
+        "i-butane",
+        "n-pentane",
+        "i-pentane",
+        "n-hexane",
+        "n-heptane",
+        "n-octane",
+        "n-nonane",
+        "nitrogen",
+        "h2s",
+        "co2",
+        "h2o",
+    ]
+
+    with st.form(key="form_gas_selection", enter_to_submit=False, border=False):
+        with st.expander("Gas Selection", expanded=st.session_state.expander_state):
+            gas_compositions_table = {}
+            gas_columns = st.columns(6)
+            for i, gas_column in enumerate(gas_columns):
+                gas_compositions_table[f"gas_{i}"] = {}
+
+                gas_compositions_table[f"gas_{i}"]["name"] = gas_column.text_input(
+                    "Gas Name",
+                    value=f"gas_{i}",
+                    key=f"gas_{i}",
+                    help=(
+                        """
+                    Gas name will be selected for design cases.
+
+                    Fill in gas components and molar fractions for each gas.
+                    """
+                        if i == 0
+                        else None
+                    ),
+                )
+
+                gas_composition_list = []
+                for key in st.session_state:
+                    if "compositions_table" in key:
+                        for column in st.session_state[key][f"gas_{i}"]:
+                            if "component" in column:
+                                idx = column.split("_")[1]
+                                gas_composition_list.append(
+                                    {
+                                        "component": st.session_state[key][f"gas_{i}"][
+                                            column
+                                        ],
+                                        "molar_fraction": st.session_state[key][
+                                            f"gas_{i}"
+                                        ][f"molar_fraction_{idx}"],
+                                    }
+                                )
+                if not gas_composition_list:
+                    gas_composition_list = [
+                        {"component": molecule, "molar_fraction": 0.0}
+                        for molecule in default_components
+                    ]
+
+                gas_composition_df = pd.DataFrame(gas_composition_list)
+                gas_composition_df_edited = gas_column.data_editor(
+                    gas_composition_df,
+                    num_rows="dynamic",
+                    key=f"table_gas_{i}_composition",
+                    height=int((len(default_components) + 1) * 37.35),
+                    use_container_width=True,
+                    column_config={
+                        "component": st.column_config.SelectboxColumn(
+                            st.session_state[f"gas_{i}"],
+                            options=fluid_list,
+                            width="small",
+                        ),
+                        "molar_fraction": st.column_config.NumberColumn(
+                            "mol %",
+                            min_value=0.0,
+                            default=0.0,
+                            required=True,
+                            format="%.3f",
+                        ),
+                    },
+                )
+
+                for column in gas_composition_df_edited:
+                    for j, value in enumerate(gas_composition_df_edited[column]):
+                        gas_compositions_table[f"gas_{i}"][f"{column}_{j}"] = value
+
+            submit_composition = st.form_submit_button("Submit", type="primary")
+
+            if "gas_compositions_table" not in st.session_state or submit_composition:
+                st.session_state["gas_compositions_table"] = gas_compositions_table
+
+    # Design Cases Suction Conditions
+    with st.expander(
+        "Design Cases Suction Conditions", expanded=st.session_state.expander_state
+    ):
+        st.markdown("### Design Suction Conditions")
+        st.markdown(
+            "Define the suction conditions for each design case (A, B, C, D)."
+        )
+
+        gas_options = [st.session_state[f"gas_{i}"] for i in range(6)]
+
+        # Header row
+        header_cols = st.columns(6)
+        header_cols[0].markdown("**Parameter**")
+        header_cols[1].markdown("**Unit**")
+        header_cols[2].markdown("**Case A**")
+        header_cols[3].markdown("**Case B**")
+        header_cols[4].markdown("**Case C**")
+        header_cols[5].markdown("**Case D**")
+
+        # Gas selection row
+        gas_row = st.columns(6)
+        gas_row[0].markdown("Gas Selection")
+        gas_row[1].markdown("")  # No unit for gas
+        for idx, case in enumerate(["A", "B", "C", "D"]):
+            with gas_row[idx + 2]:
+                st.selectbox(
+                    f"Gas Case {case}",
+                    options=gas_options,
+                    key=f"gas_case_{case}",
+                    label_visibility="collapsed",
+                )
+
+        # Suction Pressure row
+        p_row = st.columns(6)
+        p_row[0].markdown("Suction Pressure")
+        with p_row[1]:
+            design_suc_p_unit = st.selectbox(
+                "Suction Pressure Unit",
+                options=pressure_units,
+                key="design_suc_p_unit",
+                index=0,
+                label_visibility="collapsed",
+            )
+        for idx, case in enumerate(["A", "B", "C", "D"]):
+            with p_row[idx + 2]:
+                st.number_input(
+                    f"Suction P Case {case}",
+                    key=f"suc_p_case_{case}",
+                    label_visibility="collapsed",
+                    value=0.0,
+                )
+
+        # Suction Temperature row
+        T_row = st.columns(6)
+        T_row[0].markdown("Suction Temperature")
+        with T_row[1]:
+            design_suc_T_unit = st.selectbox(
+                "Suction Temperature Unit",
+                options=temperature_units,
+                key="design_suc_T_unit",
+                index=1,
+                label_visibility="collapsed",
+            )
+        for idx, case in enumerate(["A", "B", "C", "D"]):
+            with T_row[idx + 2]:
+                st.number_input(
+                    f"Suction T Case {case}",
+                    key=f"suc_T_case_{case}",
+                    label_visibility="collapsed",
+                    value=0.0,
+                )
+
+    # Performance Curves Upload
+    with st.expander(
+        "Performance Curves Upload", expanded=st.session_state.expander_state
+    ):
+        st.markdown("### Upload Engauge Digitized Files")
+        st.markdown(
+            """
+        Upload CSV files from Engauge Digitizer containing the performance curves for each design case.
+        Files should be saved with the convention: `<curve-name>-head.csv` and `<curve-name>-eff.csv`.
+        """
+        )
+
+        # Units for loaded curves
+        st.markdown("### Loaded Curves Units")
+        loaded_curves_units_cols = st.columns(4)
+
+        with loaded_curves_units_cols[0]:
+            loaded_curves_speed_units = st.selectbox(
+                "Speed",
+                options=speed_units,
+                key="loaded_curves_speed_units",
+                index=0,
+            )
+        with loaded_curves_units_cols[1]:
+            loaded_curves_flow_units = st.selectbox(
+                "Flow",
+                options=flow_units,
+                key="loaded_curves_flow_units",
+                index=6,
+            )
+        with loaded_curves_units_cols[2]:
+            loaded_curves_head_units = st.selectbox(
+                "Head",
+                options=head_units,
+                key="loaded_curves_head_units",
+                index=0,
+            )
+        with loaded_curves_units_cols[3]:
+            loaded_curves_power_units = st.selectbox(
+                "Power",
+                options=power_units,
+                key="loaded_curves_power_units",
+                index=0,
+            )
+
+        st.markdown("---")
+
+        for case in ["A", "B", "C", "D"]:
+            st.markdown(f"#### Case {case}")
+            col1, col2 = st.columns(2)
+
+            with col1:
+                uploaded_file_1 = st.file_uploader(
+                    f"Performance Curves File 1 - Case {case}",
+                    type=["csv"],
+                    key=f"uploaded_curves_file_1_case_{case}",
+                )
+
+            with col2:
+                uploaded_file_2 = st.file_uploader(
+                    f"Performance Curves File 2 - Case {case}",
+                    type=["csv"],
+                    key=f"uploaded_curves_file_2_case_{case}",
+                )
+
+            # Store uploaded files in session state
+            if uploaded_file_1 is not None:
+                st.session_state[f"curves_file_1_case_{case}"] = {
+                    "name": uploaded_file_1.name,
+                    "content": uploaded_file_1.getvalue(),
+                }
+
+            if uploaded_file_2 is not None:
+                st.session_state[f"curves_file_2_case_{case}"] = {
+                    "name": uploaded_file_2.name,
+                    "content": uploaded_file_2.getvalue(),
+                }
+
+            # Load impeller button
+            if st.button(
+                f"Load Curves for Case {case}",
+                key=f"load_curves_case_{case}",
+                type="secondary",
+            ):
+                try:
+                    has_files = bool(
+                        st.session_state.get(f"curves_file_1_case_{case}")
+                        and st.session_state.get(f"curves_file_2_case_{case}")
+                    )
+
+                    if not has_files:
+                        st.error(f"Please upload both curve files for Case {case}")
+                        continue
+
+                    # Create temporary directory for files
+                    def extract_curve_name(filename):
+                        name = filename.rsplit(".", 1)[0]
+                        suffixes = ["head", "eff", "power", "power_shaft"]
+                        for suffix in suffixes:
+                            if name.endswith(f"-{suffix}"):
+                                return name[: -len(f"-{suffix}")]
+                        return name
+
+                    temp_dir = tempfile.mkdtemp()
+                    temp_path = Path(temp_dir)
+
+                    filenames = [
+                        st.session_state[f"curves_file_1_case_{case}"]["name"],
+                        st.session_state[f"curves_file_2_case_{case}"]["name"],
+                    ]
+                    curve_name = extract_curve_name(filenames[0])
+
+                    # Save CSV files to temporary directory
+                    for csv_file in [
+                        st.session_state[f"curves_file_1_case_{case}"],
+                        st.session_state[f"curves_file_2_case_{case}"],
+                    ]:
+                        file_path = temp_path / csv_file["name"]
+                        with open(file_path, "wb") as f:
+                            f.write(csv_file["content"])
+
+                    # Get gas composition
+                    gas_name = st.session_state.get(f"gas_case_{case}")
+                    if "gas_compositions_table" in st.session_state:
+                        gas_composition = get_gas_composition(
+                            gas_name,
+                            st.session_state["gas_compositions_table"],
+                            default_components,
+                        )
+                    else:
+                        st.error("Please submit gas compositions first")
+                        shutil.rmtree(temp_dir)
+                        continue
+
+                    if not gas_composition:
+                        st.error(
+                            f"No gas composition found for {gas_name}. Please define molar fractions."
+                        )
+                        shutil.rmtree(temp_dir)
+                        continue
+
+                    # Get suction conditions
+                    suc_p = st.session_state.get(f"suc_p_case_{case}", 0)
+                    suc_T = st.session_state.get(f"suc_T_case_{case}", 0)
+
+                    if suc_p <= 0 or suc_T <= 0:
+                        st.error(
+                            f"Please define valid suction conditions for Case {case}"
+                        )
+                        shutil.rmtree(temp_dir)
+                        continue
+
+                    # Create suction state
+                    suc_state = ccp.State(
+                        p=Q_(suc_p, design_suc_p_unit),
+                        T=Q_(suc_T, design_suc_T_unit),
+                        fluid=gas_composition,
+                    )
+
+                    # Load impeller
+                    progress_bar = st.progress(0, text="Loading curves...")
+
+                    impeller = ccp.Impeller.load_from_engauge_csv(
+                        suc=suc_state,
+                        curve_name=curve_name,
+                        curve_path=temp_path,
+                        flow_units=loaded_curves_flow_units,
+                        head_units=loaded_curves_head_units,
+                        power_units=loaded_curves_power_units,
+                        speed_units=loaded_curves_speed_units,
+                    )
+
+                    progress_bar.progress(100, text="Curves loaded!")
+                    time.sleep(0.5)
+                    progress_bar.empty()
+
+                    st.session_state[f"impeller_case_{case}"] = impeller
+                    st.session_state[f"curve_name_case_{case}"] = curve_name
+                    shutil.rmtree(temp_dir)
+
+                    st.success(
+                        f"Case {case} curves loaded: {len(impeller.points)} points, {len(impeller.curves)} curves"
+                    )
+
+                except Exception as e:
+                    st.error(f"Error loading Case {case}: {str(e)}")
+                    logging.error(f"Error loading Case {case}: {e}")
+                    try:
+                        shutil.rmtree(temp_dir)
+                    except:
+                        pass
+
+            # Show loaded impeller info
+            if st.session_state.get(f"impeller_case_{case}") is not None:
+                imp = st.session_state[f"impeller_case_{case}"]
+                st.info(
+                    f"Loaded: {len(imp.points)} points, {len(imp.curves)} curves"
+                )
+
+            st.markdown("---")
+
+    # Tags Configuration Expander
+    with st.expander("Tags Configuration", expanded=st.session_state.expander_state):
+        st.markdown("### Process Parameter Tags")
+        st.markdown("Configure the tags for process parameters from the PI system.")
+
+        # Process Parameters
+        tag_col1, tag_col2 = st.columns(2)
+
+        with tag_col1:
+            st.text_input(
+                "Suction Pressure Tag",
+                key="suc_p_tag",
+                help="PI tag for suction pressure",
+            )
+            st.text_input(
+                "Suction Temperature Tag",
+                key="suc_T_tag",
+                help="PI tag for suction temperature",
+            )
+            st.text_input(
+                "Discharge Pressure Tag",
+                key="disch_p_tag",
+                help="PI tag for discharge pressure",
+            )
+            st.text_input(
+                "Discharge Temperature Tag",
+                key="disch_T_tag",
+                help="PI tag for discharge temperature",
+            )
+
+        with tag_col2:
+            st.text_input(
+                "Speed Tag",
+                key="speed_tag",
+                help="PI tag for compressor speed",
+            )
+            flow_method = st.radio(
+                "Flow Measurement Method",
+                options=["Direct", "Orifice"],
+                key="flow_method",
+                horizontal=True,
+            )
+
+            if flow_method == "Direct":
+                st.text_input(
+                    "Flow Tag",
+                    key="flow_tag",
+                    help="PI tag for volumetric or mass flow",
+                )
+            else:
+                st.text_input(
+                    "Delta P Tag",
+                    key="delta_p_tag",
+                    help="PI tag for orifice differential pressure",
+                )
+                st.text_input(
+                    "Downstream Pressure Tag",
+                    key="p_downstream_tag",
+                    help="PI tag for pressure downstream of orifice",
+                )
+
+        # Orifice Parameters (if orifice method)
+        if flow_method == "Orifice":
+            st.markdown("### Orifice Parameters")
+            orifice_cols = st.columns(3)
+            with orifice_cols[0]:
+                st.number_input(
+                    "Pipe Diameter D (m)",
+                    key="orifice_D",
+                    value=0.0,
+                    format="%.6f",
+                )
+            with orifice_cols[1]:
+                st.number_input(
+                    "Orifice Diameter d (m)",
+                    key="orifice_d",
+                    value=0.0,
+                    format="%.6f",
+                )
+            with orifice_cols[2]:
+                st.selectbox(
+                    "Tappings",
+                    options=["flange", "corner", "D D/2"],
+                    key="orifice_tappings",
+                )
+
+        st.markdown("### Fluid Component Tags (Optional)")
+        st.markdown(
+            "If gas composition varies, configure tags for each component (mol %)."
+        )
+
+        fluid_tag_cols = st.columns(5)
+        fluid_components = [
+            "methane",
+            "ethane",
+            "propane",
+            "n-butane",
+            "i-butane",
+            "n-pentane",
+            "i-pentane",
+            "n2",
+            "co2",
+            "h2s",
+        ]
+        for idx, comp in enumerate(fluid_components):
+            with fluid_tag_cols[idx % 5]:
+                st.text_input(
+                    f"{comp} Tag",
+                    key=f"fluid_tag_{comp}",
+                    label_visibility="visible",
+                )
+
+        st.markdown("### Data Units")
+        data_unit_cols = st.columns(4)
+        with data_unit_cols[0]:
+            st.selectbox(
+                "Pressure Unit",
+                options=pressure_units,
+                key="data_pressure_unit",
+                index=0,
+            )
+        with data_unit_cols[1]:
+            st.selectbox(
+                "Temperature Unit",
+                options=temperature_units,
+                key="data_temperature_unit",
+                index=1,
+            )
+        with data_unit_cols[2]:
+            if flow_method == "Direct":
+                st.selectbox(
+                    "Flow Unit",
+                    options=flow_units,
+                    key="data_flow_unit",
+                    index=3,
+                )
+            else:
+                st.selectbox(
+                    "Delta P Unit",
+                    options=["mmH2O", "Pa", "kPa", "bar", "psi"],
+                    key="data_delta_p_unit",
+                    index=0,
+                )
+        with data_unit_cols[3]:
+            st.selectbox(
+                "Speed Unit",
+                options=speed_units,
+                key="data_speed_unit",
+                index=0,
+            )
+
+    # Online Monitoring Expander
+    with st.expander("Online Monitoring", expanded=True):
+        st.markdown("### Real-Time Performance Monitoring")
+
+        # Get available cases (those with loaded impellers)
+        available_cases = []
+        for case in ["A", "B", "C", "D"]:
+            if st.session_state.get(f"impeller_case_{case}") is not None:
+                available_cases.append(case)
+
+        if not available_cases:
+            st.warning(
+                "No design cases loaded. Please upload performance curves for at least one case."
+            )
+        else:
+            # Case selector
+            selected_case = st.selectbox(
+                "Select Design Case",
+                options=available_cases,
+                key="monitoring_case",
+            )
+
+            # Monitoring controls
+            control_cols = st.columns(3)
+            with control_cols[0]:
+                auto_refresh = st.checkbox("Auto-refresh", key="auto_refresh")
+            with control_cols[1]:
+                if auto_refresh:
+                    refresh_interval = st.slider(
+                        "Refresh interval (s)",
+                        min_value=5,
+                        max_value=60,
+                        value=30,
+                        key="refresh_interval",
+                    )
+            with control_cols[2]:
+                fetch_button = st.button(
+                    "Fetch Latest Data",
+                    key="fetch_data",
+                    type="primary",
+                )
+
+            # Build tag mappings
+            tag_mappings = {
+                "suc_p_tag": st.session_state.get("suc_p_tag", ""),
+                "suc_T_tag": st.session_state.get("suc_T_tag", ""),
+                "disch_p_tag": st.session_state.get("disch_p_tag", ""),
+                "disch_T_tag": st.session_state.get("disch_T_tag", ""),
+                "speed_tag": st.session_state.get("speed_tag", ""),
+            }
+
+            flow_method = st.session_state.get("flow_method", "Direct")
+            if flow_method == "Direct":
+                tag_mappings["flow_tag"] = st.session_state.get("flow_tag", "")
+            else:
+                tag_mappings["delta_p_tag"] = st.session_state.get("delta_p_tag", "")
+                tag_mappings["p_downstream_tag"] = st.session_state.get(
+                    "p_downstream_tag", ""
+                )
+
+            if fetch_button or (
+                auto_refresh and "last_fetch" in st.session_state
+            ):
+                try:
+                    # Fetch data
+                    df_raw = fetch_pi_data(tag_mappings, n_points=3)
+
+                    # Get impeller for selected case
+                    impeller = st.session_state[f"impeller_case_{selected_case}"]
+
+                    # Get gas composition for the case
+                    gas_name = st.session_state.get(f"gas_case_{selected_case}")
+                    if "gas_compositions_table" in st.session_state:
+                        operation_fluid = get_gas_composition(
+                            gas_name,
+                            st.session_state["gas_compositions_table"],
+                            default_components,
+                        )
+                    else:
+                        operation_fluid = None
+
+                    # Build data units
+                    data_units = {
+                        "ps": st.session_state.get("data_pressure_unit", "bar"),
+                        "Ts": st.session_state.get("data_temperature_unit", "degC"),
+                        "pd": st.session_state.get("data_pressure_unit", "bar"),
+                        "Td": st.session_state.get("data_temperature_unit", "degC"),
+                        "speed": st.session_state.get("data_speed_unit", "RPM"),
+                    }
+
+                    evaluation_kwargs = {
+                        "data": df_raw,
+                        "operation_fluid": operation_fluid,
+                        "data_units": data_units,
+                        "impellers": [impeller],
+                        "n_clusters": 2,
+                        "calculate_points": False,
+                    }
+
+                    if flow_method == "Direct":
+                        data_units["flow_v"] = st.session_state.get(
+                            "data_flow_unit", "m³/s"
+                        )
+                    else:
+                        data_units["delta_p"] = st.session_state.get(
+                            "data_delta_p_unit", "mmH2O"
+                        )
+                        data_units["p_downstream"] = st.session_state.get(
+                            "data_pressure_unit", "bar"
+                        )
+                        # Add orifice parameters
+                        evaluation_kwargs["D"] = Q_(
+                            st.session_state.get("orifice_D", 0.5905), "m"
+                        )
+                        evaluation_kwargs["d"] = Q_(
+                            st.session_state.get("orifice_d", 0.3661), "m"
+                        )
+                        evaluation_kwargs["tappings"] = st.session_state.get(
+                            "orifice_tappings", "flange"
+                        )
+
+                    # Create Evaluation
+                    with st.spinner("Processing data..."):
+                        evaluation = ccp.Evaluation(**evaluation_kwargs)
+
+                        # Calculate points
+                        df_results = evaluation.calculate_points(
+                            df_raw, drop_invalid_values=False
+                        )
+
+                    st.session_state.evaluation = evaluation
+                    st.session_state.monitoring_results = df_results
+                    st.session_state.last_fetch = time.time()
+
+                except Exception as e:
+                    st.error(f"Error processing data: {str(e)}")
+                    logging.error(f"Error in online monitoring: {e}")
+
+            # Display results
+            if st.session_state.get("monitoring_results") is not None:
+                df_results = st.session_state.monitoring_results
+                evaluation = st.session_state.evaluation
+
+                # Get the latest valid point
+                valid_results = df_results[df_results["valid"] == True]
+                if len(valid_results) > 0:
+                    latest = valid_results.iloc[-1]
+                else:
+                    latest = df_results.iloc[-1]
+
+                # Get converted impeller for plotting
+                cluster_idx = int(latest.cluster) if not pd.isna(latest.cluster) else 0
+                converted_impeller = evaluation.impellers_new[cluster_idx]
+
+                st.markdown("### Performance Curves with Current Point")
+
+                # Plot curves units
+                plot_flow_units = "m³/h"
+                plot_head_units = "kJ/kg"
+                plot_power_units = "kW"
+                plot_p_units = "bar"
+
+                # Create plots
+                plot_col1, plot_col2 = st.columns(2)
+
+                with plot_col1:
+                    # Head plot
+                    try:
+                        head_fig = converted_impeller.head_plot(
+                            flow_v=Q_(latest.flow_v, "m³/s"),
+                            speed=Q_(latest.speed, st.session_state.get("data_speed_unit", "RPM")),
+                            flow_v_units=plot_flow_units,
+                            head_units=plot_head_units,
+                        )
+                        st.plotly_chart(head_fig, use_container_width=True)
+                    except Exception as e:
+                        st.error(f"Error creating head plot: {e}")
+
+                    # Power plot
+                    try:
+                        power_fig = converted_impeller.power_plot(
+                            flow_v=Q_(latest.flow_v, "m³/s"),
+                            speed=Q_(latest.speed, st.session_state.get("data_speed_unit", "RPM")),
+                            flow_v_units=plot_flow_units,
+                            power_units=plot_power_units,
+                        )
+                        st.plotly_chart(power_fig, use_container_width=True)
+                    except Exception as e:
+                        st.error(f"Error creating power plot: {e}")
+
+                with plot_col2:
+                    # Efficiency plot
+                    try:
+                        eff_fig = converted_impeller.eff_plot(
+                            flow_v=Q_(latest.flow_v, "m³/s"),
+                            speed=Q_(latest.speed, st.session_state.get("data_speed_unit", "RPM")),
+                            flow_v_units=plot_flow_units,
+                        )
+                        st.plotly_chart(eff_fig, use_container_width=True)
+                    except Exception as e:
+                        st.error(f"Error creating efficiency plot: {e}")
+
+                    # Discharge Pressure plot
+                    try:
+                        disch_p_fig = converted_impeller.disch.p_plot(
+                            flow_v=Q_(latest.flow_v, "m³/s"),
+                            speed=Q_(latest.speed, st.session_state.get("data_speed_unit", "RPM")),
+                            flow_v_units=plot_flow_units,
+                            p_units=plot_p_units,
+                        )
+                        st.plotly_chart(disch_p_fig, use_container_width=True)
+                    except Exception as e:
+                        st.error(f"Error creating discharge pressure plot: {e}")
+
+                # Current Point Info
+                st.markdown("### Current Point Information")
+                info_cols = st.columns(4)
+
+                with info_cols[0]:
+                    st.metric(
+                        "Efficiency",
+                        f"{latest.eff:.2f} %" if latest.eff > 0 else "N/A",
+                        f"{latest.delta_eff:.2f} %" if latest.delta_eff != -1 else None,
+                    )
+                with info_cols[1]:
+                    st.metric(
+                        "Head",
+                        f"{latest.head:.2f} kJ/kg" if latest.head > 0 else "N/A",
+                        f"{latest.delta_head:.2f} %" if latest.delta_head != -1 else None,
+                    )
+                with info_cols[2]:
+                    st.metric(
+                        "Power",
+                        f"{latest.power:.2f} kW" if latest.power > 0 else "N/A",
+                        f"{latest.delta_power:.2f} %" if latest.delta_power != -1 else None,
+                    )
+                with info_cols[3]:
+                    st.metric(
+                        "Disch. Pressure",
+                        f"{latest.p_disch:.2f} bar" if latest.p_disch > 0 else "N/A",
+                        f"{latest.delta_p_disch:.2f} %" if latest.delta_p_disch != -1 else None,
+                    )
+
+                # Historical Table
+                st.markdown("### Recent Points History")
+                display_cols = [
+                    "eff",
+                    "expected_eff",
+                    "delta_eff",
+                    "head",
+                    "expected_head",
+                    "delta_head",
+                    "power",
+                    "expected_power",
+                    "delta_power",
+                    "valid",
+                ]
+                available_cols = [c for c in display_cols if c in df_results.columns]
+                st.dataframe(
+                    df_results[available_cols].style.format(
+                        {col: "{:.2f}" for col in available_cols if col != "valid"}
+                    ),
+                    use_container_width=True,
+                )
+
+            # Auto-refresh logic
+            if auto_refresh and st.session_state.get("monitoring_results") is not None:
+                time.sleep(refresh_interval)
+                st.rerun()
+
+
+if __name__ == "__main__":
+    try:
+        main()
+    except Exception as e:
+        logging.info("app: online_monitoring")
+        logging.info(f"session state: {st.session_state}")
+        logging.error(e)
+        raise e
