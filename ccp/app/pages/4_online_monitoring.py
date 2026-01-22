@@ -19,6 +19,7 @@ from ccp.app.common import (
     gas_selection_form,
     get_gas_composition,
     head_units,
+    length_units,
     power_units,
     pressure_units,
     speed_units,
@@ -628,56 +629,65 @@ def main():
         with row3[1]:
             st.selectbox("Unit", options=speed_units, key="speed_unit")
 
-        # Row 4: Flow method selector
-        flow_method = st.radio(
-            "Flow Measurement Method",
-            options=["Direct", "Orifice"],
-            key="flow_method",
-            horizontal=True,
-        )
-
-        # Row 5: Flow tags (depends on method)
-        if flow_method == "Direct":
-            row5 = st.columns([3, 1, 3, 1])
-            with row5[0]:
+        # Row 4: Flow method selector + Flow tags
+        if st.session_state.get("flow_method", "Direct") == "Direct":
+            row4 = st.columns([2, 3, 1, 2])
+            with row4[0]:
+                flow_method = st.radio(
+                    "Flow Measurement Method",
+                    options=["Direct", "Orifice"],
+                    key="flow_method",
+                    horizontal=True,
+                )
+            with row4[1]:
                 st.text_input("Flow Tag", key="flow_tag")
-            with row5[1]:
+            with row4[2]:
                 st.selectbox("Unit", options=flow_units, key="flow_unit")
         else:
-            row5 = st.columns([3, 1, 3, 1])
-            with row5[0]:
+            row4 = st.columns([2, 3, 1, 3, 1])
+            with row4[0]:
+                flow_method = st.radio(
+                    "Flow Measurement Method",
+                    options=["Direct", "Orifice"],
+                    key="flow_method",
+                    horizontal=True,
+                )
+            with row4[1]:
                 st.text_input("Delta P Tag", key="delta_p_tag")
-            with row5[1]:
+            with row4[2]:
                 st.selectbox("Unit", options=pressure_units, key="delta_p_unit")
-            with row5[2]:
-                st.text_input("Downstream Pressure Tag", key="p_downstream_tag")
-            with row5[3]:
+            with row4[3]:
+                st.text_input("Downstream P Tag", key="p_downstream_tag")
+            with row4[4]:
                 st.selectbox("Unit", options=pressure_units, key="p_downstream_unit")
 
         # Orifice Parameters (if orifice method)
         if flow_method == "Orifice":
-            st.markdown("### Orifice Parameters")
-            orifice_cols = st.columns(3)
-            with orifice_cols[0]:
-                st.number_input(
-                    "Pipe Diameter D (m)",
-                    key="orifice_D",
-                    value=0.0,
-                    format="%.6f",
-                )
-            with orifice_cols[1]:
-                st.number_input(
-                    "Orifice Diameter d (m)",
-                    key="orifice_d",
-                    value=0.0,
-                    format="%.6f",
-                )
-            with orifice_cols[2]:
+            orifice_row = st.columns([2, 3, 1, 3, 1])
+            with orifice_row[0]:
                 st.selectbox(
                     "Tappings",
                     options=["flange", "corner", "D D/2"],
                     key="orifice_tappings",
                 )
+            with orifice_row[1]:
+                st.number_input(
+                    "Pipe Diameter D",
+                    key="orifice_D",
+                    value=0.0,
+                    format="%.6f",
+                )
+            with orifice_row[2]:
+                st.selectbox("Unit", options=length_units, key="orifice_D_unit")
+            with orifice_row[3]:
+                st.number_input(
+                    "Orifice Diameter d",
+                    key="orifice_d",
+                    value=0.0,
+                    format="%.6f",
+                )
+            with orifice_row[4]:
+                st.selectbox("Unit", options=length_units, key="orifice_d_unit")
 
         st.markdown("### Fluid Component Tags (Optional)")
         st.markdown(
@@ -813,10 +823,12 @@ def main():
                         )
                         # Add orifice parameters
                         evaluation_kwargs["D"] = Q_(
-                            st.session_state.get("orifice_D", 0.5905), "m"
+                            st.session_state.get("orifice_D", 0.5905),
+                            st.session_state.get("orifice_D_unit", "m"),
                         )
                         evaluation_kwargs["d"] = Q_(
-                            st.session_state.get("orifice_d", 0.3661), "m"
+                            st.session_state.get("orifice_d", 0.3661),
+                            st.session_state.get("orifice_d_unit", "m"),
                         )
                         evaluation_kwargs["tappings"] = st.session_state.get(
                             "orifice_tappings", "flange"
