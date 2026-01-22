@@ -598,39 +598,36 @@ def main():
     # Tags Configuration Expander
     with st.expander("Tags Configuration", expanded=st.session_state.expander_state):
         st.markdown("### Process Parameter Tags")
-        st.markdown("Configure the tags for process parameters from the PI system.")
 
-        # Process Parameters
-        tag_col1, tag_col2 = st.columns(2)
+        # Row 1: Suction Pressure + Suction Temperature
+        row1 = st.columns([3, 1, 3, 1])
+        with row1[0]:
+            st.text_input("Suction Pressure Tag", key="suc_p_tag")
+        with row1[1]:
+            st.selectbox("Unit", options=pressure_units, key="suc_p_unit")
+        with row1[2]:
+            st.text_input("Suction Temperature Tag", key="suc_T_tag")
+        with row1[3]:
+            st.selectbox("Unit", options=temperature_units, key="suc_T_unit")
 
-        with tag_col1:
-            st.text_input(
-                "Suction Pressure Tag",
-                key="suc_p_tag",
-                help="PI tag for suction pressure",
-            )
-            st.text_input(
-                "Suction Temperature Tag",
-                key="suc_T_tag",
-                help="PI tag for suction temperature",
-            )
-            st.text_input(
-                "Discharge Pressure Tag",
-                key="disch_p_tag",
-                help="PI tag for discharge pressure",
-            )
-            st.text_input(
-                "Discharge Temperature Tag",
-                key="disch_T_tag",
-                help="PI tag for discharge temperature",
-            )
+        # Row 2: Discharge Pressure + Discharge Temperature
+        row2 = st.columns([3, 1, 3, 1])
+        with row2[0]:
+            st.text_input("Discharge Pressure Tag", key="disch_p_tag")
+        with row2[1]:
+            st.selectbox("Unit", options=pressure_units, key="disch_p_unit")
+        with row2[2]:
+            st.text_input("Discharge Temperature Tag", key="disch_T_tag")
+        with row2[3]:
+            st.selectbox("Unit", options=temperature_units, key="disch_T_unit")
 
-        with tag_col2:
-            st.text_input(
-                "Speed Tag",
-                key="speed_tag",
-                help="PI tag for compressor speed",
-            )
+        # Row 3: Speed + Flow method selector
+        row3 = st.columns([3, 1, 4])
+        with row3[0]:
+            st.text_input("Speed Tag", key="speed_tag")
+        with row3[1]:
+            st.selectbox("Unit", options=speed_units, key="speed_unit")
+        with row3[2]:
             flow_method = st.radio(
                 "Flow Measurement Method",
                 options=["Direct", "Orifice"],
@@ -638,23 +635,23 @@ def main():
                 horizontal=True,
             )
 
-            if flow_method == "Direct":
-                st.text_input(
-                    "Flow Tag",
-                    key="flow_tag",
-                    help="PI tag for volumetric or mass flow",
-                )
-            else:
-                st.text_input(
-                    "Delta P Tag",
-                    key="delta_p_tag",
-                    help="PI tag for orifice differential pressure",
-                )
-                st.text_input(
-                    "Downstream Pressure Tag",
-                    key="p_downstream_tag",
-                    help="PI tag for pressure downstream of orifice",
-                )
+        # Row 4: Flow tags (depends on method)
+        if flow_method == "Direct":
+            row4 = st.columns([3, 1, 4])
+            with row4[0]:
+                st.text_input("Flow Tag", key="flow_tag")
+            with row4[1]:
+                st.selectbox("Unit", options=flow_units, key="flow_unit")
+        else:
+            row4 = st.columns([3, 1, 3, 1])
+            with row4[0]:
+                st.text_input("Delta P Tag", key="delta_p_tag")
+            with row4[1]:
+                st.selectbox("Unit", options=pressure_units, key="delta_p_unit")
+            with row4[2]:
+                st.text_input("Downstream Pressure Tag", key="p_downstream_tag")
+            with row4[3]:
+                st.selectbox("Unit", options=pressure_units, key="p_downstream_unit")
 
         # Orifice Parameters (if orifice method)
         if flow_method == "Orifice":
@@ -706,45 +703,6 @@ def main():
                     key=f"fluid_tag_{comp}",
                     label_visibility="visible",
                 )
-
-        st.markdown("### Data Units")
-        data_unit_cols = st.columns(4)
-        with data_unit_cols[0]:
-            st.selectbox(
-                "Pressure Unit",
-                options=pressure_units,
-                key="data_pressure_unit",
-                index=0,
-            )
-        with data_unit_cols[1]:
-            st.selectbox(
-                "Temperature Unit",
-                options=temperature_units,
-                key="data_temperature_unit",
-                index=1,
-            )
-        with data_unit_cols[2]:
-            if flow_method == "Direct":
-                st.selectbox(
-                    "Flow Unit",
-                    options=flow_units,
-                    key="data_flow_unit",
-                    index=3,
-                )
-            else:
-                st.selectbox(
-                    "Delta P Unit",
-                    options=["mmH2O", "Pa", "kPa", "bar", "psi"],
-                    key="data_delta_p_unit",
-                    index=0,
-                )
-        with data_unit_cols[3]:
-            st.selectbox(
-                "Speed Unit",
-                options=speed_units,
-                key="data_speed_unit",
-                index=0,
-            )
 
     # Online Monitoring Expander
     with st.expander("Online Monitoring", expanded=True):
@@ -825,13 +783,13 @@ def main():
                     else:
                         operation_fluid = None
 
-                    # Build data units
+                    # Build data units from per-tag unit selections
                     data_units = {
-                        "ps": st.session_state.get("data_pressure_unit", "bar"),
-                        "Ts": st.session_state.get("data_temperature_unit", "degC"),
-                        "pd": st.session_state.get("data_pressure_unit", "bar"),
-                        "Td": st.session_state.get("data_temperature_unit", "degC"),
-                        "speed": st.session_state.get("data_speed_unit", "RPM"),
+                        "ps": st.session_state.get("suc_p_unit", "bar"),
+                        "Ts": st.session_state.get("suc_T_unit", "degC"),
+                        "pd": st.session_state.get("disch_p_unit", "bar"),
+                        "Td": st.session_state.get("disch_T_unit", "degC"),
+                        "speed": st.session_state.get("speed_unit", "rpm"),
                     }
 
                     evaluation_kwargs = {
@@ -844,15 +802,13 @@ def main():
                     }
 
                     if flow_method == "Direct":
-                        data_units["flow_v"] = st.session_state.get(
-                            "data_flow_unit", "m³/s"
-                        )
+                        data_units["flow_v"] = st.session_state.get("flow_unit", "m³/h")
                     else:
                         data_units["delta_p"] = st.session_state.get(
-                            "data_delta_p_unit", "mmH2O"
+                            "delta_p_unit", "bar"
                         )
                         data_units["p_downstream"] = st.session_state.get(
-                            "data_pressure_unit", "bar"
+                            "p_downstream_unit", "bar"
                         )
                         # Add orifice parameters
                         evaluation_kwargs["D"] = Q_(
@@ -916,7 +872,7 @@ def main():
                             flow_v=Q_(latest.flow_v, "m³/s"),
                             speed=Q_(
                                 latest.speed,
-                                st.session_state.get("data_speed_unit", "RPM"),
+                                st.session_state.get("speed_unit", "rpm"),
                             ),
                             flow_v_units=plot_flow_units,
                             head_units=plot_head_units,
@@ -931,7 +887,7 @@ def main():
                             flow_v=Q_(latest.flow_v, "m³/s"),
                             speed=Q_(
                                 latest.speed,
-                                st.session_state.get("data_speed_unit", "RPM"),
+                                st.session_state.get("speed_unit", "rpm"),
                             ),
                             flow_v_units=plot_flow_units,
                             power_units=plot_power_units,
@@ -947,7 +903,7 @@ def main():
                             flow_v=Q_(latest.flow_v, "m³/s"),
                             speed=Q_(
                                 latest.speed,
-                                st.session_state.get("data_speed_unit", "RPM"),
+                                st.session_state.get("speed_unit", "rpm"),
                             ),
                             flow_v_units=plot_flow_units,
                         )
@@ -961,7 +917,7 @@ def main():
                             flow_v=Q_(latest.flow_v, "m³/s"),
                             speed=Q_(
                                 latest.speed,
-                                st.session_state.get("data_speed_unit", "RPM"),
+                                st.session_state.get("speed_unit", "rpm"),
                             ),
                             flow_v_units=plot_flow_units,
                             p_units=plot_p_units,
