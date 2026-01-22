@@ -1,5 +1,8 @@
 import ccp
 import io
+import zipfile
+import json
+import toml
 import streamlit as st
 import pandas as pd
 import base64
@@ -126,6 +129,157 @@ def main():
             st.session_state.monitoring_results = None
 
     get_session()
+
+    # Create a Streamlit sidebar with a file uploader to load a session state file
+    with st.sidebar.expander("📁 File"):
+        with st.form("my_form", clear_on_submit=False):
+            st.session_state.session_name = st.text_input(
+                "Session name",
+                value=st.session_state.session_name,
+            )
+
+            file = st.file_uploader("📂 Open File", type=["ccp"])
+            submitted = st.form_submit_button("Load")
+            save_button = st.form_submit_button("💾 Save")
+
+        if submitted and file is not None:
+            st.write("Loaded!")
+            # open file with zip
+            with zipfile.ZipFile(file) as my_zip:
+                # get the ccp version
+                try:
+                    version = my_zip.read("ccp.version").decode("utf-8")
+                except KeyError:
+                    version = "0.3.5"
+
+                for name in my_zip.namelist():
+                    if name.endswith(".json"):
+                        session_state_data = json.loads(my_zip.read(name))
+                        # Check if it's an online monitoring file
+                        if (
+                            "app_type" not in session_state_data
+                            or session_state_data.get("app_type") != "online_monitoring"
+                        ):
+                            session_state_data["app_type"] = "online_monitoring"
+
+                # extract CSV files and impeller objects
+                for name in my_zip.namelist():
+                    if name.endswith(".csv"):
+                        # Parse CSV filename to determine case and file number
+                        # Format: curves_file_1_case_A.csv
+                        if "curves_file_" in name:
+                            parts = name.replace(".csv", "").split("_")
+                            # Extract file number and case from filename
+                            file_num = parts[2]
+                            case = parts[-1]
+                            session_state_data[
+                                f"curves_file_{file_num}_case_{case}"
+                            ] = {
+                                "name": name,
+                                "content": my_zip.read(name),
+                            }
+                    if name.endswith(".toml"):
+                        # create file object to read the toml file
+                        impeller_file = io.StringIO(my_zip.read(name).decode("utf-8"))
+                        # Parse impeller filename: impeller_case_A.toml
+                        if name.startswith("impeller_case_"):
+                            case = name.replace("impeller_case_", "").replace(
+                                ".toml", ""
+                            )
+                            session_state_data[f"impeller_case_{case}"] = (
+                                ccp.Impeller.load(impeller_file)
+                            )
+
+            session_state_data_copy = session_state_data.copy()
+            # remove keys that cannot be set with st.session_state.update
+            for key in list(session_state_data.keys()):
+                if key.startswith(
+                    (
+                        "FormSubmitter",
+                        "my_form",
+                        "uploaded",
+                        "form",
+                        "table",
+                    )
+                ):
+                    del session_state_data_copy[key]
+            st.session_state.update(session_state_data_copy)
+            st.session_state.session_name = file.name.replace(".ccp", "")
+            st.session_state.expander_state = True
+            st.rerun()
+
+        if save_button:
+            session_state_dict = dict(st.session_state)
+
+            # create a zip file to add the data to
+            file_name = f"{st.session_state.session_name}.ccp"
+            session_state_dict_copy = session_state_dict.copy()
+            with zipfile.ZipFile(file_name, "w") as my_zip:
+                my_zip.writestr("ccp.version", ccp.__version__)
+
+                # Save impeller objects for each case
+                for key, value in session_state_dict.items():
+                    if isinstance(value, ccp.Impeller):
+                        # Save impeller with case identifier: impeller_case_A.toml
+                        my_zip.writestr(
+                            f"{key}.toml",
+                            toml.dumps(value._dict_to_save()),
+                        )
+                        del session_state_dict_copy[key]
+                    # Save CSV files for each case
+                    if key.startswith("curves_file_") and "_case_" in key:
+                        if session_state_dict[key] is not None:
+                            # Extract case and file number for filename
+                            # key format: curves_file_1_case_A
+                            parts = key.split("_")
+                            file_num = parts[2]
+                            case = parts[-1]
+                            my_zip.writestr(
+                                f"curves_file_{file_num}_case_{case}.csv",
+                                session_state_dict[key]["content"],
+                            )
+                        del session_state_dict_copy[key]
+
+                # Set app type
+                session_state_dict_copy["app_type"] = "online_monitoring"
+
+                # Remove file uploader keys and other non-serializable keys
+                keys_to_remove = []
+                for key in session_state_dict_copy.keys():
+                    if key.startswith(
+                        (
+                            "FormSubmitter",
+                            "my_form",
+                            "uploaded",
+                            "form",
+                            "table",
+                        )
+                    ) or isinstance(
+                        session_state_dict_copy[key],
+                        (bytes, st.runtime.uploaded_file_manager.UploadedFile),
+                    ):
+                        keys_to_remove.append(key)
+
+                # Also remove evaluation and monitoring_results as they can't be serialized
+                for key in ["evaluation", "monitoring_results", "last_fetch"]:
+                    if key in session_state_dict_copy:
+                        keys_to_remove.append(key)
+
+                for key in keys_to_remove:
+                    if key in session_state_dict_copy:
+                        del session_state_dict_copy[key]
+
+                # then save the rest of the session state
+                session_state_json = json.dumps(session_state_dict_copy)
+                my_zip.writestr("session_state.json", session_state_json)
+
+            with open(file_name, "rb") as file:
+                st.download_button(
+                    label="💾 Save As",
+                    data=file,
+                    file_name=file_name,
+                    mime="application/json",
+                )
 
     # Gas selection
     fluid_list = []
