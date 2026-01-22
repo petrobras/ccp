@@ -201,6 +201,9 @@ def main():
                         "uploaded",
                         "form",
                         "table",
+                        "load_curves",
+                        "fetch_data",
+                        "auto_refresh",
                     )
                 ):
                     del session_state_data_copy[key]
@@ -239,7 +242,8 @@ def main():
                                 f"curves_file_{file_num}_case_{case}.csv",
                                 session_state_dict[key]["content"],
                             )
-                        del session_state_dict_copy[key]
+                        if key in session_state_dict_copy:
+                            del session_state_dict_copy[key]
 
                 # Set app type
                 session_state_dict_copy["app_type"] = "online_monitoring"
@@ -247,6 +251,7 @@ def main():
                 # Remove file uploader keys and other non-serializable keys
                 keys_to_remove = []
                 for key in session_state_dict_copy.keys():
+                    value = session_state_dict_copy[key]
                     if key.startswith(
                         (
                             "FormSubmitter",
@@ -254,10 +259,18 @@ def main():
                             "uploaded",
                             "form",
                             "table",
+                            "load_curves",
+                            "fetch_data",
+                            "auto_refresh",
                         )
                     ) or isinstance(
-                        session_state_dict_copy[key],
+                        value,
                         (bytes, st.runtime.uploaded_file_manager.UploadedFile),
+                    ):
+                        keys_to_remove.append(key)
+                    # Also catch dicts containing bytes (like curves_file entries)
+                    elif isinstance(value, dict) and any(
+                        isinstance(v, bytes) for v in value.values()
                     ):
                         keys_to_remove.append(key)
 
