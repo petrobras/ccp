@@ -1,27 +1,28 @@
-import ccp
-import io
-import zipfile
-import json
-import toml
-import streamlit as st
-import pandas as pd
 import base64
-import time
-import sentry_sdk
+import io
+import json
 import logging
-import tempfile
 import shutil
+import tempfile
+import time
+import zipfile
 from pathlib import Path
 
+import pandas as pd
+import sentry_sdk
+import streamlit as st
+import toml
+
+import ccp
 from ccp.app.common import (
-    pressure_units,
-    temperature_units,
     flow_units,
-    flow_v_units,
-    speed_units,
+    gas_selection_form,
+    get_gas_composition,
     head_units,
     power_units,
-    get_gas_composition,
+    pressure_units,
+    speed_units,
+    temperature_units,
 )
 
 sentry_sdk.init(
@@ -309,81 +310,7 @@ def main():
         "h2o",
     ]
 
-    with st.form(key="form_gas_selection", enter_to_submit=False, border=False):
-        with st.expander("Gas Selection", expanded=st.session_state.expander_state):
-            gas_compositions_table = {}
-            gas_columns = st.columns(6)
-            for i, gas_column in enumerate(gas_columns):
-                gas_compositions_table[f"gas_{i}"] = {}
-
-                gas_compositions_table[f"gas_{i}"]["name"] = gas_column.text_input(
-                    "Gas Name",
-                    value=f"gas_{i}",
-                    key=f"gas_{i}",
-                    help=(
-                        """
-                    Gas name will be selected for design cases.
-
-                    Fill in gas components and molar fractions for each gas.
-                    """
-                        if i == 0
-                        else None
-                    ),
-                )
-
-                gas_composition_list = []
-                for key in st.session_state:
-                    if "compositions_table" in key:
-                        for column in st.session_state[key][f"gas_{i}"]:
-                            if "component" in column:
-                                idx = column.split("_")[1]
-                                gas_composition_list.append(
-                                    {
-                                        "component": st.session_state[key][f"gas_{i}"][
-                                            column
-                                        ],
-                                        "molar_fraction": st.session_state[key][
-                                            f"gas_{i}"
-                                        ][f"molar_fraction_{idx}"],
-                                    }
-                                )
-                if not gas_composition_list:
-                    gas_composition_list = [
-                        {"component": molecule, "molar_fraction": 0.0}
-                        for molecule in default_components
-                    ]
-
-                gas_composition_df = pd.DataFrame(gas_composition_list)
-                gas_composition_df_edited = gas_column.data_editor(
-                    gas_composition_df,
-                    num_rows="dynamic",
-                    key=f"table_gas_{i}_composition",
-                    height=int((len(default_components) + 1) * 37.35),
-                    use_container_width=True,
-                    column_config={
-                        "component": st.column_config.SelectboxColumn(
-                            st.session_state[f"gas_{i}"],
-                            options=fluid_list,
-                            width="small",
-                        ),
-                        "molar_fraction": st.column_config.NumberColumn(
-                            "mol %",
-                            min_value=0.0,
-                            default=0.0,
-                            required=True,
-                            format="%.3f",
-                        ),
-                    },
-                )
-
-                for column in gas_composition_df_edited:
-                    for j, value in enumerate(gas_composition_df_edited[column]):
-                        gas_compositions_table[f"gas_{i}"][f"{column}_{j}"] = value
-
-            submit_composition = st.form_submit_button("Submit", type="primary")
-
-            if "gas_compositions_table" not in st.session_state or submit_composition:
-                st.session_state["gas_compositions_table"] = gas_compositions_table
+    gas_compositions_table = gas_selection_form(fluid_list, default_components)
 
     # Design Cases Suction Conditions
     with st.expander(
