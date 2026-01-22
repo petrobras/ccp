@@ -621,36 +621,37 @@ def main():
         with row2[3]:
             st.selectbox("Unit", options=temperature_units, key="disch_T_unit")
 
-        # Row 3: Speed + Flow method selector
-        row3 = st.columns([3, 1, 4])
+        # Row 3: Speed
+        row3 = st.columns([3, 1, 3, 1])
         with row3[0]:
             st.text_input("Speed Tag", key="speed_tag")
         with row3[1]:
             st.selectbox("Unit", options=speed_units, key="speed_unit")
-        with row3[2]:
-            flow_method = st.radio(
-                "Flow Measurement Method",
-                options=["Direct", "Orifice"],
-                key="flow_method",
-                horizontal=True,
-            )
 
-        # Row 4: Flow tags (depends on method)
+        # Row 4: Flow method selector
+        flow_method = st.radio(
+            "Flow Measurement Method",
+            options=["Direct", "Orifice"],
+            key="flow_method",
+            horizontal=True,
+        )
+
+        # Row 5: Flow tags (depends on method)
         if flow_method == "Direct":
-            row4 = st.columns([3, 1, 4])
-            with row4[0]:
+            row5 = st.columns([3, 1, 3, 1])
+            with row5[0]:
                 st.text_input("Flow Tag", key="flow_tag")
-            with row4[1]:
+            with row5[1]:
                 st.selectbox("Unit", options=flow_units, key="flow_unit")
         else:
-            row4 = st.columns([3, 1, 3, 1])
-            with row4[0]:
+            row5 = st.columns([3, 1, 3, 1])
+            with row5[0]:
                 st.text_input("Delta P Tag", key="delta_p_tag")
-            with row4[1]:
+            with row5[1]:
                 st.selectbox("Unit", options=pressure_units, key="delta_p_unit")
-            with row4[2]:
+            with row5[2]:
                 st.text_input("Downstream Pressure Tag", key="p_downstream_tag")
-            with row4[3]:
+            with row5[3]:
                 st.selectbox("Unit", options=pressure_units, key="p_downstream_unit")
 
         # Orifice Parameters (if orifice method)
