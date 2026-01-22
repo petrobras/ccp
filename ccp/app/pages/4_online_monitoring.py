@@ -689,31 +689,42 @@ def main():
             with orifice_row[4]:
                 st.selectbox("Unit", options=length_units, key="orifice_d_unit")
 
-        st.markdown("### Fluid Component Tags (Optional)")
-        st.markdown(
-            "If gas composition varies, configure tags for each component (mol %)."
-        )
+        st.markdown("### Fluid Component")
 
-        fluid_tag_cols = st.columns(5)
-        fluid_components = [
-            "methane",
-            "ethane",
-            "propane",
-            "n-butane",
-            "i-butane",
-            "n-pentane",
-            "i-pentane",
-            "n2",
-            "co2",
-            "h2s",
-        ]
-        for idx, comp in enumerate(fluid_components):
-            with fluid_tag_cols[idx % 5]:
-                st.text_input(
-                    f"{comp} Tag",
-                    key=f"fluid_tag_{comp}",
-                    label_visibility="visible",
+        fluid_row_selector = st.columns([2, 6])
+        with fluid_row_selector[0]:
+            fluid_source = st.radio(
+                "Fluid Source",
+                options=["Fixed Operation Fluid", "Inform Component Tags"],
+                key="fluid_source",
+                label_visibility="collapsed",
+            )
+        with fluid_row_selector[1]:
+            if fluid_source == "Fixed Operation Fluid":
+                gas_options = [
+                    st.session_state.get(f"gas_{i}", f"gas_{i}") for i in range(6)
+                ]
+                st.selectbox(
+                    "Operation Fluid",
+                    options=gas_options,
+                    key="operation_fluid_gas",
                 )
+
+        if fluid_source == "Inform Component Tags":
+            st.markdown("Configure tags for each component (mol %).")
+            # Create 3 rows with 4 component+tag pairs per row (12 total)
+            for row_idx in range(3):
+                fluid_row = st.columns([1, 2, 1, 2, 1, 2, 1, 2])
+                for col_idx in range(4):
+                    comp_idx = row_idx * 4 + col_idx
+                    with fluid_row[col_idx * 2]:
+                        st.selectbox(
+                            "Component",
+                            options=fluid_list,
+                            key=f"fluid_component_{comp_idx}",
+                        )
+                    with fluid_row[col_idx * 2 + 1]:
+                        st.text_input("Tag", key=f"fluid_tag_{comp_idx}")
 
     # Online Monitoring Expander
     with st.expander("Online Monitoring", expanded=True):
