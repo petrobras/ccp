@@ -1148,11 +1148,18 @@ def main():
                                 )
 
                     st.session_state.evaluation = evaluation
-                    st.session_state.monitoring_results = df_results
-                    st.session_state.accumulated_results = df_results.tail(5)
-                    st.session_state.monitoring_active = True
-                    st.session_state.last_fetch = time.time()
-                    st.rerun()
+                    # Filter for successfully calculated points (head > 0)
+                    valid_calculated = df_results[df_results["head"] > 0]
+                    if valid_calculated.empty:
+                        st.warning(
+                            "No points could be calculated. Check data quality thresholds."
+                        )
+                    else:
+                        st.session_state.monitoring_results = valid_calculated
+                        st.session_state.accumulated_results = valid_calculated.tail(5)
+                        st.session_state.monitoring_active = True
+                        st.session_state.last_fetch = time.time()
+                        st.rerun()
 
                 except Exception as e:
                     import traceback
@@ -1434,32 +1441,48 @@ def main():
                 st.markdown("### Current Point Information")
                 info_cols = st.columns(4)
 
+                # Convert values to display units using pint
+                display_eff = latest.eff * 100 if latest.eff > 0 else None
+                display_head = (
+                    Q_(latest["head"], "J/kg").to("kJ/kg").m
+                    if latest["head"] > 0
+                    else None
+                )
+                display_power = (
+                    Q_(latest.power, "W").to("kW").m if latest.power > 0 else None
+                )
+                display_p_disch = (
+                    Q_(latest.p_disch, "bar").to("bar").m
+                    if latest.p_disch > 0
+                    else None
+                )
+
                 with info_cols[0]:
                     st.metric(
-                        "Efficiency",
-                        f"{latest.eff:.2f} %" if latest.eff > 0 else "N/A",
+                        "Efficiency (%)",
+                        f"{display_eff:.2f}" if display_eff else "N/A",
                         f"{latest.delta_eff:.2f} %" if latest.delta_eff != -1 else None,
                     )
                 with info_cols[1]:
                     st.metric(
-                        "Head",
-                        f"{latest['head']:.2f} kJ/kg" if latest["head"] > 0 else "N/A",
+                        "Head (kJ/kg)",
+                        f"{display_head:.2f}" if display_head else "N/A",
                         f"{latest['delta_head']:.2f} %"
                         if latest["delta_head"] != -1
                         else None,
                     )
                 with info_cols[2]:
                     st.metric(
-                        "Power",
-                        f"{latest.power:.2f} kW" if latest.power > 0 else "N/A",
+                        "Power (kW)",
+                        f"{display_power:.2f}" if display_power else "N/A",
                         f"{latest.delta_power:.2f} %"
                         if latest.delta_power != -1
                         else None,
                     )
                 with info_cols[3]:
                     st.metric(
-                        "Disch. Pressure",
-                        f"{latest.p_disch:.2f} bar" if latest.p_disch > 0 else "N/A",
+                        "Disch. Pressure (bar)",
+                        f"{display_p_disch:.2f}" if display_p_disch else "N/A",
                         f"{latest.delta_p_disch:.2f} %"
                         if latest.delta_p_disch != -1
                         else None,
@@ -1582,16 +1605,21 @@ def main():
                         else:
                             st.session_state.debug_last_fetch_errors = None
 
-                    # Accumulate results (keep last 5)
+                    # Filter for successfully calculated points (head > 0)
+                    valid_new = df_new_results[df_new_results["head"] > 0]
+
+                    # Accumulate results (keep last 5, only successfully calculated points)
                     if st.session_state.accumulated_results is not None:
                         accumulated = pd.concat(
-                            [st.session_state.accumulated_results, df_new_results]
+                            [st.session_state.accumulated_results, valid_new]
                         )
                         st.session_state.accumulated_results = accumulated.tail(5)
-                    else:
-                        st.session_state.accumulated_results = df_new_results.tail(5)
+                    elif not valid_new.empty:
+                        st.session_state.accumulated_results = valid_new.tail(5)
 
-                    st.session_state.monitoring_results = df_new_results
+                    # Update monitoring_results only if there are valid points
+                    if not valid_new.empty:
+                        st.session_state.monitoring_results = valid_new
                     st.session_state.last_fetch = time.time()
 
                 except Exception as e:
