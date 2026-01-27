@@ -391,7 +391,7 @@ def gas_selection_form(fluid_list, default_components):
                     num_rows="dynamic",
                     key=f"table_gas_{i}_composition",
                     height=int((len(default_components) + 1) * 37.35),
-                    use_container_width=True,
+                    width="stretch",
                     column_config={
                         "component": st.column_config.SelectboxColumn(
                             "comp.",

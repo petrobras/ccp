@@ -1048,9 +1048,9 @@ def main():
                     with st.spinner("Initializing monitoring..."):
                         evaluation = ccp.Evaluation(**evaluation_kwargs)
 
-                        # Calculate initial points
+                        # Calculate initial points for last 5 points
                         df_results = evaluation.calculate_points(
-                            df_raw, drop_invalid_values=False
+                            df_raw.tail(5), drop_invalid_values=False
                         )
 
                     st.session_state.evaluation = evaluation
@@ -1144,7 +1144,7 @@ def main():
                             flow_v_units=plot_flow_units,
                             head_units=plot_head_units,
                         )
-                        st.plotly_chart(head_fig, use_container_width=True)
+                        st.plotly_chart(head_fig, width="stretch")
                     except Exception as e:
                         st.error(f"Error creating head plot: {e}")
 
@@ -1159,7 +1159,7 @@ def main():
                             flow_v_units=plot_flow_units,
                             power_units=plot_power_units,
                         )
-                        st.plotly_chart(power_fig, use_container_width=True)
+                        st.plotly_chart(power_fig, width="stretch")
                     except Exception as e:
                         st.error(f"Error creating power plot: {e}")
 
@@ -1174,7 +1174,7 @@ def main():
                             ),
                             flow_v_units=plot_flow_units,
                         )
-                        st.plotly_chart(eff_fig, use_container_width=True)
+                        st.plotly_chart(eff_fig, width="stretch")
                     except Exception as e:
                         st.error(f"Error creating efficiency plot: {e}")
 
@@ -1189,7 +1189,7 @@ def main():
                             flow_v_units=plot_flow_units,
                             p_units=plot_p_units,
                         )
-                        st.plotly_chart(disch_p_fig, use_container_width=True)
+                        st.plotly_chart(disch_p_fig, width="stretch")
                     except Exception as e:
                         st.error(f"Error creating discharge pressure plot: {e}")
 
@@ -1265,7 +1265,7 @@ def main():
                     .apply(lambda _: style_rows_by_age(df_display), axis=0)
                 )
 
-                st.dataframe(styled_df, use_container_width=True)
+                st.dataframe(styled_df, width="stretch")
 
             # Auto-refresh logic when monitoring is active
             if (
