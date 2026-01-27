@@ -18,6 +18,7 @@ import toml
 
 import ccp
 from ccp.app.common import (
+    display_debug_data,
     flow_units,
     gas_selection_form,
     get_gas_composition,
@@ -97,6 +98,9 @@ def fetch_pi_data_online(tag_mappings, testing=False):
             df = pd.read_parquet(data_path / "data_delta_p.parquet")
         else:
             df = pd.read_parquet(data_path / "data.parquet")
+
+        # Filter for valid data (speed > 9000)
+        df = df[df["speed"] > 9000].reset_index(drop=True)
 
         # Select random position and return 3 adjacent points
         max_start_idx = len(df) - 3
@@ -1046,12 +1050,36 @@ def main():
 
                     # Create Evaluation with all impellers
                     with st.spinner("Initializing monitoring..."):
+                        # Debug: show Evaluation kwargs
+                        if TESTING_MODE:
+                            display_debug_data(
+                                "ccp.Evaluation kwargs",
+                                evaluation_kwargs,
+                                expanded=True,
+                            )
+
                         evaluation = ccp.Evaluation(**evaluation_kwargs)
+
+                        # Debug: show calculate_points input data
+                        if TESTING_MODE:
+                            display_debug_data(
+                                "evaluation.calculate_points() input",
+                                {"data": df_raw.tail(5), "drop_invalid_values": False},
+                                expanded=True,
+                            )
 
                         # Calculate initial points for last 5 points
                         df_results = evaluation.calculate_points(
                             df_raw.tail(5), drop_invalid_values=False
                         )
+
+                        # Debug: show calculate_points results
+                        if TESTING_MODE:
+                            display_debug_data(
+                                "evaluation.calculate_points() results",
+                                df_results,
+                                expanded=True,
+                            )
 
                     st.session_state.evaluation = evaluation
                     st.session_state.monitoring_results = df_results
@@ -1243,6 +1271,20 @@ def main():
 
                 st.dataframe(styled_df, width="stretch")
 
+                # Display debug data from last fetch (testing mode)
+                if (
+                    TESTING_MODE
+                    and st.session_state.get("debug_last_fetch_input") is not None
+                ):
+                    display_debug_data(
+                        "Last fetch - calculate_points() input",
+                        {"data": st.session_state.debug_last_fetch_input},
+                    )
+                    display_debug_data(
+                        "Last fetch - calculate_points() results",
+                        st.session_state.debug_last_fetch_results,
+                    )
+
             # Auto-refresh logic when monitoring is active
             if (
                 st.session_state.monitoring_active
@@ -1260,6 +1302,11 @@ def main():
                     df_new_results = evaluation.calculate_points(
                         df_new, drop_invalid_values=False
                     )
+
+                    # Store debug data for display after rerun
+                    if TESTING_MODE:
+                        st.session_state.debug_last_fetch_input = df_new
+                        st.session_state.debug_last_fetch_results = df_new_results
 
                     # Accumulate results (keep last 5)
                     if st.session_state.accumulated_results is not None:
