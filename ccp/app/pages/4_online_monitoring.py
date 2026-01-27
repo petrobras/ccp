@@ -81,7 +81,8 @@ def fetch_pi_data_online(tag_mappings, testing=False):
     tag_mappings : dict
         Dictionary with tag mappings (used to determine which file to load).
     testing : bool, optional
-        If True, returns 3 adjacent points from a random position in test data.
+        If True, returns 3 adjacent points from a random position in test data,
+        with timestamps adjusted to simulate real-time data.
 
     Returns
     -------
@@ -100,9 +101,24 @@ def fetch_pi_data_online(tag_mappings, testing=False):
         # Select random position and return 3 adjacent points
         max_start_idx = len(df) - 3
         if max_start_idx <= 0:
-            return df
-        start_idx = random.randint(0, max_start_idx)
-        return df.iloc[start_idx : start_idx + 3]
+            df_sample = df.copy()
+        else:
+            start_idx = random.randint(0, max_start_idx)
+            df_sample = df.iloc[start_idx : start_idx + 3].copy()
+
+        # Adjust timestamps to simulate real-time data
+        # Last point: current time
+        # Middle point: current time - 7 min 30 sec
+        # First point: current time - 15 min
+        now = datetime.now()
+        new_timestamps = [
+            now - timedelta(minutes=15),
+            now - timedelta(minutes=7, seconds=30),
+            now,
+        ]
+        df_sample.index = pd.DatetimeIndex(new_timestamps[: len(df_sample)])
+
+        return df_sample
     else:
         # TODO: Implement real PI data fetch
         # This should connect to PI server and fetch latest 3 points
