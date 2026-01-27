@@ -964,6 +964,44 @@ def main():
                         type="secondary",
                     )
 
+            # Data quality thresholds (collapsible)
+            with st.expander("Data Quality Thresholds", expanded=False):
+                st.caption(
+                    "Points are marked as invalid if fluctuation exceeds these thresholds. "
+                    "Fluctuation = (max - min) / mean × 100%"
+                )
+                threshold_cols = st.columns(3)
+                with threshold_cols[0]:
+                    temperature_fluctuation = st.number_input(
+                        "Temperature (%)",
+                        min_value=0.1,
+                        max_value=10.0,
+                        value=0.5,
+                        step=0.1,
+                        key="temperature_fluctuation",
+                        disabled=st.session_state.monitoring_active,
+                    )
+                with threshold_cols[1]:
+                    pressure_fluctuation = st.number_input(
+                        "Pressure (%)",
+                        min_value=0.1,
+                        max_value=10.0,
+                        value=2.0,
+                        step=0.1,
+                        key="pressure_fluctuation",
+                        disabled=st.session_state.monitoring_active,
+                    )
+                with threshold_cols[2]:
+                    speed_fluctuation = st.number_input(
+                        "Speed (%)",
+                        min_value=0.1,
+                        max_value=10.0,
+                        value=0.5,
+                        step=0.1,
+                        key="speed_fluctuation",
+                        disabled=st.session_state.monitoring_active,
+                    )
+
             # Build tag mappings
             tag_mappings = {
                 "suc_p_tag": st.session_state.get("suc_p_tag", ""),
@@ -1024,6 +1062,16 @@ def main():
                         "impellers": impellers_list,
                         "n_clusters": len(impellers_list),
                         "calculate_points": False,
+                        "parallel": not TESTING_MODE,  # Sequential for debugging
+                        "temperature_fluctuation": st.session_state.get(
+                            "temperature_fluctuation", 0.5
+                        ),
+                        "pressure_fluctuation": st.session_state.get(
+                            "pressure_fluctuation", 2.0
+                        ),
+                        "speed_fluctuation": st.session_state.get(
+                            "speed_fluctuation", 0.5
+                        ),
                     }
 
                     if flow_method == "Direct":
@@ -1070,7 +1118,9 @@ def main():
 
                         # Calculate initial points for last 5 points
                         df_results = evaluation.calculate_points(
-                            df_raw.tail(5), drop_invalid_values=False
+                            df_raw.tail(5),
+                            drop_invalid_values=False,
+                            parallel=not TESTING_MODE,
                         )
 
                         # Debug: show calculate_points results
@@ -1080,6 +1130,21 @@ def main():
                                 df_results,
                                 expanded=True,
                             )
+                            # Show calculation errors if any
+                            errors = df_results[df_results["error"].notna()]
+                            if not errors.empty:
+                                display_debug_data(
+                                    "Calculation Errors",
+                                    errors[
+                                        [
+                                            "error",
+                                            "error_type",
+                                            "expected_error",
+                                            "expected_error_type",
+                                        ]
+                                    ],
+                                    expanded=True,
+                                )
 
                     st.session_state.evaluation = evaluation
                     st.session_state.monitoring_results = df_results
@@ -1089,8 +1154,13 @@ def main():
                     st.rerun()
 
                 except Exception as e:
+                    import traceback
+
+                    error_trace = traceback.format_exc()
                     st.error(f"Error starting monitoring: {str(e)}")
                     logging.error(f"Error in online monitoring: {e}")
+                    if TESTING_MODE:
+                        st.code(error_trace, language="python")
 
             # Handle Stop Monitoring button
             if (
@@ -1280,10 +1350,36 @@ def main():
                         "Last fetch - calculate_points() input",
                         {"data": st.session_state.debug_last_fetch_input},
                     )
+                    df_debug = st.session_state.debug_last_fetch_results
                     display_debug_data(
                         "Last fetch - calculate_points() results",
-                        st.session_state.debug_last_fetch_results,
+                        df_debug,
                     )
+                    # Show invalid data explanation
+                    invalid_count = (
+                        (~df_debug["valid"]).sum() if "valid" in df_debug.columns else 0
+                    )
+                    if invalid_count > 0:
+                        temp_thresh = st.session_state.get(
+                            "temperature_fluctuation", 0.5
+                        )
+                        pres_thresh = st.session_state.get("pressure_fluctuation", 2.0)
+                        speed_thresh = st.session_state.get("speed_fluctuation", 0.5)
+                        st.info(
+                            f"**{invalid_count} point(s) marked as invalid** (valid=False). "
+                            f"Data exceeded fluctuation thresholds:\n"
+                            f"- Temperature: {temp_thresh}%\n"
+                            f"- Pressure: {pres_thresh}%\n"
+                            f"- Speed: {speed_thresh}%\n\n"
+                            "Points with valid=False are not calculated (shown as -1). "
+                            "Adjust thresholds in 'Data Quality Thresholds' section."
+                        )
+                    # Display actual calculation errors if any
+                    if st.session_state.get("debug_last_fetch_errors") is not None:
+                        display_debug_data(
+                            "Last fetch - Calculation Errors",
+                            st.session_state.debug_last_fetch_errors,
+                        )
 
             # Auto-refresh logic when monitoring is active
             if (
@@ -1300,13 +1396,28 @@ def main():
                     # Calculate points for new data
                     evaluation = st.session_state.evaluation
                     df_new_results = evaluation.calculate_points(
-                        df_new, drop_invalid_values=False
+                        df_new,
+                        drop_invalid_values=False,
+                        parallel=not TESTING_MODE,
                     )
 
                     # Store debug data for display after rerun
                     if TESTING_MODE:
                         st.session_state.debug_last_fetch_input = df_new
                         st.session_state.debug_last_fetch_results = df_new_results
+                        # Store errors if any
+                        errors = df_new_results[df_new_results["error"].notna()]
+                        if not errors.empty:
+                            st.session_state.debug_last_fetch_errors = errors[
+                                [
+                                    "error",
+                                    "error_type",
+                                    "expected_error",
+                                    "expected_error_type",
+                                ]
+                            ]
+                        else:
+                            st.session_state.debug_last_fetch_errors = None
 
                     # Accumulate results (keep last 5)
                     if st.session_state.accumulated_results is not None:
