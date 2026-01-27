@@ -1073,38 +1073,6 @@ def main():
                 st.session_state.monitoring_active = False
                 st.rerun()
 
-            # Handle auto-refresh when monitoring is active
-            if (
-                st.session_state.monitoring_active
-                and st.session_state.get("evaluation") is not None
-            ):
-                try:
-                    # Fetch new 3 points
-                    df_new = fetch_pi_data_online(tag_mappings, testing=TESTING_MODE)
-
-                    # Calculate points for new data
-                    evaluation = st.session_state.evaluation
-                    df_new_results = evaluation.calculate_points(
-                        df_new, drop_invalid_values=False
-                    )
-
-                    # Accumulate results (keep last 5)
-                    if st.session_state.accumulated_results is not None:
-                        accumulated = pd.concat(
-                            [st.session_state.accumulated_results, df_new_results]
-                        )
-                        st.session_state.accumulated_results = accumulated.tail(5)
-                    else:
-                        st.session_state.accumulated_results = df_new_results.tail(5)
-
-                    st.session_state.monitoring_results = df_new_results
-                    st.session_state.last_fetch = time.time()
-
-                except Exception as e:
-                    st.error(f"Error fetching data: {str(e)}")
-                    logging.error(f"Error in online monitoring refresh: {e}")
-
-            # Display results
             # Display results
             if st.session_state.get("monitoring_results") is not None:
                 df_results = st.session_state.monitoring_results
@@ -1136,7 +1104,9 @@ def main():
                     # Head plot
                     try:
                         head_fig = converted_impeller.head_plot(
-                            flow_v=Q_(latest.flow_v, "m³/s"),
+                            flow_v=Q_(
+                                latest.flow_v, st.session_state.get("flow_unit", "m³/h")
+                            ),
                             speed=Q_(
                                 latest.speed,
                                 st.session_state.get("speed_unit", "rpm"),
@@ -1151,7 +1121,9 @@ def main():
                     # Power plot
                     try:
                         power_fig = converted_impeller.power_plot(
-                            flow_v=Q_(latest.flow_v, "m³/s"),
+                            flow_v=Q_(
+                                latest.flow_v, st.session_state.get("flow_unit", "m³/h")
+                            ),
                             speed=Q_(
                                 latest.speed,
                                 st.session_state.get("speed_unit", "rpm"),
@@ -1167,7 +1139,9 @@ def main():
                     # Efficiency plot
                     try:
                         eff_fig = converted_impeller.eff_plot(
-                            flow_v=Q_(latest.flow_v, "m³/s"),
+                            flow_v=Q_(
+                                latest.flow_v, st.session_state.get("flow_unit", "m³/h")
+                            ),
                             speed=Q_(
                                 latest.speed,
                                 st.session_state.get("speed_unit", "rpm"),
@@ -1181,7 +1155,9 @@ def main():
                     # Discharge Pressure plot
                     try:
                         disch_p_fig = converted_impeller.disch.p_plot(
-                            flow_v=Q_(latest.flow_v, "m³/s"),
+                            flow_v=Q_(
+                                latest.flow_v, st.session_state.get("flow_unit", "m³/h")
+                            ),
                             speed=Q_(
                                 latest.speed,
                                 st.session_state.get("speed_unit", "rpm"),
@@ -1272,7 +1248,35 @@ def main():
                 st.session_state.monitoring_active
                 and st.session_state.get("evaluation") is not None
             ):
+                # Wait for refresh interval
                 time.sleep(refresh_interval)
+
+                # Fetch new 3 points after waiting
+                try:
+                    df_new = fetch_pi_data_online(tag_mappings, testing=TESTING_MODE)
+
+                    # Calculate points for new data
+                    evaluation = st.session_state.evaluation
+                    df_new_results = evaluation.calculate_points(
+                        df_new, drop_invalid_values=False
+                    )
+
+                    # Accumulate results (keep last 5)
+                    if st.session_state.accumulated_results is not None:
+                        accumulated = pd.concat(
+                            [st.session_state.accumulated_results, df_new_results]
+                        )
+                        st.session_state.accumulated_results = accumulated.tail(5)
+                    else:
+                        st.session_state.accumulated_results = df_new_results.tail(5)
+
+                    st.session_state.monitoring_results = df_new_results
+                    st.session_state.last_fetch = time.time()
+
+                except Exception as e:
+                    st.error(f"Error fetching data: {str(e)}")
+                    logging.error(f"Error in online monitoring refresh: {e}")
+
                 st.rerun()
 
 
