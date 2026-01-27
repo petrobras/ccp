@@ -2,10 +2,13 @@ import base64
 import io
 import json
 import logging
+import random
 import shutil
+import sys
 import tempfile
 import time
 import zipfile
+from datetime import datetime, timedelta
 from pathlib import Path
 
 import pandas as pd
@@ -26,6 +29,10 @@ from ccp.app.common import (
     temperature_units,
 )
 
+# Parse command line arguments for testing mode
+# Usage: streamlit run app.py -- testing=True
+TESTING_MODE = "testing=True" in sys.argv
+
 sentry_sdk.init(
     dsn="https://8fd0e79dffa94dbb9747bf64e7e55047@o348313.ingest.sentry.io/4505046640623616",
     traces_sample_rate=1.0,
@@ -33,29 +40,73 @@ sentry_sdk.init(
 )
 
 
-def fetch_pi_data(tag_mappings, n_points=3):
-    """Mock PI data fetch - loads from test parquet files.
+def fetch_pi_data(tag_mappings, start_time=None, testing=False):
+    """Fetch historical PI data from start_time to now.
 
     Parameters
     ----------
     tag_mappings : dict
         Dictionary with tag mappings (used to determine which file to load).
-    n_points : int, optional
-        Number of points to return.
+    start_time : datetime, optional
+        Start time from which to fetch data. If None, returns all data.
+    testing : bool, optional
+        If True, returns complete test dataframe from parquet files.
 
     Returns
     -------
     pd.DataFrame
-        DataFrame with the requested number of points.
+        DataFrame with data from start_time to now.
     """
-    data_path = Path(ccp.__file__).parent / "tests/data"
+    if testing:
+        # Load test data from parquet files
+        data_path = Path(ccp.__file__).parent / "tests/data"
 
-    if tag_mappings.get("delta_p_tag"):
-        df = pd.read_parquet(data_path / "data_delta_p.parquet")
+        if tag_mappings.get("delta_p_tag"):
+            df = pd.read_parquet(data_path / "data_delta_p.parquet")
+        else:
+            df = pd.read_parquet(data_path / "data.parquet")
+
+        return df
     else:
-        df = pd.read_parquet(data_path / "data.parquet")
+        # TODO: Implement real PI data fetch
+        # This should connect to PI server and fetch data from start_time to now
+        raise NotImplementedError("Real PI data fetch not implemented yet")
 
-    return df.tail(n_points)
+
+def fetch_pi_data_online(tag_mappings, testing=False):
+    """Fetch latest 3 points from PI server for online monitoring.
+
+    Parameters
+    ----------
+    tag_mappings : dict
+        Dictionary with tag mappings (used to determine which file to load).
+    testing : bool, optional
+        If True, returns 3 adjacent points from a random position in test data.
+
+    Returns
+    -------
+    pd.DataFrame
+        DataFrame with 3 latest data points.
+    """
+    if testing:
+        # Load test data from parquet files
+        data_path = Path(ccp.__file__).parent / "tests/data"
+
+        if tag_mappings.get("delta_p_tag"):
+            df = pd.read_parquet(data_path / "data_delta_p.parquet")
+        else:
+            df = pd.read_parquet(data_path / "data.parquet")
+
+        # Select random position and return 3 adjacent points
+        max_start_idx = len(df) - 3
+        if max_start_idx <= 0:
+            return df
+        start_idx = random.randint(0, max_start_idx)
+        return df.iloc[start_idx : start_idx + 3]
+    else:
+        # TODO: Implement real PI data fetch
+        # This should connect to PI server and fetch latest 3 points
+        raise NotImplementedError("Real PI data fetch not implemented yet")
 
 
 def main():
@@ -98,6 +149,13 @@ def main():
     """
     )
 
+    # Show testing mode alert at top of page
+    if TESTING_MODE:
+        st.warning(
+            "**Testing Mode**: Running with mock data from test files. "
+            "To run with real PI data, start without the `testing=True` argument."
+        )
+
     def get_session():
         # Initialize session state variables
         if "session_name" not in st.session_state:
@@ -131,6 +189,103 @@ def main():
             st.session_state.monitoring_results = None
 
     get_session()
+
+    def load_ccp_file(file_path):
+        """Load a .ccp session file and update session state.
+
+        Parameters
+        ----------
+        file_path : Path
+            Path to the .ccp file to load.
+
+        Returns
+        -------
+        bool
+            True if file was loaded successfully, False otherwise.
+        """
+        try:
+            with zipfile.ZipFile(file_path) as my_zip:
+                # get the ccp version
+                try:
+                    version = my_zip.read("ccp.version").decode("utf-8")
+                except KeyError:
+                    version = "0.3.5"
+
+                session_state_data = {}
+                for name in my_zip.namelist():
+                    if name.endswith(".json"):
+                        session_state_data = json.loads(my_zip.read(name))
+                        # Check if it's an online monitoring file
+                        if (
+                            "app_type" not in session_state_data
+                            or session_state_data.get("app_type") != "online_monitoring"
+                        ):
+                            session_state_data["app_type"] = "online_monitoring"
+
+                # extract CSV files and impeller objects
+                for name in my_zip.namelist():
+                    if name.endswith(".csv"):
+                        # Parse CSV filename to determine case and file number
+                        # Format: curves_file_1_case_A.csv
+                        if "curves_file_" in name:
+                            parts = name.replace(".csv", "").split("_")
+                            # Extract file number and case from filename
+                            file_num = parts[2]
+                            case = parts[-1]
+                            session_state_data[
+                                f"curves_file_{file_num}_case_{case}"
+                            ] = {
+                                "name": name,
+                                "content": my_zip.read(name),
+                            }
+                    if name.endswith(".toml"):
+                        # create file object to read the toml file
+                        impeller_file = io.StringIO(my_zip.read(name).decode("utf-8"))
+                        # Parse impeller filename: impeller_case_A.toml
+                        if name.startswith("impeller_case_"):
+                            case = name.replace("impeller_case_", "").replace(
+                                ".toml", ""
+                            )
+                            session_state_data[f"impeller_case_{case}"] = (
+                                ccp.Impeller.load(impeller_file)
+                            )
+
+                session_state_data_copy = session_state_data.copy()
+                # remove keys that cannot be set with st.session_state.update
+                for key in list(session_state_data.keys()):
+                    if key.startswith(
+                        (
+                            "FormSubmitter",
+                            "my_form",
+                            "uploaded",
+                            "form",
+                            "table",
+                            "load_curves",
+                            "fetch_data",
+                            "auto_refresh",
+                            "start_monitoring",
+                            "stop_monitoring",
+                        )
+                    ):
+                        del session_state_data_copy[key]
+                st.session_state.update(session_state_data_copy)
+                st.session_state.session_name = file_path.stem
+                st.session_state.expander_state = True
+                return True
+        except Exception as e:
+            logging.error(f"Error loading .ccp file: {e}")
+            return False
+
+    # Auto-load example file in testing mode
+    if TESTING_MODE and "test_file_loaded" not in st.session_state:
+        example_file = Path(__file__).parent.parent / "example_online.ccp"
+        if example_file.exists():
+            if load_ccp_file(example_file):
+                st.session_state.test_file_loaded = True
+                st.rerun()
+        else:
+            st.warning(f"Testing mode: example file not found at {example_file}")
+            st.session_state.test_file_loaded = True  # Prevent repeated warnings
 
     # Create a Streamlit sidebar with a file uploader to load a session state file
     with st.sidebar.expander("📁 File"):
@@ -732,41 +887,62 @@ def main():
 
         # Get available cases (those with loaded impellers)
         available_cases = []
+        impellers_list = []
         for case in ["A", "B", "C", "D"]:
             if st.session_state.get(f"impeller_case_{case}") is not None:
                 available_cases.append(case)
+                impellers_list.append(st.session_state[f"impeller_case_{case}"])
 
         if not available_cases:
             st.warning(
                 "No design cases loaded. Please upload performance curves for at least one case."
             )
         else:
-            # Case selector
-            selected_case = st.selectbox(
-                "Select Design Case",
-                options=available_cases,
-                key="monitoring_case",
-            )
+            # Initialize monitoring state
+            if "monitoring_active" not in st.session_state:
+                st.session_state.monitoring_active = False
+            if "accumulated_results" not in st.session_state:
+                st.session_state.accumulated_results = None
 
-            # Monitoring controls
-            control_cols = st.columns(3)
-            with control_cols[0]:
-                auto_refresh = st.checkbox("Auto-refresh", key="auto_refresh")
-            with control_cols[1]:
-                if auto_refresh:
-                    refresh_interval = st.slider(
-                        "Refresh interval (s)",
-                        min_value=5,
-                        max_value=60,
-                        value=30,
-                        key="refresh_interval",
-                    )
-            with control_cols[2]:
-                fetch_button = st.button(
-                    "Fetch Latest Data",
-                    key="fetch_data",
-                    type="primary",
+            # First row: Start date, Start time, Start/Stop Monitoring button
+            control_row1 = st.columns([1, 1, 1, 1])
+            with control_row1[0]:
+                default_start = datetime.now() - timedelta(hours=1)
+                start_date = st.date_input(
+                    "Start Date",
+                    value=default_start.date(),
+                    key="start_date",
+                    disabled=st.session_state.monitoring_active,
                 )
+            with control_row1[1]:
+                start_time_input = st.time_input(
+                    "Start Time",
+                    value=default_start.time(),
+                    key="start_time",
+                    disabled=st.session_state.monitoring_active,
+                )
+            with control_row1[2]:
+                refresh_interval = st.slider(
+                    "Refresh interval (s)",
+                    min_value=5,
+                    max_value=60,
+                    value=30,
+                    key="refresh_interval",
+                    disabled=st.session_state.monitoring_active,
+                )
+            with control_row1[3]:
+                if not st.session_state.monitoring_active:
+                    start_button = st.button(
+                        "Start Monitoring",
+                        key="start_monitoring",
+                        type="primary",
+                    )
+                else:
+                    stop_button = st.button(
+                        "Stop Monitoring",
+                        key="stop_monitoring",
+                        type="secondary",
+                    )
 
             # Build tag mappings
             tag_mappings = {
@@ -786,16 +962,23 @@ def main():
                     "p_downstream_tag", ""
                 )
 
-            if fetch_button or (auto_refresh and "last_fetch" in st.session_state):
+            # Handle Start Monitoring button
+            if (
+                not st.session_state.monitoring_active
+                and "start_monitoring" in st.session_state
+                and st.session_state.start_monitoring
+            ):
                 try:
-                    # Fetch data
-                    df_raw = fetch_pi_data(tag_mappings, n_points=3)
+                    # Combine date and time inputs into a datetime
+                    start_datetime = datetime.combine(start_date, start_time_input)
 
-                    # Get impeller for selected case
-                    impeller = st.session_state[f"impeller_case_{selected_case}"]
+                    # Fetch initial historical data
+                    df_raw = fetch_pi_data(
+                        tag_mappings, start_time=start_datetime, testing=TESTING_MODE
+                    )
 
-                    # Get gas composition for the case
-                    gas_name = st.session_state.get(f"gas_case_{selected_case}")
+                    # Get gas composition from first available case
+                    gas_name = st.session_state.get(f"gas_case_{available_cases[0]}")
                     if "gas_compositions_table" in st.session_state:
                         operation_fluid = get_gas_composition(
                             gas_name,
@@ -818,8 +1001,8 @@ def main():
                         "data": df_raw,
                         "operation_fluid": operation_fluid,
                         "data_units": data_units,
-                        "impellers": [impeller],
-                        "n_clusters": 2,
+                        "impellers": impellers_list,
+                        "n_clusters": len(impellers_list),
                         "calculate_points": False,
                     }
 
@@ -845,23 +1028,67 @@ def main():
                             "orifice_tappings", "flange"
                         )
 
-                    # Create Evaluation
-                    with st.spinner("Processing data..."):
+                    # Create Evaluation with all impellers
+                    with st.spinner("Initializing monitoring..."):
                         evaluation = ccp.Evaluation(**evaluation_kwargs)
 
-                        # Calculate points
+                        # Calculate initial points
                         df_results = evaluation.calculate_points(
                             df_raw, drop_invalid_values=False
                         )
 
                     st.session_state.evaluation = evaluation
                     st.session_state.monitoring_results = df_results
+                    st.session_state.accumulated_results = df_results.tail(5)
+                    st.session_state.monitoring_active = True
+                    st.session_state.last_fetch = time.time()
+                    st.rerun()
+
+                except Exception as e:
+                    st.error(f"Error starting monitoring: {str(e)}")
+                    logging.error(f"Error in online monitoring: {e}")
+
+            # Handle Stop Monitoring button
+            if (
+                st.session_state.monitoring_active
+                and "stop_monitoring" in st.session_state
+                and st.session_state.stop_monitoring
+            ):
+                st.session_state.monitoring_active = False
+                st.rerun()
+
+            # Handle auto-refresh when monitoring is active
+            if (
+                st.session_state.monitoring_active
+                and st.session_state.get("evaluation") is not None
+            ):
+                try:
+                    # Fetch new 3 points
+                    df_new = fetch_pi_data_online(tag_mappings, testing=TESTING_MODE)
+
+                    # Calculate points for new data
+                    evaluation = st.session_state.evaluation
+                    df_new_results = evaluation.calculate_points(
+                        df_new, drop_invalid_values=False
+                    )
+
+                    # Accumulate results (keep last 5)
+                    if st.session_state.accumulated_results is not None:
+                        accumulated = pd.concat(
+                            [st.session_state.accumulated_results, df_new_results]
+                        )
+                        st.session_state.accumulated_results = accumulated.tail(5)
+                    else:
+                        st.session_state.accumulated_results = df_new_results.tail(5)
+
+                    st.session_state.monitoring_results = df_new_results
                     st.session_state.last_fetch = time.time()
 
                 except Exception as e:
-                    st.error(f"Error processing data: {str(e)}")
-                    logging.error(f"Error in online monitoring: {e}")
+                    st.error(f"Error fetching data: {str(e)}")
+                    logging.error(f"Error in online monitoring refresh: {e}")
 
+            # Display results
             # Display results
             if st.session_state.get("monitoring_results") is not None:
                 df_results = st.session_state.monitoring_results
@@ -963,9 +1190,9 @@ def main():
                 with info_cols[1]:
                     st.metric(
                         "Head",
-                        f"{latest.head:.2f} kJ/kg" if latest.head > 0 else "N/A",
-                        f"{latest.delta_head:.2f} %"
-                        if latest.delta_head != -1
+                        f"{latest['head']:.2f} kJ/kg" if latest["head"] > 0 else "N/A",
+                        f"{latest['delta_head']:.2f} %"
+                        if latest["delta_head"] != -1
                         else None,
                     )
                 with info_cols[2]:
@@ -985,8 +1212,8 @@ def main():
                         else None,
                     )
 
-                # Historical Table
-                st.markdown("### Recent Points History")
+                # Historical Table - show last 5 accumulated points
+                st.markdown("### Recent Points History (Last 5)")
                 display_cols = [
                     "eff",
                     "expected_eff",
@@ -999,16 +1226,36 @@ def main():
                     "delta_power",
                     "valid",
                 ]
-                available_cols = [c for c in display_cols if c in df_results.columns]
-                st.dataframe(
-                    df_results[available_cols].style.format(
+
+                # Use accumulated results if available
+                df_display = st.session_state.get("accumulated_results", df_results)
+                available_cols = [c for c in display_cols if c in df_display.columns]
+
+                # Style function to apply row opacity (older rows more transparent)
+                def style_rows_by_age(df):
+                    n_rows = len(df)
+                    styles = []
+                    for i in range(n_rows):
+                        # Opacity from 0.4 (oldest) to 1.0 (newest)
+                        opacity = 0.4 + (0.6 * i / max(n_rows - 1, 1))
+                        styles.append(f"opacity: {opacity}")
+                    return styles
+
+                styled_df = (
+                    df_display[available_cols]
+                    .style.format(
                         {col: "{:.2f}" for col in available_cols if col != "valid"}
-                    ),
-                    use_container_width=True,
+                    )
+                    .apply(lambda _: style_rows_by_age(df_display), axis=0)
                 )
 
-            # Auto-refresh logic
-            if auto_refresh and st.session_state.get("monitoring_results") is not None:
+                st.dataframe(styled_df, use_container_width=True)
+
+            # Auto-refresh logic when monitoring is active
+            if (
+                st.session_state.monitoring_active
+                and st.session_state.get("evaluation") is not None
+            ):
                 time.sleep(refresh_interval)
                 st.rerun()
 
