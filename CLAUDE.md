@@ -27,15 +27,19 @@ This is **ccp** (Centrifugal Compressor Performance), a Python library for calcu
 
 ## Common Development Commands
 
+### Package Manager
+This project uses **uv** for package and environment management.
+
 ### Testing
 ```bash
-pytest                    # Run all tests with doctest modules
-pytest ccp/tests/         # Run unit tests only
+uv run pytest                    # Run all tests with doctest modules
+uv run pytest ccp/tests/         # Run unit tests only
 ```
 
 ### Development Setup
 ```bash
-pip install -e ".[dev]"   # Install in editable mode with dev dependencies
+uv sync                   # Install dependencies and set up environment
+uv sync --all-extras      # Install with all optional dependencies
 ```
 
 ### Code Formatting
