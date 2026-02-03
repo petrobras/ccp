@@ -28,14 +28,16 @@ from ccp.app.common import (
     gas_selection_form,
 )
 
-sentry_sdk.init(
-    dsn="https://8fd0e79dffa94dbb9747bf64e7e55047@o348313.ingest.sentry.io/4505046640623616",
-    # Set traces_sample_rate to 1.0 to capture 100%
-    # of transactions for performance monitoring.
-    # We recommend adjusting this value in production.
-    traces_sample_rate=1.0,
-    auto_enabling_integrations=False,
-)
+import os
+if not os.environ.get("CCP_STANDALONE"):
+    sentry_sdk.init(
+        dsn="https://8fd0e79dffa94dbb9747bf64e7e55047@o348313.ingest.sentry.io/4505046640623616",
+        # Set traces_sample_rate to 1.0 to capture 100%
+        # of transactions for performance monitoring.
+        # We recommend adjusting this value in production.
+        traces_sample_rate=1.0,
+        auto_enabling_integrations=False,
+    )
 
 
 def main():
