@@ -101,3 +101,4 @@ ENV/
 /docs/references/generated/
 /ccp/app/data/**/
 log.txt
+uv.lock
