@@ -27,15 +27,19 @@ This is **ccp** (Centrifugal Compressor Performance), a Python library for calcu
 
 ## Common Development Commands
 
+### Package Manager
+This project uses **uv** for package and environment management.
+
 ### Testing
 ```bash
-pytest                    # Run all tests with doctest modules
-pytest ccp/tests/         # Run unit tests only
+uv run pytest                    # Run all tests with doctest modules
+uv run pytest ccp/tests/         # Run unit tests only
 ```
 
 ### Development Setup
 ```bash
-pip install -e ".[dev]"   # Install in editable mode with dev dependencies
+uv sync                   # Install dependencies and set up environment
+uv sync --all-extras      # Install with all optional dependencies
 ```
 
 ### Code Formatting
@@ -67,6 +71,15 @@ The library automatically configures REFPROP paths during initialization. REFPRO
 - `Q_` objects represent quantities with units
 - SI units assumed when no units specified
 - Custom units defined in `ccp/config/new_units.txt`
+- **All unit conversions must use pint** - never use manual arithmetic (e.g., divide by 1000)
+- Use `Q_(value, "unit").to("target_unit").m` for conversions
+- Example: `Q_(head_joules, "J/kg").to("kJ/kg").m` instead of `head_joules / 1000`
+- Default internal units (from `ccp/config/units.py`):
+  - head: `J/kg` (joule/kilogram)
+  - power: `W` (watt)
+  - flow_v: `m³/s` (meter³/second)
+  - pressure: `Pa` (pascal)
+  - temperature: `K` (kelvin)
 
 ### Fluid Properties
 - Fluids defined as dictionaries with component fractions

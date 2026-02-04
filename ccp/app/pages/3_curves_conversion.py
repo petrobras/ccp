@@ -61,11 +61,11 @@ def main():
         with open(im, "rb") as image_file:
             encoded_string = base64.b64encode(image_file.read()).decode()
         encoded_image = "data:image/png;base64," + encoded_string
-        html_string = f'''
+        html_string = f"""
         <div style="text-align: center;">
             <img src="data:image/png;base64,{encoded_string}" width="250">
         </div>
-        '''
+        """
         return html_string
 
     with st.sidebar.container():
@@ -749,24 +749,24 @@ def main():
             with plot_col1:
                 st.plotly_chart(
                     head_plot,
-                    use_container_width=True,
+                    width="stretch",
                 )
                 st.plotly_chart(
                     power_plot,
-                    use_container_width=True,
+                    width="stretch",
                 )
                 st.plotly_chart(
                     disch_T_plot,
-                    use_container_width=True,
+                    width="stretch",
                 )
             with plot_col2:
                 st.plotly_chart(
                     eff_plot,
-                    use_container_width=True,
+                    width="stretch",
                 )
                 st.plotly_chart(
                     disch_p_plot,
-                    use_container_width=True,
+                    width="stretch",
                 )
                 # Display summary table
                 st.markdown("#### Project Point")
@@ -884,7 +884,7 @@ def main():
     convert_button = st.button(
         "Convert Curves",
         type="primary",
-        use_container_width=True,
+        width="stretch",
         help="Convert the curves to new suction conditions",
     )
 
@@ -1043,24 +1043,24 @@ def main():
             with plot_conv_col1:
                 st.plotly_chart(
                     new_head_plot,
-                    use_container_width=True,
+                    width="stretch",
                 )
                 st.plotly_chart(
                     new_power_plot,
-                    use_container_width=True,
+                    width="stretch",
                 )
                 st.plotly_chart(
                     new_disch_T_plot,
-                    use_container_width=True,
+                    width="stretch",
                 )
             with plot_conv_col2:
                 st.plotly_chart(
                     new_eff_plot,
-                    use_container_width=True,
+                    width="stretch",
                 )
                 st.plotly_chart(
                     new_disch_p_plot,
-                    use_container_width=True,
+                    width="stretch",
                 )
                 st.markdown("#### New Point")
 
