@@ -1,66 +1,58 @@
-(engauge)=
-# Getting performance points with Engauge Digitizer
+---
+title: Getting performance points with Engauge Digitizer
+---
 
 In this guide we describe how to load a performance curve using the [Engauge Digitizer](https://markummitchell.github.io/engauge-digitizer/) application.
 
 The first step is to copy the performance map. In the gif below we have an example of a head curve.
 
-```{image} ../_static/img/step1.gif
-```
+![](../_static/img/step1.gif)
+
 After that, go to Engauge -> Edit -> Paste as New.
 
 In the guide wizard we name the curves with the value of each speed:
 
-```{image} ../_static/img/step2.gif
-```
+![](../_static/img/step2.gif)
 
-````{note}
+::: {.callout-note}
 
-If you are passing a shaft power curve, you can add the power loss value for 
+If you are passing a shaft power curve, you can add the power loss value for
 each speed with the convention 'speed, power_loss':
 
-```{image} ../_static/img/step_power_loss.png
-```
+![](../_static/img/step_power_loss.png)
 
-If only one value for power loss is passed, the values for other speeds are 
+If only one value for power loss is passed, the values for other speeds are
 calculated based on the ASME PTC 10.
 
-````
-
-
+:::
 
 The next step is to select three axis points in the plot:
 
-```{image} ../_static/img/step3.gif
-```
-
+![](../_static/img/step3.gif)
 
 Now we select a curve and mark the points using the 'Segment Fill Tool' or the 'Curve Point Tool'.
 
 It is recommended to select at least 8 points for each curve to have a good interpolation.
 
-```{image} ../_static/img/step4.gif
-```
+![](../_static/img/step4.gif)
 
 The last step is to configure the export format (Settings -> Export format).
 
 Select 'Raw Xs and Ys' and 'One curve for each line'
 
-After that go to File -> Export and save the .csv file as <curve-name>-head.csv.
+After that go to File -> Export and save the .csv file as \<curve-name\>-head.csv.
 
 Files should be saved with the following convention:
  - \<curve-name\>-head.csv
  - \<curve-name\>-eff.csv
 
-```{image} ../_static/img/step5.gif
-```
+![](../_static/img/step5.gif)
 
 Do the same steps for the efficiency curve.
 
 After that we can load the data with the following code:
 
-```{code-block} python3
-
+```python
 import ccp
 from pathlib import Path
 

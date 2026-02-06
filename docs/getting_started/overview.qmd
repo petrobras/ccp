@@ -1,12 +1,14 @@
-# Overview
+---
+title: Overview
+---
 
 ccp is a python library for calculation of centrifugal compressor performance.
-The code uses 
-[CoolProp](http://www.coolprop.org/) {cite}`coolprop` and
-[REFPROP](https://www.nist.gov/srd/refprop) {cite}`refprop`
+The code uses
+[CoolProp](http://www.coolprop.org/) [@coolprop] and
+[REFPROP](https://www.nist.gov/srd/refprop) [@refprop]
 for the gas properties calculations.
 
-```{code-block} python
+```python
 import ccp
 
 # ccp uses pint to handle units. Q_ is a pint quantity.
@@ -54,8 +56,4 @@ imp = ccp.Impeller([point0, point1])
 imp.head_plot()
 imp.disch.T_plot()
 ```
-You can get more details by reading the {ref}`Tutorial`.
-
-```{bibliography}
-:filter: docname in docnames
-```
+You can get more details by reading the [Tutorial](../user_guide/tutorial.qmd).

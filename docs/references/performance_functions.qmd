@@ -1,0 +1,38 @@
+---
+title: Performance Functions
+---
+
+These functions are available in the `ccp.point` module and they are mainly used
+by the `ccp.Point` class in the performance calculation.
+
+::: {#performance-functions}
+:::
+
+The following functions are available:
+
+- `head_isentropic` - Calculate isentropic head
+- `head_pol_mallen_saville` - Polytropic head (Mallen & Saville method)
+- `head_pol_sandberg_colby` - Polytropic head (Sandberg & Colby method)
+- `head_pol_schultz` - Polytropic head (Schultz method)
+- `head_pol_huntington` - Polytropic head (Huntington method)
+- `head_pol` - Polytropic head (default method)
+- `head_reference` - Reference head calculation
+- `head_reference_2017` - Reference head calculation (2017 method)
+- `eff_isentropic` - Isentropic efficiency
+- `eff_pol_mallen_saville` - Polytropic efficiency (Mallen & Saville method)
+- `eff_pol_sandberg_colby` - Polytropic efficiency (Sandberg & Colby method)
+- `eff_pol_schultz` - Polytropic efficiency (Schultz method)
+- `eff_pol_huntington` - Polytropic efficiency (Huntington method)
+- `eff_pol` - Polytropic efficiency (default method)
+- `f_schultz` - Schultz correction factor
+- `f_sandberg_colby` - Sandberg & Colby correction factor
+- `disch_from_suc_head_eff` - Calculate discharge state from suction, head, and efficiency
+- `flow_from_phi` - Calculate flow from flow coefficient
+- `head_from_psi` - Calculate head from head coefficient
+- `mach` - Calculate Mach number
+- `n_exp` - Calculate polytropic exponent
+- `phi` - Calculate flow coefficient
+- `power_calc` - Calculate power
+- `reynolds` - Calculate Reynolds number
+- `speed_from_psi` - Calculate speed from head coefficient
+- `u_calc` - Calculate tip speed

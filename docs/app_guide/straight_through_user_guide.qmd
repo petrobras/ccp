@@ -1,4 +1,6 @@
-# Straight-Through App Guide
+---
+title: Straight-Through App Guide
+---
 
 ## Table of Contents
 1. [Overview](#overview)
@@ -12,13 +14,11 @@
 9. [Running Calculations](#running-calculations)
 10. [Understanding Results](#understanding-results)
 11. [File Management](#file-management)
-12. [Advanced Options](#advanced-options)
-13. [Troubleshooting](#troubleshooting)
-14. [Example Workflow](#example-workflow)
+12. [Example Workflow](#example-workflow)
 
 ## Overview
 
-The Straight-Through Compressor page is a Streamlit application designed for performance testing and analysis of straight-through centrifugal compressors according to ASME PTC 10 standards. 
+The Straight-Through Compressor page is a Streamlit application designed for performance testing and analysis of straight-through centrifugal compressors according to ASME PTC 10 standards.
 
 ### Key Features
 - **Multi-gas support**: Define up to 6 different gas compositions
@@ -90,7 +90,7 @@ The Gas Selection section allows you to define up to 6 different gas composition
 #### For each gas:
 
 1. **Gas Name**: Enter a descriptive name (e.g., "gas_0", "Natural Gas Mix 1")
-2. **Component Table**: 
+2. **Component Table**:
    - Select components from the dropdown (methane, ethane, etc.)
    - Enter molar fractions (mol %)
    - Add/remove rows as needed
@@ -220,7 +220,7 @@ When direct flow measurement is unavailable, the Flowrate Calculation section co
 - **Pressure Drop**: Differential pressure across orifice
 
 ##### Configuration:
-- **Tappings Type**: 
+- **Tappings Type**:
   - Flange taps
   - Corner taps
   - D and D/2 taps
@@ -243,7 +243,7 @@ Three calculation modes are available:
 
 #### 1. Standard Calculate
 - **Purpose**: Analyze performance at data sheet speed
-- **Process**: 
+- **Process**:
   - Converts test points to guarantee conditions
   - Applies Reynolds corrections
   - Generates performance comparison
@@ -300,8 +300,6 @@ The results section displays a comprehensive comparison table with the following
 - Volume ratio: 0.95-1.05
 - Power ratio: <1.04 (variable speed) or <1.07 (fixed speed)
 
-*[Screenshot placeholder: Results table with color-coded values]*
-
 ### Performance Plots
 
 Four interactive plots visualize the performance:
@@ -331,8 +329,6 @@ Four interactive plots visualize the performance:
 - **Legends**: Click to show/hide traces
 - **Export**: Save as PNG or SVG
 - **Background**: Original curves overlay
-
-*[Screenshot placeholder: Four performance plots arranged in grid]*
 
 ### Additional Visualizations
 

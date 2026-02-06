@@ -1,0 +1,321 @@
+# Point { #ccp.Point }
+
+```python
+Point(
+    suc=None,
+    disch=None,
+    disch_p=None,
+    flow_v=None,
+    flow_m=None,
+    speed=None,
+    head=None,
+    eff=None,
+    power=None,
+    power_shaft=None,
+    power_losses=None,
+    torque=None,
+    phi=None,
+    psi=None,
+    volume_ratio=None,
+    pressure_ratio=None,
+    disch_T=None,
+    b=Q_(0.005, 'm'),
+    D=Q_(0.5, 'm'),
+    surface_roughness=Q_(3.175e-06, 'm'),
+    casing_area=None,
+    casing_temperature=None,
+    ambient_temperature=None,
+    convection_constant=Q_(13.6, 'W/(m²*degK)'),
+    polytropic_method=None,
+    phi_ratio=None,
+    psi_ratio=None,
+    reynolds_ratio=None,
+    mach_diff=None,
+    volume_ratio_ratio=None,
+    extrapolated=False,
+)
+```
+
+A performance point.
+A point in the compressor map that can be defined in different ways.
+
+## Parameters {.doc-section .doc-section-parameters}
+
+| Name                | Type                                                                                | Description                                                                                                                                                                                                                                                                                              | Default                   |
+|---------------------|-------------------------------------------------------------------------------------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|---------------------------|
+| speed               | (pint.Quantity, float)                                                              | Speed in rad/s.                                                                                                                                                                                                                                                                                          | `None`                    |
+| flow_v              |                                                                                     | Volumetric (m³/s) or mass (kg/s) flow.                                                                                                                                                                                                                                                                   | `None`                    |
+| suc                 | (ccp.State, ccp.State)                                                              | Suction and discharge states for the point.                                                                                                                                                                                                                                                              | `None`                    |
+| disch               | (ccp.State, ccp.State)                                                              | Suction and discharge states for the point.                                                                                                                                                                                                                                                              | `None`                    |
+| suc                 | (ccp.State, float, float)                                                           | Suction state, discharge pressure and polytropic efficiency.                                                                                                                                                                                                                                             | `None`                    |
+| disch_p             | (ccp.State, float, float)                                                           | Suction state, discharge pressure and polytropic efficiency.                                                                                                                                                                                                                                             | `None`                    |
+| eff                 | (ccp.State, float, float)                                                           | Suction state, discharge pressure and polytropic efficiency.                                                                                                                                                                                                                                             | `None`                    |
+| suc                 | (ccp.State, float, float)                                                           | Suction state, polytropic head and polytropic efficiency.                                                                                                                                                                                                                                                | `None`                    |
+| head                | (ccp.State, float, float)                                                           | Suction state, polytropic head and polytropic efficiency.                                                                                                                                                                                                                                                | `None`                    |
+| eff                 | (ccp.State, float, float)                                                           | Suction state, polytropic head and polytropic efficiency.                                                                                                                                                                                                                                                | `None`                    |
+| suc                 | (ccp.State, pint.Quantity or float, pint.Quantity or float)                         | Suction state, polytropic head (J/kg) and gas power (Watt).                                                                                                                                                                                                                                              | `None`                    |
+| head                | (ccp.State, pint.Quantity or float, pint.Quantity or float)                         | Suction state, polytropic head (J/kg) and gas power (Watt).                                                                                                                                                                                                                                              | `None`                    |
+| power               | (ccp.State, pint.Quantity or float, pint.Quantity or float)                         | Suction state, polytropic head (J/kg) and gas power (Watt).                                                                                                                                                                                                                                              | `None`                    |
+| suc                 | (ccp.State, pint.Quantity or float, pint.Quantity or float, pint.Quantity or float) | Suction state, polytropic head (J/kg), shaft power (Watt) and power losses (Watt).                                                                                                                                                                                                                       | `None`                    |
+| head                | (ccp.State, pint.Quantity or float, pint.Quantity or float, pint.Quantity or float) | Suction state, polytropic head (J/kg), shaft power (Watt) and power losses (Watt).                                                                                                                                                                                                                       | `None`                    |
+| power_shaft         | (ccp.State, pint.Quantity or float, pint.Quantity or float, pint.Quantity or float) | Suction state, polytropic head (J/kg), shaft power (Watt) and power losses (Watt).                                                                                                                                                                                                                       | `None`                    |
+| power_losses        | (ccp.State, pint.Quantity or float, pint.Quantity or float, pint.Quantity or float) | Suction state, polytropic head (J/kg), shaft power (Watt) and power losses (Watt).                                                                                                                                                                                                                       | `None`                    |
+| suc                 | (ccp.State, float, float)                                                           | Suction state, polytropic efficiency and volume ratio.                                                                                                                                                                                                                                                   | `None`                    |
+| eff                 | (ccp.State, float, float)                                                           | Suction state, polytropic efficiency and volume ratio.                                                                                                                                                                                                                                                   | `None`                    |
+| volume_ratio        | (ccp.State, float, float)                                                           | Suction state, polytropic efficiency and volume ratio.                                                                                                                                                                                                                                                   | `None`                    |
+| suc                 | (ccp.State, float, pint.Quantity or float)                                          | Suction state, pressure ratio and discharge temperature.                                                                                                                                                                                                                                                 | `None`                    |
+| pres_ratio          | (ccp.State, float, pint.Quantity or float)                                          | Suction state, pressure ratio and discharge temperature.                                                                                                                                                                                                                                                 | `None`                    |
+| disch_T             | (ccp.State, float, pint.Quantity or float)                                          | Suction state, pressure ratio and discharge temperature.                                                                                                                                                                                                                                                 | `None`                    |
+| b                   | (float, pint.Quantity)                                                              | Impeller width at the outer blade diameter (m).                                                                                                                                                                                                                                                          | `Q_(0.005, 'm')`          |
+| D                   | (float, pint.Quantity)                                                              | Impeller outer diameter (m).                                                                                                                                                                                                                                                                             | `Q_(0.5, 'm')`            |
+| power_shaft         | (float, pint.Quantity)                                                              | Shaft power (Watt), optional.                                                                                                                                                                                                                                                                            | `None`                    |
+| power_losses        | (float, pint.Quantity)                                                              | Mechanical power losses (Watt), optional.                                                                                                                                                                                                                                                                | `None`                    |
+| torque              | (float, pint.Quantity)                                                              | Load torque (N.m), optional.                                                                                                                                                                                                                                                                             | `None`                    |
+| surface_roughness   | pint.Quantity                                                                       | Gas passage mean surface roughness (m). Used in the reynolds correction calculation. Default value is 3.048e-6 m.                                                                                                                                                                                        | `Q_(3.175e-06, 'm')`      |
+| casing_area         | pint.Quantity                                                                       | Compressor case area used to calculate case heat loss (m²).                                                                                                                                                                                                                                              | `None`                    |
+| casing_temperature  | pint.Quantity                                                                       | Compressor case temperature used to calculate case heat loss (degK).                                                                                                                                                                                                                                     | `None`                    |
+| ambient_temperature | pint.Quantity                                                                       | Ambient temperature used to calculate case heat loss (degK).                                                                                                                                                                                                                                             | `None`                    |
+| convection_constant | pint.Quantity                                                                       | Heat transfer (convection) constant (W / m²degK). Default value is 13.6.                                                                                                                                                                                                                                 | `Q_(13.6, 'W/(m²*degK)')` |
+| polytropic_method   | str                                                                                 | Polytropic method used for head and efficiency calculation. Options are: "mallen_saville", "sandberg_colby", "sandberg_colby_multistep", "schultz" and "huntington". The default is "schultz". The default value can be changed in a global level with: ccp.config.POLYTROPIC_METHOD = "<desired value>" | `None`                    |
+| extrapolated        |                                                                                     | If true, the point is an extrapolation from other curves or its flow is outside surge and choke limits. The default is False.                                                                                                                                                                            | `False`                   |
+
+## Returns {.doc-section .doc-section-returns}
+
+| Name   | Type      | Description                    |
+|--------|-----------|--------------------------------|
+| Point  | ccp.Point | A point in the compressor map. |
+
+## Attributes {.doc-section .doc-section-attributes}
+
+| Name                | Type                   | Description                                                                                                                   |
+|---------------------|------------------------|-------------------------------------------------------------------------------------------------------------------------------|
+| suc                 | ccp.State              | A ccp.State object. For more information on attributes and methods available see: :py:class:`ccp.State`                       |
+| disch               | ccp.State              | A ccp.State object. For more information on attributes and methods available see: :py:class:`ccp.State`                       |
+| flow_v              | pint.Quantity          | Volumetric flow (m³/s).                                                                                                       |
+| flow_m              | pint.Quantity          | Mass flow (kg/s)                                                                                                              |
+| speed               | pint.Quantity          | Speed (rad/s).                                                                                                                |
+| head                | pint.Quantity          | Polytropic head (J/kg).                                                                                                       |
+| eff                 | pint.Quantity          | Polytropic efficiency (dimensionless).                                                                                        |
+| power               | pint.Quantity          | Power (Watt).                                                                                                                 |
+| power_shaft         | pint.Quantity          | Shaft power (Watt) which includes bearing and seal losses.                                                                    |
+| power_losses        | pint.Quantity          | Mechanical power losses (Watt) which includes bearing and seal.                                                               |
+| torque              | pint.Quantity          | Load torque (N*m) at coupling which includes bearing and seal losses.                                                         |
+| phi                 | pint.Quantity          | Volume flow coefficient (dimensionless).                                                                                      |
+| psi                 | pint.Quantity          | Polytropic head coefficient (dimensionless).                                                                                  |
+| volume_ratio        | pint.Quantity          | Volume ratio - suc.v() / disch.v() (dimensionless).                                                                           |
+| b                   | (float, pint.Quantity) | Impeller width at the outer blade diameter (m).                                                                               |
+| D                   | (float, pint.Quantity) | Impeller outer diameter (m).                                                                                                  |
+| casing_area         | pint.Quantity          | Compressor case area used to calculate case heat loss (m²).                                                                   |
+| casing_temperature  | pint.Quantity          | Compressor case temperature used to calculate case heat loss (degK).                                                          |
+| ambient_temperature | pint.Quantity          | Ambient temperature used to calculate case heat loss (degK).                                                                  |
+| convection_constant | pint.Quantity          | Heat transfer (convection) constant (W / m²degK).                                                                             |
+| reynolds            | pint.Quantity          | Reynolds number (dimensionless).                                                                                              |
+| mach                | pint.Quantity          | Mach number (dimensionless).                                                                                                  |
+| phi_ratio           | float                  | Ratio between phi for this point and the original point from which it was converted from.                                     |
+| psi_ratio           | float                  | Ratio between psi for this point and the original point from which it was converted from.                                     |
+| reynolds_ratio      | float                  | Ratio between Reynolds for this point and the original point from which it was converted from.                                |
+| mach_diff           | float                  | Difference between Mach for this point and the original point from which it was converted from.                               |
+| volume_ratio_ratio  | float                  | Ratio between volume_ratio for this point and the original point from which it was converted from.                            |
+| polytropic_method   | str                    | Polytropic method used for head and efficiency calculation.                                                                   |
+| extrapolated        | bool                   | If true, the point is an extrapolation from other curves or its flow is outside surge and choke limits. The default is False. |
+
+## Methods
+
+| Name | Description |
+| --- | --- |
+| [convert_from](#ccp.Point.convert_from) | Convert point from an original point. |
+| [load](#ccp.Point.load) | Load point from toml file. |
+| [mach_limits](#ccp.Point.mach_limits) | Calculate Mach lower and upper limits. |
+| [plot_mach](#ccp.Point.plot_mach) | Plot allowable Mach range and point. |
+| [plot_reynolds](#ccp.Point.plot_reynolds) | Plot allowable Reynolds range and point. |
+| [plot_similarity](#ccp.Point.plot_similarity) | Plot similarity results. |
+| [reynolds_limits](#ccp.Point.reynolds_limits) | Calculate Reynolds lower and upper limits. |
+| [save](#ccp.Point.save) | Save point to toml file. |
+| [similarity_table](#ccp.Point.similarity_table) | Plot similarity table. |
+
+### convert_from { #ccp.Point.convert_from }
+
+```python
+Point.convert_from(
+    original_point,
+    suc=None,
+    find='speed',
+    speed=None,
+    reynolds_correction=False,
+    **kwargs,
+)
+```
+
+Convert point from an original point.
+
+The procedure to convert a point considering that the volume ratio will be the same,
+follows the following steps:
+1. Assume that eff_converted = eff_original and psi_converted = psi_original
+2. Assume that volume ratio will be the same to keep similarity
+3. Calculate discharge volume based on suction state and volume ratio
+4. Calculate discharge state using newton method to find the discharge pressure.
+Criterion for convergence is the polytropic efficiency.
+5. Calculate head based on the new discharge state
+6. Calculate speed based on head and psi
+
+This procedure is followed when we have find="speed".
+
+#### Parameters {.doc-section .doc-section-parameters}
+
+| Name                | Type                   | Description                                                                                                                                                                     | Default    |
+|---------------------|------------------------|---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|------------|
+| original_point      | ccp.Point              | Original point from which the desired point will be converted.                                                                                                                  | _required_ |
+| suc                 | ccp.State              | New suction state.                                                                                                                                                              | `None`     |
+| find                | str                    | If the calculation will find a new speed keeping constant volume ratio, or a new volume ratio for the desired speed. Options are "speed" or "volume_ratio", default is "speed". | `'speed'`  |
+| speed               | (float, pint.Quantity) | Desired speed. If find="speed", this should be None.                                                                                                                            | `None`     |
+| reynolds_correction | bool                   | If reynolds correction should be applied during the conversion. If True the ASME PTC 10 reynolds correction is applied                                                          | `False`    |
+| The                 |                        |                                                                                                                                                                                 | _required_ |
+| provided            |                        |                                                                                                                                                                                 | _required_ |
+
+### load { #ccp.Point.load }
+
+```python
+Point.load(file_name)
+```
+
+Load point from toml file.
+
+### mach_limits { #ccp.Point.mach_limits }
+
+```python
+Point.mach_limits(mmsp=None)
+```
+
+Calculate Mach lower and upper limits.
+
+#### Parameters {.doc-section .doc-section-parameters}
+
+| Name   | Type   | Description                                                    | Default   |
+|--------|--------|----------------------------------------------------------------|-----------|
+| mmsp   | float  | Mach number specified. Default value is the point Mach number. | `None`    |
+
+#### Returns {.doc-section .doc-section-returns}
+
+| Name   | Type   | Description                                           |
+|--------|--------|-------------------------------------------------------|
+| limits | dict   | Dict with keys: 'lower', 'upper' and 'within_limits'. |
+
+### plot_mach { #ccp.Point.plot_mach }
+
+```python
+Point.plot_mach(fig=None, **kwargs)
+```
+
+Plot allowable Mach range and point.
+
+This will plot the allowable Mach range and the point according to the
+PTC criteria.
+
+The x-axis represents the Specified Machine Mach Number for the point.
+The y-axis represents the Test Machine Mach Number from the original point.
+
+#### Parameters {.doc-section .doc-section-parameters}
+
+| Name   | Type          | Description    | Default   |
+|--------|---------------|----------------|-----------|
+| fig    | plotly.Figure | Plotly figure. | `None`    |
+
+#### Returns {.doc-section .doc-section-returns}
+
+| Name   | Type          | Description    |
+|--------|---------------|----------------|
+| fig    | plotly.Figure | Plotly figure. |
+
+### plot_reynolds { #ccp.Point.plot_reynolds }
+
+```python
+Point.plot_reynolds(fig=None, **kwargs)
+```
+
+Plot allowable Reynolds range and point.
+
+This will plot the allowable Mach range and the point according to the
+PTC criteria.
+
+The x-axis represents the Specified Machine Reynolds Number for the point.
+The y-axis represents the Test Machine Reynolds Number from the original point.
+
+#### Parameters {.doc-section .doc-section-parameters}
+
+| Name   | Type          | Description    | Default   |
+|--------|---------------|----------------|-----------|
+| fig    | plotly.Figure | Plotly figure. | `None`    |
+
+#### Returns {.doc-section .doc-section-returns}
+
+| Name   | Type          | Description    |
+|--------|---------------|----------------|
+| fig    | plotly.Figure | Plotly figure. |
+
+### plot_similarity { #ccp.Point.plot_similarity }
+
+```python
+Point.plot_similarity(fig=None, **kwargs)
+```
+
+Plot similarity results.
+
+Plots the similarity results showing the Mach and Reynolds plots with
+their respective limits and also a table summarizing the results comparing
+the current (converted) point to the original point.
+
+#### Parameters {.doc-section .doc-section-parameters}
+
+| Name   | Type          | Description    | Default   |
+|--------|---------------|----------------|-----------|
+| fig    | plotly.Figure | Plotly figure. | `None`    |
+
+#### Returns {.doc-section .doc-section-returns}
+
+| Name   | Type          | Description    |
+|--------|---------------|----------------|
+| fig    | plotly.Figure | Plotly figure. |
+
+### reynolds_limits { #ccp.Point.reynolds_limits }
+
+```python
+Point.reynolds_limits(remsp=None)
+```
+
+Calculate Reynolds lower and upper limits.
+
+#### Parameters {.doc-section .doc-section-parameters}
+
+| Name   | Type   | Description                                                            | Default   |
+|--------|--------|------------------------------------------------------------------------|-----------|
+| remsp  | float  | Reynolds number specified. Default value is the point reynolds number. | `None`    |
+
+#### Returns {.doc-section .doc-section-returns}
+
+| Name   | Type   | Description                                          |
+|--------|--------|------------------------------------------------------|
+| limits | dict   | Dict with keys: 'lower', 'upper' and 'within_range'. |
+
+### save { #ccp.Point.save }
+
+```python
+Point.save(file_name)
+```
+
+Save point to toml file.
+
+### similarity_table { #ccp.Point.similarity_table }
+
+```python
+Point.similarity_table(fig=None, **kwargs)
+```
+
+Plot similarity table.
+
+This table show the values for the non dimensional numbers (Mach, Reynolds
+and Volume ratio) and their calculated relations with respect to the
+original points used in the conversion (in the formulas, 'c' means converted
+points and 'o' means original point).
+
+If values are within limits, relation cells are colored in green, otherwise
+they are colored in red.

@@ -1,4 +1,6 @@
-# Installation
+---
+title: Installation
+---
 
 To use ccp you will need python >= 3.6.
 
@@ -6,7 +8,7 @@ To use ccp you will need python >= 3.6.
 
 You can install the core `ccp` library with:
 
-```{code-block}
+```bash
 pip install ccp-performance
 ```
 
@@ -16,7 +18,7 @@ pip install ccp-performance
 
 To use the Streamlit web application interface, install with the `app` extra:
 
-```{code-block}
+```bash
 pip install ccp-performance[app]
 ```
 
@@ -24,13 +26,13 @@ pip install ccp-performance[app]
 
 For development work, install with the `dev` extra:
 
-```{code-block}
+```bash
 pip install ccp-performance[dev]
 ```
 
 You can also combine extras:
 
-```{code-block}
+```bash
 pip install ccp-performance[dev,app]
 ```
 
@@ -38,7 +40,7 @@ To run `ccp` you need to have `REFPROP` in your computer, and an environment var
 
 If you have not set a `RPPREFIX` environment variable, you can do the following before importing ccp:
 
-```{code-block} python
+```python
 import os
 os.environ['RPPREFIX'] = <path/to/REFPROP/folder>
 

@@ -1,0 +1,51 @@
+---
+title: "ccp - Centrifugal Compressor Performance"
+---
+
+ccp is a python library for calculation of centrifugal compressor performance.
+The code uses
+[CoolProp](http://www.coolprop.org/) /
+[REFPROP](https://www.nist.gov/srd/refprop)
+for the gas properties calculations.
+
+::: {layout-ncol=2}
+
+:::: {.card}
+[![](_static/img/getting_started.svg){height=50 fig-align="center"}](getting_started/overview.qmd)
+
+### [Getting Started](getting_started/overview.qmd) {.text-center}
+
+New to ccp? Check out the getting started guides. They contain an
+introduction to ccp main concepts and links to additional tutorials.
+::::
+
+:::: {.card}
+[![](_static/img/user_guide.svg){height=50 fig-align="center"}](user_guide/tutorial.qmd)
+
+### [User Guide](user_guide/tutorial.qmd) {.text-center}
+
+The user guide provides in-depth information on the
+key concepts of ccp with useful background information and explanation.
+::::
+
+:::: {.card}
+[![](_static/img/api.svg){height=50 fig-align="center"}](references/api.qmd)
+
+### [API Reference](references/api.qmd) {.text-center}
+
+The api reference contains a detailed description of the functions,
+modules, and objects included in ccp. The reference describes how the
+methods work and which parameters can be used.
+::::
+
+:::: {.card}
+[![](_static/img/contributor.svg){height=50 fig-align="center"}](contributing.qmd)
+
+### [Contributor's Guide](contributing.qmd) {.text-center}
+
+Saw a typo in the documentation? Want to improve
+existing functionalities? The contributing guidelines will guide
+you through the process of improving ccp.
+::::
+
+:::

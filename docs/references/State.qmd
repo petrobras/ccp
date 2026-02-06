@@ -1,0 +1,511 @@
+# State { #ccp.State }
+
+```python
+State(
+    p=None,
+    T=None,
+    h=None,
+    s=None,
+    rho=None,
+    fluid=None,
+    EOS=None,
+    phase=None,
+)
+```
+
+A thermodynamic state.
+
+This class is inherited from CP.AbstractState.
+Some extra functionality has been added.
+
+Creates a state from fluid composition and two properties.
+Properties can be floats (SI units are considered) or pint quantities.
+
+## Parameters {.doc-section .doc-section-parameters}
+
+| Name   | Type                   | Description                                                                                                                                                                                                                                                                                                                      | Default   |
+|--------|------------------------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|-----------|
+| p      | (float, pint.Quantity) | Pressure                                                                                                                                                                                                                                                                                                                         | `None`    |
+| T      | (float, pint.Quantity) | Temperature                                                                                                                                                                                                                                                                                                                      | `None`    |
+| h      | (float, pint.Quantity) | Enthalpy                                                                                                                                                                                                                                                                                                                         | `None`    |
+| s      | (float, pint.Quantity) | Entropy                                                                                                                                                                                                                                                                                                                          | `None`    |
+| rho    | (float, pint.Quantity) | Specific mass                                                                                                                                                                                                                                                                                                                    | `None`    |
+| fluid  | dict                   | Dictionary with constituent and composition (mole fraction). (e.g.: fluid={'Oxygen': 0.2096, 'Nitrogen': 0.7812, 'Argon': 0.0092})                                                                                                                                                                                               | `None`    |
+| EOS    | str                    | String with REFPROP, HEOS, PR or SRK. Default is set in ccp.config.EOS                                                                                                                                                                                                                                                           | `None`    |
+| phase  | str                    | String with phase information. Options are: - "liquid" - "gas" - "two_phase" - "supercritical_liquid" - "supercritical_gas" - "supercritical" Default is None, in this case REFPROP/CoolProp will determine the phase. The phase calculation may require a non-trivial flash calculation which can be computationally expensive. | `None`    |
+
+## Returns {.doc-section .doc-section-returns}
+
+| Name   | Type      | Description   |
+|--------|-----------|---------------|
+| state  | ccp.State |               |
+
+## Examples {.doc-section .doc-section-examples}
+
+```python
+>>> import ccp
+>>> Q_ = ccp.Q_
+>>> fluid = {'Oxygen': 0.2096, 'Nitrogen': 0.7812, 'Argon': 0.0092}
+>>> s = ccp.State(p=101008, T=273, fluid=fluid)
+>>> s.rho()
+<Quantity(1.28939426, 'kilogram / meter ** 3')>
+>>> # Using pint quantities
+>>> s = ccp.State(fluid=fluid, p=Q_(1, 'atm'), T=Q_(0, 'degC'))
+>>> s.h()
+<Quantity(273291.7, 'joule / kilogram')>
+```
+
+## Methods
+
+| Name | Description |
+| --- | --- |
+| [T](#ccp.State.T) | Temperature in Kelvin. |
+| [T_critical](#ccp.State.T_critical) | Critical Temperature in K. |
+| [conductivity](#ccp.State.conductivity) | Thermal conductivity (W/m/K). |
+| [cp](#ccp.State.cp) | Specific heat at constant pressure joule/(kilogram kelvin). |
+| [cv](#ccp.State.cv) | Specific heat at constant volume joule/(kilogram kelvin). |
+| [dTdp_s](#ccp.State.dTdp_s) | (dT / dp)s |
+| [define](#ccp.State.define) | Constructor for state. |
+| [dpdv_s](#ccp.State.dpdv_s) | Partial derivative of pressure to spec. volume with const. entropy. |
+| [gas_constant](#ccp.State.gas_constant) | Gas constant in joule / (mol kelvin). |
+| [get_coolprop_state](#ccp.State.get_coolprop_state) | Return a CoolProp state object. |
+| [h](#ccp.State.h) | Specific Enthalpy (joule/kilogram). |
+| [kT](#ccp.State.kT) | Isentropic temperature exponent (dimensionless). |
+| [kinematic_viscosity](#ccp.State.kinematic_viscosity) | Kinematic viscosity in m²/s. |
+| [kv](#ccp.State.kv) | Isentropic volume exponent (dimensionless). |
+| [molar_mass](#ccp.State.molar_mass) | Molar mass in kg/mol. |
+| [p](#ccp.State.p) | Pressure in Pascal. |
+| [p_critical](#ccp.State.p_critical) | Critical Pressure in Pa. |
+| [plot_envelope](#ccp.State.plot_envelope) | Plot phase envelope. |
+| [plot_point](#ccp.State.plot_point) | Plot point. |
+| [rho](#ccp.State.rho) | Specific mass (kilogram/m**3). |
+| [s](#ccp.State.s) | Specific entropy (per unit of mass). |
+| [speed_sound](#ccp.State.speed_sound) | Speed of sound - Eq. 8.1 from P. Nederstigt - Real Gas Thermodynamics. |
+| [update](#ccp.State.update) | Update the state. |
+| [v](#ccp.State.v) | Specific volume (m**3/kilogram). |
+| [viscosity](#ccp.State.viscosity) | Viscosity in pascal second. |
+| [z](#ccp.State.z) | Compressibility (dimensionless). |
+
+### T { #ccp.State.T }
+
+```python
+State.T(units=None)
+```
+
+Temperature in Kelvin.
+
+#### Returns {.doc-section .doc-section-returns}
+
+| Name   | Type          | Description           |
+|--------|---------------|-----------------------|
+| T      | pint.Quantity | Temperature (Kelvin). |
+
+### T_critical { #ccp.State.T_critical }
+
+```python
+State.T_critical(units=None)
+```
+
+Critical Temperature in K.
+
+#### Returns {.doc-section .doc-section-returns}
+
+| Name       | Type          | Description                  |
+|------------|---------------|------------------------------|
+| T_critical | pint.Quantity | Critical temperature (degK). |
+
+### conductivity { #ccp.State.conductivity }
+
+```python
+State.conductivity(units=None)
+```
+
+Thermal conductivity (W/m/K).
+
+#### Returns {.doc-section .doc-section-returns}
+
+| Name         | Type          | Description                   |
+|--------------|---------------|-------------------------------|
+| conductivity | pint.Quantity | Thermal conductivity (W/m/K). |
+
+### cp { #ccp.State.cp }
+
+```python
+State.cp(units=None)
+```
+
+Specific heat at constant pressure joule/(kilogram kelvin).
+
+#### Returns {.doc-section .doc-section-returns}
+
+| Name   | Type          | Description                                                 |
+|--------|---------------|-------------------------------------------------------------|
+| cp     | pint.Quantity | Specific heat at constant pressure joule/(kilogram kelvin). |
+
+### cv { #ccp.State.cv }
+
+```python
+State.cv(units=None)
+```
+
+Specific heat at constant volume joule/(kilogram kelvin).
+
+#### Returns {.doc-section .doc-section-returns}
+
+| Name   | Type          | Description                                               |
+|--------|---------------|-----------------------------------------------------------|
+| cv     | pint.Quantity | Specific heat at constant volume joule/(kilogram kelvin). |
+
+### dTdp_s { #ccp.State.dTdp_s }
+
+```python
+State.dTdp_s(units=None)
+```
+
+(dT / dp)s
+
+First partial derivative of temperature related to pressure with
+constant entropy.
+
+### define { #ccp.State.define }
+
+```python
+State.define(
+    p=None,
+    T=None,
+    h=None,
+    s=None,
+    rho=None,
+    fluid=None,
+    EOS=None,
+    **kwargs,
+)
+```
+
+Constructor for state.
+
+Creates a state from fluid composition and two properties.
+Properties can be floats (SI units are considered) or pint quantities.
+
+#### Parameters {.doc-section .doc-section-parameters}
+
+| Name   | Type                   | Description                                                                                                                                                                               | Default   |
+|--------|------------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|-----------|
+| p      | (float, pint.Quantity) | Pressure                                                                                                                                                                                  | `None`    |
+| T      | (float, pint.Quantity) | Temperature                                                                                                                                                                               | `None`    |
+| h      | (float, pint.Quantity) | Enthalpy                                                                                                                                                                                  | `None`    |
+| s      | (float, pint.Quantity) | Entropy                                                                                                                                                                                   | `None`    |
+| rho    | (float, pint.Quantity) | Specific mass                                                                                                                                                                             | `None`    |
+| fluid  | dict                   | Dictionary with constituent and composition. (e.g.: fluid={'Oxygen': 0.2096, 'Nitrogen': 0.7812, 'Argon': 0.0092}) String with REFPROP, HEOS, PR or SRK. Default is set in ccp.config.EOS | `None`    |
+
+#### Returns {.doc-section .doc-section-returns}
+
+| Name   | Type      | Description   |
+|--------|-----------|---------------|
+| state  | ccp.State |               |
+
+#### Examples {.doc-section .doc-section-examples}
+
+```python
+>>> import ccp
+>>> Q_ = ccp.Q_
+>>> fluid = {'Oxygen': 0.2096, 'Nitrogen': 0.7812, 'Argon': 0.0092}
+>>> s = ccp.State.define(p=101008, T=273, fluid=fluid)
+>>> s.rho()
+<Quantity(1.28939426, 'kilogram / meter ** 3')>
+>>> # Using pint quantities
+>>> s = ccp.State.define(fluid=fluid, p=Q_(1, 'atm'), T=Q_(0, 'degC'))
+>>> s.h()
+<Quantity(273291.7, 'joule / kilogram')>
+```
+
+### dpdv_s { #ccp.State.dpdv_s }
+
+```python
+State.dpdv_s(units=None)
+```
+
+Partial derivative of pressure to spec. volume with const. entropy.
+
+### gas_constant { #ccp.State.gas_constant }
+
+```python
+State.gas_constant(units=None)
+```
+
+Gas constant in joule / (mol kelvin).
+
+#### Returns {.doc-section .doc-section-returns}
+
+| Name         | Type          | Description                         |
+|--------------|---------------|-------------------------------------|
+| gas_constant | pint.Quantity | Gas constant (joule / (mol kelvin). |
+
+### get_coolprop_state { #ccp.State.get_coolprop_state }
+
+```python
+State.get_coolprop_state()
+```
+
+Return a CoolProp state object.
+
+### h { #ccp.State.h }
+
+```python
+State.h(units=None)
+```
+
+Specific Enthalpy (joule/kilogram).
+
+#### Returns {.doc-section .doc-section-returns}
+
+| Name   | Type          | Description                |
+|--------|---------------|----------------------------|
+| h      | pint.Quantity | Enthalpy (joule/kilogram). |
+
+### kT { #ccp.State.kT }
+
+```python
+State.kT()
+```
+
+Isentropic temperature exponent (dimensionless).
+
+#### Returns {.doc-section .doc-section-returns}
+
+| Name   | Type          | Description                                      |
+|--------|---------------|--------------------------------------------------|
+| kT     | pint.Quantity | Isentropic temperature exponent (dimensionless). |
+
+### kinematic_viscosity { #ccp.State.kinematic_viscosity }
+
+```python
+State.kinematic_viscosity(units=None)
+```
+
+Kinematic viscosity in m²/s.
+
+#### Returns {.doc-section .doc-section-returns}
+
+| Name                | Type          | Description                |
+|---------------------|---------------|----------------------------|
+| kinematic_viscosity | pint.Quantity | Kinematic viscosity (m²/s) |
+
+### kv { #ccp.State.kv }
+
+```python
+State.kv()
+```
+
+Isentropic volume exponent (dimensionless).
+
+#### Returns {.doc-section .doc-section-returns}
+
+| Name   | Type          | Description                                 |
+|--------|---------------|---------------------------------------------|
+| kv     | pint.Quantity | Isentropic volume exponent (dimensionless). |
+
+### molar_mass { #ccp.State.molar_mass }
+
+```python
+State.molar_mass(units=None)
+```
+
+Molar mass in kg/mol.
+
+#### Returns {.doc-section .doc-section-returns}
+
+| Name       | Type          | Description          |
+|------------|---------------|----------------------|
+| molar_mass | pint.Quantity | Molar mass (kg/mol). |
+
+### p { #ccp.State.p }
+
+```python
+State.p(units=None)
+```
+
+Pressure in Pascal.
+
+#### Returns {.doc-section .doc-section-returns}
+
+| Name   | Type          | Description        |
+|--------|---------------|--------------------|
+| p      | pint.Quantity | Pressure (pascal). |
+
+### p_critical { #ccp.State.p_critical }
+
+```python
+State.p_critical(units=None)
+```
+
+Critical Pressure in Pa.
+
+#### Returns {.doc-section .doc-section-returns}
+
+| Name       | Type          | Description             |
+|------------|---------------|-------------------------|
+| p_critical | pint.Quantity | Critical pressure (Pa). |
+
+### plot_envelope { #ccp.State.plot_envelope }
+
+```python
+State.plot_envelope(
+    T_units='degK',
+    p_units='Pa',
+    dew_point_margin=20,
+    fig=None,
+    **kwargs,
+)
+```
+
+Plot phase envelope.
+
+Plots the phase envelope and dew point limit.
+
+#### Parameters {.doc-section .doc-section-parameters}
+
+| Name             | Type                        | Description                                                                   | Default   |
+|------------------|-----------------------------|-------------------------------------------------------------------------------|-----------|
+| T_units          | str                         | Temperature units. Default is 'degK'.                                         | `'degK'`  |
+| p_units          | str                         | Pressure units. Default is 'Pa'.                                              | `'Pa'`    |
+| dew_point_margin | float                       | Dew point margin. Default is 20 degK (from API). Unit is the same as T_units. | `20`      |
+| fig              | plotly.graph_objects.Figure | The figure object with the rotor representation.                              | `None`    |
+
+#### Returns {.doc-section .doc-section-returns}
+
+| Name   | Type                        | Description                                      |
+|--------|-----------------------------|--------------------------------------------------|
+| fig    | plotly.graph_objects.Figure | The figure object with the rotor representation. |
+
+### plot_point { #ccp.State.plot_point }
+
+```python
+State.plot_point(T_units='degK', p_units='Pa', fig=None, **kwargs)
+```
+
+Plot point.
+
+Plot point in the given figure. Function will check for axis units and
+plot the point accordingly.
+
+#### Parameters {.doc-section .doc-section-parameters}
+
+| Name    | Type                        | Description                                          | Default   |
+|---------|-----------------------------|------------------------------------------------------|-----------|
+| T_units | str                         | Temperature units. Default is 'degK'.                | `'degK'`  |
+| p_units | str                         | Pressure units. Default is 'Pa'.                     | `'Pa'`    |
+| fig     | plotly.graph_objects.Figure | The figure object with the rotor representation.     | `None`    |
+| kwargs  | dict                        | Dictionary that will be passed to go.Scatter method. | `{}`      |
+
+#### Returns {.doc-section .doc-section-returns}
+
+| Name   | Type                        | Description                                      |
+|--------|-----------------------------|--------------------------------------------------|
+| fig    | plotly.graph_objects.Figure | The figure object with the rotor representation. |
+
+### rho { #ccp.State.rho }
+
+```python
+State.rho(units=None)
+```
+
+Specific mass (kilogram/m**3).
+
+#### Returns {.doc-section .doc-section-returns}
+
+| Name   | Type          | Description                    |
+|--------|---------------|--------------------------------|
+| rho    | pint.Quantity | Specific mass (kilogram/m**3). |
+
+### s { #ccp.State.s }
+
+```python
+State.s(units=None)
+```
+
+Specific entropy (per unit of mass).
+
+#### Returns {.doc-section .doc-section-returns}
+
+| Name   | Type          | Description                        |
+|--------|---------------|------------------------------------|
+| s      | pint.Quantity | Entropy (joule/(kelvin kilogram)). |
+
+### speed_sound { #ccp.State.speed_sound }
+
+```python
+State.speed_sound(units=None)
+```
+
+Speed of sound - Eq. 8.1 from P. Nederstigt - Real Gas Thermodynamics.
+
+#### Returns {.doc-section .doc-section-returns}
+
+| Name        | Type          | Description           |
+|-------------|---------------|-----------------------|
+| speed_sound | pint.Quantity | Speed of sound (m/s). |
+
+### update { #ccp.State.update }
+
+```python
+State.update(p=None, T=None, rho=None, h=None, s=None, phase=None, **kwargs)
+```
+
+Update the state.
+
+This method simplifies the state update. Only keyword arguments are
+required to update.
+
+#### Parameters {.doc-section .doc-section-parameters}
+
+| Name   | Type                   | Description                                                                                                                                                                                             | Default   |
+|--------|------------------------|---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|-----------|
+| p      | (float, pint.Quantity) | Pressure (Pa).                                                                                                                                                                                          | `None`    |
+| T      | (float, pint.Quantity) | Temperature (degK).                                                                                                                                                                                     | `None`    |
+| rho    | (float, pint.Quantity) | Specific mass (kg/m**3).                                                                                                                                                                                | `None`    |
+| h      | (float, pint.Quantity) | Enthalpy (J/kg).                                                                                                                                                                                        | `None`    |
+| s      | (float, pint.Quantity) | Entropy (J/(kg*degK)).                                                                                                                                                                                  | `None`    |
+| phase  | str                    | String with phase information. Options are: - "liquid" - "gas" - "two_phase" - "supercritical_liquid" - "supercritical_gas" - "supercritical" Default is the phase defined in the state initialization. | `None`    |
+
+### v { #ccp.State.v }
+
+```python
+State.v(units=None)
+```
+
+Specific volume (m**3/kilogram).
+
+#### Returns {.doc-section .doc-section-returns}
+
+| Name   | Type          | Description                      |
+|--------|---------------|----------------------------------|
+| v      | pint.Quantity | Specific volume (m**3/kilogram). |
+
+### viscosity { #ccp.State.viscosity }
+
+```python
+State.viscosity(units=None)
+```
+
+Viscosity in pascal second.
+
+#### Returns {.doc-section .doc-section-returns}
+
+| Name      | Type          | Description               |
+|-----------|---------------|---------------------------|
+| viscosity | pint.Quantity | Viscosity (pascal second) |
+
+### z { #ccp.State.z }
+
+```python
+State.z(units=None)
+```
+
+Compressibility (dimensionless).
+
+#### Returns {.doc-section .doc-section-returns}
+
+| Name   | Type          | Description                      |
+|--------|---------------|----------------------------------|
+| z      | pint.Quantity | Compressibility (dimensionless). |

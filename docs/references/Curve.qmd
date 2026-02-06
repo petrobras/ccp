@@ -1,0 +1,49 @@
+# Curve { #ccp.Curve }
+
+```python
+Curve(points, extrapolated=False)
+```
+
+Curve.
+
+A curve is a collection of points that share the same suction
+state and the same speed.
+
+## Parameters {.doc-section .doc-section-parameters}
+
+| Name   | Type   | Description          | Default    |
+|--------|--------|----------------------|------------|
+| points | list   | List with the points | _required_ |
+
+## Methods
+
+| Name | Description |
+| --- | --- |
+| [save](#ccp.Curve.save) | Save curve to a file. |
+| [save_hysys_csv](#ccp.Curve.save_hysys_csv) | Save curve to a csv with hysys format. |
+
+### save { #ccp.Curve.save }
+
+```python
+Curve.save(file_name, file_type='toml')
+```
+
+Save curve to a file.
+
+#### Parameters {.doc-section .doc-section-parameters}
+
+| Name      | Type   | Description             | Default    |
+|-----------|--------|-------------------------|------------|
+| file_name |        | Name of the file.       | _required_ |
+| file_type |        | File type can be: toml. | `'toml'`   |
+
+### save_hysys_csv { #ccp.Curve.save_hysys_csv }
+
+```python
+Curve.save_hysys_csv(curve_path)
+```
+
+Save curve to a csv with hysys format.
+
+curve_path: pathlib.Path
+    Path where the curve file will be saved.

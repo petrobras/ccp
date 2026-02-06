@@ -1,17 +1,18 @@
 version: 2
 
 build:
-  os: ubuntu-22.04
+  os: ubuntu-24.04
   tools:
-    python: "3.10"
-
-python:
-  install:
-      - method: pip
-        path: .
-      - requirements: docs/requirements.txt
-
-sphinx:
-  builder: html
-  fail_on_warning: false
-  configuration: docs/conf.py
+    python: "3.12"
+  commands:
+    # Install uv (needed by quarto-marimo extension)
+    - pip install uv
+    # Install Quarto CLI
+    - wget -q https://github.com/quarto-dev/quarto-cli/releases/download/v1.6.42/quarto-1.6.42-linux-amd64.tar.gz -O /tmp/quarto.tar.gz
+    - tar -xzf /tmp/quarto.tar.gz -C /tmp/
+    # Install project and doc dependencies
+    - pip install -e "."
+    - pip install -r docs/requirements.txt
+    # Build API docs with quartodoc, then render with Quarto
+    - cd docs && quartodoc build
+    - cd docs && /tmp/quarto-1.6.42/bin/quarto render --output-dir $READTHEDOCS_OUTPUT/html

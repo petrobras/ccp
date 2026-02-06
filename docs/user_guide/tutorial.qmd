@@ -1,0 +1,194 @@
+---
+title: Tutorial
+marimo-version: 0.19.8
+external-env: true
+execute:
+  freeze: true
+filters:
+  - marimo
+---
+
+```python {.marimo}
+import marimo as mo
+```
+
+```python {.marimo}
+import ccp
+
+Q_ = ccp.Q_
+```
+
+`ccp` uses pint to handle units. Q_ is a pint quantity.
+
+Here lets define a suction pressure `ps` and a suction temperature `Ts`.
+
+For the suction pressure we are going to use pint$.$
+
+```python {.marimo}
+ps = Q_(3, "bar")
+Ts = 300
+```
+
+The pint objects hold the magnitude and units for a variable and can be used for unit conversion:
+
+```python {.marimo}
+print(
+    f"ps: {ps}\n"
+    f"ps magnitude: {ps.magnitude}\n"
+    f"ps units: {ps.units}\n"
+    f"convert to atm: {ps.to('atm')}\n"
+)
+```
+
+The fluid composition is defined as a dictionary:
+
+```python {.marimo}
+fluid = {
+    "CarbonDioxide": 0.79585,
+    "Nitrogen": 0.16751,
+    "Oxygen": 0.02903,
+}
+```
+
+We can create the suction and discharge states using the `State` class:
+
+```python {.marimo}
+suc0 = ccp.State(fluid=fluid, p=ps, T=Ts)
+disch0 = ccp.State(fluid=fluid, p=Q_(7.255, "bar"), T=391.1)
+```
+
+Notice that in the cell above we defined the states using pint quantities mixed with pure floats.
+
+The way that `ccp` works is by assuming that float are in the SI units system, so
+
+```python
+disch0 = ccp.State(fluid=fluid, p=Q_(7.255, 'bar'), T=391.1)
+```
+
+is the same as
+
+```python
+disch0 = ccp.State(fluid=fluid, p=Q_(7.255, 'bar'), T=Q_(391.1, 'degK'))
+```
+<!---->
+Create performance point(s):
+
+```python {.marimo}
+point0 = ccp.Point(
+    suc=suc0,
+    disch=disch0,
+    speed=Q_(7941, "RPM"),
+    flow_m=Q_(34203.6, "kg/hr"),
+    b=0.0285,
+    D=0.365,
+)
+point1 = ccp.Point(
+    suc=suc0,
+    disch=disch0,
+    speed=Q_(7941, "RPM"),
+    flow_m=Q_(37203.6, "kg/hr"),
+    b=0.0285,
+    D=0.365,
+)
+```
+
+Now we can create an impeller, which is basically a container for points.
+
+```python {.marimo}
+imp = ccp.Impeller([point0, point1])
+```
+
+```python {.marimo}
+imp
+```
+
+To show other ccp features we are going to load an impeller from `csv` files created with the [Engauge Digitizer](https://markummitchell.github.io/engauge-digitizer/) application.
+For more information on how to use ccp with Engauge Digitizer see [this How-to Guide](engauge.qmd)
+
+```python {.marimo}
+imp_1 = ccp.impeller.impeller_example()
+```
+
+The impeller object stores all points in the `.points` attribute.
+
+It is also possible to get an specific point in the performance map using the `.point()` method:
+
+```python {.marimo}
+p = imp_1.point(flow_v=5.5, speed=900)
+p
+```
+
+We can access the suction or discharge condition for this point with `p.suc` or `p.disch` and get some properties for this states:
+
+```python {.marimo}
+p.disch.rho()
+```
+
+We can also plot the phase envelope:
+
+```python {.marimo}
+p.disch.plot_envelope()
+```
+
+We can also plot performance parameters such as the polytropic head.
+In this case we can choose a flow and speed and the correspondent curve and point will also be plotted:
+
+```python {.marimo}
+_fig = imp_1.head_plot(flow_v=5.5, speed=900)
+_fig
+```
+
+It is also possible to plot discharge parameters such as T (temperature), p (pressure), rho (specific mass) and so on:
+
+```python {.marimo}
+_fig = imp_1.disch.T_plot(flow_v=5.5, speed=900)
+_fig
+```
+
+In these plots we can also choose the units used for plotting:
+
+```python {.marimo}
+_fig = imp_1.disch.rho_plot(flow_v=5.5, speed=900, flow_v_units='m³/h', speed_units='RPM', rho_units='g/cm³')
+_fig
+```
+
+Notice that by default the units used in the `flow_v` and `speed` arguments are the SI units, but you can also provide pint quantities:
+
+```python {.marimo}
+_fig = imp_1.disch.rho_plot(flow_v=Q_(20000, 'm³/h'), speed=Q_(8594, 'RPM'), flow_v_units='m³/h', speed_units='RPM', rho_units='g/cm³')
+_fig
+```
+
+Now we are going to convert the performance map from an impeller to a different suction condition:
+
+```python {.marimo}
+new_fluid = {'co2': 0.7, 'n2': 0.3}
+new_suc = ccp.State(p=Q_(30, 'bar'), T=Q_(40, 'degC'), fluid=new_fluid)
+imp_conv = ccp.Impeller.convert_from(imp_1, suc=new_suc)
+```
+
+The conversion calculates new speeds based on similarity.
+
+The new impeller has the same attributes and methods as the original one:
+
+```python {.marimo}
+imp_conv.disch.p_plot(speed_units="RPM")
+```
+
+There is also an option to keep the same speeds as the original impeller during the conversion:
+
+```python {.marimo}
+imp_conv_1 = ccp.Impeller.convert_from(imp_1, suc=new_suc, speed='same')
+```
+
+We can also compare the curves from the original impeller with the converted one using the `_compare` methods:
+
+```python {.marimo}
+imp_1.head_compare(imp_conv_1)
+```
+
+It is also possible to check if the converted points are within the similarity limits by passing `similarity=True` when plotting:
+
+```python {.marimo}
+imp_conv_1.head_plot(similarity=True)
+```

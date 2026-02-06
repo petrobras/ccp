@@ -1,4 +1,6 @@
-# Building the CCP Portable Executable
+---
+title: Building the CCP Portable Executable
+---
 
 This guide describes how to build a standalone portable Windows executable for the CCP (Centrifugal Compressor Performance) Streamlit application.
 

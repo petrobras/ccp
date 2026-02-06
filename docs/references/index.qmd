@@ -1,0 +1,12 @@
+# API Reference {.doc .doc-index}
+
+## Core Classes
+
+Main classes for compressor performance analysis.
+
+| | |
+| --- | --- |
+| [State](State.qmd#ccp.State) | A thermodynamic state. |
+| [Point](Point.qmd#ccp.Point) | A performance point. |
+| [Impeller](Impeller.qmd#ccp.Impeller) | An impeller with a performance map. |
+| [Curve](Curve.qmd#ccp.Curve) | Curve. |

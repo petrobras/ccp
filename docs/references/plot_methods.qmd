@@ -1,9 +1,11 @@
-# Impeller plot methods
+---
+title: Impeller plot methods
+---
 
 An impeller object has several plot methods available.
 The documentation for these methods is as follows:
 
-```{code-block} python3
+```python
 """Plot parameter versus volumetric flow.
 
 Parameters
@@ -25,11 +27,11 @@ Returns
 fig : plotly.Figure
     Plotly figure that can be customized.
 """
-```        
+```
 
 Here are some examples of how we can create some plots:
 
-```{code-block} python3
+```python
 import ccp
 imp = ccp.impeller_example()
 fig = imp.plot_head(
@@ -39,11 +41,11 @@ fig = imp.plot_head(
    head_units='j/kg',
    speed_units='RPM'
 )
- ```
+```
 
 We can also use pint Quantities for the `flow_v` and `speed`:
 
-```{code-block} python3
+```python
 fig = imp.plot_head(
    flow_v=Q_(5.5, 'm³/s'),
    speed=Q_(8000, 'RPM'),
@@ -51,11 +53,11 @@ fig = imp.plot_head(
    head_units='j/kg',
    speed_units='RPM'
 )
- ```
+```
 
 It is also possible to plot discharge state parameters such as `p`, `T`, `h` etc.
 
-```{code-block} python3
+```python
 fig = imp.disch.plot_T(
    flow_v=Q_(5.5, 'm³/s'),
    speed=Q_(8000, 'RPM'),
@@ -63,4 +65,4 @@ fig = imp.disch.plot_T(
    T_units='degC',
    speed_units='RPM'
 )
- ```
+```
