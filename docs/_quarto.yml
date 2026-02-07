@@ -5,33 +5,36 @@ project:
 website:
   title: "ccp"
   favicon: _static/favicon.ico
-  navbar:
+  repo-url: https://github.com/petrobras/ccp
+  repo-actions: [issue]
+  sidebar:
     logo: _static/ccp.png
-    left:
-      - text: Getting Started
-        menu:
+    style: docked
+    search: true
+    tools:
+      - icon: github
+        href: https://github.com/petrobras/ccp
+    contents:
+      - section: "Getting Started"
+        contents:
           - text: Overview
             href: getting_started/overview.qmd
           - text: Installation
             href: getting_started/installation.qmd
-      - text: User Guide
-        menu:
+      - section: "User Guide"
+        contents:
           - text: Tutorial
             href: user_guide/tutorial.qmd
-          - text: Engauge Digitizer
+          - text: Getting performance points with Engauge Digitizer
             href: user_guide/engauge.qmd
           - text: Polytropic Methods
             href: user_guide/polytropic_methods.ipynb
-          - text: Evaluation Tutorial
+          - text: Evaluation Module Tutorial
             href: user_guide/evaluation_tutorial.ipynb
-      - text: App Guide
-        menu:
-          - text: Straight-Through User Guide
+          - text: Straight-Through App Guide
             href: app_guide/straight_through_user_guide.qmd
-          - text: Building Portable Executable
-            href: app_guide/building_portable_exe.qmd
-      - text: API Reference
-        menu:
+      - section: "References"
+        contents:
           - text: API Reference
             href: references/api.qmd
           - text: State
@@ -46,16 +49,17 @@ website:
             href: references/plot_methods.qmd
           - text: Performance Functions
             href: references/performance_functions.qmd
-      - text: Contributing
-        href: contributing.qmd
-    right:
-      - icon: github
-        href: https://github.com/petrobras/ccp
+      - section: "Contributing"
+        contents:
+          - text: Contributing
+            href: contributing.qmd
 
 format:
   html:
-    theme: cosmo
+    theme:
+      light: flatly
     toc: true
+    code-copy: true
     css: _static/custom.css
 
 bibliography: references.bib
