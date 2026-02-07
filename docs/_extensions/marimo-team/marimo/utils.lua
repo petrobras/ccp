@@ -83,7 +83,9 @@ function run_marimo(meta)
             meta["pyproject"] == nil,
             "The pyproject meta key must be omitted when using external-env"
         )
-        args = { "run", endpoint_script }
+        -- Use python directly to avoid uv creating an isolated venv
+        command = "python"
+        args = { endpoint_script }
     elseif meta["pyproject"] ~= nil then
         header = extract_text(meta["pyproject"])
         args = concat_lists(_construct_uv_command(header), { endpoint_script })

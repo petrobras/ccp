@@ -14,8 +14,5 @@ build:
     - pip install -e "."
     - pip install -r docs/requirements.txt
     # Build API docs with quartodoc, then render with Quarto
-    # UV_SYSTEM_PYTHON + UV_NO_PROJECT ensure the marimo extension
-    # uses the pip-installed packages (ccp, marimo) instead of creating
-    # a separate venv.
     - cd docs && quartodoc build
-    - cd docs && UV_SYSTEM_PYTHON=1 UV_NO_PROJECT=1 /tmp/quarto-1.6.42/bin/quarto render --output-dir $READTHEDOCS_OUTPUT/html
+    - cd docs && /tmp/quarto-1.6.42/bin/quarto render --output-dir $READTHEDOCS_OUTPUT/html
