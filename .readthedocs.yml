@@ -14,5 +14,7 @@ build:
     - pip install -e "."
     - pip install -r docs/requirements.txt
     # Build API docs with quartodoc, then render with Quarto
+    # MARIMO_SKIP_EXECUTION + MARIMO_CACHE_DIR use pre-rendered cell
+    # outputs instead of executing notebooks (which need REFPROP).
     - cd docs && quartodoc build
-    - cd docs && /tmp/quarto-1.6.42/bin/quarto render --output-dir $READTHEDOCS_OUTPUT/html
+    - cd docs && MARIMO_SKIP_EXECUTION=1 MARIMO_CACHE_DIR=$PWD/_marimo_cache /tmp/quarto-1.6.42/bin/quarto render --output-dir $READTHEDOCS_OUTPUT/html

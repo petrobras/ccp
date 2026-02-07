@@ -237,6 +237,17 @@ def convert_from_md_to_pandoc_export(text: str, mime_sensitive: bool) -> dict[st
     return parser.convert(text)  # type: ignore[arg-type, return-value]
 
 
+def _cache_path(content: str) -> Optional[str]:
+    """Return a cache file path based on a hash of the source content."""
+    import hashlib
+
+    cache_dir = os.environ.get("MARIMO_CACHE_DIR")
+    if not cache_dir:
+        return None
+    content_hash = hashlib.sha256(content.encode()).hexdigest()[:16]
+    return os.path.join(cache_dir, f"marimo-{content_hash}.json")
+
+
 if __name__ == "__main__":
     assert len(sys.argv) == 3, f"Unexpected call format got {sys.argv}"
     _, reference_file, mime_sensitive = sys.argv
@@ -248,5 +259,17 @@ if __name__ == "__main__":
     no_js = mime_sensitive.lower() == "yes"
     os.environ["MARIMO_NO_JS"] = str(no_js).lower()
 
-    conversion = convert_from_md_to_pandoc_export(file, no_js)
-    sys.stdout.write(json.dumps(conversion))
+    cache_file = _cache_path(file)
+    skip_exec = os.environ.get("MARIMO_SKIP_EXECUTION", "") == "1"
+
+    if skip_exec and cache_file and os.path.exists(cache_file):
+        with open(cache_file) as f:
+            sys.stdout.write(f.read())
+    else:
+        conversion = convert_from_md_to_pandoc_export(file, no_js)
+        result = json.dumps(conversion)
+        if cache_file:
+            os.makedirs(os.path.dirname(cache_file), exist_ok=True)
+            with open(cache_file, "w") as f:
+                f.write(result)
+        sys.stdout.write(result)
