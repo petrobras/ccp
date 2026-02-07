@@ -44,7 +44,7 @@ __version__ = "0.0.1"
 
 # See https://quarto.org/docs/computations/execution-options.html
 default_config = {
-    "eval": True,
+    "eval": False,
     "echo": False,
     "output": True,
     "warning": True,
