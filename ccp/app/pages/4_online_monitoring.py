@@ -35,11 +35,182 @@ from ccp.app.common import (
 # Usage: streamlit run app.py -- testing=True
 TESTING_MODE = "testing=True" in sys.argv
 
+# pandaspi is only available inside Petrobras network.
+# Guard the import so the rest of the app still works without it.
+try:
+    from pandaspi import SessionWeb
+
+    HAS_PANDASPI = True
+except ImportError:
+    HAS_PANDASPI = False
+
 sentry_sdk.init(
     dsn="https://8fd0e79dffa94dbb9747bf64e7e55047@o348313.ingest.sentry.io/4505046640623616",
     traces_sample_rate=1.0,
     auto_enabling_integrations=False,
 )
+
+
+def _build_pi_query(tag_mappings):
+    """Build PI tag list and column rename map from tag_mappings.
+
+    Parameters
+    ----------
+    tag_mappings : dict
+        Dictionary with tag configuration from session state.
+
+    Returns
+    -------
+    tags_list : list of str
+        PI tag name strings to query.
+    rename_map : dict
+        Mapping from PI tag name to ccp internal column name.
+    """
+    # Map from tag_mappings key -> ccp internal column name
+    key_to_col = {
+        "suc_p_tag": "ps",
+        "suc_T_tag": "Ts",
+        "disch_p_tag": "pd",
+        "disch_T_tag": "Td",
+        "speed_tag": "speed",
+        "flow_tag": "flow_v",
+        "delta_p_tag": "delta_p",
+        "p_downstream_tag": "p_downstream",
+    }
+
+    tags_list = []
+    rename_map = {}
+
+    for key, col_name in key_to_col.items():
+        tag_name = tag_mappings.get(key, "")
+        if tag_name:
+            tags_list.append(tag_name)
+            rename_map[tag_name] = col_name
+
+    # Add fluid component tags if configured
+    fluid_tags = tag_mappings.get("fluid_tags", {})
+    for component_name, tag_name in fluid_tags.items():
+        if tag_name:
+            tags_list.append(tag_name)
+            rename_map[tag_name] = f"fluid_{component_name}"
+
+    return tags_list, rename_map
+
+
+def _format_pi_time(dt):
+    """Format a datetime object as a PI time string.
+
+    Parameters
+    ----------
+    dt : datetime
+        Datetime to format.
+
+    Returns
+    -------
+    str
+        Formatted time string in 'dd/mm/YYYY HH:MM:SS' format.
+    """
+    return dt.strftime("%d/%m/%Y %H:%M:%S")
+
+
+def _apply_fluid_unit_conversions(df, tag_mappings):
+    """Convert fluid component columns based on their configured units.
+
+    Parameters
+    ----------
+    df : pd.DataFrame
+        DataFrame with fluid columns already renamed to ``fluid_*``.
+    tag_mappings : dict
+        Must contain ``fluid_units`` mapping component names to unit strings.
+
+    Returns
+    -------
+    pd.DataFrame
+        DataFrame with fluid columns converted where necessary.
+        Columns in ``percent`` are divided by 100; ``mol_frac`` and ``ppm``
+        are left as-is (``ppm`` is handled by ``ccp.Evaluation`` internally).
+    """
+    fluid_units = tag_mappings.get("fluid_units", {})
+    for component_name, unit in fluid_units.items():
+        col = f"fluid_{component_name}"
+        if col in df.columns and unit == "percent":
+            df[col] = df[col] / 100.0
+    return df
+
+
+def _sanitize_pi_dataframe(df):
+    """Clean a raw PI DataFrame for use with ccp.Evaluation.
+
+    PI Web API may return dict objects for digital/enumerated tags or when
+    instrument errors occur (e.g. ``{'Name': 'Configure', 'Value': 240,
+    'IsSystem': True}``).  These are detected, and the rows where *any*
+    column contains a PI system/error dict are dropped so that downstream
+    calculations only see valid numeric data.
+
+    Additionally:
+
+    - Strip timezone from the index.
+    - Coerce all columns to numeric (non-numeric become NaN).
+
+    Parameters
+    ----------
+    df : pd.DataFrame
+        Raw DataFrame from pandaspi ``SessionWeb`` (already column-renamed).
+
+    Returns
+    -------
+    pd.DataFrame
+        Cleaned DataFrame with float64 columns and tz-naive DatetimeIndex.
+
+    Raises
+    ------
+    ValueError
+        If *all* rows in a column are PI error dicts (instrument is down).
+    """
+    # Detect columns that contain PI error/system dicts
+    error_columns = {}
+    for col in df.columns:
+        if df[col].dtype == object:
+            is_dict_mask = df[col].apply(lambda v: isinstance(v, dict))
+            if is_dict_mask.any():
+                n_dicts = is_dict_mask.sum()
+                # Grab a sample dict for the error message
+                sample = df[col][is_dict_mask].iloc[0]
+                error_columns[col] = {
+                    "count": n_dicts,
+                    "total": len(df),
+                    "sample": sample,
+                }
+                if n_dicts == len(df):
+                    raise ValueError(
+                        f"Tag mapped to column '{col}' returned only PI system "
+                        f"values (instrument error). Sample value: {sample}. "
+                        f"Please check if the instrument is operational."
+                    )
+
+    if error_columns:
+        # Log which columns had errors
+        for col, info in error_columns.items():
+            print(
+                f"[WARNING] Column '{col}': {info['count']}/{info['total']} rows "
+                f"contain PI system/error values (e.g. {info['sample']}). "
+                f"These rows will be dropped."
+            )
+        # Build a mask of rows where ANY column has a dict value
+        dict_row_mask = pd.Series(False, index=df.index)
+        for col in error_columns:
+            dict_row_mask |= df[col].apply(lambda v: isinstance(v, dict))
+        df = df[~dict_row_mask].copy()
+
+    # Strip timezone (ccp.Evaluation expects tz-naive index)
+    if df.index.tz is not None:
+        df.index = df.index.tz_localize(None)
+
+    # Coerce all columns to numeric
+    for col in df.columns:
+        df[col] = pd.to_numeric(df[col], errors="coerce")
+
+    return df
 
 
 def fetch_pi_data(tag_mappings, start_time=None, testing=False):
@@ -70,9 +241,32 @@ def fetch_pi_data(tag_mappings, start_time=None, testing=False):
 
         return df
     else:
-        # TODO: Implement real PI data fetch
-        # This should connect to PI server and fetch data from start_time to now
-        raise NotImplementedError("Real PI data fetch not implemented yet")
+        tags_list, rename_map = _build_pi_query(tag_mappings)
+        if not tags_list:
+            raise ValueError("No PI tags configured. Please fill in the tag names.")
+
+        end_time = datetime.now()
+        if start_time is None:
+            start_time = end_time - timedelta(hours=1)
+
+        print(f"[fetch_pi_data] tags={tags_list}, time_range=({_format_pi_time(start_time)}, {_format_pi_time(end_time)})")
+        session = SessionWeb(
+            server_name=tag_mappings.get("pi_server_name", ""),
+            login=tag_mappings.get("pi_login"),
+            tags=tags_list,
+            time_range=(_format_pi_time(start_time), _format_pi_time(end_time)),
+            time_span="450s",
+            authentication=tag_mappings.get("pi_auth_method", "kerberos"),
+        )
+
+        print(f"[fetch_pi_data] raw PI DataFrame:\n{session.df}")
+        print(f"[fetch_pi_data] raw dtypes:\n{session.df.dtypes}")
+        df = session.df.rename(columns=rename_map)
+        df = _sanitize_pi_dataframe(df)
+        print(f"[fetch_pi_data] sanitized DataFrame:\n{df}")
+        print(f"[fetch_pi_data] sanitized dtypes:\n{df.dtypes}")
+        df = _apply_fluid_unit_conversions(df, tag_mappings)
+        return df
 
 
 def fetch_pi_data_online(tag_mappings, testing=False):
@@ -125,9 +319,31 @@ def fetch_pi_data_online(tag_mappings, testing=False):
 
         return df_sample
     else:
-        # TODO: Implement real PI data fetch
-        # This should connect to PI server and fetch latest 3 points
-        raise NotImplementedError("Real PI data fetch not implemented yet")
+        tags_list, rename_map = _build_pi_query(tag_mappings)
+        if not tags_list:
+            raise ValueError("No PI tags configured. Please fill in the tag names.")
+
+        now = datetime.now()
+        start_time = now - timedelta(minutes=15)
+
+        print(f"[fetch_pi_data_online] tags={tags_list}, time_range=({_format_pi_time(start_time)}, {_format_pi_time(now)})")
+        session = SessionWeb(
+            server_name=tag_mappings.get("pi_server_name", ""),
+            login=tag_mappings.get("pi_login"),
+            tags=tags_list,
+            time_range=(_format_pi_time(start_time), _format_pi_time(now)),
+            time_span="450s",
+            authentication=tag_mappings.get("pi_auth_method", "kerberos"),
+        )
+
+        print(f"[fetch_pi_data_online] raw PI DataFrame:\n{session.df}")
+        print(f"[fetch_pi_data_online] raw dtypes:\n{session.df.dtypes}")
+        df = session.df.rename(columns=rename_map)
+        df = _sanitize_pi_dataframe(df)
+        print(f"[fetch_pi_data_online] sanitized DataFrame:\n{df}")
+        print(f"[fetch_pi_data_online] sanitized dtypes:\n{df.dtypes}")
+        df = _apply_fluid_unit_conversions(df, tag_mappings)
+        return df
 
 
 def main():
@@ -170,6 +386,16 @@ def main():
     """
     )
 
+    # Check pandaspi availability — required for real PI data
+    if not HAS_PANDASPI and not TESTING_MODE:
+        st.error(
+            "**pandaspi** is required for online monitoring with real PI data. "
+            "This library is only available inside Petrobras. "
+            "To run with mock data for testing, start with: "
+            "`streamlit run ccp/app/ccp_app.py -- testing=True`"
+        )
+        st.stop()
+
     # Show testing mode alert at top of page
     if TESTING_MODE:
         st.warning(
@@ -200,6 +426,10 @@ def main():
         # Initialize tag mappings
         if "tag_mappings" not in st.session_state:
             st.session_state.tag_mappings = {}
+
+        # Initialize PI server name
+        if "pi_server_name" not in st.session_state:
+            st.session_state.pi_server_name = ""
 
         # Initialize evaluation
         if "evaluation" not in st.session_state:
@@ -442,8 +672,13 @@ def main():
                         )
                     ) or isinstance(
                         value,
-                        (bytes, st.runtime.uploaded_file_manager.UploadedFile),
-                    ):
+                        (
+                            bytes,
+                            st.runtime.uploaded_file_manager.UploadedFile,
+                            datetime,
+                            timedelta,
+                        ),
+                    ) or type(value).__name__ in ("date", "time"):
                         keys_to_remove.append(key)
                     # Also catch dicts containing bytes (like curves_file entries)
                     elif isinstance(value, dict) and any(
@@ -452,7 +687,13 @@ def main():
                         keys_to_remove.append(key)
 
                 # Also remove evaluation and monitoring_results as they can't be serialized
-                for key in ["evaluation", "monitoring_results", "last_fetch"]:
+                # Remove pi_password so credentials are never persisted to disk
+                for key in [
+                    "evaluation",
+                    "monitoring_results",
+                    "last_fetch",
+                    "pi_password",
+                ]:
                     if key in session_state_dict_copy:
                         keys_to_remove.append(key)
 
@@ -774,6 +1015,23 @@ def main():
 
     # Tags Configuration Expander
     with st.expander("Tags Configuration", expanded=st.session_state.expander_state):
+        st.markdown("### PI Server")
+        server_row = st.columns([3, 2, 2, 2])
+        with server_row[0]:
+            st.text_input("PI Server Name", key="pi_server_name")
+        with server_row[1]:
+            st.radio(
+                "Authentication",
+                options=["kerberos", "basic"],
+                key="pi_auth_method",
+                horizontal=True,
+            )
+        if st.session_state.get("pi_auth_method") == "basic":
+            with server_row[2]:
+                st.text_input("Username", key="pi_username")
+            with server_row[3]:
+                st.text_input("Password", key="pi_password", type="password")
+
         st.markdown("### Process Parameter Tags")
 
         # Row 1: Suction Pressure + Suction Temperature
@@ -887,20 +1145,28 @@ def main():
                 )
 
         if fluid_source == "Inform Component Tags":
-            st.markdown("Configure tags for each component (mol %).")
-            # Create 3 rows with 4 component+tag pairs per row (12 total)
+            st.markdown("Configure tags for each component.")
+            fluid_unit_options = ["mol_frac", "percent", "ppm"]
+            # Create 3 rows with 3 component+tag+unit groups per row (9 total)
             for row_idx in range(3):
-                fluid_row = st.columns([1, 2, 1, 2, 1, 2, 1, 2])
-                for col_idx in range(4):
-                    comp_idx = row_idx * 4 + col_idx
-                    with fluid_row[col_idx * 2]:
+                fluid_row = st.columns([1, 2, 1] * 3)
+                for col_idx in range(3):
+                    comp_idx = row_idx * 3 + col_idx
+                    base = col_idx * 3
+                    with fluid_row[base]:
                         st.selectbox(
                             "Component",
                             options=fluid_list,
                             key=f"fluid_component_{comp_idx}",
                         )
-                    with fluid_row[col_idx * 2 + 1]:
+                    with fluid_row[base + 1]:
                         st.text_input("Tag", key=f"fluid_tag_{comp_idx}")
+                    with fluid_row[base + 2]:
+                        st.selectbox(
+                            "Unit",
+                            options=fluid_unit_options,
+                            key=f"fluid_unit_{comp_idx}",
+                        )
 
     # Online Monitoring Expander
     with st.expander("Online Monitoring", expanded=True):
@@ -1005,12 +1271,24 @@ def main():
 
             # Build tag mappings
             tag_mappings = {
+                "pi_server_name": st.session_state.get("pi_server_name", ""),
+                "pi_auth_method": st.session_state.get(
+                    "pi_auth_method", "kerberos"
+                ),
                 "suc_p_tag": st.session_state.get("suc_p_tag", ""),
                 "suc_T_tag": st.session_state.get("suc_T_tag", ""),
                 "disch_p_tag": st.session_state.get("disch_p_tag", ""),
                 "disch_T_tag": st.session_state.get("disch_T_tag", ""),
                 "speed_tag": st.session_state.get("speed_tag", ""),
             }
+
+            # Add login credentials for basic auth
+            if tag_mappings["pi_auth_method"] == "basic":
+                username = st.session_state.get("pi_username", "")
+                password = st.session_state.get("pi_password", "")
+                tag_mappings["pi_login"] = (username, password)
+            else:
+                tag_mappings["pi_login"] = None
 
             flow_method = st.session_state.get("flow_method", "Direct")
             if flow_method == "Direct":
@@ -1020,6 +1298,23 @@ def main():
                 tag_mappings["p_downstream_tag"] = st.session_state.get(
                     "p_downstream_tag", ""
                 )
+
+            # Build fluid component tag mappings and units
+            fluid_source = st.session_state.get(
+                "fluid_source", "Fixed Operation Fluid"
+            )
+            if fluid_source == "Inform Component Tags":
+                fluid_tags = {}
+                fluid_units = {}
+                for i in range(9):
+                    comp = st.session_state.get(f"fluid_component_{i}", "")
+                    tag = st.session_state.get(f"fluid_tag_{i}", "")
+                    unit = st.session_state.get(f"fluid_unit_{i}", "mol_frac")
+                    if comp and tag:
+                        fluid_tags[comp] = tag
+                        fluid_units[comp] = unit
+                tag_mappings["fluid_tags"] = fluid_tags
+                tag_mappings["fluid_units"] = fluid_units
 
             # Handle Start Monitoring button
             if (
@@ -1036,16 +1331,18 @@ def main():
                         tag_mappings, start_time=start_datetime, testing=TESTING_MODE
                     )
 
-                    # Get gas composition from first available case
-                    gas_name = st.session_state.get(f"gas_case_{available_cases[0]}")
-                    if "gas_compositions_table" in st.session_state:
-                        operation_fluid = get_gas_composition(
-                            gas_name,
-                            st.session_state["gas_compositions_table"],
-                            default_components,
+                    # Get gas composition (only for fixed fluid mode)
+                    operation_fluid = None
+                    if fluid_source != "Inform Component Tags":
+                        gas_name = st.session_state.get(
+                            f"gas_case_{available_cases[0]}"
                         )
-                    else:
-                        operation_fluid = None
+                        if "gas_compositions_table" in st.session_state:
+                            operation_fluid = get_gas_composition(
+                                gas_name,
+                                st.session_state["gas_compositions_table"],
+                                default_components,
+                            )
 
                     # Build data units from per-tag unit selections
                     data_units = {
@@ -1055,6 +1352,16 @@ def main():
                         "Td": st.session_state.get("disch_T_unit", "degC"),
                         "speed": st.session_state.get("speed_unit", "rpm"),
                     }
+
+                    # Add fluid component units to data_units
+                    # (percent columns are already converted to mol_frac
+                    #  by _apply_fluid_unit_conversions; ppm is handled by
+                    #  ccp.Evaluation internally)
+                    fluid_units_map = tag_mappings.get("fluid_units", {})
+                    for comp_name, unit in fluid_units_map.items():
+                        col = f"fluid_{comp_name}"
+                        if unit == "ppm":
+                            data_units[col] = "ppm"
 
                     evaluation_kwargs = {
                         "data": df_raw,
