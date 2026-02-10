@@ -103,3 +103,9 @@ indent-style = "space"
 dev = [
     "pre-commit",
 ]
+
+[tool.uv]
+package = true
+
+[tool.uv.pip]
+editable = true
