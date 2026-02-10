@@ -1,16 +1,17 @@
 from copy import copy
 
 import numpy as np
-import toml
-import plotly.graph_objects as go
 import pandas as pd
+import plotly.graph_objects as go
+import toml
 from plotly.subplots import make_subplots
-from scipy.optimize import newton, brentq
+from scipy.optimize import brentq, newton
 
 import ccp.config
-from .state import State
-from ccp.config.units import check_units, Q_
+from ccp.config.units import Q_, check_units
 from ccp.config.utilities import r_getattr
+
+from .state import State
 
 
 class Point:
@@ -31,8 +32,10 @@ class Point:
         Suction state, polytropic head and polytropic efficiency.
     suc, head, power : ccp.State, pint.Quantity or float, pint.Quantity or float
         Suction state, polytropic head (J/kg) and gas power (Watt).
-    suc, head, power_shaft, power_losses : ccp.State, pint.Quantity or float, pint.Quantity or float, pint.Quantity or float
-        Suction state, polytropic head (J/kg), shaft power (Watt) and power losses (Watt).
+    suc, head, power_shaft, power_losses : ccp.State, pint.Quantity or float,
+        pint.Quantity or float, pint.Quantity or float
+        Suction state, polytropic head (J/kg), shaft power (Watt) and power
+        losses (Watt).
     suc, eff, volume_ratio : ccp.State, float, float
         Suction state, polytropic efficiency and volume ratio.
     suc, pres_ratio, disch_T : ccp.State, float, pint.Quantity or float
@@ -62,12 +65,14 @@ class Point:
         Default value is 13.6.
     polytropic_method : str, optional
         Polytropic method used for head and efficiency calculation.
-        Options are: "mallen_saville", "sandberg_colby", "sandberg_colby_multistep", "schultz" and "huntington".
+        Options are: "mallen_saville", "sandberg_colby",
+        "sandberg_colby_multistep", "schultz" and "huntington".
         The default is "schultz".
         The default value can be changed in a global level with:
         ccp.config.POLYTROPIC_METHOD = "<desired value>"
     extrapolated: bool, optional
-        If true, the point is an extrapolation from other curves or its flow is outside surge and choke limits.
+        If true, the point is an extrapolation from other curves or its flow is
+        outside surge and choke limits.
         The default is False.
 
     Returns
@@ -126,19 +131,25 @@ class Point:
     mach : pint.Quantity
         Mach number (dimensionless).
     phi_ratio : float
-        Ratio between phi for this point and the original point from which it was converted from.
+        Ratio between phi for this point and the original point from which it was
+        converted from.
     psi_ratio : float
-        Ratio between psi for this point and the original point from which it was converted from.
+        Ratio between psi for this point and the original point from which it was
+        converted from.
     reynolds_ratio : float
-        Ratio between Reynolds for this point and the original point from which it was converted from.
+        Ratio between Reynolds for this point and the original point from which it was
+        converted from.
     mach_diff : float
-        Difference between Mach for this point and the original point from which it was converted from.
+        Difference between Mach for this point and the original point from which it was
+        converted from.
     volume_ratio_ratio : float
-        Ratio between volume_ratio for this point and the original point from which it was converted from.
+        Ratio between volume_ratio for this point and the original point from which it
+        was converted from.
     polytropic_method : str
         Polytropic method used for head and efficiency calculation.
     extrapolated : bool
-        If true, the point is an extrapolation from other curves or its flow is outside surge and choke limits.
+        If true, the point is an extrapolation from other curves or its flow is
+        outside surge and choke limits.
         The default is False.
     """
 
@@ -255,7 +266,7 @@ class Point:
 
         try:
             getattr(self, "_calc_from_" + kwargs_str)()
-        except (ValueError, RuntimeError) as e:
+        except (ValueError, RuntimeError):
             kwargs_repr = (
                 str(kwargs_dict)
                 .replace(">", "")
@@ -276,30 +287,31 @@ class Point:
 
             raise ValueError(
                 f"Could not calculate point with ccp.Point(**{kwargs_repr}).\n"
-                f"The following kwargs seems out of reasonable range: {out_of_range_dict}."
+                "The following kwargs seems out of reasonable range: "
+                f"{out_of_range_dict}."
             )
 
         self.reynolds = reynolds(self.suc, self.speed, self.b, self.D)
         self.mach = mach(self.suc, self.speed, self.D)
-        if phi_ratio == None:
+        if phi_ratio is None:
             self.phi_ratio = Q_(1.0, "dimensionless")
         else:
             self.phi_ratio = phi_ratio
-        if psi_ratio == None:
+        if psi_ratio is None:
             self.psi_ratio = Q_(1.0, "dimensionless")
         else:
             self.psi_ratio = psi_ratio
-        if reynolds_ratio == None:
+        if reynolds_ratio is None:
             self.reynolds_ratio = Q_(1.0, "dimensionless")
         else:
             self.reynolds_ratio = reynolds_ratio
         # mach in the ptc 10 is compared with Mmt - Mmsp
-        if mach_diff == None:
+        if mach_diff is None:
             self.mach_diff = Q_(0.0, "dimensionless")
         else:
             self.mach_diff = mach_diff
         # ratio between specific volume ratios in original and converted conditions
-        if volume_ratio_ratio == None:
+        if volume_ratio_ratio is None:
             self.volume_ratio_ratio = Q_(1.0, "dimensionless")
         else:
             self.volume_ratio_ratio = volume_ratio_ratio
@@ -831,8 +843,8 @@ class Point:
     ):
         """Convert point from an original point.
 
-        The procedure to convert a point considering that the volume ratio will be the same,
-        follows the following steps:
+        The procedure to convert a point considering that the volume ratio will be
+        the same, follows the following steps:
         1. Assume that eff_converted = eff_original and psi_converted = psi_original
         2. Assume that volume ratio will be the same to keep similarity
         3. Calculate discharge volume based on suction state and volume ratio
@@ -859,8 +871,8 @@ class Point:
             If reynolds correction should be applied during the conversion.
             If True the ASME PTC 10 reynolds correction is applied
 
-        The user must provide 3 of the 4 available arguments. The argument which is not
-        provided will be calculated.
+        The user must provide 3 of the 4 available arguments. The argument which is
+        not provided will be calculated.
         """
         if speed is None:
             speed = original_point.speed
@@ -980,17 +992,11 @@ class Point:
             T=Q_(dict_parameters.pop("T")),
             fluid=dict_parameters.pop("fluid"),
         )
-        try:
-            extrapolated = dict_parameters.pop("extrapolated")
-            # Convert string to boolean if needed (for backwards compatibility)
-            if isinstance(extrapolated, str):
-                extrapolated = extrapolated.lower() == "true"
-        except:
-            extrapolated = False
-        try:
-            polytropic_method = dict_parameters.pop("polytropic_method")
-        except:
-            polytropic_method = None
+        extrapolated = dict_parameters.pop("extrapolated", False)
+        # Convert string to boolean if needed (for backwards compatibility)
+        if isinstance(extrapolated, str):
+            extrapolated = extrapolated.lower() == "true"
+        polytropic_method = dict_parameters.pop("polytropic_method", None)
 
         return dict(
             suc=suc,
@@ -1140,7 +1146,8 @@ class Point:
         lower_text = (
             "<b>Lower Limit</b><br>"
             f"Mm{_t} = 0 {20 * space_str}for Mm{_sp} < 0.215<br>"
-            f"Mm{_t} = (1.266·Mm{_sp} - 0.271) {space_str}for 0.215 ≤ Mm{_sp} ≤ 0.86<br>"
+            f"Mm{_t} = (1.266·Mm{_sp} - 0.271) {space_str}"
+            f"for 0.215 ≤ Mm{_sp} ≤ 0.86<br>"
             f"Mm{_t} = (Mm{_sp} - 0.042) {7 * space_str}for Mm{_sp} > 0.86"
         )
 
@@ -1408,7 +1415,8 @@ class Point:
             f"{self.reynolds.m / self.reynolds_ratio.m:.3e}",
         ]
         formula = [
-            "(v<sub>i</sub> / v<sub>d</sub>)<sub>c</sub> / (v<sub>i</sub> / v<sub>d</sub>)<sub>o</sub>",
+            "(v<sub>i</sub> / v<sub>d</sub>)<sub>c</sub> / "
+            "(v<sub>i</sub> / v<sub>d</sub>)<sub>o</sub>",
             "φ<sub>c</sub> / φ<sub>o</sub>",
             "Mm<sub>c</sub>",
             "Rem<sub>c</sub>",
@@ -1668,7 +1676,7 @@ def plot_func(self, attr):
             color_marker = [
                 (
                     "#7EE38D"
-                    if np.all([customdata[i][2] for i in range(4, 8)]) == True
+                    if np.all([customdata[i][2] for i in range(4, 8)])
                     else "#FC9FB0"
                 )
             ]
@@ -1682,10 +1690,25 @@ def plot_func(self, attr):
             mach_icon = "✓" if customdata[6][2] else "✗"
             reynolds_icon = "✓" if customdata[7][2] else "✗"
             hovertemplate = (
-                f"<span style='color: {'green' if customdata[4][2] else 'red'}'>{volume_icon}</span><b>(v<sub>i</sub>/v<sub>d</sub>)<sub>c</sub>/(v<sub>i</sub>/v<sub>d</sub>)<sub>o</sub>:</b> %{{customdata[0]:.3f}}{4 * space_str}<b>limits:</b> %{{customdata[4][0]:.3f}} - %{{customdata[4][1]:.3f}}<br>"
-                f"<span style='color: {'green' if customdata[5][2] else 'red'}'>{phi_icon}</span> {10 * space_str}<b>φ<sub>c</sub>/φ<sub>o</sub>:</b> %{{customdata[1]:.3f}}{4 * space_str}<b>limits:</b> %{{customdata[5][0]:.3f}} - %{{customdata[5][1]:.3f}}<br>"
-                f"<span style='color: {'green' if customdata[6][2] else 'red'}'>{mach_icon}</span> {12 * space_str}<b>Mm<sub>c</sub>:</b> %{{customdata[2]:.4f}}{3 * space_str}<b>limits:</b> %{{customdata[6][0]:.4f}} - %{{customdata[6][1]:.4f}}<br>"
-                f"<span style='color: {'green' if customdata[7][2] else 'red'}'>{reynolds_icon}</span> {11 * space_str}<b>Rem<sub>c</sub>:</b> %{{customdata[3]:.3e}}{space_str}<b>limits:</b> %{{customdata[7][0]:.3e}} - %{{customdata[7][1]:.3e}}"
+                f"<span style='color: {'green' if customdata[4][2] else 'red'}'>"
+                f"{volume_icon}</span>"
+                "<b>(v<sub>i</sub>/v<sub>d</sub>)<sub>c</sub>/(v<sub>i</sub>/v<sub>d</sub>)"
+                "<sub>o</sub>:</b> "
+                f"%{{customdata[0]:.3f}}{4 * space_str}<b>limits:</b> "
+                f"%{{customdata[4][0]:.3f}} - %{{customdata[4][1]:.3f}}<br>"
+                f"<span style='color: {'green' if customdata[5][2] else 'red'}'>"
+                f"{phi_icon}</span> {10 * space_str}"
+                "<b>φ<sub>c</sub>/φ<sub>o</sub>:</b> "
+                f"%{{customdata[1]:.3f}}{4 * space_str}<b>limits:</b> "
+                f"%{{customdata[5][0]:.3f}} - %{{customdata[5][1]:.3f}}<br>"
+                f"<span style='color: {'green' if customdata[6][2] else 'red'}'>"
+                f"{mach_icon}</span> {12 * space_str}<b>Mm<sub>c</sub>:</b> "
+                f"%{{customdata[2]:.4f}}{3 * space_str}<b>limits:</b> "
+                f"%{{customdata[6][0]:.4f}} - %{{customdata[6][1]:.4f}}<br>"
+                f"<span style='color: {'green' if customdata[7][2] else 'red'}'>"
+                f"{reynolds_icon}</span> {11 * space_str}<b>Rem<sub>c</sub>:</b> "
+                f"%{{customdata[3]:.3e}}{space_str}<b>limits:</b> "
+                f"%{{customdata[7][0]:.3e}} - %{{customdata[7][1]:.3e}}"
                 "<extra></extra>"
             )
 
@@ -1710,7 +1733,6 @@ def plot_func(self, attr):
             point_attr = point_attr.to(attr_units)
 
         value = getattr(point_attr, "magnitude")
-        units = getattr(point_attr, "units")
 
         flow_v = self.flow_v
         name = kwargs.get(
@@ -2033,7 +2055,8 @@ def head_reference(suc, disch, num_steps=100):
     r"""Reference head.
 
     The reference head consists of the integration of :math:`v dp` along the
-    polytropic path as described by :cite:`huntington1985` and :cite:`sandberg2013limitations`.
+    polytropic path as described by :cite:`huntington1985` and
+    :cite:`sandberg2013limitations`.
     To achieve this we break the polytropic path into a series of subpaths.
     The compression ratio :math:`R_{c_i}` for each segment, as described by
     :cite:`sandberg2013limitations` is calculated with:
@@ -2132,7 +2155,8 @@ def head_reference_2017(suc, disch, num_steps=100):
           {(\frac{p_{i+1}}{p_i} - 1)} \\
           b = \frac{z_{i+1} - z_i}
           {(\frac{p_{i+1}}{p_i} - 1)} \\
-          (s_{i+1} - s_i) = R \frac{(1-e)}{e}(a \ln{(\frac{p_{i+1}}{p_i})} + b(\frac{p_{i+1}}{p_i} - 1))
+          (s_{i+1} - s_i) = R \frac{(1-e)}{e}(
+          a \ln{(\frac{p_{i+1}}{p_i})} + b(\frac{p_{i+1}}{p_i} - 1))
       \end{equation}
 
 
@@ -2216,8 +2240,9 @@ def f_sandberg_colby(suc, disch):
 
     Returns
     -------
-    f_sandberg_colby : pint.Quantity
-       Polytropic head correction factor as described by :cite:`sandberg2013limitations` (dimensionless).
+     f_sandberg_colby : pint.Quantity
+         Polytropic head correction factor as described by
+         :cite:`sandberg2013limitations` (dimensionless).
     """
     Tm = (suc.T() + disch.T()) / 2
     hd = disch.h()
@@ -2285,7 +2310,8 @@ def eff_pol_sandberg_colby_multistep(suc, disch):
 
 
 def head_pol_sandberg_colby_multistep(suc, disch, nstep=10):
-    r"""Polytropic head multistep method as described in section 5-2.4 :cite:`asmePTC10_2022`.
+    r"""Polytropic head multistep method as described in section 5-2.4
+    :cite:`asmePTC10_2022`.
 
     This implements the numerical integration method from ASME PTC 10-2022
     Figure 5-2.4-1 flowchart.
@@ -2362,7 +2388,8 @@ def head_pol_sandberg_colby_multistep(suc, disch, nstep=10):
 
 
 def head_pol_sandberg_colby_f(suc, disch, disch_s=None):
-    r"""Polytropic head corrected by the :cite:`sandberg2013limitations` factor (original implementation).
+    r"""Polytropic head corrected by the :cite:`sandberg2013limitations` factor
+    (original implementation).
 
     .. math::
        \begin{equation}
@@ -2419,7 +2446,8 @@ def eff_pol_sandberg_colby_f(suc, disch, disch_s=None):
 
 
 def head_pol_huntington(suc, disch, disch_s=None):
-    r"""Polytropic head calculated by the 3 point method described by :cite:`huntington1985`.
+    r"""Polytropic head calculated by the 3 point method described by
+    :cite:`huntington1985`.
 
     The polytropic head in this case is calculated from the polytropic efficiency with:
 
@@ -2459,8 +2487,10 @@ def head_pol_huntington(suc, disch, disch_s=None):
 
        \begin{equation}
             s_{int}' = s_s + (s_d - s_s)
-            \frac{\frac{a}{2}\ln{(\frac{p_d}{p_s})} + b((\frac{p_s}{p_s})^{0.5} - 1)) + \frac{c}{8}(\ln{(\frac{p_d}{p_s})})^2}
-            {a\ln(\frac{p_d}{p_s}) + b((\frac{p_d}{p_s})-1) + \frac{c}{2}(\ln(\frac{p_d}{p_s}))^2}
+            \frac{\frac{a}{2}\ln{(\frac{p_d}{p_s})} + b((\frac{p_s}{p_s})^{0.5} - 1))
+            + \frac{c}{8}(\ln{(\frac{p_d}{p_s})})^2}
+            {a\ln(\frac{p_d}{p_s}) + b((\frac{p_d}{p_s})-1)
+            + \frac{c}{2}(\ln(\frac{p_d}{p_s}))^2}
        \end{equation}
 
     Parameters
@@ -2482,7 +2512,8 @@ def head_pol_huntington(suc, disch, disch_s=None):
 
 
 def eff_pol_huntington(suc, disch, disch_s=None):
-    """Polytropic efficiency calculated by the 3 point method described by :cite:`huntington1985`.
+    """Polytropic efficiency calculated by the 3 point method described by
+    :cite:`huntington1985`.
 
     Parameters
     ----------
@@ -2969,7 +3000,8 @@ def correct_reynolds_1997(suc, speed, original_point):
 
 
 def correct_reynolds_2022(suc, speed, original_point):
-    """Correct efficiency, head coefficient and flow coefficient based on ASME PTC 10 2022.
+    """Correct efficiency, head coefficient and flow coefficient based on ASME
+    PTC 10 2022.
 
     Parameters
     ----------
