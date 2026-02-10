@@ -3,5 +3,8 @@ repos:
   # Ruff version.
   rev: v0.5.6
   hooks:
+    # Fix lint issues on commit.
+    - id: ruff
+      args: ["--fix"]
     # Run the formatter.
     - id: ruff-format
