@@ -23,11 +23,12 @@ classifiers = [
     "Programming Language :: Python :: Implementation :: CPython",
     "Operating System :: OS Independent",
 ]
-requires-python = ">=3.6"
+requires-python = ">=3.9"
 dependencies = [
     "numpy",
     "scipy",
     "pandas>=0.23",
+    "pyarrow",
     "CoolProp",
     "pint>=0.18",
     "plotly>=4.7.0",
@@ -97,3 +98,11 @@ select = [
 [tool.ruff.format]
 quote-style = "double"
 indent-style = "space"
+
+[dependency-groups]
+dev = [
+    "pre-commit",
+]
+
+[tool.uv]
+package = true

@@ -35,6 +35,7 @@ class Evaluation:
         verbose=False,
         n_clusters=5,
         calculate_points=True,
+        parallel=True,
         **kwargs,
     ):
         """Initialize the evaluation class.
@@ -91,6 +92,10 @@ class Evaluation:
         calculate_points : bool, optional
             If True, calculates the performance points for the given data.
             The default is True.
+        parallel : bool, optional
+            If True, uses multiprocessing for point calculation.
+            Set to False for debugging to get detailed error messages.
+            The default is True.
         verbose : bool, optional
             If True, shows progress bar.
 
@@ -119,6 +124,7 @@ class Evaluation:
         self.d = d
         self.tappings = tappings
         self.n_clusters = n_clusters
+        self.parallel = parallel
 
         # check if we are loading from a zip file where the impellers are available
         if kwargs.get("impellers_new") is None:
@@ -309,7 +315,7 @@ class Evaluation:
 
         return df
 
-    def calculate_points(self, data=None, drop_invalid_values=True):
+    def calculate_points(self, data=None, drop_invalid_values=True, parallel=None):
         """Calculate the performance points for the given data.
 
         Parameters
@@ -322,14 +328,21 @@ class Evaluation:
             Drop invalid values from the dataframe.
             If false, a column 'valid' will be added to the dataframe with True for valid.
             The default is True.
+        parallel : bool, optional
+            If True, uses multiprocessing for point calculation.
+            Set to False for debugging to get detailed error messages.
+            If None, uses the value from the instance.
+            The default is None.
 
         Returns
         -------
         df : pandas.DataFrame
             DataFrame with the calculated points.
         """
+        if parallel is None:
+            parallel = self.parallel
         if data is None:
-            df = self.df
+            df = self.df.copy()
         else:
             df = data.copy()
             df = filter_data(
@@ -350,6 +363,10 @@ class Evaluation:
                     "Please check your data or adjust the filtering parameters "
                     "(temperature_fluctuation, pressure_fluctuation, speed_fluctuation)."
                 )
+
+        # Ensure 'valid' column exists (filter_data should add it, but add defensively)
+        if "valid" not in df.columns:
+            df["valid"] = True
 
         df = self.calculate_flow(df)
 
@@ -374,6 +391,9 @@ class Evaluation:
             else:
                 fluid = self._get_fluid_composition(row)
 
+            # Get 'valid' value safely (default to True if not present)
+            is_valid = row.valid if "valid" in row.index else True
+
             arg_dict = {
                 "flow_v": row.flow_v,
                 "speed": Q_(row.speed, self.data_units["speed"]),
@@ -388,16 +408,29 @@ class Evaluation:
                     fluid=fluid,
                 ),
                 "imp_new": self.impellers_new[int(row.cluster)],
-                "valid": row.valid,
+                "valid": is_valid,
             }
 
             args_list.append(arg_dict)
 
-        with multiprocessing.Pool() as pool:
-            print("Calculating points...")
-            points += tqdm(pool.imap(create_points_parallel, args_list))
-            print("Calculating expected points...")
-            expected_points += tqdm(pool.imap(get_interpolated_point, args_list))
+        if parallel:
+            with multiprocessing.Pool() as pool:
+                print("Calculating points...")
+                results = list(tqdm(pool.imap(create_points_parallel, args_list)))
+                print("Calculating expected points...")
+                expected_results = list(
+                    tqdm(pool.imap(get_interpolated_point, args_list))
+                )
+        else:
+            # Sequential mode for debugging - errors will be printed with full tracebacks
+            print("Calculating points (sequential mode)...")
+            results = []
+            for args in tqdm(args_list):
+                results.append(create_points_parallel(args))
+            print("Calculating expected points (sequential mode)...")
+            expected_results = []
+            for args in tqdm(args_list):
+                expected_results.append(get_interpolated_point(args))
 
         # start column with -1.0, if this value remains, it means that the point was not calculated due to invalid data
         df["eff"] = -1.0
@@ -412,10 +445,33 @@ class Evaluation:
         df["delta_head"] = -1.0
         df["delta_power"] = -1.0
         df["delta_p_disch"] = -1.0
+        # Error tracking columns
+        df["error"] = None
+        df["error_type"] = None
+        df["expected_error"] = None
+        df["expected_error_type"] = None
 
-        for i, point_op, point_expected in zip(df.index, points, expected_points):
+        for i, (point_op, error_info), (point_expected, expected_error) in zip(
+            df.index, results, expected_results
+        ):
+            # Store error info if calculation failed
+            if error_info is not None:
+                df.loc[i, "error"] = error_info["exception"]
+                df.loc[i, "error_type"] = error_info["type"]
+                if not parallel:
+                    # In sequential mode, print full traceback for debugging
+                    print(f"Error at index {i}: {error_info['traceback']}")
+
+            if expected_error is not None:
+                df.loc[i, "expected_error"] = expected_error["exception"]
+                df.loc[i, "expected_error_type"] = expected_error["type"]
+                if not parallel:
+                    print(
+                        f"Expected point error at index {i}: {expected_error['traceback']}"
+                    )
+
             # if point_op is None, it means that the point was not calculated due to invalid data
-            if point_op is not None:
+            if point_op is not None and point_expected is not None:
                 df.loc[i, "eff"] = point_op.eff.m
                 df.loc[i, "head"] = point_op.head.m
                 df.loc[i, "power"] = point_op.power.m
@@ -522,25 +578,59 @@ class Evaluation:
 
 
 def create_points_parallel(x):
-    if not x["valid"]:
-        return None
-    # delete arguments not used for point calculation
-    del x["imp_new"]
-    del x["valid"]
+    """Create a Point from the given arguments.
+
+    Returns
+    -------
+    tuple
+        (Point or None, error_info or None)
+        error_info is a dict with 'exception', 'type', and 'traceback' keys.
+        For invalid data points (valid=False), returns (None, None) since this
+        is expected behavior, not an error.
+    """
+    if not x.get("valid", True):
+        # Not an error - just data that exceeded fluctuation thresholds
+        return (None, None)
+    # Create a copy and remove arguments not used for point calculation
+    point_args = {k: v for k, v in x.items() if k not in ("imp_new", "valid")}
     try:
-        p = Point(**x)
-    except:
-        print("Error for point with args:", x)
-        return None
-    return p
+        p = Point(**point_args)
+        return (p, None)
+    except Exception as e:
+        import traceback
+
+        error_info = {
+            "exception": str(e),
+            "type": type(e).__name__,
+            "traceback": traceback.format_exc(),
+        }
+        return (None, error_info)
 
 
 def get_interpolated_point(x):
-    if not x["valid"]:
-        return None
+    """Get the expected point from the impeller curve.
+
+    Returns
+    -------
+    tuple
+        (Point or None, error_info or None)
+        error_info is a dict with 'exception', 'type', and 'traceback' keys.
+        For invalid data points (valid=False), returns (None, None) since this
+        is expected behavior, not an error.
+    """
+    if not x.get("valid", True):
+        # Not an error - just data that exceeded fluctuation thresholds
+        return (None, None)
     try:
         imp_new = x["imp_new"]
         expected_point = imp_new.point(flow_v=x["flow_v"], speed=x["speed"])
-    except:
-        print("Error for expected point with args:", x)
-    return expected_point
+        return (expected_point, None)
+    except Exception as e:
+        import traceback
+
+        error_info = {
+            "exception": str(e),
+            "type": type(e).__name__,
+            "traceback": traceback.format_exc(),
+        }
+        return (None, error_info)

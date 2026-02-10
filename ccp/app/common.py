@@ -391,7 +391,7 @@ def gas_selection_form(fluid_list, default_components):
                     num_rows="dynamic",
                     key=f"table_gas_{i}_composition",
                     height=int((len(default_components) + 1) * 37.35),
-                    use_container_width=True,
+                    width="stretch",
                     column_config={
                         "component": st.column_config.SelectboxColumn(
                             "comp.",
@@ -418,3 +418,47 @@ def gas_selection_form(fluid_list, default_components):
                 st.session_state["gas_compositions_table"] = gas_compositions_table
 
     return gas_compositions_table
+
+
+def display_debug_data(title, data, expanded=False):
+    """Display debug data in an expandable section for testing mode.
+
+    Parameters
+    ----------
+    title : str
+        Title for the debug section.
+    data : dict, pd.DataFrame, or any
+        Data to display. Handles different types appropriately:
+        - dict: displays each key-value pair, with special handling for
+          DataFrames and pint Quantities
+        - pd.DataFrame: displays as a dataframe
+        - other: displays using st.write
+    expanded : bool, optional
+        Whether the expander should be initially expanded. Default False.
+    """
+    with st.expander(f"🔧 DEBUG: {title}", expanded=expanded):
+        if isinstance(data, dict):
+            for key, value in data.items():
+                st.markdown(f"**{key}:**")
+                if isinstance(value, pd.DataFrame):
+                    st.dataframe(value, width="stretch")
+                elif hasattr(value, "magnitude") and hasattr(value, "units"):
+                    # Handle pint Quantity objects
+                    st.code(f"{value.magnitude} {value.units}")
+                elif isinstance(value, (list, tuple)):
+                    # Handle lists (e.g., list of impellers)
+                    st.write(f"List with {len(value)} items:")
+                    for i, item in enumerate(value):
+                        if hasattr(item, "__class__"):
+                            st.text(f"  [{i}]: {item.__class__.__name__}")
+                        else:
+                            st.text(f"  [{i}]: {item}")
+                elif isinstance(value, dict):
+                    st.json(value)
+                else:
+                    st.write(value)
+                st.divider()
+        elif isinstance(data, pd.DataFrame):
+            st.dataframe(data, width="stretch")
+        else:
+            st.write(data)
