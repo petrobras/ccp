@@ -38,12 +38,17 @@ uv run pytest ccp/tests/         # Run unit tests only
 
 ### Development Setup
 ```bash
-uv sync                   # Install dependencies and set up environment
-uv sync --all-extras      # Install with all optional dependencies
+uv sync 
+uv sync --all-extras 
+```
+
+### Running the App
+```bash
+uv run streamlit run ccp/app/ccp_app.py
 ```
 
 ### Code Formatting
-Uses **Black** code formatter - ensure all code follows Black formatting standards.
+Uses **Ruff** formatter - ensure all code follows Ruff formatting standards.
 
 ### Documentation
 ```bash
