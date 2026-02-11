@@ -61,6 +61,7 @@ imp.disch.T_plot()
 ###############################################################################
 
 import os as _os
+import sys as _sys
 import warnings as _warnings
 from pathlib import Path as _Path
 
@@ -104,7 +105,9 @@ try:
 except TypeError:
     _RP = _REFPROPFunctionLibrary
 
-if _os.name == "posix":
+if _sys.platform == "darwin":
+    _shared_library = "librefprop.dylib"
+elif _os.name == "posix":
     _shared_library = "librefprop.so"
 else:
     _shared_library = "REFPRP64.DLL"
