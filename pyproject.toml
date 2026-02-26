@@ -47,23 +47,6 @@ Documentation = "https://ccp-centrifugal-compressor-performance.readthedocs.io/e
 "Source Code" = "https://github.com/petrobras/ccp"
 
 [project.optional-dependencies]
-dev = [
-    "pytest",
-    "pytest-cov",
-    "coverage",
-    "codecov",
-    "sphinx",
-    "nbsphinx",
-    "numpydoc",
-    "sphinxcontrib-bibtex",
-    "ruff",
-    "myst-nb",
-    "linkify-it-py",
-    "sphinx-book-theme",
-    "sphinx-panels",
-    "sphinx-copybutton",
-    "sphinx-rtd-theme",
-]
 app = [
     "streamlit>=1.21.0",
     "sentry-sdk",
@@ -102,6 +85,21 @@ indent-style = "space"
 [dependency-groups]
 dev = [
     "pre-commit",
+    "pytest",
+    "pytest-cov",
+    "coverage",
+    "codecov",
+    "sphinx",
+    "nbsphinx",
+    "numpydoc",
+    "sphinxcontrib-bibtex",
+    "ruff",
+    "myst-nb",
+    "linkify-it-py",
+    "sphinx-book-theme",
+    "sphinx-panels",
+    "sphinx-copybutton",
+    "sphinx-rtd-theme",
 ]
 
 [tool.uv]
