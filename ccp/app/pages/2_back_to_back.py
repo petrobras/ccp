@@ -15,19 +15,19 @@ from pathlib import Path
 
 from ccp.app.common import (
     pressure_units,
-    specific_heat_units,
-    density_units,
     polytropic_methods,
     parameters_map,
-    oil_iso_options,
     specific_heat_calculate,
     density_calculate,
     get_gas_composition,
+    get_index_selected_gas,
+    highlight_cell,
     to_excel,
     convert,
     file_sidebar,
     gas_selection_form,
     init_sentry,
+    oil_input_widgets,
     setup_page,
     get_fluid_list,
     run_app,
@@ -198,89 +198,13 @@ def main():
         ).to("bar")
         ureg.define(f"barg = 1 * bar; offset: {ambient_pressure.magnitude}")
 
-        def on_oil_specific_heat_change():
-            if st.session_state.oil_specific_heat:
-                st.session_state.oil_iso = False
-
-        def on_oil_iso_change():
-            if st.session_state.oil_iso:
-                st.session_state.oil_specific_heat = False
-
-        # add text input for the test lube oil specific heat
-        st.text("Test Lube Oil")
-        # select box for oil specific heat input
-        oil_specific_heat = st.checkbox(
-            "Specific Heat",
-            key="oil_specific_heat",
-            value=False,
-            on_change=on_oil_specific_heat_change,
-            help="If marked, uses this oil specific heat "
-            "and density for bearing mechanical losses calculation "
-            "and disables ISO oil classification.",
-        )
-        oil_specific_heat_magnitude_col, oil_specific_heat_unit_col = st.columns(2)
-        with oil_specific_heat_magnitude_col:
-            oil_specific_heat_magnitude = st.text_input(
-                "Oil Specific Heat",
-                value=2.03,
-                key="oil_specific_heat_magnitude",
-                label_visibility="collapsed",
-                disabled=not st.session_state.oil_specific_heat,
-            )
-        with oil_specific_heat_unit_col:
-            oil_specific_heat_unit = st.selectbox(
-                "Unit",
-                options=specific_heat_units,
-                index=specific_heat_units.index("kJ/kg/degK"),
-                key="oil_specific_heat_unit",
-                label_visibility="collapsed",
-                disabled=not st.session_state.oil_specific_heat,
-            )
-
-        st.text("Density")
-        oil_density_magnitude_col, oil_density_unit_col = st.columns(2)
-        with oil_density_magnitude_col:
-            oil_density_magnitude = st.text_input(
-                "Oil Density",
-                value=846.9,
-                key="oil_density_magnitude",
-                label_visibility="collapsed",
-                disabled=not st.session_state.oil_specific_heat,
-            )
-        with oil_density_unit_col:
-            oil_density_unit = st.selectbox(
-                "Unit",
-                options=density_units,
-                index=density_units.index("kg/m³"),
-                key="oil_density_unit",
-                label_visibility="collapsed",
-                disabled=not st.session_state.oil_specific_heat,
-            )
-        if oil_specific_heat:
-            oil_specific_heat_value = Q_(
-                float(oil_specific_heat_magnitude), oil_specific_heat_unit
-            ).to("kJ/kg/kelvin")
-            oil_density_value = Q_(float(oil_density_magnitude), oil_density_unit).to(
-                "kg/m³"
-            )
-
-        # select box for oil ISO classification input
-        oil_iso = st.checkbox(
-            "Oil ISO Classification",
-            key="oil_iso",
-            on_change=on_oil_iso_change,
-            help="If marked, uses the ISO oil classification "
-            "for bearing mechanical losses calculation "
-            "and disables specific heat and density input.",
-        )
-        oil_iso_classification = st.selectbox(
-            "ISO",
-            options=oil_iso_options,
-            index=oil_iso_options.index("VG 32"),
-            key="oil_iso_classification",
-            label_visibility="collapsed",
-            disabled=not st.session_state.oil_iso,
-        )
+        (
+            oil_specific_heat,
+            oil_specific_heat_value,
+            oil_density_value,
+            oil_iso,
+            oil_iso_classification,
+        ) = oil_input_widgets()
 
         st.text("Polytropic Method")
         polytropic_method = st.selectbox(
@@ -326,25 +250,17 @@ def main():
             st.session_state[f"gas_{i}"] for i, gas in enumerate(gas_compositions_table)
         ]
 
-        # fill the gas selection dropdowns with the gases selected
-        def get_index_selected_gas(gas_name):
-            try:
-                index_gas_name = gas_options.index(st.session_state[gas_name])
-            except (KeyError, ValueError):
-                index_gas_name = 0
-            return index_gas_name
-
         gas_name_section_1_point_guarantee = points_gas_columns[2].selectbox(
             "gas_section_1_point_guarantee",
             options=gas_options,
             label_visibility="collapsed",
-            index=get_index_selected_gas("gas_section_1_point_guarantee"),
+            index=get_index_selected_gas(gas_options,"gas_section_1_point_guarantee"),
         )
         gas_name_section_2_point_guarantee = points_gas_columns[3].selectbox(
             "gas_section_2_point_guarantee",
             options=gas_options,
             label_visibility="collapsed",
-            index=get_index_selected_gas("gas_section_2_point_guarantee"),
+            index=get_index_selected_gas(gas_options,"gas_section_2_point_guarantee"),
         )
 
         # build one container with 8 columns for each parameter
@@ -524,7 +440,7 @@ def main():
                         f"gas_section_1_point_{i - 1}",
                         options=gas_options,
                         label_visibility="collapsed",
-                        index=get_index_selected_gas(f"gas_section_1_point_{i - 1}"),
+                        index=get_index_selected_gas(gas_options,f"gas_section_1_point_{i - 1}"),
                         key=f"gas_section_1_point_{i - 1}",
                     )
 
@@ -622,7 +538,7 @@ def main():
                         f"gas_section_2_point_{i - 1}",
                         options=gas_options,
                         label_visibility="collapsed",
-                        index=get_index_selected_gas(f"gas_section_2_point_{i - 1}"),
+                        index=get_index_selected_gas(gas_options,f"gas_section_2_point_{i - 1}"),
                         key=f"gas_section_2_point_{i - 1}",
                     )
 
@@ -1834,58 +1750,6 @@ def main():
                         tab_results = tab_results_section_2
 
                     with tab_results:
-
-                        def highlight_cell(
-                            styled_df,
-                            df,
-                            row_index,
-                            col_index,
-                            lower_limit,
-                            higher_limit,
-                        ):
-                            """Applies conditional formatting to a specific cell in a pandas DataFrame.
-
-                            Args:
-                                df (pandas.DataFrame): The DataFrame to apply conditional formatting to.
-                                row_index (int or str): The row index of the cell to highlight.
-                                col_index (int or str): The column index of the cell to highlight.
-                                lower_limit (float): The lower limit of the value range to highlight in green.
-                                higher_limit (float): The higher limit of the value range to highlight in green.
-
-                            Returns:
-                                pandas.io.formats.style.Styler: A styled DataFrame with the specified cell highlighted.
-                            """
-                            # create a copy of the DataFrame with styling
-
-                            # apply conditional formatting to the specific cell
-                            cell_value = df.loc[row_index, col_index]
-                            if cell_value >= lower_limit and cell_value <= higher_limit:
-                                styled_df = styled_df.map(
-                                    lambda x: (
-                                        "background-color: #C8E6C9"
-                                        if x == cell_value
-                                        else ""
-                                    )
-                                ).map(
-                                    lambda x: (
-                                        "font-color: #33691E" if x == cell_value else ""
-                                    )
-                                )
-
-                            else:
-                                styled_df = styled_df.map(
-                                    lambda x: (
-                                        "background-color: #FFCDD2"
-                                        if x == cell_value
-                                        else ""
-                                    )
-                                ).map(
-                                    lambda x: (
-                                        "font-color: #FFCDD2" if x == cell_value else ""
-                                    )
-                                )
-
-                            return styled_df
 
                         styled_df_results = df_results.style
 

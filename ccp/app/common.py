@@ -567,6 +567,167 @@ def get_fluid_list():
     return fluid_list, default_components
 
 
+def get_index_selected_gas(gas_options, gas_name):
+    """Get the index of the selected gas in gas_options list.
+
+    Parameters
+    ----------
+    gas_options : list
+        List of available gas names.
+    gas_name : str
+        Session state key for the gas selection.
+    """
+    try:
+        index_gas_name = gas_options.index(st.session_state[gas_name])
+    except (KeyError, ValueError):
+        index_gas_name = 0
+    return index_gas_name
+
+
+def highlight_cell(styled_df, df, row_index, col_index, lower_limit, higher_limit):
+    """Apply conditional formatting to a specific cell in a DataFrame.
+
+    Green (#C8E6C9) if value is within limits, red (#FFCDD2) otherwise.
+
+    Parameters
+    ----------
+    styled_df : pandas.io.formats.style.Styler
+        The styled DataFrame to apply formatting to.
+    df : pandas.DataFrame
+        The original DataFrame.
+    row_index : int or str
+        Row index of the cell.
+    col_index : int or str
+        Column index of the cell.
+    lower_limit : float
+        Lower limit of the acceptable range.
+    higher_limit : float
+        Upper limit of the acceptable range.
+
+    Returns
+    -------
+    pandas.io.formats.style.Styler
+        Styled DataFrame with the cell highlighted.
+    """
+    cell_value = df.loc[row_index, col_index]
+    if cell_value >= lower_limit and cell_value <= higher_limit:
+        styled_df = styled_df.map(
+            lambda x: "background-color: #C8E6C9" if x == cell_value else ""
+        ).map(lambda x: "font-color: #33691E" if x == cell_value else "")
+    else:
+        styled_df = styled_df.map(
+            lambda x: "background-color: #FFCDD2" if x == cell_value else ""
+        ).map(lambda x: "font-color: #FFCDD2" if x == cell_value else "")
+
+    return styled_df
+
+
+def oil_input_widgets():
+    """Render oil parameter input widgets in the sidebar options.
+
+    Renders checkboxes and inputs for oil specific heat, density,
+    and ISO classification. Must be called inside a sidebar expander.
+
+    Returns
+    -------
+    oil_specific_heat : bool
+        Whether specific heat input is enabled.
+    oil_specific_heat_value : pint.Quantity or None
+        Oil specific heat value if enabled.
+    oil_density_value : pint.Quantity or None
+        Oil density value if enabled.
+    oil_iso : bool
+        Whether ISO classification is enabled.
+    oil_iso_classification : str
+        Selected ISO classification.
+    """
+    def on_oil_specific_heat_change():
+        if st.session_state.oil_specific_heat:
+            st.session_state.oil_iso = False
+
+    def on_oil_iso_change():
+        if st.session_state.oil_iso:
+            st.session_state.oil_specific_heat = False
+
+    st.text("Test Lube Oil")
+    oil_specific_heat = st.checkbox(
+        "Specific Heat",
+        key="oil_specific_heat",
+        value=False,
+        on_change=on_oil_specific_heat_change,
+        help="If marked, uses this oil specific heat "
+        "and density for bearing mechanical losses calculation "
+        "and disables ISO oil classification.",
+    )
+    oil_specific_heat_magnitude_col, oil_specific_heat_unit_col = st.columns(2)
+    with oil_specific_heat_magnitude_col:
+        oil_specific_heat_magnitude = st.text_input(
+            "Oil Specific Heat",
+            value=2.03,
+            key="oil_specific_heat_magnitude",
+            label_visibility="collapsed",
+            disabled=not st.session_state.oil_specific_heat,
+        )
+    with oil_specific_heat_unit_col:
+        oil_specific_heat_unit = st.selectbox(
+            "Unit",
+            options=specific_heat_units,
+            index=specific_heat_units.index("kJ/kg/degK"),
+            key="oil_specific_heat_unit",
+            label_visibility="collapsed",
+            disabled=not st.session_state.oil_specific_heat,
+        )
+
+    st.text("Density")
+    oil_density_magnitude_col, oil_density_unit_col = st.columns(2)
+    with oil_density_magnitude_col:
+        oil_density_magnitude = st.text_input(
+            "Oil Density",
+            value=846.9,
+            key="oil_density_magnitude",
+            label_visibility="collapsed",
+            disabled=not st.session_state.oil_specific_heat,
+        )
+    with oil_density_unit_col:
+        oil_density_unit = st.selectbox(
+            "Unit",
+            options=density_units,
+            index=density_units.index("kg/m³"),
+            key="oil_density_unit",
+            label_visibility="collapsed",
+            disabled=not st.session_state.oil_specific_heat,
+        )
+
+    oil_specific_heat_value = None
+    oil_density_value = None
+    if oil_specific_heat:
+        oil_specific_heat_value = Q_(
+            float(oil_specific_heat_magnitude), oil_specific_heat_unit
+        ).to("kJ/kg/kelvin")
+        oil_density_value = Q_(float(oil_density_magnitude), oil_density_unit).to(
+            "kg/m³"
+        )
+
+    oil_iso = st.checkbox(
+        "Oil ISO Classification",
+        key="oil_iso",
+        on_change=on_oil_iso_change,
+        help="If marked, uses the ISO oil classification "
+        "for bearing mechanical losses calculation "
+        "and disables specific heat and density input.",
+    )
+    oil_iso_classification = st.selectbox(
+        "ISO",
+        options=oil_iso_options,
+        index=oil_iso_options.index("VG 32"),
+        key="oil_iso_classification",
+        label_visibility="collapsed",
+        disabled=not st.session_state.oil_iso,
+    )
+
+    return oil_specific_heat, oil_specific_heat_value, oil_density_value, oil_iso, oil_iso_classification
+
+
 def file_sidebar(load_from_zip, save_to_zip):
     """Render the file sidebar with Load/Save functionality.
 
