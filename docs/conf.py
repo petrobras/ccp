@@ -24,7 +24,7 @@ import ccp
 
 # General information about the project.
 project = "ccp"
-copyright = "2024"
+copyright = "2026"
 author = "ccp devs"
 googleanalytics_id = "G-GY4B3R42HW"
 
