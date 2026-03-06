@@ -23,6 +23,7 @@ from ccp.app.common import (
     power_units,
     parameters_map,
     get_gas_composition,
+    file_sidebar,
     gas_selection_form,
     init_sentry,
     setup_page,
@@ -65,142 +66,73 @@ def main():
 
     get_session()
 
-    # Create a Streamlit sidebar with a file uploader to load a session state file
-    with st.sidebar.expander("📁 File"):
-        with st.form("my_form", clear_on_submit=False):
-            st.session_state.session_name = st.text_input(
-                "Session name",
-                value=st.session_state.session_name,
-            )
-
-            file = st.file_uploader("📂 Open File", type=["ccp"])
-            submitted = st.form_submit_button("Load")
-            save_button = st.form_submit_button("💾 Save")
-
-        if submitted and file is not None:
-            st.write("Loaded!")
-            # open file with zip
-            with zipfile.ZipFile(file) as my_zip:
-                # get the ccp version
-                try:
-                    version = my_zip.read("ccp.version").decode("utf-8")
-                except KeyError:
-                    version = "0.3.5"
-
-                for name in my_zip.namelist():
-                    if name.endswith(".json"):
-                        session_state_data = json.loads(my_zip.read(name))
-                        # Check if it's an impeller conversion file
-                        if (
-                            "app_type" not in session_state_data
-                            or session_state_data.get("app_type") != "curves_conversion"
-                        ):
-                            # Set as impeller conversion file
-                            session_state_data["app_type"] = "curves_conversion"
-
-                # extract CSV files and impeller objects
-                csv_file_number = 1
-                for name in my_zip.namelist():
-                    if name.endswith(".csv"):
-                        session_state_data[f"curves_file_{csv_file_number}"] = {
-                            "name": name,
-                            "content": my_zip.read(name),
-                        }
-                        csv_file_number += 1
-                    if name.endswith(".toml"):
-                        # create file object to read the toml file
-                        impeller_file = io.StringIO(my_zip.read(name).decode("utf-8"))
-                        if name.startswith("original_impeller"):
-                            session_state_data["original_impeller"] = ccp.Impeller.load(
-                                impeller_file
-                            )
-                        elif name.startswith("converted_impeller"):
-                            session_state_data["converted_impeller"] = (
-                                ccp.Impeller.load(impeller_file)
-                            )
-
-            session_state_data_copy = session_state_data.copy()
-            # remove keys that cannot be set with st.session_state.update
-            for key in list(session_state_data.keys()):
-                if key.startswith(
-                    (
-                        "FormSubmitter",
-                        "my_form",
-                        "uploaded",
-                        "form",
-                        "table",
-                    )
+    def _load_curves_conversion(my_zip, version):
+        for name in my_zip.namelist():
+            if name.endswith(".json"):
+                session_state_data = json.loads(my_zip.read(name))
+                if (
+                    "app_type" not in session_state_data
+                    or session_state_data.get("app_type") != "curves_conversion"
                 ):
-                    del session_state_data_copy[key]
-            st.session_state.update(session_state_data_copy)
-            st.session_state.session_name = file.name.replace(".ccp", "")
-            st.session_state.expander_state = True
-            st.rerun()
+                    session_state_data["app_type"] = "curves_conversion"
+        csv_file_number = 1
+        for name in my_zip.namelist():
+            if name.endswith(".csv"):
+                session_state_data[f"curves_file_{csv_file_number}"] = {
+                    "name": name,
+                    "content": my_zip.read(name),
+                }
+                csv_file_number += 1
+            if name.endswith(".toml"):
+                impeller_file = io.StringIO(my_zip.read(name).decode("utf-8"))
+                if name.startswith("original_impeller"):
+                    session_state_data["original_impeller"] = ccp.Impeller.load(
+                        impeller_file
+                    )
+                elif name.startswith("converted_impeller"):
+                    session_state_data["converted_impeller"] = ccp.Impeller.load(
+                        impeller_file
+                    )
+        return session_state_data
 
-        if save_button:
-            session_state_dict = dict(st.session_state)
-
-            # create a zip file to add the data to
-            file_name = f"{st.session_state.session_name}.ccp"
-            session_state_dict_copy = session_state_dict.copy()
-            with zipfile.ZipFile(file_name, "w") as my_zip:
-                my_zip.writestr("ccp.version", ccp.__version__)
-
-                # Save impeller objects
-                for key, value in session_state_dict.items():
-                    if isinstance(value, ccp.Impeller):
-                        if key == "original_impeller":
-                            my_zip.writestr(
-                                "original_impeller.toml",
-                                toml.dumps(value._dict_to_save()),
-                            )
-                        elif key == "converted_impeller":
-                            my_zip.writestr(
-                                "converted_impeller.toml",
-                                toml.dumps(value._dict_to_save()),
-                            )
-                        del session_state_dict_copy[key]
-                    if key.startswith("curves_file_"):
-                        my_zip.writestr(
-                            session_state_dict[key]["name"],
-                            session_state_dict[key]["content"],
-                        )
-                        del session_state_dict_copy[key]
-
-                # Set app type
-                session_state_dict_copy["app_type"] = "impeller_conversion"
-
-                # Remove file uploader keys and other non-serializable keys
-                keys_to_remove = []
-                for key in session_state_dict_copy.keys():
-                    if key.startswith(
-                        (
-                            "FormSubmitter",
-                            "my_form",
-                            "uploaded",
-                            "form",
-                            "table",
-                        )
-                    ) or isinstance(
-                        session_state_dict_copy[key],
-                        (bytes, st.runtime.uploaded_file_manager.UploadedFile),
-                    ):
-                        keys_to_remove.append(key)
-
-                for key in keys_to_remove:
-                    del session_state_dict_copy[key]
-
-                # then save the rest of the session state
-                session_state_json = json.dumps(session_state_dict_copy)
-                my_zip.writestr("session_state.json", session_state_json)
-
-            with open(file_name, "rb") as file:
-                st.download_button(
-                    label="💾 Save As",
-                    data=file,
-                    file_name=file_name,
-                    mime="application/json",
+    def _save_curves_conversion(my_zip, session_state_dict_copy):
+        for key, value in dict(session_state_dict_copy).items():
+            if isinstance(value, ccp.Impeller):
+                if key == "original_impeller":
+                    my_zip.writestr(
+                        "original_impeller.toml",
+                        toml.dumps(value._dict_to_save()),
+                    )
+                elif key == "converted_impeller":
+                    my_zip.writestr(
+                        "converted_impeller.toml",
+                        toml.dumps(value._dict_to_save()),
+                    )
+                del session_state_dict_copy[key]
+            if key.startswith("curves_file_"):
+                my_zip.writestr(
+                    session_state_dict_copy[key]["name"],
+                    session_state_dict_copy[key]["content"],
                 )
+                del session_state_dict_copy[key]
+
+        session_state_dict_copy["app_type"] = "impeller_conversion"
+
+        keys_to_remove = []
+        for key in session_state_dict_copy.keys():
+            if key.startswith(
+                ("FormSubmitter", "my_form", "uploaded", "form", "table")
+            ) or isinstance(
+                session_state_dict_copy[key],
+                (bytes, st.runtime.uploaded_file_manager.UploadedFile),
+            ):
+                keys_to_remove.append(key)
+        for key in keys_to_remove:
+            del session_state_dict_copy[key]
+
+        return session_state_dict_copy
+
+    file_sidebar(_load_curves_conversion, _save_curves_conversion)
 
     # Gas selection
     fluid_list, default_components = get_fluid_list()

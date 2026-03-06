@@ -2,8 +2,10 @@
 
 import base64
 import io
+import json
 import logging
 import os
+import zipfile
 
 import numpy as np
 import pandas as pd
@@ -563,6 +565,73 @@ def get_fluid_list():
     ]
 
     return fluid_list, default_components
+
+
+def file_sidebar(load_from_zip, save_to_zip):
+    """Render the file sidebar with Load/Save functionality.
+
+    Parameters
+    ----------
+    load_from_zip : callable(my_zip, version) -> dict
+        Called when loading a .ccp file. Receives the opened ZipFile and
+        version string. Must return a session_state_data dict with all
+        loaded data (JSON session state + deserialized objects).
+    save_to_zip : callable(my_zip, session_state_dict_copy) -> dict
+        Called when saving. Receives the ZipFile (already has ccp.version
+        written) and a mutable copy of session_state_dict. Must write
+        page-specific objects to the zip and delete those keys from the
+        copy. Returns the remaining dict to be saved as JSON.
+    """
+    with st.sidebar.expander("📁 File"):
+        with st.form("my_form", clear_on_submit=False):
+            st.session_state.session_name = st.text_input(
+                "Session name",
+                value=st.session_state.session_name,
+            )
+
+            file = st.file_uploader("📂 Open File", type=["ccp"])
+            submitted = st.form_submit_button("Load")
+            save_button = st.form_submit_button("💾 Save")
+
+        if submitted and file is not None:
+            st.write("Loaded!")
+            with zipfile.ZipFile(file) as my_zip:
+                try:
+                    version = my_zip.read("ccp.version").decode("utf-8")
+                except KeyError:
+                    version = "0.3.5"
+
+                session_state_data = load_from_zip(my_zip, version)
+
+            session_state_data_copy = session_state_data.copy()
+            for key in list(session_state_data.keys()):
+                if key.startswith(
+                    ("FormSubmitter", "my_form", "uploaded", "form", "table")
+                ):
+                    del session_state_data_copy[key]
+            st.session_state.update(session_state_data_copy)
+            st.session_state.session_name = file.name.replace(".ccp", "")
+            st.session_state.expander_state = True
+            st.rerun()
+
+        if save_button:
+            session_state_dict = dict(st.session_state)
+
+            file_name = f"{st.session_state.session_name}.ccp"
+            session_state_dict_copy = session_state_dict.copy()
+            with zipfile.ZipFile(file_name, "w") as my_zip:
+                my_zip.writestr("ccp.version", ccp.__version__)
+                session_state_dict_copy = save_to_zip(my_zip, session_state_dict_copy)
+                session_state_json = json.dumps(session_state_dict_copy)
+                my_zip.writestr("session_state.json", session_state_json)
+
+            with open(file_name, "rb") as f:
+                st.download_button(
+                    label="💾 Save As",
+                    data=f,
+                    file_name=file_name,
+                    mime="application/json",
+                )
 
 
 def run_app(main_func, app_name):

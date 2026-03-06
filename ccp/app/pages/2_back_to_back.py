@@ -25,6 +25,7 @@ from ccp.app.common import (
     get_gas_composition,
     to_excel,
     convert,
+    file_sidebar,
     gas_selection_form,
     init_sentry,
     setup_page,
@@ -71,95 +72,42 @@ def main():
 
     get_session()
 
-    # Create a Streamlit sidebar with a file uploader to load a session state file
-    with st.sidebar.expander("📁 File"):
-        with st.form("my_form", clear_on_submit=False):
-            st.session_state.session_name = st.text_input(
-                "Session name",
-                value=st.session_state.session_name,
-            )
-
-            file = st.file_uploader("📂 Open File", type=["ccp"])
-            submitted = st.form_submit_button("Load")
-            save_button = st.form_submit_button("💾 Save")
-
-        if submitted and file is not None:
-            st.write("Loaded!")
-            # open file with zip
-            with zipfile.ZipFile(file) as my_zip:
-                # get the ccp version
-                try:
-                    version = my_zip.read("ccp.version").decode("utf-8")
-                except KeyError:
-                    version = "0.3.5"
-
-                for name in my_zip.namelist():
-                    if name.endswith(".json"):
-                        session_state_data = convert(
-                            json.loads(my_zip.read(name)), version
-                        )
-                        if (
-                            "div_wall_flow_m_section_1_point_1"
-                            not in session_state_data
-                        ):
-                            raise ValueError("File is not a ccp back-to-back file.")
-                # extract figures and back_to_back objects
-                for name in my_zip.namelist():
-                    if name.endswith(".png"):
-                        session_state_data[name.split(".")[0]] = my_zip.read(name)
-                    elif name.endswith(".toml"):
-                        # create file object to read the toml file
-                        back_to_back_file = convert(
-                            io.StringIO(my_zip.read(name).decode("utf-8")), version
-                        )
-                        session_state_data[name.split(".")[0]] = BackToBack.load(
-                            back_to_back_file
-                        )
-
-            session_state_data_copy = session_state_data.copy()
-            # remove keys that cannot be set with st.session_state.update
-            for key in session_state_data.keys():
-                if key.startswith(
-                    ("FormSubmitter", "my_form", "uploaded", "form", "table")
-                ):
-                    del session_state_data_copy[key]
-            st.session_state.update(session_state_data_copy)
-            st.session_state.session_name = file.name.replace(".ccp", "")
-            st.session_state.expander_state = True
-            st.rerun()
-
-        if save_button:
-            session_state_dict = dict(st.session_state)
-
-            # create a zip file to add the data to
-            file_name = f"{st.session_state.session_name}.ccp"
-            session_state_dict_copy = session_state_dict.copy()
-            with zipfile.ZipFile(file_name, "w") as my_zip:
-                my_zip.writestr("ccp.version", ccp.__version__)
-                # first save figures
-                for key, value in session_state_dict.items():
-                    if isinstance(
-                        value, (bytes, st.runtime.uploaded_file_manager.UploadedFile)
-                    ):
-                        if key.startswith("fig"):
-                            my_zip.writestr(f"{key}.png", value)
-                        del session_state_dict_copy[key]
-                    if isinstance(value, BackToBack):
-                        my_zip.writestr(
-                            f"{key}.toml", toml.dumps(value._dict_to_save())
-                        )
-                        del session_state_dict_copy[key]
-                # then save the rest of the session state
-                session_state_json = json.dumps(session_state_dict_copy)
-                my_zip.writestr("session_state.json", session_state_json)
-
-            with open(file_name, "rb") as file:
-                st.download_button(
-                    label="💾 Save As",
-                    data=file,
-                    file_name=file_name,
-                    mime="application/json",
+    def _load_back_to_back(my_zip, version):
+        for name in my_zip.namelist():
+            if name.endswith(".json"):
+                session_state_data = convert(
+                    json.loads(my_zip.read(name)), version
                 )
+                if "div_wall_flow_m_section_1_point_1" not in session_state_data:
+                    raise ValueError("File is not a ccp back-to-back file.")
+        for name in my_zip.namelist():
+            if name.endswith(".png"):
+                session_state_data[name.split(".")[0]] = my_zip.read(name)
+            elif name.endswith(".toml"):
+                back_to_back_file = convert(
+                    io.StringIO(my_zip.read(name).decode("utf-8")), version
+                )
+                session_state_data[name.split(".")[0]] = BackToBack.load(
+                    back_to_back_file
+                )
+        return session_state_data
+
+    def _save_back_to_back(my_zip, session_state_dict_copy):
+        for key, value in dict(session_state_dict_copy).items():
+            if isinstance(
+                value, (bytes, st.runtime.uploaded_file_manager.UploadedFile)
+            ):
+                if key.startswith("fig"):
+                    my_zip.writestr(f"{key}.png", value)
+                del session_state_dict_copy[key]
+            if isinstance(value, BackToBack):
+                my_zip.writestr(
+                    f"{key}.toml", toml.dumps(value._dict_to_save())
+                )
+                del session_state_dict_copy[key]
+        return session_state_dict_copy
+
+    file_sidebar(_load_back_to_back, _save_back_to_back)
 
     def check_correct_separator(input):
         if "," in input:
