@@ -1,4 +1,3 @@
-import base64
 import io
 import json
 import logging
@@ -13,7 +12,6 @@ from pathlib import Path
 
 import pandas as pd
 import plotly.graph_objects as go
-import sentry_sdk
 import streamlit as st
 import toml
 
@@ -22,11 +20,15 @@ from ccp.app.common import (
     display_debug_data,
     flow_units,
     gas_selection_form,
+    get_fluid_list,
     get_gas_composition,
     head_units,
+    init_sentry,
     length_units,
     power_units,
     pressure_units,
+    run_app,
+    setup_page,
     speed_units,
     temperature_units,
 )
@@ -44,11 +46,7 @@ try:
 except ImportError:
     HAS_PANDASPI = False
 
-sentry_sdk.init(
-    dsn="https://8fd0e79dffa94dbb9747bf64e7e55047@o348313.ingest.sentry.io/4505046640623616",
-    traces_sample_rate=1.0,
-    auto_enabling_integrations=False,
-)
+init_sentry()
 
 
 def _build_pi_query(tag_mappings):
@@ -350,36 +348,7 @@ def main():
     """The code has to be inside this main function to allow sentry to work."""
     Q_ = ccp.Q_
 
-    assets = Path(__file__).parent / "assets"
-    ccp_ico = assets / "favicon.ico"
-    ccp_logo = assets / "ccp.png"
-    css_path = assets / "style.css"
-    with open(css_path, "r") as f:
-        css = f.read()
-
-    st.set_page_config(
-        page_title="ccp - Online Monitoring",
-        page_icon=str(ccp_ico),
-        layout="wide",
-    )
-
-    def image_base64(im):
-        with open(im, "rb") as image_file:
-            encoded_string = base64.b64encode(image_file.read()).decode()
-        html_string = f'<img src="data:image/png;base64,{encoded_string}" style="text-align: center" width="250">'
-        return html_string
-
-    with st.sidebar.container():
-        st.sidebar.markdown(image_base64(ccp_logo), unsafe_allow_html=True)
-
-    st.markdown(f"<style>{css}</style>", unsafe_allow_html=True)
-
-    title_alignment = """
-    <p style="text-align: center; font-weight: bold; font-size:20px;">
-     ccp
-    </p>
-    """
-    st.sidebar.markdown(title_alignment, unsafe_allow_html=True)
+    setup_page(page_title="ccp - Online Monitoring")
     st.markdown(
         """
     ## Online Monitoring
@@ -714,33 +683,7 @@ def main():
                 )
 
     # Gas selection
-    fluid_list = []
-    for fluid in ccp.fluid_list.keys():
-        fluid_list.append(fluid.lower())
-        for possible_name in ccp.fluid_list[fluid].possible_names:
-            if possible_name != fluid.lower():
-                fluid_list.append(possible_name)
-    fluid_list = sorted(fluid_list)
-    fluid_list.insert(0, "")
-
-    default_components = [
-        "methane",
-        "ethane",
-        "propane",
-        "n-butane",
-        "i-butane",
-        "n-pentane",
-        "i-pentane",
-        "n-hexane",
-        "n-heptane",
-        "n-octane",
-        "n-nonane",
-        "nitrogen",
-        "h2s",
-        "co2",
-        "h2o",
-    ]
-
+    fluid_list, default_components = get_fluid_list()
     gas_compositions_table = gas_selection_form(fluid_list, default_components)
 
     # Design Cases Suction Conditions
@@ -1947,10 +1890,4 @@ def main():
 
 
 if __name__ == "__main__":
-    try:
-        main()
-    except Exception as e:
-        logging.info("app: online_monitoring")
-        logging.info(f"session state: {st.session_state}")
-        logging.error(e)
-        raise e
+    run_app(main, "online_monitoring")

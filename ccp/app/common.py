@@ -1,12 +1,20 @@
 """Module to keep everything that is common to ccp_app_straight_through and ccp_app_back_to_back."""
 
+import base64
 import io
+import logging
+import os
+
+import numpy as np
 import pandas as pd
+import sentry_sdk
+import streamlit as st
 import toml
 from packaging.version import Version
+from pathlib import Path
+
+import ccp
 from ccp import Q_
-import numpy as np
-import streamlit as st
 
 # parameters with name and label
 flow_m_units = ["kg/h", "kg/min", "kg/s", "lbm/h", "lbm/min", "lbm/s"]
@@ -462,3 +470,107 @@ def display_debug_data(title, data, expanded=False):
             st.dataframe(data, width="stretch")
         else:
             st.write(data)
+
+
+def image_base64(image_path):
+    """Convert image file to base64-encoded HTML img tag."""
+    with open(image_path, "rb") as image_file:
+        encoded_string = base64.b64encode(image_file.read()).decode()
+    html_string = f"""
+    <div style="text-align: center;">
+        <img src="data:image/png;base64,{encoded_string}" width="250">
+    </div>
+    """
+    return html_string
+
+
+def init_sentry():
+    """Initialize Sentry error tracking when not in standalone mode."""
+    if not os.environ.get("CCP_STANDALONE"):
+        sentry_sdk.init(
+            dsn="https://8fd0e79dffa94dbb9747bf64e7e55047@o348313.ingest.sentry.io/4505046640623616",
+            traces_sample_rate=1.0,
+            auto_enabling_integrations=False,
+        )
+
+
+def setup_page(page_title="ccp"):
+    """Initialize page config, load CSS, and render sidebar logo.
+
+    Must be called at the start of main() in each page.
+    """
+    assets = Path(__file__).parent / "assets"
+    ccp_ico = assets / "favicon.ico"
+    ccp_logo = assets / "ccp.png"
+    css_path = assets / "style.css"
+    with open(css_path, "r") as f:
+        css = f.read()
+
+    st.set_page_config(
+        page_title=page_title,
+        page_icon=str(ccp_ico),
+        layout="wide",
+    )
+
+    with st.sidebar.container():
+        st.sidebar.markdown(image_base64(ccp_logo), unsafe_allow_html=True)
+
+    st.markdown(f"<style>{css}</style>", unsafe_allow_html=True)
+
+    title_alignment = """
+    <p style="text-align: center; font-weight: bold; font-size:20px;">
+     ccp
+    </p>
+    """
+    st.sidebar.markdown(title_alignment, unsafe_allow_html=True)
+
+
+def get_fluid_list():
+    """Get sorted fluid list and default gas components.
+
+    Returns
+    -------
+    fluid_list : list
+        Sorted list of available fluid names.
+    default_components : list
+        Default gas component names.
+    """
+    fluid_list = []
+    for fluid in ccp.fluid_list.keys():
+        fluid_list.append(fluid.lower())
+        for possible_name in ccp.fluid_list[fluid].possible_names:
+            if possible_name != fluid.lower():
+                fluid_list.append(possible_name)
+    fluid_list = sorted(fluid_list)
+    fluid_list.insert(0, "")
+
+    default_components = [
+        "methane",
+        "ethane",
+        "propane",
+        "n-butane",
+        "i-butane",
+        "n-pentane",
+        "i-pentane",
+        "n-hexane",
+        "n-heptane",
+        "n-octane",
+        "n-nonane",
+        "nitrogen",
+        "h2s",
+        "co2",
+        "h2o",
+    ]
+
+    return fluid_list, default_components
+
+
+def run_app(main_func, app_name):
+    """Run main app function with standardized error logging."""
+    try:
+        main_func()
+    except Exception as e:
+        logging.info(f"app: {app_name}")
+        logging.info(f"session state: {st.session_state}")
+        logging.error(e)
+        raise e

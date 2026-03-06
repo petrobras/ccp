@@ -7,14 +7,12 @@ import base64
 import zipfile
 import toml
 import time
-import sentry_sdk
 import logging
 from ccp.compressor import Point1Sec, StraightThrough
 from ccp.config.utilities import r_getattr
 from ccp.config.units import ureg
 from pathlib import Path
 
-# import everything that is common to ccp_app_straight_through and ccp_app_back_to_back
 from ccp.app.common import (
     pressure_units,
     specific_heat_units,
@@ -28,59 +26,20 @@ from ccp.app.common import (
     to_excel,
     convert,
     gas_selection_form,
+    init_sentry,
+    setup_page,
+    get_fluid_list,
+    run_app,
 )
 
-import os
-if not os.environ.get("CCP_STANDALONE"):
-    sentry_sdk.init(
-        dsn="https://8fd0e79dffa94dbb9747bf64e7e55047@o348313.ingest.sentry.io/4505046640623616",
-        # Set traces_sample_rate to 1.0 to capture 100%
-        # of transactions for performance monitoring.
-        # We recommend adjusting this value in production.
-        traces_sample_rate=1.0,
-        auto_enabling_integrations=False,
-    )
+init_sentry()
 
 
 def main():
     """The code has to be inside this main function to allow sentry to work."""
     Q_ = ccp.Q_
 
-    assets = Path(__file__).parent / "assets"
-    ccp_ico = assets / "favicon.ico"
-    ccp_logo = assets / "ccp.png"
-    css_path = assets / "style.css"
-    with open(css_path, "r") as f:
-        css = f.read()
-
-    st.set_page_config(
-        page_title="ccp",
-        page_icon=str(ccp_ico),
-        layout="wide",
-    )
-
-    def image_base64(im):
-        with open(im, "rb") as image_file:
-            encoded_string = base64.b64encode(image_file.read()).decode()
-        encoded_image = "data:image/png;base64," + encoded_string
-        html_string = html_string = f'''
-        <div style="text-align: center;">
-            <img src="data:image/png;base64,{encoded_string}" width="250">
-        </div>
-        '''
-        return html_string
-
-    with st.sidebar.container():
-        st.sidebar.markdown(image_base64(ccp_logo), unsafe_allow_html=True)
-
-    st.markdown(f"<style>{css}</style>", unsafe_allow_html=True)
-
-    title_alignment = """
-    <p style="text-align: center; font-weight: bold; font-size:20px;">
-     ccp 
-    </p>
-    """
-    st.sidebar.markdown(title_alignment, unsafe_allow_html=True)
+    setup_page()
     st.markdown(
         """
     ## Performance Test Straight-Through Compressor
@@ -201,33 +160,7 @@ def main():
                 )
 
     # Gas selection
-    fluid_list = []
-    for fluid in ccp.fluid_list.keys():
-        fluid_list.append(fluid.lower())
-        for possible_name in ccp.fluid_list[fluid].possible_names:
-            if possible_name != fluid.lower():
-                fluid_list.append(possible_name)
-    fluid_list = sorted(fluid_list)
-    fluid_list.insert(0, "")
-
-    default_components = [
-        "methane",
-        "ethane",
-        "propane",
-        "n-butane",
-        "i-butane",
-        "n-pentane",
-        "i-pentane",
-        "n-hexane",
-        "n-heptane",
-        "n-octane",
-        "n-nonane",
-        "nitrogen",
-        "h2s",
-        "co2",
-        "h2o",
-    ]
-
+    fluid_list, default_components = get_fluid_list()
     gas_compositions_table = gas_selection_form(fluid_list, default_components)
 
     # add container with 4 columns and 2 rows
@@ -1828,10 +1761,4 @@ def main():
 
 
 if __name__ == "__main__":
-    try:
-        main()
-    except Exception as e:
-        logging.info("app: straigh_through")
-        logging.info(f"session state: {st.session_state}")
-        logging.error(e)
-        raise e
+    run_app(main, "straight_through")
