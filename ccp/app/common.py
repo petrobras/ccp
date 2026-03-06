@@ -728,6 +728,45 @@ def oil_input_widgets():
     return oil_specific_heat, oil_specific_heat_value, oil_density_value, oil_iso, oil_iso_classification
 
 
+def add_background_image(limits, fig, image):
+    """Add a PNG image to a plotly figure background.
+
+    Parameters
+    ----------
+    limits : dict
+        Dict with "x" and "y" keys, each containing "lower_limit"
+        and "upper_limit" values defining the image placement area.
+    fig : plotly.graph_objects.Figure
+        The figure to add the background image to.
+    image : bytes
+        The PNG image bytes.
+
+    Returns
+    -------
+    plotly.graph_objects.Figure
+        The figure with the background image added.
+    """
+    encoded_string = base64.b64encode(image).decode()
+    encoded_image = "data:image/png;base64," + encoded_string
+    fig.add_layout_image(
+        dict(
+            source=encoded_image,
+            xref="x",
+            yref="y",
+            x=limits["x"]["lower_limit"],
+            y=limits["y"]["upper_limit"],
+            sizex=float(limits["x"]["upper_limit"])
+            - float(limits["x"]["lower_limit"]),
+            sizey=float(limits["y"]["upper_limit"])
+            - float(limits["y"]["lower_limit"]),
+            sizing="stretch",
+            opacity=0.5,
+            layer="below",
+        )
+    )
+    return fig
+
+
 def file_sidebar(load_from_zip, save_to_zip):
     """Render the file sidebar with Load/Save functionality.
 

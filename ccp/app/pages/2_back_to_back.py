@@ -22,6 +22,7 @@ from ccp.app.common import (
     get_gas_composition,
     get_index_selected_gas,
     highlight_cell,
+    add_background_image,
     to_excel,
     convert,
     file_sidebar,
@@ -1857,61 +1858,6 @@ def main():
                                 width="stretch",
                             )
 
-                        def add_background_image(
-                            curve_name=None, section=None, fig=None, image=None
-                        ):
-                            """Add png file to plot background
-
-                            Parameters
-                            ----------
-                            curve_name : str
-                                The name of the curve to add the background image to.
-                            section : str
-                                Compressor section.
-                            fig : plotly.graph_objects.Figure
-                                The figure to add the background image to.
-                            image : io.BytesIO
-                                The image to add to the background.
-                            """
-                            encoded_string = base64.b64encode(image).decode()
-                            encoded_image = "data:image/png;base64," + encoded_string
-                            fig.add_layout_image(
-                                dict(
-                                    source=encoded_image,
-                                    xref="x",
-                                    yref="y",
-                                    x=plot_limits[curve_name][section]["x"][
-                                        "lower_limit"
-                                    ],
-                                    y=plot_limits[curve_name][section]["y"][
-                                        "upper_limit"
-                                    ],
-                                    sizex=float(
-                                        plot_limits[curve_name][section]["x"][
-                                            "upper_limit"
-                                        ]
-                                    )
-                                    - float(
-                                        plot_limits[curve_name][section]["x"][
-                                            "lower_limit"
-                                        ]
-                                    ),
-                                    sizey=float(
-                                        plot_limits[curve_name][section]["y"][
-                                            "upper_limit"
-                                        ]
-                                    )
-                                    - float(
-                                        plot_limits[curve_name][section]["y"][
-                                            "lower_limit"
-                                        ]
-                                    ),
-                                    sizing="stretch",
-                                    opacity=0.5,
-                                    layer="below",
-                                )
-                            )
-                            return fig
 
                         plots_dict = {}
                         for curve in ["head", "eff", "discharge_pressure", "power"]:
@@ -2035,9 +1981,8 @@ def main():
                                 and st.session_state.get(f"fig_{curve}_{sec}") != ""
                             ):
                                 plots_dict[curve] = add_background_image(
-                                    curve_name=curve,
+                                    limits=plot_limits[curve][sec],
                                     fig=plots_dict[curve],
-                                    section=sec,
                                     image=st.session_state[f"fig_{curve}_{sec}"],
                                 )
 
