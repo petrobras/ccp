@@ -601,7 +601,7 @@ def main():
                                         yaxis_title=title,
                                         showlegend=False,
                                     )
-                                    st.plotly_chart(fig, use_container_width=True)
+                                    st.plotly_chart(fig, width="stretch")
                                 else:
                                     st.info(f"Column '{col_name}' not available.")
 
@@ -737,7 +737,7 @@ def main():
                                     )
                                 )
                                 st.plotly_chart(
-                                    head_fig, use_container_width=True
+                                    head_fig, width="stretch"
                                 )
                             except Exception as e:
                                 st.error(f"Error creating head plot: {e}")
@@ -765,7 +765,7 @@ def main():
                                     )
                                 )
                                 st.plotly_chart(
-                                    power_fig, use_container_width=True
+                                    power_fig, width="stretch"
                                 )
                             except Exception as e:
                                 st.error(f"Error creating power plot: {e}")
@@ -793,7 +793,7 @@ def main():
                                     )
                                 )
                                 st.plotly_chart(
-                                    eff_fig, use_container_width=True
+                                    eff_fig, width="stretch"
                                 )
                             except Exception as e:
                                 st.error(f"Error creating efficiency plot: {e}")
@@ -822,7 +822,7 @@ def main():
                                         )
                                     )
                                 st.plotly_chart(
-                                    disch_p_fig, use_container_width=True
+                                    disch_p_fig, width="stretch"
                                 )
                             except Exception as e:
                                 st.error(
@@ -855,7 +855,7 @@ def main():
 
                     st.dataframe(
                         df_results[available_cols],
-                        use_container_width=True,
+                        width="stretch",
                     )
 
                     # Summary statistics for delta columns
@@ -878,7 +878,7 @@ def main():
                             st.markdown("### Summary Statistics (Delta Columns)")
                             st.dataframe(
                                 df_valid_deltas[delta_cols].describe(),
-                                use_container_width=True,
+                                width="stretch",
                             )
 
                     # Download as Excel
