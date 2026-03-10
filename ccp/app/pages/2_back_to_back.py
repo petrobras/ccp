@@ -7,79 +7,41 @@ import base64
 import zipfile
 import toml
 import time
-import sentry_sdk
 import logging
 from ccp.compressor import PointFirstSection, PointSecondSection, BackToBack
 from ccp.config.utilities import r_getattr
 from ccp.config.units import ureg
 from pathlib import Path
 
-# import everything that is common to ccp_app_straight_through and ccp_app_back_to_back
 from ccp.app.common import (
     pressure_units,
-    specific_heat_units,
-    density_units,
     polytropic_methods,
     parameters_map,
-    oil_iso_options,
     specific_heat_calculate,
     density_calculate,
     get_gas_composition,
+    get_index_selected_gas,
+    highlight_cell,
+    add_background_image,
     to_excel,
     convert,
+    file_sidebar,
     gas_selection_form,
+    init_sentry,
+    oil_input_widgets,
+    setup_page,
+    get_fluid_list,
+    run_app,
 )
 
-import os
-if not os.environ.get("CCP_STANDALONE"):
-    sentry_sdk.init(
-        dsn="https://8fd0e79dffa94dbb9747bf64e7e55047@o348313.ingest.sentry.io/4505046640623616",
-        # Set traces_sample_rate to 1.0 to capture 100%
-        # of transactions for performance monitoring.
-        # We recommend adjusting this value in production.
-        traces_sample_rate=1.0,
-    )
+init_sentry()
 
 
 def main():
     """The code has to be inside this main function to allow sentry to work."""
     Q_ = ccp.Q_
 
-    assets = Path(__file__).parent / "assets"
-    ccp_ico = assets / "favicon.ico"
-    ccp_logo = assets / "ccp.png"
-    css_path = assets / "style.css"
-    with open(css_path, "r") as f:
-        css = f.read()
-
-    st.set_page_config(
-        page_title="ccp",
-        page_icon=str(ccp_ico),
-        layout="wide",
-    )
-
-    def image_base64(im):
-        with open(im, "rb") as image_file:
-            encoded_string = base64.b64encode(image_file.read()).decode()
-        encoded_image = "data:image/png;base64," + encoded_string
-        html_string = f'''
-        <div style="text-align: center;">
-            <img src="data:image/png;base64,{encoded_string}" width="250">
-        </div>
-        '''
-        return html_string
-
-    with st.sidebar.container():
-        st.sidebar.markdown(image_base64(ccp_logo), unsafe_allow_html=True)
-
-    st.markdown(f"<style>{css}</style>", unsafe_allow_html=True)
-
-    title_alignment = """
-    <p style="text-align: center; font-weight: bold; font-size:20px;">
-     ccp 
-    </p>
-    """
-    st.sidebar.markdown(title_alignment, unsafe_allow_html=True)
+    setup_page()
     st.markdown(
         """
     ## Performance Test Back-to-Back Compressor
@@ -111,128 +73,49 @@ def main():
 
     get_session()
 
-    # Create a Streamlit sidebar with a file uploader to load a session state file
-    with st.sidebar.expander("📁 File"):
-        with st.form("my_form", clear_on_submit=False):
-            st.session_state.session_name = st.text_input(
-                "Session name",
-                value=st.session_state.session_name,
-            )
-
-            file = st.file_uploader("📂 Open File", type=["ccp"])
-            submitted = st.form_submit_button("Load")
-            save_button = st.form_submit_button("💾 Save")
-
-        if submitted and file is not None:
-            st.write("Loaded!")
-            # open file with zip
-            with zipfile.ZipFile(file) as my_zip:
-                # get the ccp version
-                try:
-                    version = my_zip.read("ccp.version").decode("utf-8")
-                except KeyError:
-                    version = "0.3.5"
-
-                for name in my_zip.namelist():
-                    if name.endswith(".json"):
-                        session_state_data = convert(
-                            json.loads(my_zip.read(name)), version
-                        )
-                        if (
-                            "div_wall_flow_m_section_1_point_1"
-                            not in session_state_data
-                        ):
-                            raise ValueError("File is not a ccp back-to-back file.")
-                # extract figures and back_to_back objects
-                for name in my_zip.namelist():
-                    if name.endswith(".png"):
-                        session_state_data[name.split(".")[0]] = my_zip.read(name)
-                    elif name.endswith(".toml"):
-                        # create file object to read the toml file
-                        back_to_back_file = convert(
-                            io.StringIO(my_zip.read(name).decode("utf-8")), version
-                        )
-                        session_state_data[name.split(".")[0]] = BackToBack.load(
-                            back_to_back_file
-                        )
-
-            session_state_data_copy = session_state_data.copy()
-            # remove keys that cannot be set with st.session_state.update
-            for key in session_state_data.keys():
-                if key.startswith(
-                    ("FormSubmitter", "my_form", "uploaded", "form", "table")
-                ):
-                    del session_state_data_copy[key]
-            st.session_state.update(session_state_data_copy)
-            st.session_state.session_name = file.name.replace(".ccp", "")
-            st.session_state.expander_state = True
-            st.rerun()
-
-        if save_button:
-            session_state_dict = dict(st.session_state)
-
-            # create a zip file to add the data to
-            file_name = f"{st.session_state.session_name}.ccp"
-            session_state_dict_copy = session_state_dict.copy()
-            with zipfile.ZipFile(file_name, "w") as my_zip:
-                my_zip.writestr("ccp.version", ccp.__version__)
-                # first save figures
-                for key, value in session_state_dict.items():
-                    if isinstance(
-                        value, (bytes, st.runtime.uploaded_file_manager.UploadedFile)
-                    ):
-                        if key.startswith("fig"):
-                            my_zip.writestr(f"{key}.png", value)
-                        del session_state_dict_copy[key]
-                    if isinstance(value, BackToBack):
-                        my_zip.writestr(
-                            f"{key}.toml", toml.dumps(value._dict_to_save())
-                        )
-                        del session_state_dict_copy[key]
-                # then save the rest of the session state
-                session_state_json = json.dumps(session_state_dict_copy)
-                my_zip.writestr("session_state.json", session_state_json)
-
-            with open(file_name, "rb") as file:
-                st.download_button(
-                    label="💾 Save As",
-                    data=file,
-                    file_name=file_name,
-                    mime="application/json",
+    def _load_back_to_back(my_zip, version):
+        for name in my_zip.namelist():
+            if name.endswith(".json"):
+                session_state_data = convert(
+                    json.loads(my_zip.read(name)), version
                 )
+                if "div_wall_flow_m_section_1_point_1" not in session_state_data:
+                    raise ValueError("File is not a ccp back-to-back file.")
+        for name in my_zip.namelist():
+            if name.endswith(".png"):
+                session_state_data[name.split(".")[0]] = my_zip.read(name)
+            elif name.endswith(".toml"):
+                back_to_back_file = convert(
+                    io.StringIO(my_zip.read(name).decode("utf-8")), version
+                )
+                session_state_data[name.split(".")[0]] = BackToBack.load(
+                    back_to_back_file
+                )
+        return session_state_data
+
+    def _save_back_to_back(my_zip, session_state_dict_copy):
+        for key, value in dict(session_state_dict_copy).items():
+            if isinstance(
+                value, (bytes, st.runtime.uploaded_file_manager.UploadedFile)
+            ):
+                if key.startswith("fig"):
+                    my_zip.writestr(f"{key}.png", value)
+                del session_state_dict_copy[key]
+            if isinstance(value, BackToBack):
+                my_zip.writestr(
+                    f"{key}.toml", toml.dumps(value._dict_to_save())
+                )
+                del session_state_dict_copy[key]
+        return session_state_dict_copy
+
+    file_sidebar(_load_back_to_back, _save_back_to_back)
 
     def check_correct_separator(input):
         if "," in input:
             st.error("Please use '.' as decimal separator")
 
     # Gas selection
-    fluid_list = []
-    for fluid in ccp.fluid_list.keys():
-        fluid_list.append(fluid.lower())
-        for possible_name in ccp.fluid_list[fluid].possible_names:
-            if possible_name != fluid.lower():
-                fluid_list.append(possible_name)
-    fluid_list = sorted(fluid_list)
-    fluid_list.insert(0, "")
-
-    default_components = [
-        "methane",
-        "ethane",
-        "propane",
-        "n-butane",
-        "i-butane",
-        "n-pentane",
-        "i-pentane",
-        "n-hexane",
-        "n-heptane",
-        "n-octane",
-        "n-nonane",
-        "nitrogen",
-        "h2s",
-        "co2",
-        "h2o",
-    ]
-
+    fluid_list, default_components = get_fluid_list()
     gas_compositions_table = gas_selection_form(fluid_list, default_components)
 
     # add container with 4 columns and 2 rows
@@ -316,89 +199,13 @@ def main():
         ).to("bar")
         ureg.define(f"barg = 1 * bar; offset: {ambient_pressure.magnitude}")
 
-        def on_oil_specific_heat_change():
-            if st.session_state.oil_specific_heat:
-                st.session_state.oil_iso = False
-
-        def on_oil_iso_change():
-            if st.session_state.oil_iso:
-                st.session_state.oil_specific_heat = False
-
-        # add text input for the test lube oil specific heat
-        st.text("Test Lube Oil")
-        # select box for oil specific heat input
-        oil_specific_heat = st.checkbox(
-            "Specific Heat",
-            key="oil_specific_heat",
-            value=False,
-            on_change=on_oil_specific_heat_change,
-            help="If marked, uses this oil specific heat "
-            "and density for bearing mechanical losses calculation "
-            "and disables ISO oil classification.",
-        )
-        oil_specific_heat_magnitude_col, oil_specific_heat_unit_col = st.columns(2)
-        with oil_specific_heat_magnitude_col:
-            oil_specific_heat_magnitude = st.text_input(
-                "Oil Specific Heat",
-                value=2.03,
-                key="oil_specific_heat_magnitude",
-                label_visibility="collapsed",
-                disabled=not st.session_state.oil_specific_heat,
-            )
-        with oil_specific_heat_unit_col:
-            oil_specific_heat_unit = st.selectbox(
-                "Unit",
-                options=specific_heat_units,
-                index=specific_heat_units.index("kJ/kg/degK"),
-                key="oil_specific_heat_unit",
-                label_visibility="collapsed",
-                disabled=not st.session_state.oil_specific_heat,
-            )
-
-        st.text("Density")
-        oil_density_magnitude_col, oil_density_unit_col = st.columns(2)
-        with oil_density_magnitude_col:
-            oil_density_magnitude = st.text_input(
-                "Oil Density",
-                value=846.9,
-                key="oil_density_magnitude",
-                label_visibility="collapsed",
-                disabled=not st.session_state.oil_specific_heat,
-            )
-        with oil_density_unit_col:
-            oil_density_unit = st.selectbox(
-                "Unit",
-                options=density_units,
-                index=density_units.index("kg/m³"),
-                key="oil_density_unit",
-                label_visibility="collapsed",
-                disabled=not st.session_state.oil_specific_heat,
-            )
-        if oil_specific_heat:
-            oil_specific_heat_value = Q_(
-                float(oil_specific_heat_magnitude), oil_specific_heat_unit
-            ).to("kJ/kg/kelvin")
-            oil_density_value = Q_(float(oil_density_magnitude), oil_density_unit).to(
-                "kg/m³"
-            )
-
-        # select box for oil ISO classification input
-        oil_iso = st.checkbox(
-            "Oil ISO Classification",
-            key="oil_iso",
-            on_change=on_oil_iso_change,
-            help="If marked, uses the ISO oil classification "
-            "for bearing mechanical losses calculation "
-            "and disables specific heat and density input.",
-        )
-        oil_iso_classification = st.selectbox(
-            "ISO",
-            options=oil_iso_options,
-            index=oil_iso_options.index("VG 32"),
-            key="oil_iso_classification",
-            label_visibility="collapsed",
-            disabled=not st.session_state.oil_iso,
-        )
+        (
+            oil_specific_heat,
+            oil_specific_heat_value,
+            oil_density_value,
+            oil_iso,
+            oil_iso_classification,
+        ) = oil_input_widgets()
 
         st.text("Polytropic Method")
         polytropic_method = st.selectbox(
@@ -444,25 +251,17 @@ def main():
             st.session_state[f"gas_{i}"] for i, gas in enumerate(gas_compositions_table)
         ]
 
-        # fill the gas selection dropdowns with the gases selected
-        def get_index_selected_gas(gas_name):
-            try:
-                index_gas_name = gas_options.index(st.session_state[gas_name])
-            except (KeyError, ValueError):
-                index_gas_name = 0
-            return index_gas_name
-
         gas_name_section_1_point_guarantee = points_gas_columns[2].selectbox(
             "gas_section_1_point_guarantee",
             options=gas_options,
             label_visibility="collapsed",
-            index=get_index_selected_gas("gas_section_1_point_guarantee"),
+            index=get_index_selected_gas(gas_options,"gas_section_1_point_guarantee"),
         )
         gas_name_section_2_point_guarantee = points_gas_columns[3].selectbox(
             "gas_section_2_point_guarantee",
             options=gas_options,
             label_visibility="collapsed",
-            index=get_index_selected_gas("gas_section_2_point_guarantee"),
+            index=get_index_selected_gas(gas_options,"gas_section_2_point_guarantee"),
         )
 
         # build one container with 8 columns for each parameter
@@ -642,7 +441,7 @@ def main():
                         f"gas_section_1_point_{i - 1}",
                         options=gas_options,
                         label_visibility="collapsed",
-                        index=get_index_selected_gas(f"gas_section_1_point_{i - 1}"),
+                        index=get_index_selected_gas(gas_options,f"gas_section_1_point_{i - 1}"),
                         key=f"gas_section_1_point_{i - 1}",
                     )
 
@@ -740,7 +539,7 @@ def main():
                         f"gas_section_2_point_{i - 1}",
                         options=gas_options,
                         label_visibility="collapsed",
-                        index=get_index_selected_gas(f"gas_section_2_point_{i - 1}"),
+                        index=get_index_selected_gas(gas_options,f"gas_section_2_point_{i - 1}"),
                         key=f"gas_section_2_point_{i - 1}",
                     )
 
@@ -1953,58 +1752,6 @@ def main():
 
                     with tab_results:
 
-                        def highlight_cell(
-                            styled_df,
-                            df,
-                            row_index,
-                            col_index,
-                            lower_limit,
-                            higher_limit,
-                        ):
-                            """Applies conditional formatting to a specific cell in a pandas DataFrame.
-
-                            Args:
-                                df (pandas.DataFrame): The DataFrame to apply conditional formatting to.
-                                row_index (int or str): The row index of the cell to highlight.
-                                col_index (int or str): The column index of the cell to highlight.
-                                lower_limit (float): The lower limit of the value range to highlight in green.
-                                higher_limit (float): The higher limit of the value range to highlight in green.
-
-                            Returns:
-                                pandas.io.formats.style.Styler: A styled DataFrame with the specified cell highlighted.
-                            """
-                            # create a copy of the DataFrame with styling
-
-                            # apply conditional formatting to the specific cell
-                            cell_value = df.loc[row_index, col_index]
-                            if cell_value >= lower_limit and cell_value <= higher_limit:
-                                styled_df = styled_df.map(
-                                    lambda x: (
-                                        "background-color: #C8E6C9"
-                                        if x == cell_value
-                                        else ""
-                                    )
-                                ).map(
-                                    lambda x: (
-                                        "font-color: #33691E" if x == cell_value else ""
-                                    )
-                                )
-
-                            else:
-                                styled_df = styled_df.map(
-                                    lambda x: (
-                                        "background-color: #FFCDD2"
-                                        if x == cell_value
-                                        else ""
-                                    )
-                                ).map(
-                                    lambda x: (
-                                        "font-color: #FFCDD2" if x == cell_value else ""
-                                    )
-                                )
-
-                            return styled_df
-
                         styled_df_results = df_results.style
 
                         mach_limits = point_interpolated.mach_limits()
@@ -2111,61 +1858,6 @@ def main():
                                 width="stretch",
                             )
 
-                        def add_background_image(
-                            curve_name=None, section=None, fig=None, image=None
-                        ):
-                            """Add png file to plot background
-
-                            Parameters
-                            ----------
-                            curve_name : str
-                                The name of the curve to add the background image to.
-                            section : str
-                                Compressor section.
-                            fig : plotly.graph_objects.Figure
-                                The figure to add the background image to.
-                            image : io.BytesIO
-                                The image to add to the background.
-                            """
-                            encoded_string = base64.b64encode(image).decode()
-                            encoded_image = "data:image/png;base64," + encoded_string
-                            fig.add_layout_image(
-                                dict(
-                                    source=encoded_image,
-                                    xref="x",
-                                    yref="y",
-                                    x=plot_limits[curve_name][section]["x"][
-                                        "lower_limit"
-                                    ],
-                                    y=plot_limits[curve_name][section]["y"][
-                                        "upper_limit"
-                                    ],
-                                    sizex=float(
-                                        plot_limits[curve_name][section]["x"][
-                                            "upper_limit"
-                                        ]
-                                    )
-                                    - float(
-                                        plot_limits[curve_name][section]["x"][
-                                            "lower_limit"
-                                        ]
-                                    ),
-                                    sizey=float(
-                                        plot_limits[curve_name][section]["y"][
-                                            "upper_limit"
-                                        ]
-                                    )
-                                    - float(
-                                        plot_limits[curve_name][section]["y"][
-                                            "lower_limit"
-                                        ]
-                                    ),
-                                    sizing="stretch",
-                                    opacity=0.5,
-                                    layer="below",
-                                )
-                            )
-                            return fig
 
                         plots_dict = {}
                         for curve in ["head", "eff", "discharge_pressure", "power"]:
@@ -2289,9 +1981,8 @@ def main():
                                 and st.session_state.get(f"fig_{curve}_{sec}") != ""
                             ):
                                 plots_dict[curve] = add_background_image(
-                                    curve_name=curve,
+                                    limits=plot_limits[curve][sec],
                                     fig=plots_dict[curve],
-                                    section=sec,
                                     image=st.session_state[f"fig_{curve}_{sec}"],
                                 )
 
@@ -2327,10 +2018,4 @@ def main():
 
 
 if __name__ == "__main__":
-    try:
-        main()
-    except Exception as e:
-        logging.info("app: back_to_back")
-        logging.info(f"session state: {st.session_state}")
-        logging.error(e)
-        raise e
+    run_app(main, "back_to_back")

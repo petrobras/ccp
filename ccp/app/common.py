@@ -1,15 +1,20 @@
 """Module to keep everything that is common to ccp_app_straight_through and ccp_app_back_to_back."""
 
+import base64
 import io
+import json
 import logging
+import os
 import shutil
 import tempfile
 import time
+import zipfile
 from datetime import datetime, timedelta
 from pathlib import Path
 
 import numpy as np
 import pandas as pd
+import sentry_sdk
 import streamlit as st
 import toml
 from packaging.version import Version
@@ -1407,3 +1412,374 @@ def display_debug_data(title, data, expanded=False):
             st.dataframe(data, width="stretch")
         else:
             st.write(data)
+
+
+def image_base64(image_path):
+    """Convert image file to base64-encoded HTML img tag."""
+    with open(image_path, "rb") as image_file:
+        encoded_string = base64.b64encode(image_file.read()).decode()
+    html_string = f"""
+    <div style="text-align: center;">
+        <img src="data:image/png;base64,{encoded_string}" width="250">
+    </div>
+    """
+    return html_string
+
+
+def init_sentry():
+    """Initialize Sentry error tracking when not in standalone mode."""
+    if not os.environ.get("CCP_STANDALONE"):
+        sentry_sdk.init(
+            dsn="https://8fd0e79dffa94dbb9747bf64e7e55047@o348313.ingest.sentry.io/4505046640623616",
+            traces_sample_rate=1.0,
+            auto_enabling_integrations=False,
+        )
+
+
+def setup_page(page_title="ccp"):
+    """Initialize page config, load CSS, and render sidebar logo.
+
+    Must be called at the start of main() in each page.
+    """
+    assets = Path(__file__).parent / "assets"
+    ccp_ico = assets / "favicon.ico"
+    ccp_logo = assets / "ccp.png"
+    css_path = assets / "style.css"
+    with open(css_path, "r") as f:
+        css = f.read()
+
+    st.set_page_config(
+        page_title=page_title,
+        page_icon=str(ccp_ico),
+        layout="wide",
+    )
+
+    with st.sidebar.container():
+        st.sidebar.markdown(image_base64(ccp_logo), unsafe_allow_html=True)
+
+    st.markdown(f"<style>{css}</style>", unsafe_allow_html=True)
+
+    title_alignment = """
+    <p style="text-align: center; font-weight: bold; font-size:20px;">
+     ccp
+    </p>
+    """
+    st.sidebar.markdown(title_alignment, unsafe_allow_html=True)
+
+
+def get_fluid_list():
+    """Get sorted fluid list and default gas components.
+
+    Returns
+    -------
+    fluid_list : list
+        Sorted list of available fluid names.
+    default_components : list
+        Default gas component names.
+    """
+    fluid_list = []
+    for fluid in ccp.fluid_list.keys():
+        fluid_list.append(fluid.lower())
+        for possible_name in ccp.fluid_list[fluid].possible_names:
+            if possible_name != fluid.lower():
+                fluid_list.append(possible_name)
+    fluid_list = sorted(fluid_list)
+    fluid_list.insert(0, "")
+
+    default_components = [
+        "methane",
+        "ethane",
+        "propane",
+        "n-butane",
+        "i-butane",
+        "n-pentane",
+        "i-pentane",
+        "n-hexane",
+        "n-heptane",
+        "n-octane",
+        "n-nonane",
+        "nitrogen",
+        "h2s",
+        "co2",
+        "h2o",
+    ]
+
+    return fluid_list, default_components
+
+
+def get_index_selected_gas(gas_options, gas_name):
+    """Get the index of the selected gas in gas_options list.
+
+    Parameters
+    ----------
+    gas_options : list
+        List of available gas names.
+    gas_name : str
+        Session state key for the gas selection.
+    """
+    try:
+        index_gas_name = gas_options.index(st.session_state[gas_name])
+    except (KeyError, ValueError):
+        index_gas_name = 0
+    return index_gas_name
+
+
+def highlight_cell(styled_df, df, row_index, col_index, lower_limit, higher_limit):
+    """Apply conditional formatting to a specific cell in a DataFrame.
+
+    Green (#C8E6C9) if value is within limits, red (#FFCDD2) otherwise.
+
+    Parameters
+    ----------
+    styled_df : pandas.io.formats.style.Styler
+        The styled DataFrame to apply formatting to.
+    df : pandas.DataFrame
+        The original DataFrame.
+    row_index : int or str
+        Row index of the cell.
+    col_index : int or str
+        Column index of the cell.
+    lower_limit : float
+        Lower limit of the acceptable range.
+    higher_limit : float
+        Upper limit of the acceptable range.
+
+    Returns
+    -------
+    pandas.io.formats.style.Styler
+        Styled DataFrame with the cell highlighted.
+    """
+    cell_value = df.loc[row_index, col_index]
+    if cell_value >= lower_limit and cell_value <= higher_limit:
+        styled_df = styled_df.map(
+            lambda x: "background-color: #C8E6C9" if x == cell_value else ""
+        ).map(lambda x: "font-color: #33691E" if x == cell_value else "")
+    else:
+        styled_df = styled_df.map(
+            lambda x: "background-color: #FFCDD2" if x == cell_value else ""
+        ).map(lambda x: "font-color: #FFCDD2" if x == cell_value else "")
+
+    return styled_df
+
+
+def oil_input_widgets():
+    """Render oil parameter input widgets in the sidebar options.
+
+    Renders checkboxes and inputs for oil specific heat, density,
+    and ISO classification. Must be called inside a sidebar expander.
+
+    Returns
+    -------
+    oil_specific_heat : bool
+        Whether specific heat input is enabled.
+    oil_specific_heat_value : pint.Quantity or None
+        Oil specific heat value if enabled.
+    oil_density_value : pint.Quantity or None
+        Oil density value if enabled.
+    oil_iso : bool
+        Whether ISO classification is enabled.
+    oil_iso_classification : str
+        Selected ISO classification.
+    """
+    def on_oil_specific_heat_change():
+        if st.session_state.oil_specific_heat:
+            st.session_state.oil_iso = False
+
+    def on_oil_iso_change():
+        if st.session_state.oil_iso:
+            st.session_state.oil_specific_heat = False
+
+    st.text("Test Lube Oil")
+    oil_specific_heat = st.checkbox(
+        "Specific Heat",
+        key="oil_specific_heat",
+        value=False,
+        on_change=on_oil_specific_heat_change,
+        help="If marked, uses this oil specific heat "
+        "and density for bearing mechanical losses calculation "
+        "and disables ISO oil classification.",
+    )
+    oil_specific_heat_magnitude_col, oil_specific_heat_unit_col = st.columns(2)
+    with oil_specific_heat_magnitude_col:
+        oil_specific_heat_magnitude = st.text_input(
+            "Oil Specific Heat",
+            value=2.03,
+            key="oil_specific_heat_magnitude",
+            label_visibility="collapsed",
+            disabled=not st.session_state.oil_specific_heat,
+        )
+    with oil_specific_heat_unit_col:
+        oil_specific_heat_unit = st.selectbox(
+            "Unit",
+            options=specific_heat_units,
+            index=specific_heat_units.index("kJ/kg/degK"),
+            key="oil_specific_heat_unit",
+            label_visibility="collapsed",
+            disabled=not st.session_state.oil_specific_heat,
+        )
+
+    st.text("Density")
+    oil_density_magnitude_col, oil_density_unit_col = st.columns(2)
+    with oil_density_magnitude_col:
+        oil_density_magnitude = st.text_input(
+            "Oil Density",
+            value=846.9,
+            key="oil_density_magnitude",
+            label_visibility="collapsed",
+            disabled=not st.session_state.oil_specific_heat,
+        )
+    with oil_density_unit_col:
+        oil_density_unit = st.selectbox(
+            "Unit",
+            options=density_units,
+            index=density_units.index("kg/m³"),
+            key="oil_density_unit",
+            label_visibility="collapsed",
+            disabled=not st.session_state.oil_specific_heat,
+        )
+
+    oil_specific_heat_value = None
+    oil_density_value = None
+    if oil_specific_heat:
+        oil_specific_heat_value = Q_(
+            float(oil_specific_heat_magnitude), oil_specific_heat_unit
+        ).to("kJ/kg/kelvin")
+        oil_density_value = Q_(float(oil_density_magnitude), oil_density_unit).to(
+            "kg/m³"
+        )
+
+    oil_iso = st.checkbox(
+        "Oil ISO Classification",
+        key="oil_iso",
+        on_change=on_oil_iso_change,
+        help="If marked, uses the ISO oil classification "
+        "for bearing mechanical losses calculation "
+        "and disables specific heat and density input.",
+    )
+    oil_iso_classification = st.selectbox(
+        "ISO",
+        options=oil_iso_options,
+        index=oil_iso_options.index("VG 32"),
+        key="oil_iso_classification",
+        label_visibility="collapsed",
+        disabled=not st.session_state.oil_iso,
+    )
+
+    return oil_specific_heat, oil_specific_heat_value, oil_density_value, oil_iso, oil_iso_classification
+
+
+def add_background_image(limits, fig, image):
+    """Add a PNG image to a plotly figure background.
+
+    Parameters
+    ----------
+    limits : dict
+        Dict with "x" and "y" keys, each containing "lower_limit"
+        and "upper_limit" values defining the image placement area.
+    fig : plotly.graph_objects.Figure
+        The figure to add the background image to.
+    image : bytes
+        The PNG image bytes.
+
+    Returns
+    -------
+    plotly.graph_objects.Figure
+        The figure with the background image added.
+    """
+    encoded_string = base64.b64encode(image).decode()
+    encoded_image = "data:image/png;base64," + encoded_string
+    fig.add_layout_image(
+        dict(
+            source=encoded_image,
+            xref="x",
+            yref="y",
+            x=limits["x"]["lower_limit"],
+            y=limits["y"]["upper_limit"],
+            sizex=float(limits["x"]["upper_limit"])
+            - float(limits["x"]["lower_limit"]),
+            sizey=float(limits["y"]["upper_limit"])
+            - float(limits["y"]["lower_limit"]),
+            sizing="stretch",
+            opacity=0.5,
+            layer="below",
+        )
+    )
+    return fig
+
+
+def file_sidebar(load_from_zip, save_to_zip):
+    """Render the file sidebar with Load/Save functionality.
+
+    Parameters
+    ----------
+    load_from_zip : callable(my_zip, version) -> dict
+        Called when loading a .ccp file. Receives the opened ZipFile and
+        version string. Must return a session_state_data dict with all
+        loaded data (JSON session state + deserialized objects).
+    save_to_zip : callable(my_zip, session_state_dict_copy) -> dict
+        Called when saving. Receives the ZipFile (already has ccp.version
+        written) and a mutable copy of session_state_dict. Must write
+        page-specific objects to the zip and delete those keys from the
+        copy. Returns the remaining dict to be saved as JSON.
+    """
+    with st.sidebar.expander("📁 File"):
+        with st.form("my_form", clear_on_submit=False):
+            st.session_state.session_name = st.text_input(
+                "Session name",
+                value=st.session_state.session_name,
+            )
+
+            file = st.file_uploader("📂 Open File", type=["ccp"])
+            submitted = st.form_submit_button("Load")
+            save_button = st.form_submit_button("💾 Save")
+
+        if submitted and file is not None:
+            st.write("Loaded!")
+            with zipfile.ZipFile(file) as my_zip:
+                try:
+                    version = my_zip.read("ccp.version").decode("utf-8")
+                except KeyError:
+                    version = "0.3.5"
+
+                session_state_data = load_from_zip(my_zip, version)
+
+            session_state_data_copy = session_state_data.copy()
+            for key in list(session_state_data.keys()):
+                if key.startswith(
+                    ("FormSubmitter", "my_form", "uploaded", "form", "table")
+                ):
+                    del session_state_data_copy[key]
+            st.session_state.update(session_state_data_copy)
+            st.session_state.session_name = file.name.replace(".ccp", "")
+            st.session_state.expander_state = True
+            st.rerun()
+
+        if save_button:
+            session_state_dict = dict(st.session_state)
+
+            file_name = f"{st.session_state.session_name}.ccp"
+            session_state_dict_copy = session_state_dict.copy()
+            with zipfile.ZipFile(file_name, "w") as my_zip:
+                my_zip.writestr("ccp.version", ccp.__version__)
+                session_state_dict_copy = save_to_zip(my_zip, session_state_dict_copy)
+                session_state_json = json.dumps(session_state_dict_copy)
+                my_zip.writestr("session_state.json", session_state_json)
+
+            with open(file_name, "rb") as f:
+                st.download_button(
+                    label="💾 Save As",
+                    data=f,
+                    file_name=file_name,
+                    mime="application/json",
+                )
+
+
+def run_app(main_func, app_name):
+    """Run main app function with standardized error logging."""
+    try:
+        main_func()
+    except Exception as e:
+        logging.info(f"app: {app_name}")
+        logging.info(f"session state: {st.session_state}")
+        logging.error(e)
+        raise e

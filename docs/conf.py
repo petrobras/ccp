@@ -14,16 +14,17 @@
 # add these directories to sys.path here. If the directory is relative to the
 # documentation root, use os.path.abspath to make it absolute, like shown here.
 #
+import json
 import os
-
 import sys
+import uuid
 
 sys.path.insert(0, os.path.abspath(os.path.pardir))
 import ccp
 
 # General information about the project.
 project = "ccp"
-copyright = "2024"
+copyright = "2026"
 author = "ccp devs"
 googleanalytics_id = "G-GY4B3R42HW"
 
@@ -118,6 +119,7 @@ html_theme_options = {
 html_sourcelink_suffix = ""
 html_static_path = ["_static"]
 html_js_files = [
+    "https://cdn.plot.ly/plotly-2.35.2.min.js",
     "https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js",
     "custom.js",
 ]
@@ -157,6 +159,41 @@ try:
     jupyter_execute_notebooks = os.environ["EXECUTE_NOTEBOOKS"]
 except KeyError:
     jupyter_execute_notebooks = "off"
+
+nb_mime_priority_overrides = [
+    ("html", "application/vnd.plotly.v1+json", 0),
+]
+
+
+# Monkey-patch myst-nb to render Plotly JSON outputs as interactive plots.
+def _patch_plotly_renderer():
+    from docutils import nodes
+    from myst_nb.core.render import MimeData, NbElementRenderer
+
+    _original = NbElementRenderer.render_mime_type
+
+    def _render_mime_type(self, data: MimeData):
+        if data.mime_type == "application/vnd.plotly.v1+json":
+            fig = data.content
+            if isinstance(fig, str):
+                fig = json.loads(fig)
+            div_id = f"plotly-{uuid.uuid4().hex[:8]}"
+            html = (
+                f'<div id="{div_id}"></div>\n'
+                f"<script>"
+                f"Plotly.newPlot('{div_id}',"
+                f" {json.dumps(fig.get('data', []))},"
+                f" {json.dumps(fig.get('layout', {}))},"
+                f" {{responsive: true}});"
+                f"</script>"
+            )
+            return [nodes.raw("", html, format="html")]
+        return _original(self, data)
+
+    NbElementRenderer.render_mime_type = _render_mime_type
+
+
+_patch_plotly_renderer()
 
 # Custom sidebar templates, must be a dictionary that maps document names
 # to template names.

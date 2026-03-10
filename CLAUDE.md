@@ -104,6 +104,32 @@ Tests are located in `ccp/tests/` with test data in `ccp/tests/data/`. The test 
 - Docstring examples (tested via pytest --doctest-modules)
 - Integration tests using real compressor data
 
+## Git Workflow
+
+This project uses a **fork-based workflow**. The upstream repository is `petrobras/ccp`.
+
+### Remote Setup
+Each developer should have:
+- **`origin`**: their personal fork (e.g., `git@github.com:<user>/ccp.git`)
+- **`upstream`**: the main repository (`git@github.com:petrobras/ccp.git`)
+
+```bash
+git remote set-url origin git@github.com:<user>/ccp.git
+git remote add upstream git@github.com:petrobras/ccp.git
+```
+
+### Creating Pull Requests
+1. Create a new branch from `main`
+2. Push the branch to `origin` (your fork)
+3. Open the PR from your fork's branch against `upstream/main` (`petrobras/ccp`)
+
+```bash
+git checkout -b my-feature
+# ... make changes ...
+git push -u origin my-feature
+gh pr create --repo petrobras/ccp --base main
+```
+
 ## Documentation Standards
 
 Uses **Numpy docstring style** for all methods and classes. Examples in docstrings are tested automatically and must produce correct output.
