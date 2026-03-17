@@ -502,21 +502,6 @@ def main():
                     if df_valid.empty:
                         st.warning("No valid calculated points to display.")
                     else:
-                        # Add timescale for coloring
-                        if "timescale" in df_valid.columns:
-                            color_col = "timescale"
-                        else:
-                            # Create a normalized timescale
-                            idx_num = pd.to_numeric(
-                                df_valid.index.astype("int64")
-                            )
-                            df_valid = df_valid.copy()
-                            df_valid["timescale"] = (
-                                (idx_num - idx_num.min())
-                                / max(idx_num.max() - idx_num.min(), 1)
-                            )
-                            color_col = "timescale"
-
                         trend_plots = {
                             "Delta Efficiency (%)": "delta_eff",
                             "Delta Head (%)": "delta_head",
@@ -545,10 +530,8 @@ def main():
                                             y=df_valid[col_name],
                                             mode="markers",
                                             marker=dict(
-                                                color=df_valid[color_col],
-                                                colorscale="Viridis",
+                                                color="#1f77b4",
                                                 size=6,
-                                                showscale=False,
                                             ),
                                             name=title,
                                         )
