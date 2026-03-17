@@ -527,9 +527,12 @@ def build_pi_query(tag_mappings):
     Returns
     -------
     tags_list : list of str
-        PI tag name strings to query.
+        Unique PI tag name strings to query.
     rename_map : dict
-        Mapping from PI tag name to ccp internal column name.
+        Mapping from PI tag name to primary ccp internal column name.
+    alias_map : dict
+        Mapping from additional ccp internal column names to their primary
+        column names when multiple fields are configured with the same PI tag.
     """
     key_to_col = {
         "suc_p_tag": "ps",
@@ -544,20 +547,34 @@ def build_pi_query(tag_mappings):
 
     tags_list = []
     rename_map = {}
+    alias_map = {}
 
     for key, col_name in key_to_col.items():
         tag_name = tag_mappings.get(key, "")
         if tag_name:
-            tags_list.append(tag_name)
-            rename_map[tag_name] = col_name
+            if tag_name not in tags_list:
+                tags_list.append(tag_name)
+
+            existing_col = rename_map.get(tag_name)
+            if existing_col is None:
+                rename_map[tag_name] = col_name
+            elif existing_col != col_name:
+                alias_map[col_name] = existing_col
 
     fluid_tags = tag_mappings.get("fluid_tags", {})
     for component_name, tag_name in fluid_tags.items():
         if tag_name:
-            tags_list.append(tag_name)
-            rename_map[tag_name] = f"fluid_{component_name}"
+            if tag_name not in tags_list:
+                tags_list.append(tag_name)
 
-    return tags_list, rename_map
+            col_name = f"fluid_{component_name}"
+            existing_col = rename_map.get(tag_name)
+            if existing_col is None:
+                rename_map[tag_name] = col_name
+            elif existing_col != col_name:
+                alias_map[col_name] = existing_col
+
+    return tags_list, rename_map, alias_map
 
 
 def format_pi_time(dt):
@@ -699,7 +716,7 @@ def fetch_pi_data(tag_mappings, start_time=None, end_time=None, testing=False):
     else:
         from pandaspi import SessionWeb
 
-        tags_list, rename_map = build_pi_query(tag_mappings)
+        tags_list, rename_map, alias_map = build_pi_query(tag_mappings)
         if not tags_list:
             raise ValueError("No PI tags configured. Please fill in the tag names.")
 
@@ -725,6 +742,9 @@ def fetch_pi_data(tag_mappings, start_time=None, end_time=None, testing=False):
         print(f"[fetch_pi_data] raw dtypes:\n{session.df.dtypes}")
         df = session.df.rename(columns=rename_map)
         df = sanitize_pi_dataframe(df)
+        for alias_col, source_col in alias_map.items():
+            if source_col in df.columns:
+                df[alias_col] = df[source_col]
         print(f"[fetch_pi_data] sanitized DataFrame:\n{df}")
         print(f"[fetch_pi_data] sanitized dtypes:\n{df.dtypes}")
         df = apply_fluid_unit_conversions(df, tag_mappings)

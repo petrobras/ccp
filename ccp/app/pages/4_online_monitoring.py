@@ -105,7 +105,7 @@ def fetch_pi_data_online(tag_mappings, testing=False):
             sanitize_pi_dataframe,
         )
 
-        tags_list, rename_map = build_pi_query(tag_mappings)
+        tags_list, rename_map, alias_map = build_pi_query(tag_mappings)
         if not tags_list:
             raise ValueError("No PI tags configured. Please fill in the tag names.")
 
@@ -126,6 +126,9 @@ def fetch_pi_data_online(tag_mappings, testing=False):
         print(f"[fetch_pi_data_online] raw dtypes:\n{session.df.dtypes}")
         df = session.df.rename(columns=rename_map)
         df = sanitize_pi_dataframe(df)
+        for alias_col, source_col in alias_map.items():
+            if source_col in df.columns:
+                df[alias_col] = df[source_col]
         print(f"[fetch_pi_data_online] sanitized DataFrame:\n{df}")
         print(f"[fetch_pi_data_online] sanitized dtypes:\n{df.dtypes}")
         df = apply_fluid_unit_conversions(df, tag_mappings)
