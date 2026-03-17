@@ -585,7 +585,7 @@ def main():
                         converted_impeller = evaluation.impellers_new[cluster_idx]
 
                         # Plot units
-                        plot_flow_units = "m³/h"
+                        plot_flow_units = "m³/s"
                         plot_head_units = "kJ/kg"
                         plot_power_units = "kW"
                         plot_p_units = "bar"
@@ -601,10 +601,8 @@ def main():
                                 / max(idx_num.max() - idx_num.min(), 1)
                             )
 
-                        # Get flow in plot units
-                        flow_v_data_units = st.session_state.get(
-                            "flow_unit", "m³/h"
-                        )
+                        # Evaluation results are in ccp internal units (flow_v: m³/s)
+                        flow_v_data_units = "m³/s"
                         hist_flow = df_valid["flow_v"].apply(
                             lambda v: Q_(v, flow_v_data_units)
                             .to(plot_flow_units)
