@@ -540,19 +540,15 @@ def main():
                                 if col_name in df_valid.columns:
                                     fig = go.Figure()
                                     fig.add_trace(
-                                        go.Scatter(
+                                        go.Scattergl(
                                             x=df_valid.index,
                                             y=df_valid[col_name],
-                                            mode="markers+lines",
+                                            mode="markers",
                                             marker=dict(
                                                 color=df_valid[color_col],
                                                 colorscale="Viridis",
                                                 size=6,
                                                 showscale=False,
-                                            ),
-                                            line=dict(
-                                                color="rgba(150,150,150,0.3)",
-                                                width=1,
                                             ),
                                             name=title,
                                         )

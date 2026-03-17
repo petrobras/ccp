@@ -26,7 +26,7 @@ from ccp import Q_
 flow_m_units = ["kg/h", "kg/min", "kg/s", "lbm/h", "lbm/min", "lbm/s"]
 flow_v_units = ["m³/h", "m³/min", "m³/s"]
 flow_units = flow_m_units + flow_v_units
-pressure_units = ["bar", "kgf/cm²", "barg", "Pa", "kPa", "MPa", "psi", "mm*H2O*g0"]
+pressure_units = ["bar", "kgf/cm²", "barg", "Pa", "kPa", "MPa", "psi", "mmH2O"]
 temperature_units = ["degK", "degC", "degF", "degR"]
 head_units = ["kJ/kg", "J/kg", "m*g0", "ft"]
 power_units = ["kW", "hp", "W", "Btu/h", "MW"]
