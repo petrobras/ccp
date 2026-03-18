@@ -102,6 +102,7 @@ def fetch_pi_data_online(tag_mappings, testing=False):
             apply_fluid_unit_conversions,
             build_pi_query,
             format_pi_time,
+            merge_redundant_parameter_tags,
             sanitize_pi_dataframe,
         )
 
@@ -129,6 +130,7 @@ def fetch_pi_data_online(tag_mappings, testing=False):
         for alias_col, source_col in alias_map.items():
             if source_col in df.columns:
                 df[alias_col] = df[source_col]
+        df = merge_redundant_parameter_tags(df, tag_mappings)
         print(f"[fetch_pi_data_online] sanitized DataFrame:\n{df}")
         print(f"[fetch_pi_data_online] sanitized dtypes:\n{df.dtypes}")
         df = apply_fluid_unit_conversions(df, tag_mappings)

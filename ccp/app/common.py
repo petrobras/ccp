@@ -536,13 +536,21 @@ def build_pi_query(tag_mappings):
     """
     key_to_col = {
         "suc_p_tag": "ps",
+        "suc_p_tag_2": "ps_2",
         "suc_T_tag": "Ts",
+        "suc_T_tag_2": "Ts_2",
         "disch_p_tag": "pd",
+        "disch_p_tag_2": "pd_2",
         "disch_T_tag": "Td",
+        "disch_T_tag_2": "Td_2",
         "speed_tag": "speed",
+        "speed_tag_2": "speed_2",
         "flow_tag": "flow_v",
+        "flow_tag_2": "flow_v_2",
         "delta_p_tag": "delta_p",
+        "delta_p_tag_2": "delta_p_2",
         "p_downstream_tag": "p_downstream",
+        "p_downstream_tag_2": "p_downstream_2",
     }
 
     tags_list = []
@@ -685,6 +693,106 @@ def sanitize_pi_dataframe(df):
     return df
 
 
+def _frozen_series_mask(series, min_points=10, min_seconds=4500):
+    """Return mask for samples that belong to frozen-value runs."""
+    s = series.copy()
+    valid = s.notna()
+    if not valid.any():
+        return pd.Series(False, index=series.index)
+
+    group_id = s.ne(s.shift()).cumsum()
+    group_size = s.groupby(group_id).transform("size")
+    frozen_by_points = group_size >= min_points
+
+    frozen_by_time = pd.Series(False, index=series.index)
+    if isinstance(series.index, pd.DatetimeIndex):
+        for _, idx_values in series.groupby(group_id).groups.items():
+            idx_values = list(idx_values)
+            if len(idx_values) < 2:
+                continue
+            duration = (idx_values[-1] - idx_values[0]).total_seconds()
+            if duration > min_seconds:
+                frozen_by_time.loc[idx_values] = True
+
+    return valid & (frozen_by_points | frozen_by_time)
+
+
+def _convert_series_unit(values, from_unit, to_unit):
+    """Convert numeric series values from one unit to another using pint."""
+    if from_unit == to_unit:
+        return values
+    return values.apply(lambda v: Q_(v, from_unit).to(to_unit).m)
+
+
+def merge_redundant_parameter_tags(df, tag_mappings):
+    """Merge optional secondary tags into primary process columns.
+
+    A value is considered valid when it is numeric, non-zero, and not frozen.
+    Frozen means same value for more than 4500 s or at least 10 measurements.
+    """
+    parameter_map = [
+        ("ps", "suc_p_tag", "suc_p_tag_2", "suc_p_unit", "suc_p_unit_2"),
+        ("Ts", "suc_T_tag", "suc_T_tag_2", "suc_T_unit", "suc_T_unit_2"),
+        ("pd", "disch_p_tag", "disch_p_tag_2", "disch_p_unit", "disch_p_unit_2"),
+        ("Td", "disch_T_tag", "disch_T_tag_2", "disch_T_unit", "disch_T_unit_2"),
+        ("speed", "speed_tag", "speed_tag_2", "speed_unit", "speed_unit_2"),
+        ("flow_v", "flow_tag", "flow_tag_2", "flow_unit", "flow_unit_2"),
+        ("delta_p", "delta_p_tag", "delta_p_tag_2", "delta_p_unit", "delta_p_unit_2"),
+        (
+            "p_downstream",
+            "p_downstream_tag",
+            "p_downstream_tag_2",
+            "p_downstream_unit",
+            "p_downstream_unit_2",
+        ),
+    ]
+
+    for col, tag1_key, tag2_key, unit1_key, unit2_key in parameter_map:
+        tag2 = tag_mappings.get(tag2_key, "")
+        col2 = f"{col}_2"
+
+        if col not in df.columns and col2 in df.columns:
+            df[col] = df[col2]
+
+        if col not in df.columns:
+            continue
+
+        s1 = pd.to_numeric(df[col], errors="coerce")
+        valid_1 = s1.notna() & (s1 != 0) & ~_frozen_series_mask(s1)
+        s1_valid = s1.where(valid_1)
+
+        if tag2 and col2 in df.columns:
+            s2 = pd.to_numeric(df[col2], errors="coerce")
+            valid_2 = s2.notna() & (s2 != 0) & ~_frozen_series_mask(s2)
+            s2_valid = s2.where(valid_2)
+
+            unit1 = tag_mappings.get(unit1_key)
+            unit2 = tag_mappings.get(unit2_key, unit1)
+            if unit1 and unit2:
+                try:
+                    s2_valid = _convert_series_unit(s2_valid, unit2, unit1)
+                except Exception as exc:
+                    print(
+                        f"[WARNING] Failed unit conversion for '{col}' secondary "
+                        f"tag ({unit2} -> {unit1}): {exc}"
+                    )
+                    s2_valid = pd.Series(np.nan, index=s2_valid.index)
+
+            merged = s1_valid.copy()
+            both_valid = s1_valid.notna() & s2_valid.notna()
+            only_second_valid = s1_valid.isna() & s2_valid.notna()
+            merged[both_valid] = (s1_valid[both_valid] + s2_valid[both_valid]) / 2.0
+            merged[only_second_valid] = s2_valid[only_second_valid]
+            df[col] = merged
+        else:
+            df[col] = s1_valid
+
+        if col2 in df.columns:
+            df = df.drop(columns=[col2])
+
+    return df
+
+
 def fetch_pi_data(tag_mappings, start_time=None, end_time=None, testing=False):
     """Fetch historical PI data for a time range.
 
@@ -745,6 +853,7 @@ def fetch_pi_data(tag_mappings, start_time=None, end_time=None, testing=False):
         for alias_col, source_col in alias_map.items():
             if source_col in df.columns:
                 df[alias_col] = df[source_col]
+        df = merge_redundant_parameter_tags(df, tag_mappings)
         print(f"[fetch_pi_data] sanitized DataFrame:\n{df}")
         print(f"[fetch_pi_data] sanitized dtypes:\n{df.dtypes}")
         df = apply_fluid_unit_conversions(df, tag_mappings)
@@ -1062,34 +1171,65 @@ def tags_config_section(fluid_list):
 
         st.markdown("### Process Parameter Tags")
 
-        row1 = st.columns([3, 1, 3, 1])
-        with row1[0]:
-            st.text_input("Suction Pressure Tag", key="suc_p_tag")
-        with row1[1]:
-            st.selectbox("Unit", options=pressure_units, key="suc_p_unit")
-        with row1[2]:
-            st.text_input("Suction Temperature Tag", key="suc_T_tag")
-        with row1[3]:
-            st.selectbox("Unit", options=temperature_units, key="suc_T_unit")
+        st.caption(
+            "Each parameter accepts one or two tags. When both are valid, "
+            "tag 2 is converted to unit 1 and values are averaged."
+        )
 
-        row2 = st.columns([3, 1, 3, 1])
-        with row2[0]:
-            st.text_input("Discharge Pressure Tag", key="disch_p_tag")
-        with row2[1]:
-            st.selectbox("Unit", options=pressure_units, key="disch_p_unit")
-        with row2[2]:
-            st.text_input("Discharge Temperature Tag", key="disch_T_tag")
-        with row2[3]:
-            st.selectbox("Unit", options=temperature_units, key="disch_T_unit")
+        def dual_tag_input_row(label, tag_key, unit_key, tag_key_2, unit_key_2, units):
+            cols = st.columns([2, 1, 2, 1])
+            with cols[0]:
+                st.text_input(f"{label} Tag 1", key=tag_key)
+            with cols[1]:
+                st.selectbox("Unit 1", options=units, key=unit_key)
+            with cols[2]:
+                st.text_input(f"{label} Tag 2", key=tag_key_2)
+            with cols[3]:
+                st.selectbox("Unit 2", options=units, key=unit_key_2)
 
-        row3 = st.columns([3, 1, 3, 1])
-        with row3[0]:
-            st.text_input("Speed Tag", key="speed_tag")
-        with row3[1]:
-            st.selectbox("Unit", options=speed_units, key="speed_unit")
+        dual_tag_input_row(
+            "Suction Pressure",
+            "suc_p_tag",
+            "suc_p_unit",
+            "suc_p_tag_2",
+            "suc_p_unit_2",
+            pressure_units,
+        )
+        dual_tag_input_row(
+            "Suction Temperature",
+            "suc_T_tag",
+            "suc_T_unit",
+            "suc_T_tag_2",
+            "suc_T_unit_2",
+            temperature_units,
+        )
+        dual_tag_input_row(
+            "Discharge Pressure",
+            "disch_p_tag",
+            "disch_p_unit",
+            "disch_p_tag_2",
+            "disch_p_unit_2",
+            pressure_units,
+        )
+        dual_tag_input_row(
+            "Discharge Temperature",
+            "disch_T_tag",
+            "disch_T_unit",
+            "disch_T_tag_2",
+            "disch_T_unit_2",
+            temperature_units,
+        )
+        dual_tag_input_row(
+            "Speed",
+            "speed_tag",
+            "speed_unit",
+            "speed_tag_2",
+            "speed_unit_2",
+            speed_units,
+        )
 
         if st.session_state.get("flow_method", "Direct") == "Direct":
-            row4 = st.columns([2, 3, 1, 2])
+            row4 = st.columns([2, 1])
             with row4[0]:
                 flow_method = st.radio(
                     "Flow Measurement Method",
@@ -1097,12 +1237,16 @@ def tags_config_section(fluid_list):
                     key="flow_method",
                     horizontal=True,
                 )
-            with row4[1]:
-                st.text_input("Flow Tag", key="flow_tag")
-            with row4[2]:
-                st.selectbox("Unit", options=flow_units, key="flow_unit")
+            dual_tag_input_row(
+                "Flow",
+                "flow_tag",
+                "flow_unit",
+                "flow_tag_2",
+                "flow_unit_2",
+                flow_units,
+            )
         else:
-            row4 = st.columns([2, 3, 1, 3, 1])
+            row4 = st.columns([2, 1])
             with row4[0]:
                 flow_method = st.radio(
                     "Flow Measurement Method",
@@ -1110,14 +1254,22 @@ def tags_config_section(fluid_list):
                     key="flow_method",
                     horizontal=True,
                 )
-            with row4[1]:
-                st.text_input("Delta P Tag", key="delta_p_tag")
-            with row4[2]:
-                st.selectbox("Unit", options=pressure_units, key="delta_p_unit")
-            with row4[3]:
-                st.text_input("Downstream P Tag", key="p_downstream_tag")
-            with row4[4]:
-                st.selectbox("Unit", options=pressure_units, key="p_downstream_unit")
+            dual_tag_input_row(
+                "Delta P",
+                "delta_p_tag",
+                "delta_p_unit",
+                "delta_p_tag_2",
+                "delta_p_unit_2",
+                pressure_units,
+            )
+            dual_tag_input_row(
+                "Downstream P",
+                "p_downstream_tag",
+                "p_downstream_unit",
+                "p_downstream_tag_2",
+                "p_downstream_unit_2",
+                pressure_units,
+            )
 
         if flow_method == "Orifice":
             orifice_row = st.columns([2, 3, 1, 3, 1])
@@ -1254,10 +1406,25 @@ def build_tag_mappings():
         "pi_server_name": st.session_state.get("pi_server_name", ""),
         "pi_auth_method": st.session_state.get("pi_auth_method", "kerberos"),
         "suc_p_tag": st.session_state.get("suc_p_tag", ""),
+        "suc_p_tag_2": st.session_state.get("suc_p_tag_2", ""),
+        "suc_p_unit": st.session_state.get("suc_p_unit", "bar"),
+        "suc_p_unit_2": st.session_state.get("suc_p_unit_2", "bar"),
         "suc_T_tag": st.session_state.get("suc_T_tag", ""),
+        "suc_T_tag_2": st.session_state.get("suc_T_tag_2", ""),
+        "suc_T_unit": st.session_state.get("suc_T_unit", "degC"),
+        "suc_T_unit_2": st.session_state.get("suc_T_unit_2", "degC"),
         "disch_p_tag": st.session_state.get("disch_p_tag", ""),
+        "disch_p_tag_2": st.session_state.get("disch_p_tag_2", ""),
+        "disch_p_unit": st.session_state.get("disch_p_unit", "bar"),
+        "disch_p_unit_2": st.session_state.get("disch_p_unit_2", "bar"),
         "disch_T_tag": st.session_state.get("disch_T_tag", ""),
+        "disch_T_tag_2": st.session_state.get("disch_T_tag_2", ""),
+        "disch_T_unit": st.session_state.get("disch_T_unit", "degC"),
+        "disch_T_unit_2": st.session_state.get("disch_T_unit_2", "degC"),
         "speed_tag": st.session_state.get("speed_tag", ""),
+        "speed_tag_2": st.session_state.get("speed_tag_2", ""),
+        "speed_unit": st.session_state.get("speed_unit", "rpm"),
+        "speed_unit_2": st.session_state.get("speed_unit_2", "rpm"),
     }
 
     if tag_mappings["pi_auth_method"] == "basic":
@@ -1270,10 +1437,25 @@ def build_tag_mappings():
     flow_method = st.session_state.get("flow_method", "Direct")
     if flow_method == "Direct":
         tag_mappings["flow_tag"] = st.session_state.get("flow_tag", "")
+        tag_mappings["flow_tag_2"] = st.session_state.get("flow_tag_2", "")
+        tag_mappings["flow_unit"] = st.session_state.get("flow_unit", "m³/h")
+        tag_mappings["flow_unit_2"] = st.session_state.get("flow_unit_2", "m³/h")
     else:
         tag_mappings["delta_p_tag"] = st.session_state.get("delta_p_tag", "")
+        tag_mappings["delta_p_tag_2"] = st.session_state.get("delta_p_tag_2", "")
+        tag_mappings["delta_p_unit"] = st.session_state.get("delta_p_unit", "bar")
+        tag_mappings["delta_p_unit_2"] = st.session_state.get("delta_p_unit_2", "bar")
         tag_mappings["p_downstream_tag"] = st.session_state.get(
             "p_downstream_tag", ""
+        )
+        tag_mappings["p_downstream_tag_2"] = st.session_state.get(
+            "p_downstream_tag_2", ""
+        )
+        tag_mappings["p_downstream_unit"] = st.session_state.get(
+            "p_downstream_unit", "bar"
+        )
+        tag_mappings["p_downstream_unit_2"] = st.session_state.get(
+            "p_downstream_unit_2", "bar"
         )
 
     fluid_source = st.session_state.get("fluid_source", "Fixed Operation Fluid")
