@@ -4,7 +4,6 @@ import multiprocessing
 import zipfile
 import toml
 import pandas as pd
-import io
 import pickle
 from .data_io import filter_data
 from .state import State
@@ -134,6 +133,295 @@ class Evaluation:
         else:
             self.impellers_new = kwargs.get("impellers_new")
             self.df = kwargs.get("df")
+
+    def _filter_dataframe(self, data, drop_invalid_values=True):
+        """Apply fluctuation filtering with current instance parameters."""
+        return filter_data(
+            data,
+            data_type=self.data_type,
+            window=self.window,
+            temperature_fluctuation=self.temperature_fluctuation,
+            pressure_fluctuation=self.pressure_fluctuation,
+            speed_fluctuation=self.speed_fluctuation,
+            drop_invalid_values=drop_invalid_values,
+        )
+
+    @staticmethod
+    def _align_timestamp_to_reference(ts, reference_ts):
+        """Align timestamp timezone to match the reference timestamp."""
+        ts = pd.Timestamp(ts)
+        reference_ts = pd.Timestamp(reference_ts)
+
+        if reference_ts.tz is None and ts.tz is not None:
+            return ts.tz_localize(None)
+        if reference_ts.tz is not None and ts.tz is None:
+            return ts.tz_localize(reference_ts.tz)
+        if reference_ts.tz is not None and ts.tz is not None:
+            return ts.tz_convert(reference_ts.tz)
+        return ts
+
+    def _ensure_incremental_artifacts(self):
+        """Ensure model artifacts needed by incremental mode are available."""
+        missing = []
+        for attr in ("kmeans", "data_mean", "data_std", "impellers_new"):
+            if getattr(self, attr, None) is None:
+                missing.append(attr)
+        if missing:
+            raise RuntimeError(
+                "Incremental update artifacts are missing: "
+                f"{missing}. Run a Full Rebuild first."
+            )
+
+    def _assign_clusters(self, df):
+        """Assign cluster id to each row using fitted model and scaling."""
+        df = df.copy()
+        features = df[["speed_sound", "ps", "Ts"]]
+        features_norm = (features - self.data_mean) / self.data_std
+        df["cluster"] = self.kmeans.predict(features_norm)
+        return df
+
+    def _calculate_points_from_prepared_df(self, df, parallel=None):
+        """Calculate points from a dataframe with flow and cluster columns."""
+        if parallel is None:
+            parallel = self.parallel
+
+        args_list = []
+        for i, row in df.iterrows():
+            if self.operation_fluid is not None:
+                fluid = self.operation_fluid
+            else:
+                fluid = self._get_fluid_composition(row)
+
+            # Get 'valid' value safely (default to True if not present)
+            is_valid = row.valid if "valid" in row.index else True
+
+            arg_dict = {
+                "flow_v": row.flow_v,
+                "speed": Q_(row.speed, self.data_units["speed"]),
+                "suc": State(
+                    p=Q_(row.ps, self.data_units["ps"]),
+                    T=Q_(row.Ts, self.data_units["Ts"]),
+                    fluid=fluid,
+                ),
+                "disch": State(
+                    p=Q_(row.pd, self.data_units["pd"]),
+                    T=Q_(row.Td, self.data_units["Td"]),
+                    fluid=fluid,
+                ),
+                "imp_new": self.impellers_new[int(row.cluster)],
+                "valid": is_valid,
+            }
+
+            args_list.append(arg_dict)
+
+        if parallel:
+            with multiprocessing.Pool() as pool:
+                print("Calculating points...")
+                results = list(tqdm(pool.imap(create_points_parallel, args_list)))
+                print("Calculating expected points...")
+                expected_results = list(
+                    tqdm(pool.imap(get_interpolated_point, args_list))
+                )
+        else:
+            # Sequential mode prints complete tracebacks for debugging.
+            print("Calculating points (sequential mode)...")
+            results = []
+            for args in tqdm(args_list):
+                results.append(create_points_parallel(args))
+            print("Calculating expected points (sequential mode)...")
+            expected_results = []
+            for args in tqdm(args_list):
+                expected_results.append(get_interpolated_point(args))
+
+        # -1.0 marks rows where points were not computed (typically invalid rows).
+        df["eff"] = -1.0
+        df["head"] = -1.0
+        df["power"] = -1.0
+        df["p_disch"] = -1.0
+        df["expected_eff"] = -1.0
+        df["expected_head"] = -1.0
+        df["expected_power"] = -1.0
+        df["expected_p_disch"] = -1.0
+        df["delta_eff"] = -1.0
+        df["delta_head"] = -1.0
+        df["delta_power"] = -1.0
+        df["delta_p_disch"] = -1.0
+        # Error tracking columns
+        df["error"] = None
+        df["error_type"] = None
+        df["expected_error"] = None
+        df["expected_error_type"] = None
+
+        for i, (point_op, error_info), (point_expected, expected_error) in zip(
+            df.index, results, expected_results
+        ):
+            # Store error info if calculation failed
+            if error_info is not None:
+                df.loc[i, "error"] = error_info["exception"]
+                df.loc[i, "error_type"] = error_info["type"]
+                if not parallel:
+                    # In sequential mode, print full traceback for debugging
+                    print(f"Error at index {i}: {error_info['traceback']}")
+
+            if expected_error is not None:
+                df.loc[i, "expected_error"] = expected_error["exception"]
+                df.loc[i, "expected_error_type"] = expected_error["type"]
+                if not parallel:
+                    print(
+                        f"Expected point error at index {i}: {expected_error['traceback']}"
+                    )
+
+            # point_op/point_expected are None when row is invalid or failed.
+            if point_op is not None and point_expected is not None:
+                df.loc[i, "eff"] = point_op.eff.m
+                df.loc[i, "head"] = point_op.head.m
+                df.loc[i, "power"] = point_op.power.m
+                df.loc[i, "p_disch"] = point_op.disch.p("bar").m
+                df.loc[i, "expected_eff"] = point_expected.eff.m
+                df.loc[i, "expected_head"] = point_expected.head.m
+                df.loc[i, "expected_power"] = point_expected.power.m
+                df.loc[i, "expected_p_disch"] = point_expected.disch.p("bar").m
+                df.loc[i, "delta_eff"] = (point_op.eff - point_expected.eff).m * 100
+                df.loc[i, "delta_head"] = (
+                    (point_op.head - point_expected.head) / point_expected.head
+                ).m * 100
+                df.loc[i, "delta_power"] = (
+                    (point_op.power - point_expected.power) / point_expected.power
+                ).m * 100
+                df.loc[i, "delta_p_disch"] = (
+                    (point_op.disch.p("bar") - point_expected.disch.p("bar"))
+                    / point_expected.disch.p("bar")
+                ).m * 100
+
+        if len(df) > 1 and hasattr(df.index, "dtype"):
+            # Use elapsed fraction in [0, 1] for coloring over time.
+            total_time = df.index[-1] - df.index[0]
+            total_seconds = total_time.total_seconds()
+            # create column for timescale
+            df["timescale"] = 0.0
+            for i, row in df.iterrows():
+                sample_time = i - df.index[0]
+                if total_seconds == 0:
+                    df.loc[i, "timescale"] = 0.0
+                else:
+                    df.loc[i, "timescale"] = (
+                        sample_time.total_seconds() / total_seconds
+                    )
+        elif "timescale" not in df.columns:
+            df["timescale"] = 0.0
+
+        return df
+
+    def append_new_data(
+        self,
+        new_data,
+        drop_invalid_values=True,
+        parallel=None,
+        use_filter_history=True,
+    ):
+        """Append only new data rows and calculate points incrementally.
+
+        Parameters
+        ----------
+        new_data : pandas.DataFrame
+            Dataframe containing only new timestamps to evaluate.
+        drop_invalid_values : bool, optional
+            Drop invalid values from the dataframe.
+            If False, a column 'valid' is added with True for valid rows.
+            The default is True.
+        parallel : bool, optional
+            If True, uses multiprocessing for point calculation.
+            If None, uses the value from the instance.
+        use_filter_history : bool, optional
+            If True, prepends last window-1 rows from existing data to preserve
+            fluctuation filtering continuity at the batch boundary.
+
+        Returns
+        -------
+        pandas.DataFrame
+            Only the newly calculated rows (same schema as self.df).
+        """
+        if new_data is None or new_data.empty:
+            return pd.DataFrame()
+
+        self._ensure_incremental_artifacts()
+
+        if parallel is None:
+            parallel = self.parallel
+
+        required_cols = ["ps", "Ts", "pd", "Td", "speed"]
+        missing_cols = [c for c in required_cols if c not in new_data.columns]
+        if missing_cols:
+            raise ValueError(
+                "New data is missing required columns for incremental "
+                f"evaluation: {missing_cols}"
+            )
+
+        new_df = new_data.copy().sort_index()
+
+        if isinstance(new_df.index, pd.DatetimeIndex) and isinstance(
+            self.data.index, pd.DatetimeIndex
+        ):
+            if self.data.index.tz is None and new_df.index.tz is not None:
+                new_df.index = new_df.index.tz_localize(None)
+            elif self.data.index.tz is not None and new_df.index.tz is None:
+                new_df.index = new_df.index.tz_localize(self.data.index.tz)
+            elif (
+                self.data.index.tz is not None
+                and new_df.index.tz is not None
+                and new_df.index.tz != self.data.index.tz
+            ):
+                new_df.index = new_df.index.tz_convert(self.data.index.tz)
+
+        # Keep only strictly new rows based on current evaluation data.
+        if self.data is not None and not self.data.empty:
+            last_index = self.data.index.max()
+            new_df = new_df[new_df.index > last_index]
+
+        if new_df.empty:
+            return pd.DataFrame()
+
+        filter_input = new_df
+        context_len = max(self.window - 1, 0)
+        if (
+            use_filter_history
+            and context_len > 0
+            and self.data is not None
+            and not self.data.empty
+        ):
+            history_context = self.data.tail(context_len)
+            filter_input = pd.concat([history_context, new_df]).sort_index()
+
+        filtered = self._filter_dataframe(
+            filter_input, drop_invalid_values=drop_invalid_values
+        )
+        filtered = filtered[filtered.index.isin(new_df.index)]
+
+        if filtered.empty:
+            return pd.DataFrame()
+
+        filtered = self.calculate_flow(filtered)
+        filtered = filtered.dropna(subset=["speed_sound", "v_s"])
+
+        if filtered.empty:
+            return pd.DataFrame()
+
+        if "valid" not in filtered.columns:
+            filtered["valid"] = True
+
+        prepared = self._assign_clusters(filtered)
+        df_new_points = self._calculate_points_from_prepared_df(
+            prepared, parallel=parallel
+        )
+
+        # Append raw and calculated datasets, preserving the newest value in duplicates.
+        self.data = pd.concat([self.data, new_df])
+        self.data = self.data[~self.data.index.duplicated(keep="last")].sort_index()
+
+        self.df = pd.concat([self.df, df_new_points])
+        self.df = self.df[~self.df.index.duplicated(keep="last")].sort_index()
+
+        return df_new_points
 
     def _get_fluid_composition(self, row_or_series):
         """Extract and convert fluid composition from a row or series.
@@ -341,172 +629,33 @@ class Evaluation:
         """
         if parallel is None:
             parallel = self.parallel
+
         if data is None:
             df = self.df.copy()
-        else:
-            df = data.copy()
-            df = filter_data(
-                df,
-                data_type=self.data_type,
-                window=self.window,
-                temperature_fluctuation=self.temperature_fluctuation,
-                pressure_fluctuation=self.pressure_fluctuation,
-                speed_fluctuation=self.speed_fluctuation,
-                drop_invalid_values=drop_invalid_values,
+            if "valid" not in df.columns:
+                df["valid"] = True
+            if "cluster" not in df.columns:
+                df = self._assign_clusters(df)
+            return self._calculate_points_from_prepared_df(df, parallel=parallel)
+
+        df = data.copy()
+        df = self._filter_dataframe(df, drop_invalid_values=drop_invalid_values)
+
+        # Check if dataframe is empty after filtering
+        if df.empty:
+            raise ValueError(
+                "DataFrame is empty after filtering. "
+                "All rows were removed due to fluctuation criteria. "
+                "Please check your data or adjust the filtering parameters "
+                "(temperature_fluctuation, pressure_fluctuation, speed_fluctuation)."
             )
 
-            # Check if dataframe is empty after filtering
-            if df.empty:
-                raise ValueError(
-                    "DataFrame is empty after filtering. "
-                    "All rows were removed due to fluctuation criteria. "
-                    "Please check your data or adjust the filtering parameters "
-                    "(temperature_fluctuation, pressure_fluctuation, speed_fluctuation)."
-                )
-
-        # Ensure 'valid' column exists (filter_data should add it, but add defensively)
         if "valid" not in df.columns:
             df["valid"] = True
 
         df = self.calculate_flow(df)
-
-        # assign to a cluster
-        df["cluster"] = 0
-
-        for i, row in df.iterrows():
-            new_data = pd.DataFrame(
-                [row[["speed_sound", "ps", "Ts"]].values],
-                columns=["speed_sound", "ps", "Ts"],
-            )
-            new_data = (new_data - self.data_mean.values) / self.data_std.values
-            df.loc[i, "cluster"] = self.kmeans.predict(new_data)[0]
-
-        points = []
-        expected_points = []
-
-        args_list = []
-        for i, row in df.iterrows():
-            if self.operation_fluid is not None:
-                fluid = self.operation_fluid
-            else:
-                fluid = self._get_fluid_composition(row)
-
-            # Get 'valid' value safely (default to True if not present)
-            is_valid = row.valid if "valid" in row.index else True
-
-            arg_dict = {
-                "flow_v": row.flow_v,
-                "speed": Q_(row.speed, self.data_units["speed"]),
-                "suc": State(
-                    p=Q_(row.ps, self.data_units["ps"]),
-                    T=Q_(row.Ts, self.data_units["Ts"]),
-                    fluid=fluid,
-                ),
-                "disch": State(
-                    p=Q_(row.pd, self.data_units["pd"]),
-                    T=Q_(row.Td, self.data_units["Td"]),
-                    fluid=fluid,
-                ),
-                "imp_new": self.impellers_new[int(row.cluster)],
-                "valid": is_valid,
-            }
-
-            args_list.append(arg_dict)
-
-        if parallel:
-            with multiprocessing.Pool() as pool:
-                print("Calculating points...")
-                results = list(tqdm(pool.imap(create_points_parallel, args_list)))
-                print("Calculating expected points...")
-                expected_results = list(
-                    tqdm(pool.imap(get_interpolated_point, args_list))
-                )
-        else:
-            # Sequential mode for debugging - errors will be printed with full tracebacks
-            print("Calculating points (sequential mode)...")
-            results = []
-            for args in tqdm(args_list):
-                results.append(create_points_parallel(args))
-            print("Calculating expected points (sequential mode)...")
-            expected_results = []
-            for args in tqdm(args_list):
-                expected_results.append(get_interpolated_point(args))
-
-        # start column with -1.0, if this value remains, it means that the point was not calculated due to invalid data
-        df["eff"] = -1.0
-        df["head"] = -1.0
-        df["power"] = -1.0
-        df["p_disch"] = -1.0
-        df["expected_eff"] = -1.0
-        df["expected_head"] = -1.0
-        df["expected_power"] = -1.0
-        df["expected_p_disch"] = -1.0
-        df["delta_eff"] = -1.0
-        df["delta_head"] = -1.0
-        df["delta_power"] = -1.0
-        df["delta_p_disch"] = -1.0
-        # Error tracking columns
-        df["error"] = None
-        df["error_type"] = None
-        df["expected_error"] = None
-        df["expected_error_type"] = None
-
-        for i, (point_op, error_info), (point_expected, expected_error) in zip(
-            df.index, results, expected_results
-        ):
-            # Store error info if calculation failed
-            if error_info is not None:
-                df.loc[i, "error"] = error_info["exception"]
-                df.loc[i, "error_type"] = error_info["type"]
-                if not parallel:
-                    # In sequential mode, print full traceback for debugging
-                    print(f"Error at index {i}: {error_info['traceback']}")
-
-            if expected_error is not None:
-                df.loc[i, "expected_error"] = expected_error["exception"]
-                df.loc[i, "expected_error_type"] = expected_error["type"]
-                if not parallel:
-                    print(
-                        f"Expected point error at index {i}: {expected_error['traceback']}"
-                    )
-
-            # if point_op is None, it means that the point was not calculated due to invalid data
-            if point_op is not None and point_expected is not None:
-                df.loc[i, "eff"] = point_op.eff.m
-                df.loc[i, "head"] = point_op.head.m
-                df.loc[i, "power"] = point_op.power.m
-                df.loc[i, "p_disch"] = point_op.disch.p("bar").m
-                df.loc[i, "expected_eff"] = point_expected.eff.m
-                df.loc[i, "expected_head"] = point_expected.head.m
-                df.loc[i, "expected_power"] = point_expected.power.m
-                df.loc[i, "expected_p_disch"] = point_expected.disch.p("bar").m
-                df.loc[i, "delta_eff"] = (point_op.eff - point_expected.eff).m * 100
-                df.loc[i, "delta_head"] = (
-                    (point_op.head - point_expected.head) / point_expected.head
-                ).m * 100
-                df.loc[i, "delta_power"] = (
-                    (point_op.power - point_expected.power) / point_expected.power
-                ).m * 100
-                df.loc[i, "delta_p_disch"] = (
-                    (point_op.disch.p("bar") - point_expected.disch.p("bar"))
-                    / point_expected.disch.p("bar")
-                ).m * 100
-
-        # plot eff in plot with colormap showing the time
-
-        # define the time delta and use that as a scale from 0 to 100
-        total_time = df.index[-1] - df.index[0]
-
-        # create column for timescale
-        df["timescale"] = 0.0
-
-        if len(df) > 1:
-            for i, row in df.iterrows():
-                # calculate seconds from i sample to start. Remember that i here is the index which is datetime
-                sample_time = i - df.index[0]
-                df.loc[i, "timescale"] = sample_time.seconds / total_time.seconds
-
-        return df
+        df = self._assign_clusters(df)
+        return self._calculate_points_from_prepared_df(df, parallel=parallel)
 
     def save(self, path):
         # create zip file and save dataframe as parquet and impellers
@@ -520,6 +669,10 @@ class Evaluation:
             for i, imp in enumerate(self.impellers_new):
                 with zip_file.open(f"imp_new_{i}.pickle", "w") as pickle_file:
                     pickle.dump(imp, pickle_file)
+            with zip_file.open("kmeans.pickle", "w") as pickle_file:
+                pickle.dump(self.kmeans, pickle_file)
+            zip_file.writestr("data_mean.parquet", self.data_mean.to_frame().to_parquet())
+            zip_file.writestr("data_std.parquet", self.data_std.to_frame().to_parquet())
             # create dict with arguments and save to toml
             args_dict = {
                 "operation_fluid": self.operation_fluid,
@@ -560,6 +713,16 @@ class Evaluation:
                         zip_file.filelist[i].filename, "r"
                     ) as pickle_file:
                         impellers_new.append(pickle.load(pickle_file))
+            kmeans = None
+            data_mean = None
+            data_std = None
+            if "kmeans.pickle" in zip_file.namelist():
+                with zip_file.open("kmeans.pickle", "r") as pickle_file:
+                    kmeans = pickle.load(pickle_file)
+            if "data_mean.parquet" in zip_file.namelist():
+                data_mean = pd.read_parquet(zip_file.open("data_mean.parquet")).iloc[:, 0]
+            if "data_std.parquet" in zip_file.namelist():
+                data_std = pd.read_parquet(zip_file.open("data_std.parquet")).iloc[:, 0]
             evaluation = cls(
                 data=data,
                 impellers=impellers,
@@ -573,6 +736,9 @@ class Evaluation:
                 df=df,
             )
             evaluation.impellers_new = impellers_new
+            evaluation.kmeans = kmeans
+            evaluation.data_mean = data_mean
+            evaluation.data_std = data_std
 
             return evaluation
 

@@ -74,6 +74,19 @@ def main():
             "To run with real PI data, start without the `testing=True` argument."
         )
 
+    def align_timestamp_to_reference(ts, reference_ts):
+        """Align timestamp timezone to match a reference timestamp."""
+        ts = pd.Timestamp(ts)
+        reference_ts = pd.Timestamp(reference_ts)
+
+        if reference_ts.tz is None and ts.tz is not None:
+            return ts.tz_localize(None)
+        if reference_ts.tz is not None and ts.tz is None:
+            return ts.tz_localize(reference_ts.tz)
+        if reference_ts.tz is not None and ts.tz is not None:
+            return ts.tz_convert(reference_ts.tz)
+        return ts
+
     def get_session():
         # Initialize session state variables
         if "session_name" not in st.session_state:
@@ -412,8 +425,17 @@ def main():
                 key="run_evaluation",
                 type="primary",
             )
+            full_rebuild_button = st.button(
+                "Full Rebuild",
+                key="full_rebuild_evaluation",
+                type="secondary",
+                help=(
+                    "Re-run full clustering and impeller conversion over "
+                    "the selected range."
+                ),
+            )
 
-            if run_button:
+            if run_button or full_rebuild_button:
                 try:
                     tag_mappings = build_tag_mappings()
                     data_units = build_data_units(tag_mappings)
@@ -421,28 +443,57 @@ def main():
                     start_datetime = datetime.combine(start_date, start_time_input)
                     end_datetime = datetime.combine(end_date, end_time_input)
 
-                    # Incremental data fetching
                     existing_eval = st.session_state.get("hist_evaluation")
-                    if existing_eval is not None and hasattr(existing_eval, "data"):
-                        existing_end = existing_eval.data.index.max()
-                        if end_datetime > existing_end:
-                            with st.spinner(
-                                "Fetching new data from PI..."
-                            ):
+                    can_incremental = (
+                        not full_rebuild_button
+                        and existing_eval is not None
+                        and hasattr(existing_eval, "data")
+                        and getattr(existing_eval, "data", None) is not None
+                        and not existing_eval.data.empty
+                    )
+
+                    if can_incremental:
+                        existing_start = pd.Timestamp(existing_eval.data.index.min())
+                        existing_end = pd.Timestamp(existing_eval.data.index.max())
+                        start_ts = align_timestamp_to_reference(
+                            start_datetime, existing_start
+                        )
+                        end_ts = align_timestamp_to_reference(end_datetime, existing_end)
+                        append_only_window = (
+                            start_ts <= existing_start and end_ts > existing_end
+                        )
+                        if append_only_window:
+                            with st.spinner("Fetching new data from PI..."):
+                                # append_new_data keeps strict > last index.
                                 df_new = fetch_pi_data(
                                     tag_mappings,
                                     start_time=existing_end,
-                                    end_time=end_datetime,
+                                    end_time=end_ts,
                                     testing=TESTING_MODE,
                                 )
-                            df_raw = pd.concat(
-                                [existing_eval.data, df_new]
+
+                            with st.spinner("Running incremental evaluation..."):
+                                df_added = existing_eval.append_new_data(
+                                    df_new,
+                                    drop_invalid_values=False,
+                                )
+
+                            st.session_state.hist_evaluation = existing_eval
+                            st.session_state.hist_df_raw = existing_eval.data
+                            st.success(
+                                "Incremental update completed! "
+                                f"Added {len(df_added)} new rows."
                             )
-                            df_raw = df_raw[
-                                ~df_raw.index.duplicated(keep="last")
-                            ].sort_index()
+                        elif end_datetime <= existing_end:
+                            st.info(
+                                "No new data in selected end time. "
+                                "Evaluation kept unchanged."
+                            )
                         else:
-                            df_raw = existing_eval.data
+                            st.info(
+                                "Date range changed (not append-only). "
+                                "Use Full Rebuild for this selection."
+                            )
                     else:
                         with st.spinner("Fetching data from PI..."):
                             df_raw = fetch_pi_data(
@@ -452,24 +503,24 @@ def main():
                                 testing=TESTING_MODE,
                             )
 
-                    evaluation_kwargs = build_evaluation_kwargs(
-                        tag_mappings, data_units, impellers_list, df_raw,
-                        testing=TESTING_MODE,
-                    )
-                    evaluation_kwargs["calculate_points"] = True
-
-                    if TESTING_MODE:
-                        display_debug_data(
-                            "ccp.Evaluation kwargs",
-                            evaluation_kwargs,
-                            expanded=True,
+                        evaluation_kwargs = build_evaluation_kwargs(
+                            tag_mappings, data_units, impellers_list, df_raw,
+                            testing=TESTING_MODE,
                         )
+                        evaluation_kwargs["calculate_points"] = True
 
-                    with st.spinner("Running evaluation..."):
-                        evaluation = ccp.Evaluation(**evaluation_kwargs)
+                        if TESTING_MODE:
+                            display_debug_data(
+                                "ccp.Evaluation kwargs",
+                                evaluation_kwargs,
+                                expanded=True,
+                            )
 
-                    st.session_state.hist_evaluation = evaluation
-                    st.success("Evaluation completed!")
+                        with st.spinner("Running full evaluation..."):
+                            evaluation = ccp.Evaluation(**evaluation_kwargs)
+
+                        st.session_state.hist_evaluation = evaluation
+                        st.success("Full evaluation completed!")
 
                 except Exception as e:
                     import traceback
