@@ -177,7 +177,7 @@ def main():
             st.session_state.app_type = "online_monitoring"
 
         # Initialize impellers for each case
-        for case in ["A", "B", "C", "D"]:
+        for case in ["A", "B", "C", "D", "E"]:
             if f"impeller_case_{case}" not in st.session_state:
                 st.session_state[f"impeller_case_{case}"] = None
             if f"curves_file_1_case_{case}" not in st.session_state:

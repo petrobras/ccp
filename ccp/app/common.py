@@ -890,18 +890,19 @@ def design_cases_section():
 
         gas_options = [st.session_state[f"gas_{i}"] for i in range(6)]
 
-        header_cols = st.columns(6)
+        header_cols = st.columns(7)
         header_cols[0].markdown("**Parameter**")
         header_cols[1].markdown("**Unit**")
         header_cols[2].markdown("**Case A**")
         header_cols[3].markdown("**Case B**")
         header_cols[4].markdown("**Case C**")
         header_cols[5].markdown("**Case D**")
+        header_cols[6].markdown("**Case E**")
 
-        gas_row = st.columns(6)
+        gas_row = st.columns(7)
         gas_row[0].markdown("Gas Selection")
         gas_row[1].markdown("")
-        for idx, case in enumerate(["A", "B", "C", "D"]):
+        for idx, case in enumerate(["A", "B", "C", "D", "E"]):
             with gas_row[idx + 2]:
                 st.selectbox(
                     f"Gas Case {case}",
@@ -910,7 +911,7 @@ def design_cases_section():
                     label_visibility="collapsed",
                 )
 
-        p_row = st.columns(6)
+        p_row = st.columns(7)
         p_row[0].markdown("Suction Pressure")
         with p_row[1]:
             st.selectbox(
@@ -920,7 +921,7 @@ def design_cases_section():
                 index=0,
                 label_visibility="collapsed",
             )
-        for idx, case in enumerate(["A", "B", "C", "D"]):
+        for idx, case in enumerate(["A", "B", "C", "D", "E"]):
             with p_row[idx + 2]:
                 st.number_input(
                     f"Suction P Case {case}",
@@ -929,7 +930,7 @@ def design_cases_section():
                     value=0.0,
                 )
 
-        T_row = st.columns(6)
+        T_row = st.columns(7)
         T_row[0].markdown("Suction Temperature")
         with T_row[1]:
             st.selectbox(
@@ -939,7 +940,7 @@ def design_cases_section():
                 index=1,
                 label_visibility="collapsed",
             )
-        for idx, case in enumerate(["A", "B", "C", "D"]):
+        for idx, case in enumerate(["A", "B", "C", "D", "E"]):
             with T_row[idx + 2]:
                 st.number_input(
                     f"Suction T Case {case}",
@@ -999,7 +1000,7 @@ def curves_upload_section():
         design_suc_p_unit = st.session_state.get("design_suc_p_unit", "bar")
         design_suc_T_unit = st.session_state.get("design_suc_T_unit", "degC")
 
-        for case in ["A", "B", "C", "D"]:
+        for case in ["A", "B", "C", "D", "E"]:
             st.markdown(f"#### Case {case}")
             col1, col2 = st.columns(2)
 
@@ -1360,7 +1361,7 @@ def get_available_impellers():
     """
     available_cases = []
     impellers_list = []
-    for case in ["A", "B", "C", "D"]:
+    for case in ["A", "B", "C", "D", "E"]:
         if st.session_state.get(f"impeller_case_{case}") is not None:
             available_cases.append(case)
             impellers_list.append(st.session_state[f"impeller_case_{case}"])

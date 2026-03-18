@@ -99,7 +99,7 @@ def main():
             st.session_state.app_type = "performance_evaluation"
 
         # Initialize impellers for each case
-        for case in ["A", "B", "C", "D"]:
+        for case in ["A", "B", "C", "D", "E"]:
             if f"impeller_case_{case}" not in st.session_state:
                 st.session_state[f"impeller_case_{case}"] = None
             if f"curves_file_1_case_{case}" not in st.session_state:
@@ -304,6 +304,7 @@ def main():
                         value,
                         (
                             bytes,
+                            pd.DataFrame,
                             st.runtime.uploaded_file_manager.UploadedFile,
                             datetime,
                             timedelta,
@@ -311,7 +312,8 @@ def main():
                     ) or type(value).__name__ in ("date", "time"):
                         keys_to_remove.append(key)
                     elif isinstance(value, dict) and any(
-                        isinstance(v, bytes) for v in value.values()
+                        isinstance(v, (bytes, pd.DataFrame))
+                        for v in value.values()
                     ):
                         keys_to_remove.append(key)
 
@@ -324,6 +326,14 @@ def main():
 
                 for key in keys_to_remove:
                     if key in session_state_dict_copy:
+                        del session_state_dict_copy[key]
+
+                # Also remove any remaining non-serializable values
+                for key in list(session_state_dict_copy.keys()):
+                    value = session_state_dict_copy[key]
+                    try:
+                        json.dumps(value)
+                    except (TypeError, ValueError):
                         del session_state_dict_copy[key]
 
                 session_state_json = json.dumps(session_state_dict_copy)
