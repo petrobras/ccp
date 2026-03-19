@@ -1961,14 +1961,16 @@ def file_sidebar(load_from_zip, save_to_zip):
             session_state_dict = dict(st.session_state)
 
             file_name = f"{st.session_state.session_name}.ccp"
+            app_dir = Path(__file__).resolve().parent
+            file_path = app_dir / file_name
             session_state_dict_copy = session_state_dict.copy()
-            with zipfile.ZipFile(file_name, "w") as my_zip:
+            with zipfile.ZipFile(file_path, "w") as my_zip:
                 my_zip.writestr("ccp.version", ccp.__version__)
                 session_state_dict_copy = save_to_zip(my_zip, session_state_dict_copy)
                 session_state_json = json.dumps(session_state_dict_copy)
                 my_zip.writestr("session_state.json", session_state_json)
 
-            with open(file_name, "rb") as f:
+            with open(file_path, "rb") as f:
                 st.download_button(
                     label="💾 Save As",
                     data=f,
