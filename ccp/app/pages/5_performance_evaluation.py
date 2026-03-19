@@ -198,6 +198,7 @@ def main():
                             "start_monitoring",
                             "stop_monitoring",
                             "run_evaluation",
+                            "full_rebuild_evaluation",
                         )
                     ):
                         del session_state_data_copy[key]
@@ -301,6 +302,7 @@ def main():
                             "fetch_data",
                             "auto_refresh",
                             "run_evaluation",
+                            "full_rebuild_evaluation",
                         )
                     ) or isinstance(
                         value,
