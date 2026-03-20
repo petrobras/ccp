@@ -150,8 +150,17 @@ class State(CP.AbstractState):
 
         if isinstance(fluid, dict):
             if len(self.fluid) < len(fluid):
+                from collections import Counter
+
+                dupes = [
+                    name
+                    for name, count in Counter(constituents).items()
+                    if count > 1
+                ]
                 raise ValueError(
-                    "You might have repeated components in the fluid dictionary."
+                    f"Repeated components in the fluid dictionary: {dupes}. "
+                    "Check that different names don't resolve to the same "
+                    "component (e.g. 'butane' and 'n-butane')."
                 )
 
         if phase:

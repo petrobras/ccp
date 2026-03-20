@@ -537,10 +537,26 @@ def main():
                         st.success("Full evaluation completed!")
 
                 except Exception as e:
+                    import re
                     import traceback
 
                     error_trace = traceback.format_exc()
-                    st.error(f"Error running evaluation: {str(e)}")
+                    error_str = str(e)
+
+                    # Check for PI tag not found (404) errors
+                    tag_match = re.search(
+                        r"Not found:\s*'([^']+)'", error_str
+                    )
+                    if "(404)" in error_str and tag_match:
+                        tag_name = tag_match.group(1)
+                        st.error(
+                            f"PI tag not found: **{tag_name}**. "
+                            "Please verify that the tag name is correct "
+                            "and exists on the PI server."
+                        )
+                    else:
+                        st.error(f"Error running evaluation: {error_str}")
+
                     logging.error(f"Error in performance evaluation: {e}")
                     if TESTING_MODE:
                         st.code(error_trace, language="python")
