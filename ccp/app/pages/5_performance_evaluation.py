@@ -438,6 +438,9 @@ def main():
                 "Run Evaluation",
                 key="run_evaluation",
                 type="primary",
+                on_click=lambda: st.session_state.update(
+                    _trigger_evaluation="run"
+                ),
             )
             full_rebuild_button = st.button(
                 "Full Rebuild",
@@ -447,9 +450,13 @@ def main():
                     "Re-run full clustering and impeller conversion over "
                     "the selected range."
                 ),
+                on_click=lambda: st.session_state.update(
+                    _trigger_evaluation="full_rebuild"
+                ),
             )
 
-            if run_button or full_rebuild_button:
+            trigger = st.session_state.pop("_trigger_evaluation", None)
+            if trigger is not None:
                 try:
                     tag_mappings = build_tag_mappings()
                     data_units = build_data_units(tag_mappings)
@@ -459,7 +466,7 @@ def main():
 
                     existing_eval = st.session_state.get("hist_evaluation")
                     can_incremental = (
-                        not full_rebuild_button
+                        trigger != "full_rebuild"
                         and existing_eval is not None
                         and hasattr(existing_eval, "data")
                         and getattr(existing_eval, "data", None) is not None
