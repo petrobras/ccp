@@ -503,14 +503,14 @@ class Evaluation:
                 kmeans.cluster_centers_[i][1] * data_std["ps"]
             ) + data_mean["ps"]
             df.loc[df["cluster"] == i, "Ts_center"] = (
-                kmeans.cluster_centers_[i][0] * data_std["Ts"]
+                kmeans.cluster_centers_[i][2] * data_std["Ts"]
             ) + data_mean["Ts"]
 
         self.impellers_new = []
 
         print("Converting curves")
         for i in tqdm(range(kmeans.n_clusters)):
-            cluster_series = df[df["cluster"] == 0].iloc[0]
+            cluster_series = df[df["cluster"] == i].iloc[0]
             if self.operation_fluid is not None:
                 fluid = self.operation_fluid
             else:

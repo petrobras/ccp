@@ -654,13 +654,11 @@ def main():
                     else:
                         perf_controls = st.columns([1, 1, 4])
                         with perf_controls[0]:
-                            cluster_options = list(range(len(impellers_list)))
+                            cluster_options = list(range(len(evaluation.impellers_new)))
                             cluster_idx = st.selectbox(
-                                "Cluster / Design Case",
+                                "Converted Curve",
                                 options=cluster_options,
-                                format_func=lambda x: f"Case {available_cases[x]}"
-                                if x < len(available_cases)
-                                else f"Cluster {x}",
+                                format_func=lambda x: f"Converted Curve {x + 1}",
                                 key="eval_cluster_idx",
                             )
                         with perf_controls[1]:
@@ -672,181 +670,136 @@ def main():
 
                         converted_impeller = evaluation.impellers_new[cluster_idx]
 
-                        # Plot units
-                        plot_flow_units = "m³/s"
-                        plot_head_units = "kJ/kg"
-                        plot_power_units = "kW"
-                        plot_p_units = "bar"
+                        # Filter historical points to the selected cluster
+                        if "cluster" in df_valid.columns:
+                            df_cluster = df_valid[
+                                df_valid["cluster"] == cluster_idx
+                            ].copy()
+                        else:
+                            df_cluster = df_valid
 
-                        # Prepare historical points with timescale coloring
-                        if "timescale" not in df_valid.columns:
-                            idx_num = pd.to_numeric(
-                                df_valid.index.astype("int64")
+                        if df_cluster.empty:
+                            st.warning(
+                                f"No valid points for Converted Curve {cluster_idx + 1}."
                             )
-                            df_valid = df_valid.copy()
-                            df_valid["timescale"] = (
-                                (idx_num - idx_num.min())
-                                / max(idx_num.max() - idx_num.min(), 1)
+                        else:
+                            # Plot units
+                            plot_flow_units = "m³/s"
+                            plot_head_units = "kJ/kg"
+                            plot_power_units = "kW"
+                            plot_p_units = "bar"
+
+                            # Prepare historical points with timescale coloring
+                            if "timescale" not in df_cluster.columns:
+                                idx_num = pd.to_numeric(
+                                    df_cluster.index.astype("int64")
+                                )
+                                df_cluster["timescale"] = (
+                                    (idx_num - idx_num.min())
+                                    / max(idx_num.max() - idx_num.min(), 1)
+                                )
+
+                            # Evaluation results are in ccp internal units (flow_v: m³/s)
+                            flow_v_data_units = "m³/s"
+                            hist_flow = df_cluster["flow_v"].apply(
+                                lambda v: Q_(v, flow_v_data_units)
+                                .to(plot_flow_units)
+                                .m
+                            )
+                            hist_head = df_cluster["head"].apply(
+                                lambda v: Q_(v, "J/kg").to(plot_head_units).m
+                            )
+                            hist_eff = df_cluster["eff"]
+                            hist_power = df_cluster["power"].apply(
+                                lambda v: Q_(v, "W").to(plot_power_units).m
+                            )
+                            hist_p_disch = df_cluster.get("p_disch")
+                            if hist_p_disch is not None:
+                                hist_p_disch = hist_p_disch.apply(
+                                    lambda v: Q_(v, "bar").to(plot_p_units).m
+                                )
+
+                            # Use median speed for the design curve
+                            speed_data_units = st.session_state.get(
+                                "speed_unit", "rpm"
+                            )
+                            median_speed = Q_(
+                                df_cluster["speed"].median(), speed_data_units
                             )
 
-                        # Evaluation results are in ccp internal units (flow_v: m³/s)
-                        flow_v_data_units = "m³/s"
-                        hist_flow = df_valid["flow_v"].apply(
-                            lambda v: Q_(v, flow_v_data_units)
-                            .to(plot_flow_units)
-                            .m
-                        )
-                        hist_head = df_valid["head"].apply(
-                            lambda v: Q_(v, "J/kg").to(plot_head_units).m
-                        )
-                        hist_eff = df_valid["eff"]
-                        hist_power = df_valid["power"].apply(
-                            lambda v: Q_(v, "W").to(plot_power_units).m
-                        )
-                        hist_p_disch = df_valid.get("p_disch")
-                        if hist_p_disch is not None:
-                            hist_p_disch = hist_p_disch.apply(
-                                lambda v: Q_(v, "bar").to(plot_p_units).m
+                            # Build colorbar with date tick labels
+                            n_ticks = min(5, len(df_cluster))
+                            tick_positions = [
+                                i / max(n_ticks - 1, 1)
+                                for i in range(n_ticks)
+                            ]
+                            tick_indices = [
+                                int(p * max(len(df_cluster) - 1, 0))
+                                for p in tick_positions
+                            ]
+                            tick_labels = [
+                                df_cluster.index[i].strftime("%Y-%m-%d")
+                                for i in tick_indices
+                            ]
+                            colorbar_cfg = dict(
+                                title=dict(text="Date", side="right"),
+                                tickvals=tick_positions,
+                                ticktext=tick_labels,
+                                orientation="h",
+                                yanchor="top",
+                                y=-0.2,
+                                xanchor="center",
+                                x=0.5,
+                                thickness=12,
+                                len=0.8,
                             )
 
-                        # Use median speed for the design curve
-                        speed_data_units = st.session_state.get(
-                            "speed_unit", "rpm"
-                        )
-                        median_speed = Q_(
-                            df_valid["speed"].median(), speed_data_units
-                        )
+                            plot_col1, plot_col2 = st.columns(2)
 
-                        # Build colorbar with date tick labels
-                        n_ticks = min(5, len(df_valid))
-                        tick_positions = [
-                            i / max(n_ticks - 1, 1)
-                            for i in range(n_ticks)
-                        ]
-                        tick_indices = [
-                            int(p * max(len(df_valid) - 1, 0))
-                            for p in tick_positions
-                        ]
-                        tick_labels = [
-                            df_valid.index[i].strftime("%Y-%m-%d")
-                            for i in tick_indices
-                        ]
-                        colorbar_cfg = dict(
-                            title=dict(text="Date", side="right"),
-                            tickvals=tick_positions,
-                            ticktext=tick_labels,
-                            orientation="h",
-                            yanchor="top",
-                            y=-0.2,
-                            xanchor="center",
-                            x=0.5,
-                            thickness=12,
-                            len=0.8,
-                        )
-
-                        plot_col1, plot_col2 = st.columns(2)
-
-                        with plot_col1:
-                            # Head plot
-                            try:
-                                head_fig = converted_impeller.head_plot(
-                                    speed=median_speed,
-                                    flow_v_units=plot_flow_units,
-                                    head_units=plot_head_units,
-                                    similarity=show_similarity,
-                                )
-                                head_fig.add_trace(
-                                    go.Scatter(
-                                        x=hist_flow,
-                                        y=hist_head,
-                                        mode="markers",
-                                        marker=dict(
-                                            color=df_valid["timescale"],
-                                            colorscale="Viridis",
-                                            size=6,
-                                            colorbar=colorbar_cfg,
-                                        ),
-                                        name="Historical Points",
+                            with plot_col1:
+                                # Head plot
+                                try:
+                                    head_fig = converted_impeller.head_plot(
+                                        speed=median_speed,
+                                        flow_v_units=plot_flow_units,
+                                        head_units=plot_head_units,
+                                        similarity=show_similarity,
                                     )
-                                )
-                                st.plotly_chart(
-                                    head_fig, width="stretch"
-                                )
-                            except Exception as e:
-                                st.error(f"Error creating head plot: {e}")
-
-                            # Power plot
-                            try:
-                                power_fig = converted_impeller.power_plot(
-                                    speed=median_speed,
-                                    flow_v_units=plot_flow_units,
-                                    power_units=plot_power_units,
-                                    similarity=show_similarity,
-                                )
-                                power_fig.add_trace(
-                                    go.Scatter(
-                                        x=hist_flow,
-                                        y=hist_power,
-                                        mode="markers",
-                                        marker=dict(
-                                            color=df_valid["timescale"],
-                                            colorscale="Viridis",
-                                            size=6,
-                                        ),
-                                        name="Historical Points",
-                                        showlegend=True,
-                                    )
-                                )
-                                st.plotly_chart(
-                                    power_fig, width="stretch"
-                                )
-                            except Exception as e:
-                                st.error(f"Error creating power plot: {e}")
-
-                        with plot_col2:
-                            # Efficiency plot
-                            try:
-                                eff_fig = converted_impeller.eff_plot(
-                                    speed=median_speed,
-                                    flow_v_units=plot_flow_units,
-                                    similarity=show_similarity,
-                                )
-                                eff_fig.add_trace(
-                                    go.Scatter(
-                                        x=hist_flow,
-                                        y=hist_eff,
-                                        mode="markers",
-                                        marker=dict(
-                                            color=df_valid["timescale"],
-                                            colorscale="Viridis",
-                                            size=6,
-                                        ),
-                                        name="Historical Points",
-                                        showlegend=True,
-                                    )
-                                )
-                                st.plotly_chart(
-                                    eff_fig, width="stretch"
-                                )
-                            except Exception as e:
-                                st.error(f"Error creating efficiency plot: {e}")
-
-                            # Discharge Pressure plot
-                            try:
-                                disch_p_fig = converted_impeller.disch.p_plot(
-                                    speed=median_speed,
-                                    flow_v_units=plot_flow_units,
-                                    p_units=plot_p_units,
-                                    similarity=show_similarity,
-                                )
-                                if hist_p_disch is not None:
-                                    disch_p_fig.add_trace(
+                                    head_fig.add_trace(
                                         go.Scatter(
                                             x=hist_flow,
-                                            y=hist_p_disch,
+                                            y=hist_head,
                                             mode="markers",
                                             marker=dict(
-                                                color=df_valid["timescale"],
+                                                color=df_cluster["timescale"],
+                                                colorscale="Viridis",
+                                                size=6,
+                                                colorbar=colorbar_cfg,
+                                            ),
+                                            name="Historical Points",
+                                        )
+                                    )
+                                    st.plotly_chart(
+                                        head_fig, width="stretch"
+                                    )
+                                except Exception as e:
+                                    st.error(f"Error creating head plot: {e}")
+
+                                # Power plot
+                                try:
+                                    power_fig = converted_impeller.power_plot(
+                                        speed=median_speed,
+                                        flow_v_units=plot_flow_units,
+                                        power_units=plot_power_units,
+                                        similarity=show_similarity,
+                                    )
+                                    power_fig.add_trace(
+                                        go.Scatter(
+                                            x=hist_flow,
+                                            y=hist_power,
+                                            mode="markers",
+                                            marker=dict(
+                                                color=df_cluster["timescale"],
                                                 colorscale="Viridis",
                                                 size=6,
                                             ),
@@ -854,13 +807,70 @@ def main():
                                             showlegend=True,
                                         )
                                     )
-                                st.plotly_chart(
-                                    disch_p_fig, width="stretch"
-                                )
-                            except Exception as e:
-                                st.error(
-                                    f"Error creating discharge pressure plot: {e}"
-                                )
+                                    st.plotly_chart(
+                                        power_fig, width="stretch"
+                                    )
+                                except Exception as e:
+                                    st.error(f"Error creating power plot: {e}")
+
+                            with plot_col2:
+                                # Efficiency plot
+                                try:
+                                    eff_fig = converted_impeller.eff_plot(
+                                        speed=median_speed,
+                                        flow_v_units=plot_flow_units,
+                                        similarity=show_similarity,
+                                    )
+                                    eff_fig.add_trace(
+                                        go.Scatter(
+                                            x=hist_flow,
+                                            y=hist_eff,
+                                            mode="markers",
+                                            marker=dict(
+                                                color=df_cluster["timescale"],
+                                                colorscale="Viridis",
+                                                size=6,
+                                            ),
+                                            name="Historical Points",
+                                            showlegend=True,
+                                        )
+                                    )
+                                    st.plotly_chart(
+                                        eff_fig, width="stretch"
+                                    )
+                                except Exception as e:
+                                    st.error(f"Error creating efficiency plot: {e}")
+
+                                # Discharge Pressure plot
+                                try:
+                                    disch_p_fig = converted_impeller.disch.p_plot(
+                                        speed=median_speed,
+                                        flow_v_units=plot_flow_units,
+                                        p_units=plot_p_units,
+                                        similarity=show_similarity,
+                                    )
+                                    if hist_p_disch is not None:
+                                        disch_p_fig.add_trace(
+                                            go.Scatter(
+                                                x=hist_flow,
+                                                y=hist_p_disch,
+                                                mode="markers",
+                                                marker=dict(
+                                                    color=df_cluster["timescale"],
+                                                    colorscale="Viridis",
+                                                    size=6,
+                                                ),
+                                                name="Historical Points",
+                                                showlegend=True,
+                                            )
+                                        )
+                                    st.plotly_chart(
+                                        disch_p_fig, width="stretch"
+                                    )
+                                except Exception as e:
+                                    st.error(
+                                        f"Error creating discharge pressure plot: {e}"
+                                    )
 
                 # ---- Tab 3: Data Table ----
                 with tab_data:
