@@ -1323,7 +1323,7 @@ def tags_config_section(fluid_list):
         if fluid_source == "Inform Component Tags":
             st.markdown("Configure tags for each component.")
             fluid_unit_options = ["mol_frac", "percent", "ppm"]
-            for row_idx in range(3):
+            for row_idx in range(4):
                 fluid_row = st.columns([1, 2, 1] * 3)
                 for col_idx in range(3):
                     comp_idx = row_idx * 3 + col_idx
@@ -1463,7 +1463,7 @@ def build_tag_mappings():
     if fluid_source == "Inform Component Tags":
         fluid_tags = {}
         fluid_units_map = {}
-        for i in range(9):
+        for i in range(12):
             comp = st.session_state.get(f"fluid_component_{i}", "")
             tag = st.session_state.get(f"fluid_tag_{i}", "")
             unit = st.session_state.get(f"fluid_unit_{i}", "mol_frac")
