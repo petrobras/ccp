@@ -29,6 +29,7 @@ from ccp.app.common import (
     tags_config_section,
     to_excel,
 )
+from ccp.app.report import generate_html_report
 
 # Parse command line arguments for testing mode
 # Usage: streamlit run app.py -- testing=True
@@ -434,26 +435,55 @@ def main():
                         key="speed_fluctuation",
                     )
 
-            run_button = st.button(
-                "Run Evaluation",
-                key="run_evaluation",
-                type="primary",
-                on_click=lambda: st.session_state.update(
-                    _trigger_evaluation="run"
-                ),
-            )
-            full_rebuild_button = st.button(
-                "Full Rebuild",
-                key="full_rebuild_evaluation",
-                type="secondary",
-                help=(
-                    "Re-run full clustering and impeller conversion over "
-                    "the selected range."
-                ),
-                on_click=lambda: st.session_state.update(
-                    _trigger_evaluation="full_rebuild"
-                ),
-            )
+            button_cols = st.columns(3)
+            with button_cols[0]:
+                run_button = st.button(
+                    "Run Evaluation",
+                    key="run_evaluation",
+                    type="primary",
+                    on_click=lambda: st.session_state.update(
+                        _trigger_evaluation="run"
+                    ),
+                    use_container_width=True,
+                )
+            with button_cols[1]:
+                full_rebuild_button = st.button(
+                    "Full Rebuild",
+                    key="full_rebuild_evaluation",
+                    type="primary",
+                    help=(
+                        "Re-run full clustering and impeller conversion over "
+                        "the selected range."
+                    ),
+                    on_click=lambda: st.session_state.update(
+                        _trigger_evaluation="full_rebuild"
+                    ),
+                    use_container_width=True,
+                )
+            with button_cols[2]:
+                report_figs = st.session_state.get("_report_figures")
+                if report_figs is not None:
+                    report_html = generate_html_report(
+                        trend_figs=report_figs["trend"],
+                        perf_figs=report_figs["perf"],
+                        summary_stats_df=report_figs["summary_stats"],
+                    )
+                    st.download_button(
+                        "Create Report",
+                        data=report_html,
+                        file_name="ccp_performance_report.html",
+                        mime="text/html",
+                        type="primary",
+                        use_container_width=True,
+                    )
+                else:
+                    st.button(
+                        "Create Report",
+                        type="primary",
+                        use_container_width=True,
+                        disabled=True,
+                        help="Run an evaluation first to generate a report.",
+                    )
 
             trigger = st.session_state.pop("_trigger_evaluation", None)
             if trigger is not None:
@@ -572,6 +602,9 @@ def main():
             evaluation = st.session_state.get("hist_evaluation")
             if evaluation is not None and hasattr(evaluation, "df"):
                 df_results = evaluation.df
+                trend_figs = []
+                perf_figs = []
+                summary_stats_df = None
 
                 tab_trend, tab_perf, tab_data = st.tabs(
                     ["Trend Analysis", "Performance Plots", "Data Table"]
@@ -606,6 +639,7 @@ def main():
                             plot_row2[1],
                         ]
 
+                        trend_figs = []
                         for (title, col_name), container in zip(
                             trend_plots.items(), plot_positions
                         ):
@@ -636,6 +670,7 @@ def main():
                                         yaxis_title=title,
                                         showlegend=False,
                                     )
+                                    trend_figs.append(fig)
                                     st.plotly_chart(fig, width="stretch")
                                 else:
                                     st.info(f"Column '{col_name}' not available.")
@@ -755,6 +790,10 @@ def main():
                             )
 
                             plot_col1, plot_col2 = st.columns(2)
+                            head_fig = None
+                            power_fig = None
+                            eff_fig = None
+                            disch_p_fig = None
 
                             with plot_col1:
                                 # Head plot
@@ -872,6 +911,17 @@ def main():
                                         f"Error creating discharge pressure plot: {e}"
                                     )
 
+                            perf_figs = [
+                                fig
+                                for fig in [
+                                    head_fig,
+                                    power_fig,
+                                    eff_fig,
+                                    disch_p_fig,
+                                ]
+                                if fig is not None
+                            ]
+
                 # ---- Tab 3: Data Table ----
                 with tab_data:
                     st.markdown("### Evaluation Results Data")
@@ -918,9 +968,12 @@ def main():
                             & (df_results.get("head", 0) > 0)
                         ]
                         if not df_valid_deltas.empty:
+                            summary_stats_df = df_valid_deltas[
+                                delta_cols
+                            ].describe()
                             st.markdown("### Summary Statistics (Delta Columns)")
                             st.dataframe(
-                                df_valid_deltas[delta_cols].describe(),
+                                summary_stats_df,
                                 width="stretch",
                             )
 
@@ -932,6 +985,13 @@ def main():
                         file_name="evaluation_results.xlsx",
                         mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
                     )
+
+                # Store figures in session state for report generation
+                st.session_state["_report_figures"] = {
+                    "trend": trend_figs,
+                    "perf": perf_figs,
+                    "summary_stats": summary_stats_df,
+                }
 
 
 if __name__ == "__main__":
