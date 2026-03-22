@@ -4,10 +4,13 @@ import base64
 from datetime import datetime
 from pathlib import Path
 
+import markdown
 import plotly.io as pio
 
 
-def generate_html_report(trend_figs, perf_figs, summary_stats_df, session_name=""):
+def generate_html_report(
+    trend_figs, perf_figs, summary_stats_df, session_name="", ai_analysis=None
+):
     """Generate a standalone HTML report with interactive Plotly plots.
 
     Parameters
@@ -20,6 +23,9 @@ def generate_html_report(trend_figs, perf_figs, summary_stats_df, session_name="
         Summary statistics dataframe from df.describe().
     session_name : str, optional
         Name of the evaluation session to display in the header.
+    ai_analysis : dict or None, optional
+        Dictionary with keys "trend", "performance", "stats" containing
+        AI-generated analysis text for each section.
 
     Returns
     -------
@@ -67,6 +73,26 @@ def generate_html_report(trend_figs, perf_figs, summary_stats_df, session_name="
     perf_grid = ""
     for i, div in enumerate(perf_divs):
         perf_grid += f'<div class="plot-cell">{div}</div>'
+
+    # Build AI analysis blocks
+    if ai_analysis is None:
+        ai_analysis = {}
+
+    def _ai_block(key):
+        text = ai_analysis.get(key, "")
+        if not text:
+            return ""
+        html_content = markdown.markdown(text)
+        return (
+            '<div class="ai-analysis">'
+            '<div class="ai-label">Análise IA</div>'
+            f"{html_content}"
+            "</div>"
+        )
+
+    ai_trend_html = _ai_block("trend")
+    ai_perf_html = _ai_block("performance")
+    ai_stats_html = _ai_block("stats")
 
     html = f"""<!DOCTYPE html>
 <html lang="pt-BR">
@@ -167,6 +193,24 @@ def generate_html_report(trend_figs, perf_figs, summary_stats_df, session_name="
             margin-bottom: 1rem;
             line-height: 1.5;
         }}
+        .ai-analysis {{
+            background: #f0f4ff;
+            border-left: 4px solid #1a73e8;
+            border-radius: 0 6px 6px 0;
+            padding: 1rem 1.25rem;
+            margin: 1rem 0 1.5rem 0;
+            font-size: 0.93rem;
+            line-height: 1.6;
+            color: #1a1a2e;
+        }}
+        .ai-analysis .ai-label {{
+            font-size: 0.75rem;
+            font-weight: 600;
+            color: #1a73e8;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            margin-bottom: 0.5rem;
+        }}
         .plot-grid {{
             display: grid;
             grid-template-columns: 1fr 1fr;
@@ -258,6 +302,7 @@ def generate_html_report(trend_figs, perf_figs, summary_stats_df, session_name="
         <div class="plot-grid">
             {trend_grid}
         </div>
+        {ai_trend_html}
 
         <h2 id="desempenho">Curvas de Desempenho com Pontos Históricos</h2>
         <p class="section-description">
@@ -270,6 +315,7 @@ def generate_html_report(trend_figs, perf_figs, summary_stats_df, session_name="
         <div class="plot-grid">
             {perf_grid}
         </div>
+        {ai_perf_html}
 
         <h2 id="estatisticas">Estatísticas Resumidas</h2>
         <p class="section-description">
@@ -279,6 +325,7 @@ def generate_html_report(trend_figs, perf_figs, summary_stats_df, session_name="
             desempenho do compressor ao longo do período analisado.
         </p>
         {stats_html}
+        {ai_stats_html}
     </div>
 
     <script>

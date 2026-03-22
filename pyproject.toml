@@ -39,6 +39,8 @@ dependencies = [
     "xlsxwriter",
     "scikit-learn",
     "xlwings; sys_platform == 'win32' or sys_platform == 'cygwin' or sys_platform == 'msys'",
+    "google-generativeai>=0.8.6",
+    "markdown>=3.9",
 ]
 
 [project.urls]

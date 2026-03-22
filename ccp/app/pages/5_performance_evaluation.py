@@ -31,6 +31,7 @@ from ccp.app.common import (
     tags_config_section,
     to_excel,
 )
+from ccp.app.ai_analysis import generate_ai_analysis, get_provider
 from ccp.app.report import generate_html_report
 
 # Parse command line arguments for testing mode
@@ -121,6 +122,18 @@ def main():
         # Initialize historical evaluation
         if "hist_evaluation" not in st.session_state:
             st.session_state.hist_evaluation = None
+
+        # Initialize AI analysis options
+        if "ai_enabled" not in st.session_state:
+            st.session_state.ai_enabled = False
+        if "ai_provider" not in st.session_state:
+            st.session_state.ai_provider = "gemini"
+        if "ai_api_key" not in st.session_state:
+            st.session_state.ai_api_key = ""
+        if "ai_azure_endpoint" not in st.session_state:
+            st.session_state.ai_azure_endpoint = ""
+        if "ai_azure_deployment" not in st.session_state:
+            st.session_state.ai_azure_deployment = ""
 
     get_session()
 
@@ -327,6 +340,13 @@ def main():
                 for key in [
                     "hist_evaluation",
                     "pi_password",
+                    "ai_api_key",
+                    "ai_api_key_input",
+                    "ai_azure_endpoint",
+                    "ai_azure_endpoint_input",
+                    "ai_azure_deployment",
+                    "ai_azure_deployment_input",
+                    "_report_html",
                 ]:
                     if key in session_state_dict_copy:
                         keys_to_remove.append(key)
@@ -352,6 +372,47 @@ def main():
                     data=file,
                     file_name=file_name,
                     mime="application/json",
+                )
+
+    # Options sidebar
+    with st.sidebar.expander("⚙️ Options"):
+        st.session_state.ai_enabled = st.checkbox(
+            "AI Analysis in Report",
+            value=st.session_state.ai_enabled,
+            help="Use AI to generate analysis text in the performance report.",
+        )
+
+        if st.session_state.ai_enabled:
+            st.session_state.ai_provider = st.selectbox(
+                "AI Provider",
+                options=["gemini", "azure"],
+                index=["gemini", "azure"].index(st.session_state.ai_provider),
+                format_func=lambda x: {
+                    "gemini": "Google Gemini",
+                    "azure": "Azure OpenAI",
+                }[x],
+                key="ai_provider_select",
+            )
+
+            st.session_state.ai_api_key = st.text_input(
+                "API Key",
+                value=st.session_state.ai_api_key,
+                type="password",
+                key="ai_api_key_input",
+            )
+
+            if st.session_state.ai_provider == "azure":
+                st.session_state.ai_azure_endpoint = st.text_input(
+                    "Azure Endpoint",
+                    value=st.session_state.ai_azure_endpoint,
+                    key="ai_azure_endpoint_input",
+                    placeholder="https://your-resource.openai.azure.com/",
+                )
+                st.session_state.ai_azure_deployment = st.text_input(
+                    "Azure Deployment",
+                    value=st.session_state.ai_azure_deployment,
+                    key="ai_azure_deployment_input",
+                    placeholder="gpt-4o",
                 )
 
     # Shared UI sections
@@ -464,20 +525,26 @@ def main():
                 )
             with button_cols[2]:
                 report_figs = st.session_state.get("_report_figures")
-                if report_figs is not None:
-                    report_html = generate_html_report(
-                        trend_figs=report_figs["trend"],
-                        perf_figs=report_figs["perf"],
-                        summary_stats_df=report_figs["summary_stats"],
-                        session_name=report_figs.get("session_name", ""),
-                    )
+                report_html = st.session_state.get("_report_html")
+                if report_figs is not None and report_html is not None:
+                    # Report is ready — show download button
                     st.download_button(
-                        "Create Report",
+                        "Download Report",
                         data=report_html,
                         file_name="ccp_performance_report.html",
                         mime="text/html",
                         type="primary",
                         use_container_width=True,
+                    )
+                elif report_figs is not None:
+                    # Evaluation done but report not yet generated
+                    st.button(
+                        "Create Report",
+                        type="primary",
+                        use_container_width=True,
+                        on_click=lambda: st.session_state.update(
+                            _trigger_report=True
+                        ),
                     )
                 else:
                     st.button(
@@ -487,6 +554,61 @@ def main():
                         disabled=True,
                         help="Run an evaluation first to generate a report.",
                     )
+
+            # Handle report generation trigger
+            if st.session_state.pop("_trigger_report", False):
+                report_figs = st.session_state.get("_report_figures")
+                if report_figs is not None:
+                    ai_analysis = None
+                    ai_error = None
+                    if (
+                        st.session_state.get("ai_enabled")
+                        and st.session_state.get("ai_api_key")
+                    ):
+                        try:
+                            with st.spinner("Generating AI analysis..."):
+                                provider = get_provider(
+                                    provider_name=st.session_state.ai_provider,
+                                    api_key=st.session_state.ai_api_key,
+                                    azure_endpoint=st.session_state.get(
+                                        "ai_azure_endpoint", ""
+                                    ),
+                                    azure_deployment=st.session_state.get(
+                                        "ai_azure_deployment", ""
+                                    ),
+                                )
+                                ai_analysis = generate_ai_analysis(
+                                    provider=provider,
+                                    trend_regression=report_figs.get(
+                                        "trend_regression", {}
+                                    ),
+                                    summary_stats_df=report_figs[
+                                        "summary_stats"
+                                    ],
+                                    session_name=report_figs.get(
+                                        "session_name", ""
+                                    ),
+                                )
+                        except Exception as e:
+                            ai_error = str(e)
+
+                    st.session_state["_report_html"] = generate_html_report(
+                        trend_figs=report_figs["trend"],
+                        perf_figs=report_figs["perf"],
+                        summary_stats_df=report_figs["summary_stats"],
+                        session_name=report_figs.get("session_name", ""),
+                        ai_analysis=ai_analysis,
+                    )
+                    if ai_error:
+                        st.session_state["_ai_error"] = ai_error
+                    st.rerun()
+
+            # Show AI error from previous report generation
+            ai_error = st.session_state.pop("_ai_error", None)
+            if ai_error:
+                st.error(
+                    f"AI analysis failed (report generated without AI): {ai_error}"
+                )
 
             trigger = st.session_state.pop("_trigger_evaluation", None)
             if trigger is not None:
@@ -606,6 +728,7 @@ def main():
             if evaluation is not None and hasattr(evaluation, "df"):
                 df_results = evaluation.df
                 trend_figs = []
+                trend_regression = {}
                 perf_figs = []
                 summary_stats_df = None
 
@@ -643,6 +766,7 @@ def main():
                         ]
 
                         trend_figs = []
+                        trend_regression = {}
                         for (title, col_name), container in zip(
                             trend_plots.items(), plot_positions
                         ):
@@ -744,6 +868,12 @@ def main():
                                         slope_per_month = (
                                             slope * 30.44 * 24 * 3600
                                         )
+                                        trend_regression[col_name] = {
+                                            "slope_per_month": slope_per_month,
+                                            "r_squared": r**2,
+                                            "p_value": p,
+                                            "n_points": n,
+                                        }
                                         fig.add_annotation(
                                             text=(
                                                 f"slope: {slope_per_month:.3f} %/mo"
@@ -1084,12 +1214,15 @@ def main():
                     )
 
                 # Store figures in session state for report generation
+                # Clear cached report so user must click "Create Report" again
                 st.session_state["_report_figures"] = {
                     "trend": trend_figs,
                     "perf": perf_figs,
                     "summary_stats": summary_stats_df,
+                    "trend_regression": trend_regression,
                     "session_name": st.session_state.get("session_name", ""),
                 }
+                st.session_state.pop("_report_html", None)
 
 
 if __name__ == "__main__":
