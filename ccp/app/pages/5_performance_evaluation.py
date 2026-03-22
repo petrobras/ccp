@@ -469,6 +469,7 @@ def main():
                         trend_figs=report_figs["trend"],
                         perf_figs=report_figs["perf"],
                         summary_stats_df=report_figs["summary_stats"],
+                        session_name=report_figs.get("session_name", ""),
                     )
                     st.download_button(
                         "Create Report",
@@ -1087,6 +1088,7 @@ def main():
                     "trend": trend_figs,
                     "perf": perf_figs,
                     "summary_stats": summary_stats_df,
+                    "session_name": st.session_state.get("session_name", ""),
                 }
 
 
