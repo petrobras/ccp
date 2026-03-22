@@ -7,10 +7,12 @@ import zipfile
 from datetime import datetime, timedelta
 from pathlib import Path
 
+import numpy as np
 import pandas as pd
 import plotly.graph_objects as go
 import streamlit as st
 import toml
+from scipy import stats
 
 import ccp
 from ccp.app.common import (
@@ -645,11 +647,18 @@ def main():
                         ):
                             with container:
                                 if col_name in df_valid.columns:
+                                    y_data = df_valid[col_name].dropna()
+                                    if y_data.empty:
+                                        st.info(
+                                            f"Column '{col_name}' has no data."
+                                        )
+                                        continue
+
                                     fig = go.Figure()
                                     fig.add_trace(
                                         go.Scattergl(
-                                            x=df_valid.index,
-                                            y=df_valid[col_name],
+                                            x=y_data.index,
+                                            y=y_data,
                                             mode="markers",
                                             marker=dict(
                                                 color="#1f77b4",
@@ -664,6 +673,93 @@ def main():
                                         line_color="red",
                                         line_width=1,
                                     )
+
+                                    # Linear regression with confidence band
+                                    if len(y_data) >= 3:
+                                        x_num = (
+                                            y_data.index.astype("int64").values
+                                            / 1e9
+                                        )
+                                        slope, intercept, r, p, se = (
+                                            stats.linregress(x_num, y_data)
+                                        )
+                                        y_fit = slope * x_num + intercept
+
+                                        # 95% confidence interval
+                                        n = len(x_num)
+                                        x_mean = x_num.mean()
+                                        ss_x = ((x_num - x_mean) ** 2).sum()
+                                        residuals = y_data - y_fit
+                                        s_err = np.sqrt(
+                                            (residuals**2).sum() / (n - 2)
+                                        )
+                                        t_val = stats.t.ppf(0.975, n - 2)
+                                        ci = t_val * s_err * np.sqrt(
+                                            1 / n
+                                            + (x_num - x_mean) ** 2 / ss_x
+                                        )
+
+                                        # Sort for proper band rendering
+                                        sort_idx = np.argsort(x_num)
+                                        x_sorted = y_data.index[sort_idx]
+                                        y_fit_sorted = y_fit[sort_idx]
+                                        ci_sorted = ci[sort_idx]
+
+                                        fig.add_trace(
+                                            go.Scatter(
+                                                x=x_sorted,
+                                                y=y_fit_sorted,
+                                                mode="lines",
+                                                line=dict(
+                                                    color="orange", width=2
+                                                ),
+                                                name="Trend",
+                                            )
+                                        )
+                                        fig.add_trace(
+                                            go.Scatter(
+                                                x=np.concatenate(
+                                                    [x_sorted, x_sorted[::-1]]
+                                                ),
+                                                y=np.concatenate(
+                                                    [
+                                                        y_fit_sorted
+                                                        + ci_sorted,
+                                                        (
+                                                            y_fit_sorted
+                                                            - ci_sorted
+                                                        )[::-1],
+                                                    ]
+                                                ),
+                                                fill="toself",
+                                                fillcolor="rgba(255,165,0,0.15)",
+                                                line=dict(width=0),
+                                                name="95% CI",
+                                                hoverinfo="skip",
+                                            )
+                                        )
+
+                                        # Slope as %/month
+                                        slope_per_month = (
+                                            slope * 30.44 * 24 * 3600
+                                        )
+                                        fig.add_annotation(
+                                            text=(
+                                                f"slope: {slope_per_month:.3f} %/mo"
+                                                f" · R²={r**2:.3f}"
+                                                f" · p={p:.2e}"
+                                            ),
+                                            xref="paper",
+                                            yref="paper",
+                                            x=0.02,
+                                            y=0.98,
+                                            showarrow=False,
+                                            font=dict(size=11),
+                                            bgcolor="rgba(255,255,255,0.8)",
+                                            bordercolor="#ccc",
+                                            borderwidth=1,
+                                        )
+
                                     fig.update_layout(
                                         title=title,
                                         xaxis_title="Time",
