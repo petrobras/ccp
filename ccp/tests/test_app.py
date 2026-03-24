@@ -230,3 +230,98 @@ class TestOnlineMonitoring:
         impeller_a = at.session_state["impeller_case_A"]
         assert impeller_a is not None, "impeller_case_A not created"
         assert len(impeller_a.points) > 0
+
+
+# ---------------------------------------------------------------------------
+# Performance Evaluation
+# ---------------------------------------------------------------------------
+
+
+class TestPerformanceEvaluation:
+    page_path = os.path.join(PAGES_DIR, "5_performance_evaluation.py")
+    example_path = os.path.join(APP_DIR, "example_online.ccp")
+
+    @pytest.fixture(autouse=True)
+    def _enable_testing_mode(self):
+        """The performance evaluation page requires TESTING_MODE (checked via sys.argv)
+        to bypass the pandaspi dependency."""
+        import sys
+
+        marker = "testing=True"
+        if marker not in sys.argv:
+            sys.argv.append(marker)
+        yield
+        if marker in sys.argv:
+            sys.argv.remove(marker)
+
+    def test_page_loads_without_error(self):
+        at = AppTest.from_file(self.page_path, default_timeout=TIMEOUT)
+        at.run(timeout=TIMEOUT)
+        assert not at.exception
+
+    def test_load_curves_with_example_file(self):
+        session_data, csv_files, toml_files = load_ccp_file(self.example_path)
+
+        at = AppTest.from_file(self.page_path, default_timeout=TIMEOUT)
+        populate_session_state(at, session_data)
+
+        # Populate CSV files for case A
+        csv_items = sorted(csv_files.items())
+        for i, (name, content) in enumerate(csv_items, start=1):
+            at.session_state[f"curves_file_{i}_case_A"] = {
+                "name": name,
+                "content": content,
+            }
+
+        at.run(timeout=TIMEOUT)
+        assert not at.exception
+
+        # Click "Load Curves for Case A"
+        load_buttons = [
+            b for b in at.button if b.label == "Load Curves for Case A"
+        ]
+        assert load_buttons, "Load Curves for Case A button not found"
+        load_buttons[0].click().run(timeout=TIMEOUT)
+        assert not at.exception
+
+        impeller_a = at.session_state["impeller_case_A"]
+        assert impeller_a is not None, "impeller_case_A not created"
+        assert len(impeller_a.points) > 0
+
+    def test_run_evaluation_with_example_file(self):
+        session_data, csv_files, toml_files = load_ccp_file(self.example_path)
+
+        at = AppTest.from_file(self.page_path, default_timeout=TIMEOUT)
+        populate_session_state(at, session_data)
+
+        # Populate CSV files for case A
+        csv_items = sorted(csv_files.items())
+        for i, (name, content) in enumerate(csv_items, start=1):
+            at.session_state[f"curves_file_{i}_case_A"] = {
+                "name": name,
+                "content": content,
+            }
+
+        at.run(timeout=TIMEOUT)
+        assert not at.exception
+
+        # Click "Load Curves for Case A"
+        load_buttons = [
+            b for b in at.button if b.label == "Load Curves for Case A"
+        ]
+        assert load_buttons, "Load Curves for Case A button not found"
+        load_buttons[0].click().run(timeout=TIMEOUT)
+        assert not at.exception
+
+        assert at.session_state["impeller_case_A"] is not None
+
+        # Trigger evaluation via session state (simulates "Run Evaluation" button on_click)
+        at.session_state["_trigger_evaluation"] = "run"
+        at.run(timeout=TIMEOUT)
+        assert not at.exception
+
+        assert "hist_evaluation" in at.session_state, "hist_evaluation not in session_state"
+        evaluation = at.session_state["hist_evaluation"]
+        assert evaluation is not None, "hist_evaluation not created"
+        assert hasattr(evaluation, "df"), "evaluation has no df attribute"
+        assert len(evaluation.df) > 0, "evaluation df is empty"
