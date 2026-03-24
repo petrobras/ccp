@@ -500,47 +500,6 @@ def main():
             # Display curves
             st.markdown("#### Curves")
 
-            # Project Flow
-            project_flow_container = st.container()
-            (
-                project_flow_col1,
-                project_flow_col2,
-                dummy_project_flow_col3,
-                dummy_project_flow_col4,
-            ) = project_flow_container.columns(4)
-            project_flow_col1.markdown(
-                f"Operational Flow (**{plot_curves_flow_v_units}**)"
-            )
-            project_flow = project_flow_col2.number_input(
-                "Operational Flow (m³/h)",
-                min_value=0.0,
-                value=st.session_state.original_impeller.points[0]
-                .flow_v.to(plot_curves_flow_v_units)
-                .m,
-                help="Select an operational flow to display the curves at that flow",
-                label_visibility="collapsed",
-            )
-            # Project Speed
-            project_speed_container = st.container()
-            (
-                project_speed_col1,
-                project_speed_col2,
-                dummy_project_speed_col3,
-                dummy_project_speed_col4,
-            ) = project_speed_container.columns(4)
-            project_speed_col1.markdown(
-                f"Operational Speed (**{plot_curves_speed_units}**)"
-            )
-            project_speed = project_speed_col2.number_input(
-                "Operational Speed (RPM)",
-                min_value=0.0,
-                value=st.session_state.original_impeller.points[0]
-                .speed.to(plot_curves_speed_units)
-                .m,
-                help="Select an operational speed to display the curves at that speed",
-                label_visibility="collapsed",
-            )
-
             @st.cache_data
             def generate_plots(
                 _impeller,
@@ -597,73 +556,103 @@ def main():
                     point,
                 )
 
-            (
-                head_plot,
-                power_plot,
-                disch_T_plot,
-                eff_plot,
-                disch_p_plot,
-                project_point,
-            ) = generate_plots(
-                st.session_state.original_impeller,
-                hash(st.session_state.original_impeller),  # Manual invalidation
-                project_flow,
-                plot_curves_flow_v_units,
-                project_speed,
-                plot_curves_speed_units,
-                head_units=plot_curves_head_units,
-                power_units=plot_curves_power_units,
-                disch_T_units=plot_curves_disch_T_units,
-                disch_p_units=plot_curves_disch_p_units,
-            )
+            @st.fragment
+            def display_original_plots():
+                # Project Flow
+                project_flow_container = st.container()
+                (
+                    project_flow_col1,
+                    project_flow_col2,
+                    dummy_project_flow_col3,
+                    dummy_project_flow_col4,
+                ) = project_flow_container.columns(4)
+                project_flow_col1.markdown(
+                    f"Operational Flow (**{plot_curves_flow_v_units}**)"
+                )
+                project_flow = project_flow_col2.number_input(
+                    "Operational Flow (m³/h)",
+                    min_value=0.0,
+                    value=st.session_state.original_impeller.points[0]
+                    .flow_v.to(plot_curves_flow_v_units)
+                    .m,
+                    help="Select an operational flow to display the curves at that flow",
+                    label_visibility="collapsed",
+                )
+                # Project Speed
+                project_speed_container = st.container()
+                (
+                    project_speed_col1,
+                    project_speed_col2,
+                    dummy_project_speed_col3,
+                    dummy_project_speed_col4,
+                ) = project_speed_container.columns(4)
+                project_speed_col1.markdown(
+                    f"Operational Speed (**{plot_curves_speed_units}**)"
+                )
+                project_speed = project_speed_col2.number_input(
+                    "Operational Speed (RPM)",
+                    min_value=0.0,
+                    value=st.session_state.original_impeller.points[0]
+                    .speed.to(plot_curves_speed_units)
+                    .m,
+                    help="Select an operational speed to display the curves at that speed",
+                    label_visibility="collapsed",
+                )
 
-            # Display 4 plots (head, eff, power, discharge pressure) in 2 columns and 2 rows
-            plot_col1, plot_col2 = st.columns(2)
-            with plot_col1:
-                st.plotly_chart(
+                (
                     head_plot,
-                    width="stretch",
-                )
-                st.plotly_chart(
                     power_plot,
-                    width="stretch",
-                )
-                st.plotly_chart(
                     disch_T_plot,
-                    width="stretch",
-                )
-            with plot_col2:
-                st.plotly_chart(
                     eff_plot,
-                    width="stretch",
-                )
-                st.plotly_chart(
                     disch_p_plot,
-                    width="stretch",
+                    project_point,
+                ) = generate_plots(
+                    st.session_state.original_impeller,
+                    hash(st.session_state.original_impeller),
+                    project_flow,
+                    plot_curves_flow_v_units,
+                    project_speed,
+                    plot_curves_speed_units,
+                    head_units=plot_curves_head_units,
+                    power_units=plot_curves_power_units,
+                    disch_T_units=plot_curves_disch_T_units,
+                    disch_p_units=plot_curves_disch_p_units,
                 )
-                # Display summary table
-                st.markdown("#### Project Point")
-                st.code(
-                    f"""
-                            -----------------------------\n 
-                                Speed:                 {project_point.speed.to("rpm").m:.0f} {plot_curves_speed_units} 
-                                Flow:                  {project_point.flow_v.to(plot_curves_flow_v_units).m:.2f} {plot_curves_flow_v_units} 
-                                Head:                  {project_point.head.to(plot_curves_head_units).m:.2f} {plot_curves_head_units} 
-                                Eff:                   {project_point.eff.m:.2f} % 
-                                Power:                 {project_point.power.to(plot_curves_power_units).m:.2f} {plot_curves_power_units} 
+
+                # Display 4 plots (head, eff, power, discharge pressure) in 2 columns and 2 rows
+                plot_col1, plot_col2 = st.columns(2)
+                with plot_col1:
+                    st.plotly_chart(head_plot, width="stretch")
+                    st.plotly_chart(power_plot, width="stretch")
+                    st.plotly_chart(disch_T_plot, width="stretch")
+                with plot_col2:
+                    st.plotly_chart(eff_plot, width="stretch")
+                    st.plotly_chart(disch_p_plot, width="stretch")
+                    # Display summary table
+                    st.markdown("#### Project Point")
+                    st.code(
+                        f"""
+                            -----------------------------\n
+                                Speed:                 {project_point.speed.to("rpm").m:.0f} {plot_curves_speed_units}
+                                Flow:                  {project_point.flow_v.to(plot_curves_flow_v_units).m:.2f} {plot_curves_flow_v_units}
+                                Head:                  {project_point.head.to(plot_curves_head_units).m:.2f} {plot_curves_head_units}
+                                Eff:                   {project_point.eff.m:.2f} %
+                                Power:                 {project_point.power.to(plot_curves_power_units).m:.2f} {plot_curves_power_units}
 
                                 Suction Conditions
                                 --------------------
-                                Suction Pressure:      {project_point.suc.p(plot_curves_disch_p_units).m:.2f} {plot_curves_disch_p_units} 
-                                Suction Temperature:   {project_point.suc.T(plot_curves_disch_T_units).m:.2f} {plot_curves_disch_T_units} 
+                                Suction Pressure:      {project_point.suc.p(plot_curves_disch_p_units).m:.2f} {plot_curves_disch_p_units}
+                                Suction Temperature:   {project_point.suc.T(plot_curves_disch_T_units).m:.2f} {plot_curves_disch_T_units}
 
                                 Discharge Conditions
                                 --------------------
-                                Discharge Pressure:    {project_point.disch.p(plot_curves_disch_p_units).m:.2f} {plot_curves_disch_p_units} 
-                                Discharge Temperature: {project_point.disch.T(plot_curves_disch_T_units).m:.2f} {plot_curves_disch_T_units} 
-    
+                                Discharge Pressure:    {project_point.disch.p(plot_curves_disch_p_units).m:.2f} {plot_curves_disch_p_units}
+                                Discharge Temperature: {project_point.disch.T(plot_curves_disch_T_units).m:.2f} {plot_curves_disch_T_units}
+
 """
-                )
+                    )
+
+            display_original_plots()
 
     # New Suction Conditions
     with st.expander(
@@ -850,118 +839,100 @@ def main():
                 )
 
             # Performance curves
-            st.markdown("#### Performance Curves")
-
-            # Display curves
             st.markdown("#### Curves")
 
-            # Give the user the option to select an operational flow
-            # New Flow
-            new_flow_container = st.container()
-            new_flow_col1, new_flow_col2, dummy_new_flow_col3, dummy_new_flow_col4 = (
-                new_flow_container.columns(4)
-            )
-            new_flow_col1.markdown(f"Operational Flow (**{plot_curves_flow_v_units}**)")
-            # make so that new_flow_v_units is equal to the plot_curves_flow_v_units
-            new_flow = new_flow_col2.number_input(
-                "Operational Flow (m³/h)",
-                min_value=0.0,
-                value=st.session_state.converted_impeller.points[0]
-                .flow_v.to(plot_curves_flow_v_units)
-                .m,
-                help="Select an operational flow to display the curves at that flow",
-                label_visibility="collapsed",
-                key="new_flow_input",
-            )
-            # New Speed
-            new_speed_container = st.container()
-            (
-                new_speed_col1,
-                new_speed_col2,
-                dummy_new_speed_col3,
-                dummy_new_speed_col4,
-            ) = new_speed_container.columns(4)
-            new_speed_col1.markdown(
-                f"Operational Speed (**{plot_curves_speed_units}**)"
-            )
-            new_speed = new_speed_col2.number_input(
-                "Operational Speed (RPM)",
-                min_value=0.0,
-                value=st.session_state.converted_impeller.points[0]
-                .speed.to(plot_curves_speed_units)
-                .m,
-                help="Select an operational speed to display the curves at that speed",
-                label_visibility="collapsed",
-                key="new_speed_input",
-            )
+            @st.fragment
+            def display_converted_plots():
+                # New Flow
+                new_flow_container = st.container()
+                new_flow_col1, new_flow_col2, dummy_new_flow_col3, dummy_new_flow_col4 = (
+                    new_flow_container.columns(4)
+                )
+                new_flow_col1.markdown(f"Operational Flow (**{plot_curves_flow_v_units}**)")
+                new_flow = new_flow_col2.number_input(
+                    "Operational Flow (m³/h)",
+                    min_value=0.0,
+                    value=st.session_state.converted_impeller.points[0]
+                    .flow_v.to(plot_curves_flow_v_units)
+                    .m,
+                    help="Select an operational flow to display the curves at that flow",
+                    label_visibility="collapsed",
+                    key="new_flow_input",
+                )
+                # New Speed
+                new_speed_container = st.container()
+                (
+                    new_speed_col1,
+                    new_speed_col2,
+                    dummy_new_speed_col3,
+                    dummy_new_speed_col4,
+                ) = new_speed_container.columns(4)
+                new_speed_col1.markdown(
+                    f"Operational Speed (**{plot_curves_speed_units}**)"
+                )
+                new_speed = new_speed_col2.number_input(
+                    "Operational Speed (RPM)",
+                    min_value=0.0,
+                    value=st.session_state.converted_impeller.points[0]
+                    .speed.to(plot_curves_speed_units)
+                    .m,
+                    help="Select an operational speed to display the curves at that speed",
+                    label_visibility="collapsed",
+                    key="new_speed_input",
+                )
 
-            (
-                new_head_plot,
-                new_power_plot,
-                new_disch_T_plot,
-                new_eff_plot,
-                new_disch_p_plot,
-                new_point,
-            ) = generate_plots(
-                st.session_state.converted_impeller,
-                hash(st.session_state.converted_impeller),  # Manual invalidation
-                new_flow,
-                plot_curves_flow_v_units,
-                new_speed,
-                plot_curves_speed_units,
-                head_units=plot_curves_head_units,
-                power_units=plot_curves_power_units,
-                disch_T_units=plot_curves_disch_T_units,
-                disch_p_units=plot_curves_disch_p_units,
-            )
-
-            # Display 4 plots (head, eff, power, discharge pressure) in 2 columns and 2 rows
-            plot_conv_col1, plot_conv_col2 = st.columns(2)
-            with plot_conv_col1:
-                st.plotly_chart(
+                (
                     new_head_plot,
-                    width="stretch",
-                )
-                st.plotly_chart(
                     new_power_plot,
-                    width="stretch",
-                )
-                st.plotly_chart(
                     new_disch_T_plot,
-                    width="stretch",
-                )
-            with plot_conv_col2:
-                st.plotly_chart(
                     new_eff_plot,
-                    width="stretch",
-                )
-                st.plotly_chart(
                     new_disch_p_plot,
-                    width="stretch",
+                    new_point,
+                ) = generate_plots(
+                    st.session_state.converted_impeller,
+                    hash(st.session_state.converted_impeller),
+                    new_flow,
+                    plot_curves_flow_v_units,
+                    new_speed,
+                    plot_curves_speed_units,
+                    head_units=plot_curves_head_units,
+                    power_units=plot_curves_power_units,
+                    disch_T_units=plot_curves_disch_T_units,
+                    disch_p_units=plot_curves_disch_p_units,
                 )
-                st.markdown("#### New Point")
 
-                st.code(
-                    f"""
-                            -----------------------------\n 
-                                Speed:                 {new_point.speed.to("rpm").m:.0f} {plot_curves_speed_units} 
-                                Flow:                  {new_point.flow_v.to(plot_curves_flow_v_units).m:.2f} {plot_curves_flow_v_units} 
-                                Head:                  {new_point.head.to(plot_curves_head_units).m:.2f} {plot_curves_head_units} 
-                                Eff:                   {new_point.eff.m:.2f} % 
-                                Power:                 {new_point.power.to(plot_curves_power_units).m:.2f} {plot_curves_power_units} 
+                plot_conv_col1, plot_conv_col2 = st.columns(2)
+                with plot_conv_col1:
+                    st.plotly_chart(new_head_plot, width="stretch")
+                    st.plotly_chart(new_power_plot, width="stretch")
+                    st.plotly_chart(new_disch_T_plot, width="stretch")
+                with plot_conv_col2:
+                    st.plotly_chart(new_eff_plot, width="stretch")
+                    st.plotly_chart(new_disch_p_plot, width="stretch")
+                    st.markdown("#### New Point")
+                    st.code(
+                        f"""
+                            -----------------------------\n
+                                Speed:                 {new_point.speed.to("rpm").m:.0f} {plot_curves_speed_units}
+                                Flow:                  {new_point.flow_v.to(plot_curves_flow_v_units).m:.2f} {plot_curves_flow_v_units}
+                                Head:                  {new_point.head.to(plot_curves_head_units).m:.2f} {plot_curves_head_units}
+                                Eff:                   {new_point.eff.m:.2f} %
+                                Power:                 {new_point.power.to(plot_curves_power_units).m:.2f} {plot_curves_power_units}
 
                                 Suction Conditions
                                 --------------------
-                                Suction Pressure:      {new_point.suc.p(plot_curves_disch_p_units).m:.2f} {plot_curves_disch_p_units} 
-                                Suction Temperature:   {new_point.suc.T(plot_curves_disch_T_units).m:.2f} {plot_curves_disch_T_units} 
+                                Suction Pressure:      {new_point.suc.p(plot_curves_disch_p_units).m:.2f} {plot_curves_disch_p_units}
+                                Suction Temperature:   {new_point.suc.T(plot_curves_disch_T_units).m:.2f} {plot_curves_disch_T_units}
 
                                 Discharge Conditions
                                 --------------------
-                                Discharge Pressure:    {new_point.disch.p(plot_curves_disch_p_units).m:.2f} {plot_curves_disch_p_units} 
-                                Discharge Temperature: {new_point.disch.T(plot_curves_disch_T_units).m:.2f} {plot_curves_disch_T_units} 
-    
+                                Discharge Pressure:    {new_point.disch.p(plot_curves_disch_p_units).m:.2f} {plot_curves_disch_p_units}
+                                Discharge Temperature: {new_point.disch.T(plot_curves_disch_T_units).m:.2f} {plot_curves_disch_T_units}
+
 """
-                )
+                    )
+
+            display_converted_plots()
 
 
 if __name__ == "__main__":

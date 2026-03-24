@@ -914,16 +914,20 @@ def main():
 
                 # ---- Tab 2: Performance Plots ----
                 with tab_perf:
-                    st.markdown("### Performance Curves with Historical Points")
 
-                    df_valid = df_results[
-                        (df_results.get("valid", True) == True)  # noqa: E712
-                        & (df_results.get("head", 0) > 0)
-                    ].copy()
+                    @st.fragment
+                    def display_perf_plots():
+                        st.markdown("### Performance Curves with Historical Points")
 
-                    if df_valid.empty:
-                        st.warning("No valid calculated points to display.")
-                    else:
+                        df_valid_perf = df_results[
+                            (df_results.get("valid", True) == True)  # noqa: E712
+                            & (df_results.get("head", 0) > 0)
+                        ].copy()
+
+                        if df_valid_perf.empty:
+                            st.warning("No valid calculated points to display.")
+                            return
+
                         perf_controls = st.columns([1, 1, 4])
                         with perf_controls[0]:
                             cluster_options = list(range(len(evaluation.impellers_new)))
@@ -943,229 +947,234 @@ def main():
                         converted_impeller = evaluation.impellers_new[cluster_idx]
 
                         # Filter historical points to the selected cluster
-                        if "cluster" in df_valid.columns:
-                            df_cluster = df_valid[
-                                df_valid["cluster"] == cluster_idx
+                        if "cluster" in df_valid_perf.columns:
+                            df_cluster = df_valid_perf[
+                                df_valid_perf["cluster"] == cluster_idx
                             ].copy()
                         else:
-                            df_cluster = df_valid
+                            df_cluster = df_valid_perf
 
                         if df_cluster.empty:
                             st.warning(
                                 f"No valid points for Converted Curve {cluster_idx + 1}."
                             )
-                        else:
-                            # Plot units
-                            plot_flow_units = "m³/s"
-                            plot_head_units = "kJ/kg"
-                            plot_power_units = "kW"
-                            plot_p_units = "bar"
+                            return
 
-                            # Prepare historical points with timescale coloring
-                            if "timescale" not in df_cluster.columns:
-                                idx_num = pd.to_numeric(
-                                    df_cluster.index.astype("int64")
-                                )
-                                df_cluster["timescale"] = (
-                                    (idx_num - idx_num.min())
-                                    / max(idx_num.max() - idx_num.min(), 1)
-                                )
+                        # Plot units
+                        plot_flow_units = "m³/s"
+                        plot_head_units = "kJ/kg"
+                        plot_power_units = "kW"
+                        plot_p_units = "bar"
 
-                            # Evaluation results are in ccp internal units (flow_v: m³/s)
-                            flow_v_data_units = "m³/s"
-                            hist_flow = df_cluster["flow_v"].apply(
-                                lambda v: Q_(v, flow_v_data_units)
-                                .to(plot_flow_units)
-                                .m
+                        # Prepare historical points with timescale coloring
+                        if "timescale" not in df_cluster.columns:
+                            idx_num = pd.to_numeric(
+                                df_cluster.index.astype("int64")
                             )
-                            hist_head = df_cluster["head"].apply(
-                                lambda v: Q_(v, "J/kg").to(plot_head_units).m
-                            )
-                            hist_eff = df_cluster["eff"]
-                            hist_power = df_cluster["power"].apply(
-                                lambda v: Q_(v, "W").to(plot_power_units).m
-                            )
-                            hist_p_disch = df_cluster.get("p_disch")
-                            if hist_p_disch is not None:
-                                hist_p_disch = hist_p_disch.apply(
-                                    lambda v: Q_(v, "bar").to(plot_p_units).m
-                                )
-
-                            # Use median speed for the design curve
-                            speed_data_units = st.session_state.get(
-                                "speed_unit", "rpm"
-                            )
-                            median_speed = Q_(
-                                df_cluster["speed"].median(), speed_data_units
+                            df_cluster["timescale"] = (
+                                (idx_num - idx_num.min())
+                                / max(idx_num.max() - idx_num.min(), 1)
                             )
 
-                            # Build colorbar with date tick labels
-                            n_ticks = min(5, len(df_cluster))
-                            tick_positions = [
-                                i / max(n_ticks - 1, 1)
-                                for i in range(n_ticks)
-                            ]
-                            tick_indices = [
-                                int(p * max(len(df_cluster) - 1, 0))
-                                for p in tick_positions
-                            ]
-                            tick_labels = [
-                                df_cluster.index[i].strftime("%Y-%m-%d")
-                                for i in tick_indices
-                            ]
-                            colorbar_cfg = dict(
-                                title=dict(text="Date", side="right"),
-                                tickvals=tick_positions,
-                                ticktext=tick_labels,
-                                orientation="h",
-                                yanchor="top",
-                                y=-0.2,
-                                xanchor="center",
-                                x=0.5,
-                                thickness=12,
-                                len=0.8,
+                        # Evaluation results are in ccp internal units (flow_v: m³/s)
+                        flow_v_data_units = "m³/s"
+                        hist_flow = df_cluster["flow_v"].apply(
+                            lambda v: Q_(v, flow_v_data_units)
+                            .to(plot_flow_units)
+                            .m
+                        )
+                        hist_head = df_cluster["head"].apply(
+                            lambda v: Q_(v, "J/kg").to(plot_head_units).m
+                        )
+                        hist_eff = df_cluster["eff"]
+                        hist_power = df_cluster["power"].apply(
+                            lambda v: Q_(v, "W").to(plot_power_units).m
+                        )
+                        hist_p_disch = df_cluster.get("p_disch")
+                        if hist_p_disch is not None:
+                            hist_p_disch = hist_p_disch.apply(
+                                lambda v: Q_(v, "bar").to(plot_p_units).m
                             )
 
-                            @st.cache_data
-                            def generate_eval_base_curves(
-                                _impeller,
-                                impeller_hash,
-                                speed_m,
-                                speed_units,
-                                flow_v_units,
-                                head_units,
-                                power_units,
-                                p_units,
-                                similarity,
-                            ):
-                                _speed = ccp.Q_(speed_m, speed_units)
-                                head_fig = _impeller.head_plot(
-                                    speed=_speed,
-                                    flow_v_units=flow_v_units,
-                                    head_units=head_units,
-                                    similarity=similarity,
-                                )
-                                power_fig = _impeller.power_plot(
-                                    speed=_speed,
-                                    flow_v_units=flow_v_units,
-                                    power_units=power_units,
-                                    similarity=similarity,
-                                )
-                                eff_fig = _impeller.eff_plot(
-                                    speed=_speed,
-                                    flow_v_units=flow_v_units,
-                                    similarity=similarity,
-                                )
-                                disch_p_fig = _impeller.disch.p_plot(
-                                    speed=_speed,
-                                    flow_v_units=flow_v_units,
-                                    p_units=p_units,
-                                    similarity=similarity,
-                                )
-                                return head_fig, power_fig, eff_fig, disch_p_fig
+                        # Use median speed for the design curve
+                        speed_data_units = st.session_state.get(
+                            "speed_unit", "rpm"
+                        )
+                        median_speed = Q_(
+                            df_cluster["speed"].median(), speed_data_units
+                        )
 
-                            try:
-                                head_fig, power_fig, eff_fig, disch_p_fig = (
-                                    generate_eval_base_curves(
-                                        converted_impeller,
-                                        hash(converted_impeller),
-                                        median_speed.m,
-                                        str(median_speed.units),
-                                        plot_flow_units,
-                                        plot_head_units,
-                                        plot_power_units,
-                                        plot_p_units,
-                                        show_similarity,
-                                    )
-                                )
-                            except Exception as e:
-                                st.error(f"Error creating base curve plots: {e}")
-                                head_fig = power_fig = eff_fig = disch_p_fig = None
+                        # Build colorbar with date tick labels
+                        n_ticks = min(5, len(df_cluster))
+                        tick_positions = [
+                            i / max(n_ticks - 1, 1)
+                            for i in range(n_ticks)
+                        ]
+                        tick_indices = [
+                            int(p * max(len(df_cluster) - 1, 0))
+                            for p in tick_positions
+                        ]
+                        tick_labels = [
+                            df_cluster.index[i].strftime("%Y-%m-%d")
+                            for i in tick_indices
+                        ]
+                        colorbar_cfg = dict(
+                            title=dict(text="Date", side="right"),
+                            tickvals=tick_positions,
+                            ticktext=tick_labels,
+                            orientation="h",
+                            yanchor="top",
+                            y=-0.2,
+                            xanchor="center",
+                            x=0.5,
+                            thickness=12,
+                            len=0.8,
+                        )
 
-                            # Add historical point overlays (not cached - data changes)
+                        @st.cache_data
+                        def generate_eval_base_curves(
+                            _impeller,
+                            impeller_hash,
+                            speed_m,
+                            speed_units,
+                            flow_v_units,
+                            head_units,
+                            power_units,
+                            p_units,
+                            similarity,
+                        ):
+                            _speed = ccp.Q_(speed_m, speed_units)
+                            head_fig = _impeller.head_plot(
+                                speed=_speed,
+                                flow_v_units=flow_v_units,
+                                head_units=head_units,
+                                similarity=similarity,
+                            )
+                            power_fig = _impeller.power_plot(
+                                speed=_speed,
+                                flow_v_units=flow_v_units,
+                                power_units=power_units,
+                                similarity=similarity,
+                            )
+                            eff_fig = _impeller.eff_plot(
+                                speed=_speed,
+                                flow_v_units=flow_v_units,
+                                similarity=similarity,
+                            )
+                            disch_p_fig = _impeller.disch.p_plot(
+                                speed=_speed,
+                                flow_v_units=flow_v_units,
+                                p_units=p_units,
+                                similarity=similarity,
+                            )
+                            return head_fig, power_fig, eff_fig, disch_p_fig
+
+                        try:
+                            head_fig, power_fig, eff_fig, disch_p_fig = (
+                                generate_eval_base_curves(
+                                    converted_impeller,
+                                    hash(converted_impeller),
+                                    median_speed.m,
+                                    str(median_speed.units),
+                                    plot_flow_units,
+                                    plot_head_units,
+                                    plot_power_units,
+                                    plot_p_units,
+                                    show_similarity,
+                                )
+                            )
+                        except Exception as e:
+                            st.error(f"Error creating base curve plots: {e}")
+                            head_fig = power_fig = eff_fig = disch_p_fig = None
+
+                        # Add historical point overlays (not cached - data changes)
+                        if head_fig is not None:
+                            head_fig.add_trace(
+                                go.Scatter(
+                                    x=hist_flow,
+                                    y=hist_head,
+                                    mode="markers",
+                                    marker=dict(
+                                        color=df_cluster["timescale"],
+                                        colorscale="Viridis",
+                                        size=6,
+                                        colorbar=colorbar_cfg,
+                                    ),
+                                    name="Historical Points",
+                                )
+                            )
+                        if power_fig is not None:
+                            power_fig.add_trace(
+                                go.Scatter(
+                                    x=hist_flow,
+                                    y=hist_power,
+                                    mode="markers",
+                                    marker=dict(
+                                        color=df_cluster["timescale"],
+                                        colorscale="Viridis",
+                                        size=6,
+                                    ),
+                                    name="Historical Points",
+                                    showlegend=True,
+                                )
+                            )
+                        if eff_fig is not None:
+                            eff_fig.add_trace(
+                                go.Scatter(
+                                    x=hist_flow,
+                                    y=hist_eff,
+                                    mode="markers",
+                                    marker=dict(
+                                        color=df_cluster["timescale"],
+                                        colorscale="Viridis",
+                                        size=6,
+                                    ),
+                                    name="Historical Points",
+                                    showlegend=True,
+                                )
+                            )
+                        if disch_p_fig is not None and hist_p_disch is not None:
+                            disch_p_fig.add_trace(
+                                go.Scatter(
+                                    x=hist_flow,
+                                    y=hist_p_disch,
+                                    mode="markers",
+                                    marker=dict(
+                                        color=df_cluster["timescale"],
+                                        colorscale="Viridis",
+                                        size=6,
+                                    ),
+                                    name="Historical Points",
+                                    showlegend=True,
+                                )
+                            )
+
+                        plot_col1, plot_col2 = st.columns(2)
+                        with plot_col1:
                             if head_fig is not None:
-                                head_fig.add_trace(
-                                    go.Scatter(
-                                        x=hist_flow,
-                                        y=hist_head,
-                                        mode="markers",
-                                        marker=dict(
-                                            color=df_cluster["timescale"],
-                                            colorscale="Viridis",
-                                            size=6,
-                                            colorbar=colorbar_cfg,
-                                        ),
-                                        name="Historical Points",
-                                    )
-                                )
+                                st.plotly_chart(head_fig, width="stretch")
                             if power_fig is not None:
-                                power_fig.add_trace(
-                                    go.Scatter(
-                                        x=hist_flow,
-                                        y=hist_power,
-                                        mode="markers",
-                                        marker=dict(
-                                            color=df_cluster["timescale"],
-                                            colorscale="Viridis",
-                                            size=6,
-                                        ),
-                                        name="Historical Points",
-                                        showlegend=True,
-                                    )
-                                )
+                                st.plotly_chart(power_fig, width="stretch")
+                        with plot_col2:
                             if eff_fig is not None:
-                                eff_fig.add_trace(
-                                    go.Scatter(
-                                        x=hist_flow,
-                                        y=hist_eff,
-                                        mode="markers",
-                                        marker=dict(
-                                            color=df_cluster["timescale"],
-                                            colorscale="Viridis",
-                                            size=6,
-                                        ),
-                                        name="Historical Points",
-                                        showlegend=True,
-                                    )
-                                )
-                            if disch_p_fig is not None and hist_p_disch is not None:
-                                disch_p_fig.add_trace(
-                                    go.Scatter(
-                                        x=hist_flow,
-                                        y=hist_p_disch,
-                                        mode="markers",
-                                        marker=dict(
-                                            color=df_cluster["timescale"],
-                                            colorscale="Viridis",
-                                            size=6,
-                                        ),
-                                        name="Historical Points",
-                                        showlegend=True,
-                                    )
-                                )
+                                st.plotly_chart(eff_fig, width="stretch")
+                            if disch_p_fig is not None:
+                                st.plotly_chart(disch_p_fig, width="stretch")
 
-                            plot_col1, plot_col2 = st.columns(2)
-                            with plot_col1:
-                                if head_fig is not None:
-                                    st.plotly_chart(head_fig, width="stretch")
-                                if power_fig is not None:
-                                    st.plotly_chart(power_fig, width="stretch")
-                            with plot_col2:
-                                if eff_fig is not None:
-                                    st.plotly_chart(eff_fig, width="stretch")
-                                if disch_p_fig is not None:
-                                    st.plotly_chart(disch_p_fig, width="stretch")
-
-                            perf_figs = [
-                                fig
-                                for fig in [
-                                    head_fig,
-                                    power_fig,
-                                    eff_fig,
-                                    disch_p_fig,
-                                ]
-                                if fig is not None
+                        # Store perf_figs in session state for report generation
+                        st.session_state["_perf_figs"] = [
+                            fig
+                            for fig in [
+                                head_fig,
+                                power_fig,
+                                eff_fig,
+                                disch_p_fig,
                             ]
+                            if fig is not None
+                        ]
+
+                    display_perf_plots()
+                    perf_figs = st.session_state.get("_perf_figs", [])
 
                 # ---- Tab 3: Data Table ----
                 with tab_data:
