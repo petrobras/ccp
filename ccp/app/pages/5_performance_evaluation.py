@@ -194,10 +194,31 @@ def main():
                     )
                     eval_tmp.write(eval_bytes)
                     eval_tmp.close()
-                    session_state_data["hist_evaluation"] = ccp.Evaluation.load(
-                        eval_tmp.name
-                    )
+                    loaded_eval = ccp.Evaluation.load(eval_tmp.name)
+                    session_state_data["hist_evaluation"] = loaded_eval
                     Path(eval_tmp.name).unlink()
+
+                    # Set date/time widget keys to match the evaluation data range
+                    # so widgets reflect the saved time range instead of datetime.now()
+                    if (
+                        hasattr(loaded_eval, "data")
+                        and loaded_eval.data is not None
+                        and not loaded_eval.data.empty
+                    ):
+                        eval_start = pd.Timestamp(
+                            loaded_eval.data.index.min()
+                        ).to_pydatetime()
+                        eval_end = pd.Timestamp(
+                            loaded_eval.data.index.max()
+                        ).to_pydatetime()
+                        if eval_start.tzinfo is not None:
+                            eval_start = eval_start.replace(tzinfo=None)
+                        if eval_end.tzinfo is not None:
+                            eval_end = eval_end.replace(tzinfo=None)
+                        session_state_data["eval_start_date"] = eval_start.date()
+                        session_state_data["eval_start_time"] = eval_start.time()
+                        session_state_data["eval_end_date"] = eval_end.date()
+                        session_state_data["eval_end_time"] = eval_end.time()
 
                 session_state_data_copy = session_state_data.copy()
                 for key in list(session_state_data.keys()):
