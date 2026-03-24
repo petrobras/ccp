@@ -1004,7 +1004,9 @@ def main():
                             return
 
                         # Plot units
-                        plot_flow_units = "m³/s"
+                        plot_flow_units = st.session_state.get(
+                            "loaded_curves_flow_units", "m³/s"
+                        )
                         plot_head_units = "kJ/kg"
                         plot_power_units = "kW"
                         plot_p_units = "bar"
