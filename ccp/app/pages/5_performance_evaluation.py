@@ -435,31 +435,53 @@ def main():
                 "No design cases loaded. Please upload performance curves for at least one case."
             )
         else:
+            # Derive default date/time range from saved evaluation if available
+            existing_eval = st.session_state.get("hist_evaluation")
+            if (
+                existing_eval is not None
+                and hasattr(existing_eval, "data")
+                and getattr(existing_eval, "data", None) is not None
+                and not existing_eval.data.empty
+            ):
+                default_start_dt = pd.Timestamp(
+                    existing_eval.data.index.min()
+                ).to_pydatetime()
+                default_end_dt = pd.Timestamp(
+                    existing_eval.data.index.max()
+                ).to_pydatetime()
+                # Strip timezone info for date/time widgets
+                if default_start_dt.tzinfo is not None:
+                    default_start_dt = default_start_dt.replace(tzinfo=None)
+                if default_end_dt.tzinfo is not None:
+                    default_end_dt = default_end_dt.replace(tzinfo=None)
+            else:
+                default_start_dt = datetime.now() - timedelta(days=30)
+                default_end_dt = datetime.now()
+
             # Data input controls
             control_row = st.columns([1, 1, 1, 1])
             with control_row[0]:
-                default_start = datetime.now() - timedelta(days=30)
                 start_date = st.date_input(
                     "Start Date",
-                    value=default_start.date(),
+                    value=default_start_dt.date(),
                     key="eval_start_date",
                 )
             with control_row[1]:
                 start_time_input = st.time_input(
                     "Start Time",
-                    value=datetime.min.time(),
+                    value=default_start_dt.time(),
                     key="eval_start_time",
                 )
             with control_row[2]:
                 end_date = st.date_input(
                     "End Date",
-                    value=datetime.now().date(),
+                    value=default_end_dt.date(),
                     key="eval_end_date",
                 )
             with control_row[3]:
                 end_time_input = st.time_input(
                     "End Time",
-                    value=datetime.now().time(),
+                    value=default_end_dt.time(),
                     key="eval_end_time",
                 )
 
