@@ -549,33 +549,37 @@ def main():
                 point_flow_v_units,
                 point_speed,
                 point_speed_units,
+                head_units,
+                power_units,
+                disch_T_units,
+                disch_p_units,
             ):
                 head_plot = _impeller.head_plot(
-                    flow_v_units=plot_curves_flow_v_units,
-                    head_units=plot_curves_head_units,
+                    flow_v_units=point_flow_v_units,
+                    head_units=head_units,
                     flow_v=Q_(point_flow, point_flow_v_units),
                     speed=Q_(point_speed, point_speed_units),
                 )
                 power_plot = _impeller.power_plot(
-                    flow_v_units=plot_curves_flow_v_units,
-                    power_units=plot_curves_power_units,
+                    flow_v_units=point_flow_v_units,
+                    power_units=power_units,
                     flow_v=Q_(point_flow, point_flow_v_units),
                     speed=Q_(point_speed, point_speed_units),
                 )
                 disch_T_plot = _impeller.disch.T_plot(
-                    flow_v_units=plot_curves_flow_v_units,
-                    temperature_units=plot_curves_disch_T_units,
+                    flow_v_units=point_flow_v_units,
+                    temperature_units=disch_T_units,
                     flow_v=Q_(point_flow, point_flow_v_units),
                     speed=Q_(point_speed, point_speed_units),
                 )
                 eff_plot = _impeller.eff_plot(
-                    flow_v_units=plot_curves_flow_v_units,
+                    flow_v_units=point_flow_v_units,
                     flow_v=Q_(point_flow, point_flow_v_units),
                     speed=Q_(point_speed, point_speed_units),
                 )
                 disch_p_plot = _impeller.disch.p_plot(
-                    flow_v_units=plot_curves_flow_v_units,
-                    p_units=plot_curves_disch_p_units,
+                    flow_v_units=point_flow_v_units,
+                    p_units=disch_p_units,
                     flow_v=Q_(point_flow, point_flow_v_units),
                     speed=Q_(point_speed, point_speed_units),
                 )
@@ -607,6 +611,10 @@ def main():
                 plot_curves_flow_v_units,
                 project_speed,
                 plot_curves_speed_units,
+                head_units=plot_curves_head_units,
+                power_units=plot_curves_power_units,
+                disch_T_units=plot_curves_disch_T_units,
+                disch_p_units=plot_curves_disch_p_units,
             )
 
             # Display 4 plots (head, eff, power, discharge pressure) in 2 columns and 2 rows
@@ -901,6 +909,10 @@ def main():
                 plot_curves_flow_v_units,
                 new_speed,
                 plot_curves_speed_units,
+                head_units=plot_curves_head_units,
+                power_units=plot_curves_power_units,
+                disch_T_units=plot_curves_disch_T_units,
+                disch_p_units=plot_curves_disch_p_units,
             )
 
             # Display 4 plots (head, eff, power, discharge pressure) in 2 columns and 2 rows

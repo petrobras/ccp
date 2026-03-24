@@ -765,6 +765,129 @@ def main():
                             plot_row2[1],
                         ]
 
+                        @st.cache_data
+                        def generate_trend_plot(y_data, title):
+                            fig = go.Figure()
+                            fig.add_trace(
+                                go.Scattergl(
+                                    x=y_data.index,
+                                    y=y_data,
+                                    mode="markers",
+                                    marker=dict(
+                                        color="#1f77b4",
+                                        size=6,
+                                    ),
+                                    name=title,
+                                )
+                            )
+                            fig.add_hline(
+                                y=0,
+                                line_dash="dash",
+                                line_color="red",
+                                line_width=1,
+                            )
+
+                            regression_info = None
+                            # Linear regression with confidence band
+                            if len(y_data) >= 3:
+                                x_num = (
+                                    y_data.index.astype("int64").values
+                                    / 1e9
+                                )
+                                slope, intercept, r, p, se = (
+                                    stats.linregress(x_num, y_data)
+                                )
+                                y_fit = slope * x_num + intercept
+
+                                # 95% confidence interval
+                                n = len(x_num)
+                                x_mean = x_num.mean()
+                                ss_x = ((x_num - x_mean) ** 2).sum()
+                                residuals = y_data - y_fit
+                                s_err = np.sqrt(
+                                    (residuals**2).sum() / (n - 2)
+                                )
+                                t_val = stats.t.ppf(0.975, n - 2)
+                                ci = t_val * s_err * np.sqrt(
+                                    1 / n
+                                    + (x_num - x_mean) ** 2 / ss_x
+                                )
+
+                                # Sort for proper band rendering
+                                sort_idx = np.argsort(x_num)
+                                x_sorted = y_data.index[sort_idx]
+                                y_fit_sorted = y_fit[sort_idx]
+                                ci_sorted = ci[sort_idx]
+
+                                fig.add_trace(
+                                    go.Scatter(
+                                        x=x_sorted,
+                                        y=y_fit_sorted,
+                                        mode="lines",
+                                        line=dict(
+                                            color="orange", width=2
+                                        ),
+                                        name="Trend",
+                                    )
+                                )
+                                fig.add_trace(
+                                    go.Scatter(
+                                        x=np.concatenate(
+                                            [x_sorted, x_sorted[::-1]]
+                                        ),
+                                        y=np.concatenate(
+                                            [
+                                                y_fit_sorted
+                                                + ci_sorted,
+                                                (
+                                                    y_fit_sorted
+                                                    - ci_sorted
+                                                )[::-1],
+                                            ]
+                                        ),
+                                        fill="toself",
+                                        fillcolor="rgba(255,165,0,0.15)",
+                                        line=dict(width=0),
+                                        name="95% CI",
+                                        hoverinfo="skip",
+                                    )
+                                )
+
+                                # Slope as %/month
+                                slope_per_month = (
+                                    slope * 30.44 * 24 * 3600
+                                )
+                                regression_info = {
+                                    "slope_per_month": slope_per_month,
+                                    "r_squared": r**2,
+                                    "p_value": p,
+                                    "n_points": n,
+                                }
+                                fig.add_annotation(
+                                    text=(
+                                        f"slope: {slope_per_month:.3f} %/mo"
+                                        f" · R²={r**2:.3f}"
+                                        f" · p={p:.2e}"
+                                    ),
+                                    xref="paper",
+                                    yref="paper",
+                                    x=0.02,
+                                    y=0.98,
+                                    showarrow=False,
+                                    font=dict(size=11),
+                                    bgcolor="rgba(255,255,255,0.8)",
+                                    bordercolor="#ccc",
+                                    borderwidth=1,
+                                )
+
+                            fig.update_layout(
+                                title=title,
+                                xaxis_title="Time",
+                                yaxis_title=title,
+                                showlegend=False,
+                            )
+                            return fig, regression_info
+
                         trend_figs = []
                         trend_regression = {}
                         for (title, col_name), container in zip(
@@ -779,124 +902,11 @@ def main():
                                         )
                                         continue
 
-                                    fig = go.Figure()
-                                    fig.add_trace(
-                                        go.Scattergl(
-                                            x=y_data.index,
-                                            y=y_data,
-                                            mode="markers",
-                                            marker=dict(
-                                                color="#1f77b4",
-                                                size=6,
-                                            ),
-                                            name=title,
-                                        )
+                                    fig, regression_info = generate_trend_plot(
+                                        y_data, title
                                     )
-                                    fig.add_hline(
-                                        y=0,
-                                        line_dash="dash",
-                                        line_color="red",
-                                        line_width=1,
-                                    )
-
-                                    # Linear regression with confidence band
-                                    if len(y_data) >= 3:
-                                        x_num = (
-                                            y_data.index.astype("int64").values
-                                            / 1e9
-                                        )
-                                        slope, intercept, r, p, se = (
-                                            stats.linregress(x_num, y_data)
-                                        )
-                                        y_fit = slope * x_num + intercept
-
-                                        # 95% confidence interval
-                                        n = len(x_num)
-                                        x_mean = x_num.mean()
-                                        ss_x = ((x_num - x_mean) ** 2).sum()
-                                        residuals = y_data - y_fit
-                                        s_err = np.sqrt(
-                                            (residuals**2).sum() / (n - 2)
-                                        )
-                                        t_val = stats.t.ppf(0.975, n - 2)
-                                        ci = t_val * s_err * np.sqrt(
-                                            1 / n
-                                            + (x_num - x_mean) ** 2 / ss_x
-                                        )
-
-                                        # Sort for proper band rendering
-                                        sort_idx = np.argsort(x_num)
-                                        x_sorted = y_data.index[sort_idx]
-                                        y_fit_sorted = y_fit[sort_idx]
-                                        ci_sorted = ci[sort_idx]
-
-                                        fig.add_trace(
-                                            go.Scatter(
-                                                x=x_sorted,
-                                                y=y_fit_sorted,
-                                                mode="lines",
-                                                line=dict(
-                                                    color="orange", width=2
-                                                ),
-                                                name="Trend",
-                                            )
-                                        )
-                                        fig.add_trace(
-                                            go.Scatter(
-                                                x=np.concatenate(
-                                                    [x_sorted, x_sorted[::-1]]
-                                                ),
-                                                y=np.concatenate(
-                                                    [
-                                                        y_fit_sorted
-                                                        + ci_sorted,
-                                                        (
-                                                            y_fit_sorted
-                                                            - ci_sorted
-                                                        )[::-1],
-                                                    ]
-                                                ),
-                                                fill="toself",
-                                                fillcolor="rgba(255,165,0,0.15)",
-                                                line=dict(width=0),
-                                                name="95% CI",
-                                                hoverinfo="skip",
-                                            )
-                                        )
-
-                                        # Slope as %/month
-                                        slope_per_month = (
-                                            slope * 30.44 * 24 * 3600
-                                        )
-                                        trend_regression[col_name] = {
-                                            "slope_per_month": slope_per_month,
-                                            "r_squared": r**2,
-                                            "p_value": p,
-                                            "n_points": n,
-                                        }
-                                        fig.add_annotation(
-                                            text=(
-                                                f"slope: {slope_per_month:.3f} %/mo"
-                                                f" · R²={r**2:.3f}"
-                                                f" · p={p:.2e}"
-                                            ),
-                                            xref="paper",
-                                            yref="paper",
-                                            x=0.02,
-                                            y=0.98,
-                                            showarrow=False,
-                                            font=dict(size=11),
-                                            bgcolor="rgba(255,255,255,0.8)",
-                                            bordercolor="#ccc",
-                                            borderwidth=1,
-                                        )
-
-                                    fig.update_layout(
-                                        title=title,
-                                        xaxis_title="Time",
-                                        yaxis_title=title,
-                                        showlegend=False,
-                                    )
+                                    if regression_info is not None:
+                                        trend_regression[col_name] = regression_info
                                     trend_figs.append(fig)
                                     st.plotly_chart(fig, width="stretch")
                                 else:
@@ -1016,127 +1026,135 @@ def main():
                                 len=0.8,
                             )
 
+                            @st.cache_data
+                            def generate_eval_base_curves(
+                                _impeller,
+                                impeller_hash,
+                                speed_m,
+                                speed_units,
+                                flow_v_units,
+                                head_units,
+                                power_units,
+                                p_units,
+                                similarity,
+                            ):
+                                _speed = ccp.Q_(speed_m, speed_units)
+                                head_fig = _impeller.head_plot(
+                                    speed=_speed,
+                                    flow_v_units=flow_v_units,
+                                    head_units=head_units,
+                                    similarity=similarity,
+                                )
+                                power_fig = _impeller.power_plot(
+                                    speed=_speed,
+                                    flow_v_units=flow_v_units,
+                                    power_units=power_units,
+                                    similarity=similarity,
+                                )
+                                eff_fig = _impeller.eff_plot(
+                                    speed=_speed,
+                                    flow_v_units=flow_v_units,
+                                    similarity=similarity,
+                                )
+                                disch_p_fig = _impeller.disch.p_plot(
+                                    speed=_speed,
+                                    flow_v_units=flow_v_units,
+                                    p_units=p_units,
+                                    similarity=similarity,
+                                )
+                                return head_fig, power_fig, eff_fig, disch_p_fig
+
+                            try:
+                                head_fig, power_fig, eff_fig, disch_p_fig = (
+                                    generate_eval_base_curves(
+                                        converted_impeller,
+                                        hash(converted_impeller),
+                                        median_speed.m,
+                                        str(median_speed.units),
+                                        plot_flow_units,
+                                        plot_head_units,
+                                        plot_power_units,
+                                        plot_p_units,
+                                        show_similarity,
+                                    )
+                                )
+                            except Exception as e:
+                                st.error(f"Error creating base curve plots: {e}")
+                                head_fig = power_fig = eff_fig = disch_p_fig = None
+
+                            # Add historical point overlays (not cached - data changes)
+                            if head_fig is not None:
+                                head_fig.add_trace(
+                                    go.Scatter(
+                                        x=hist_flow,
+                                        y=hist_head,
+                                        mode="markers",
+                                        marker=dict(
+                                            color=df_cluster["timescale"],
+                                            colorscale="Viridis",
+                                            size=6,
+                                            colorbar=colorbar_cfg,
+                                        ),
+                                        name="Historical Points",
+                                    )
+                                )
+                            if power_fig is not None:
+                                power_fig.add_trace(
+                                    go.Scatter(
+                                        x=hist_flow,
+                                        y=hist_power,
+                                        mode="markers",
+                                        marker=dict(
+                                            color=df_cluster["timescale"],
+                                            colorscale="Viridis",
+                                            size=6,
+                                        ),
+                                        name="Historical Points",
+                                        showlegend=True,
+                                    )
+                                )
+                            if eff_fig is not None:
+                                eff_fig.add_trace(
+                                    go.Scatter(
+                                        x=hist_flow,
+                                        y=hist_eff,
+                                        mode="markers",
+                                        marker=dict(
+                                            color=df_cluster["timescale"],
+                                            colorscale="Viridis",
+                                            size=6,
+                                        ),
+                                        name="Historical Points",
+                                        showlegend=True,
+                                    )
+                                )
+                            if disch_p_fig is not None and hist_p_disch is not None:
+                                disch_p_fig.add_trace(
+                                    go.Scatter(
+                                        x=hist_flow,
+                                        y=hist_p_disch,
+                                        mode="markers",
+                                        marker=dict(
+                                            color=df_cluster["timescale"],
+                                            colorscale="Viridis",
+                                            size=6,
+                                        ),
+                                        name="Historical Points",
+                                        showlegend=True,
+                                    )
+                                )
+
                             plot_col1, plot_col2 = st.columns(2)
-                            head_fig = None
-                            power_fig = None
-                            eff_fig = None
-                            disch_p_fig = None
-
                             with plot_col1:
-                                # Head plot
-                                try:
-                                    head_fig = converted_impeller.head_plot(
-                                        speed=median_speed,
-                                        flow_v_units=plot_flow_units,
-                                        head_units=plot_head_units,
-                                        similarity=show_similarity,
-                                    )
-                                    head_fig.add_trace(
-                                        go.Scatter(
-                                            x=hist_flow,
-                                            y=hist_head,
-                                            mode="markers",
-                                            marker=dict(
-                                                color=df_cluster["timescale"],
-                                                colorscale="Viridis",
-                                                size=6,
-                                                colorbar=colorbar_cfg,
-                                            ),
-                                            name="Historical Points",
-                                        )
-                                    )
-                                    st.plotly_chart(
-                                        head_fig, width="stretch"
-                                    )
-                                except Exception as e:
-                                    st.error(f"Error creating head plot: {e}")
-
-                                # Power plot
-                                try:
-                                    power_fig = converted_impeller.power_plot(
-                                        speed=median_speed,
-                                        flow_v_units=plot_flow_units,
-                                        power_units=plot_power_units,
-                                        similarity=show_similarity,
-                                    )
-                                    power_fig.add_trace(
-                                        go.Scatter(
-                                            x=hist_flow,
-                                            y=hist_power,
-                                            mode="markers",
-                                            marker=dict(
-                                                color=df_cluster["timescale"],
-                                                colorscale="Viridis",
-                                                size=6,
-                                            ),
-                                            name="Historical Points",
-                                            showlegend=True,
-                                        )
-                                    )
-                                    st.plotly_chart(
-                                        power_fig, width="stretch"
-                                    )
-                                except Exception as e:
-                                    st.error(f"Error creating power plot: {e}")
-
+                                if head_fig is not None:
+                                    st.plotly_chart(head_fig, width="stretch")
+                                if power_fig is not None:
+                                    st.plotly_chart(power_fig, width="stretch")
                             with plot_col2:
-                                # Efficiency plot
-                                try:
-                                    eff_fig = converted_impeller.eff_plot(
-                                        speed=median_speed,
-                                        flow_v_units=plot_flow_units,
-                                        similarity=show_similarity,
-                                    )
-                                    eff_fig.add_trace(
-                                        go.Scatter(
-                                            x=hist_flow,
-                                            y=hist_eff,
-                                            mode="markers",
-                                            marker=dict(
-                                                color=df_cluster["timescale"],
-                                                colorscale="Viridis",
-                                                size=6,
-                                            ),
-                                            name="Historical Points",
-                                            showlegend=True,
-                                        )
-                                    )
-                                    st.plotly_chart(
-                                        eff_fig, width="stretch"
-                                    )
-                                except Exception as e:
-                                    st.error(f"Error creating efficiency plot: {e}")
-
-                                # Discharge Pressure plot
-                                try:
-                                    disch_p_fig = converted_impeller.disch.p_plot(
-                                        speed=median_speed,
-                                        flow_v_units=plot_flow_units,
-                                        p_units=plot_p_units,
-                                        similarity=show_similarity,
-                                    )
-                                    if hist_p_disch is not None:
-                                        disch_p_fig.add_trace(
-                                            go.Scatter(
-                                                x=hist_flow,
-                                                y=hist_p_disch,
-                                                mode="markers",
-                                                marker=dict(
-                                                    color=df_cluster["timescale"],
-                                                    colorscale="Viridis",
-                                                    size=6,
-                                                ),
-                                                name="Historical Points",
-                                                showlegend=True,
-                                            )
-                                        )
-                                    st.plotly_chart(
-                                        disch_p_fig, width="stretch"
-                                    )
-                                except Exception as e:
-                                    st.error(
-                                        f"Error creating discharge pressure plot: {e}"
-                                    )
+                                if eff_fig is not None:
+                                    st.plotly_chart(eff_fig, width="stretch")
+                                if disch_p_fig is not None:
+                                    st.plotly_chart(disch_p_fig, width="stretch")
 
                             perf_figs = [
                                 fig

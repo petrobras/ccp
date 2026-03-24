@@ -776,185 +776,178 @@ def main():
                         }
                     )
 
-                # Create plots
-                plot_col1, plot_col2 = st.columns(2)
+                @st.cache_data
+                def generate_base_curves(
+                    _impeller,
+                    impeller_hash,
+                    speed_m,
+                    speed_units,
+                    flow_v_units,
+                    head_units,
+                    power_units,
+                    p_units,
+                    similarity,
+                ):
+                    _speed = ccp.Q_(speed_m, speed_units)
+                    head_fig = _impeller.head_plot(
+                        speed=_speed,
+                        flow_v_units=flow_v_units,
+                        head_units=head_units,
+                        similarity=similarity,
+                    )
+                    power_fig = _impeller.power_plot(
+                        speed=_speed,
+                        flow_v_units=flow_v_units,
+                        power_units=power_units,
+                        similarity=similarity,
+                    )
+                    eff_fig = _impeller.eff_plot(
+                        speed=_speed,
+                        flow_v_units=flow_v_units,
+                        similarity=similarity,
+                    )
+                    disch_p_fig = _impeller.disch.p_plot(
+                        speed=_speed,
+                        flow_v_units=flow_v_units,
+                        p_units=p_units,
+                        similarity=similarity,
+                    )
+                    return head_fig, power_fig, eff_fig, disch_p_fig
 
-                with plot_col1:
-                    # Head plot
-                    try:
-                        head_fig = converted_impeller.head_plot(
-                            speed=current_speed,
-                            flow_v_units=plot_flow_units,
-                            head_units=plot_head_units,
-                            similarity=show_similarity,
+                # Create base curve plots (cached)
+                try:
+                    head_fig, power_fig, eff_fig, disch_p_fig = generate_base_curves(
+                        converted_impeller,
+                        hash(converted_impeller),
+                        current_speed.m,
+                        str(current_speed.units),
+                        plot_flow_units,
+                        plot_head_units,
+                        plot_power_units,
+                        plot_p_units,
+                        show_similarity,
+                    )
+                except Exception as e:
+                    st.error(f"Error creating base curve plots: {e}")
+                    head_fig = power_fig = eff_fig = disch_p_fig = None
+
+                # Add expected and operational point overlays (not cached - changes each refresh)
+                if head_fig is not None:
+                    if expected_head > 0:
+                        head_fig.add_trace(
+                            go.Scatter(
+                                x=[expected_flow],
+                                y=[expected_head],
+                                mode="markers",
+                                marker=dict(color="green", size=10, symbol="diamond"),
+                                name="Expected Point",
+                                showlegend=True,
+                            )
                         )
-                        # Add expected point
-                        if expected_head > 0:
+                    for op in op_points:
+                        if op["head"] is not None:
                             head_fig.add_trace(
                                 go.Scatter(
-                                    x=[expected_flow],
-                                    y=[expected_head],
+                                    x=[op["flow"]],
+                                    y=[op["head"]],
                                     mode="markers",
-                                    marker=dict(
-                                        color="green", size=10, symbol="diamond"
-                                    ),
-                                    name="Expected Point",
-                                    showlegend=True,
+                                    marker=dict(color="black", size=8, symbol="circle"),
+                                    opacity=op["opacity"],
+                                    name="Operational Point" if op["is_latest"] else None,
+                                    showlegend=op["is_latest"],
                                 )
                             )
-                        # Add operational points with varying opacity
-                        for op in op_points:
-                            if op["head"] is not None:
-                                head_fig.add_trace(
-                                    go.Scatter(
-                                        x=[op["flow"]],
-                                        y=[op["head"]],
-                                        mode="markers",
-                                        marker=dict(
-                                            color="black", size=8, symbol="circle"
-                                        ),
-                                        opacity=op["opacity"],
-                                        name="Operational Point"
-                                        if op["is_latest"]
-                                        else None,
-                                        showlegend=op["is_latest"],
-                                    )
-                                )
-                        st.plotly_chart(head_fig, width="stretch")
-                    except Exception as e:
-                        st.error(f"Error creating head plot: {e}")
 
-                    # Power plot
-                    try:
-                        power_fig = converted_impeller.power_plot(
-                            speed=current_speed,
-                            flow_v_units=plot_flow_units,
-                            power_units=plot_power_units,
-                            similarity=show_similarity,
+                if power_fig is not None:
+                    if expected_power > 0:
+                        power_fig.add_trace(
+                            go.Scatter(
+                                x=[expected_flow],
+                                y=[expected_power],
+                                mode="markers",
+                                marker=dict(color="green", size=10, symbol="diamond"),
+                                name="Expected Point",
+                                showlegend=True,
+                            )
                         )
-                        # Add expected point
-                        if expected_power > 0:
+                    for op in op_points:
+                        if op["power"] is not None:
                             power_fig.add_trace(
                                 go.Scatter(
-                                    x=[expected_flow],
-                                    y=[expected_power],
+                                    x=[op["flow"]],
+                                    y=[op["power"]],
                                     mode="markers",
-                                    marker=dict(
-                                        color="green", size=10, symbol="diamond"
-                                    ),
-                                    name="Expected Point",
-                                    showlegend=True,
+                                    marker=dict(color="black", size=8, symbol="circle"),
+                                    opacity=op["opacity"],
+                                    name="Operational Point" if op["is_latest"] else None,
+                                    showlegend=op["is_latest"],
                                 )
                             )
-                        # Add operational points with varying opacity
-                        for op in op_points:
-                            if op["power"] is not None:
-                                power_fig.add_trace(
-                                    go.Scatter(
-                                        x=[op["flow"]],
-                                        y=[op["power"]],
-                                        mode="markers",
-                                        marker=dict(
-                                            color="black", size=8, symbol="circle"
-                                        ),
-                                        opacity=op["opacity"],
-                                        name="Operational Point"
-                                        if op["is_latest"]
-                                        else None,
-                                        showlegend=op["is_latest"],
-                                    )
-                                )
-                        st.plotly_chart(power_fig, width="stretch")
-                    except Exception as e:
-                        st.error(f"Error creating power plot: {e}")
 
-                with plot_col2:
-                    # Efficiency plot
-                    try:
-                        eff_fig = converted_impeller.eff_plot(
-                            speed=current_speed,
-                            flow_v_units=plot_flow_units,
-                            similarity=show_similarity,
+                if eff_fig is not None:
+                    if expected_eff > 0:
+                        eff_fig.add_trace(
+                            go.Scatter(
+                                x=[expected_flow],
+                                y=[expected_eff],
+                                mode="markers",
+                                marker=dict(color="green", size=10, symbol="diamond"),
+                                name="Expected Point",
+                                showlegend=True,
+                            )
                         )
-                        # Add expected point
-                        if expected_eff > 0:
+                    for op in op_points:
+                        if op["eff"] is not None:
                             eff_fig.add_trace(
                                 go.Scatter(
-                                    x=[expected_flow],
-                                    y=[expected_eff],
+                                    x=[op["flow"]],
+                                    y=[op["eff"]],
                                     mode="markers",
-                                    marker=dict(
-                                        color="green", size=10, symbol="diamond"
-                                    ),
-                                    name="Expected Point",
-                                    showlegend=True,
+                                    marker=dict(color="black", size=8, symbol="circle"),
+                                    opacity=op["opacity"],
+                                    name="Operational Point" if op["is_latest"] else None,
+                                    showlegend=op["is_latest"],
                                 )
                             )
-                        # Add operational points with varying opacity
-                        for op in op_points:
-                            if op["eff"] is not None:
-                                eff_fig.add_trace(
-                                    go.Scatter(
-                                        x=[op["flow"]],
-                                        y=[op["eff"]],
-                                        mode="markers",
-                                        marker=dict(
-                                            color="black", size=8, symbol="circle"
-                                        ),
-                                        opacity=op["opacity"],
-                                        name="Operational Point"
-                                        if op["is_latest"]
-                                        else None,
-                                        showlegend=op["is_latest"],
-                                    )
-                                )
-                        st.plotly_chart(eff_fig, width="stretch")
-                    except Exception as e:
-                        st.error(f"Error creating efficiency plot: {e}")
 
-                    # Discharge Pressure plot
-                    try:
-                        disch_p_fig = converted_impeller.disch.p_plot(
-                            speed=current_speed,
-                            flow_v_units=plot_flow_units,
-                            p_units=plot_p_units,
-                            similarity=show_similarity,
+                if disch_p_fig is not None:
+                    if expected_p_disch > 0:
+                        disch_p_fig.add_trace(
+                            go.Scatter(
+                                x=[expected_flow],
+                                y=[expected_p_disch],
+                                mode="markers",
+                                marker=dict(color="green", size=10, symbol="diamond"),
+                                name="Expected Point",
+                                showlegend=True,
+                            )
                         )
-                        # Add expected point
-                        if expected_p_disch > 0:
+                    for op in op_points:
+                        if op["p_disch"] is not None:
                             disch_p_fig.add_trace(
                                 go.Scatter(
-                                    x=[expected_flow],
-                                    y=[expected_p_disch],
+                                    x=[op["flow"]],
+                                    y=[op["p_disch"]],
                                     mode="markers",
-                                    marker=dict(
-                                        color="green", size=10, symbol="diamond"
-                                    ),
-                                    name="Expected Point",
-                                    showlegend=True,
+                                    marker=dict(color="black", size=8, symbol="circle"),
+                                    opacity=op["opacity"],
+                                    name="Operational Point" if op["is_latest"] else None,
+                                    showlegend=op["is_latest"],
                                 )
                             )
-                        # Add operational points with varying opacity
-                        for op in op_points:
-                            if op["p_disch"] is not None:
-                                disch_p_fig.add_trace(
-                                    go.Scatter(
-                                        x=[op["flow"]],
-                                        y=[op["p_disch"]],
-                                        mode="markers",
-                                        marker=dict(
-                                            color="black", size=8, symbol="circle"
-                                        ),
-                                        opacity=op["opacity"],
-                                        name="Operational Point"
-                                        if op["is_latest"]
-                                        else None,
-                                        showlegend=op["is_latest"],
-                                    )
-                                )
+
+                # Display plots
+                plot_col1, plot_col2 = st.columns(2)
+                with plot_col1:
+                    if head_fig is not None:
+                        st.plotly_chart(head_fig, width="stretch")
+                    if power_fig is not None:
+                        st.plotly_chart(power_fig, width="stretch")
+                with plot_col2:
+                    if eff_fig is not None:
+                        st.plotly_chart(eff_fig, width="stretch")
+                    if disch_p_fig is not None:
                         st.plotly_chart(disch_p_fig, width="stretch")
-                    except Exception as e:
-                        st.error(f"Error creating discharge pressure plot: {e}")
 
                 # Current Point Info
                 st.markdown("### Current Point Information")

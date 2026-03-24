@@ -1435,103 +1435,115 @@ def main():
                     width="stretch",
                 )
 
-                with st.container():
-                    mach_col, reynolds_col = st.columns(2)
-                    mach_col.plotly_chart(
-                        point_interpolated.plot_mach(), width="stretch"
-                    )
-                    reynolds_col.plotly_chart(
-                        point_interpolated.plot_reynolds(), width="stretch"
-                    )
+                @st.cache_data
+                def generate_st_plots(
+                    _straight_through,
+                    _point_interpolated,
+                    compressor_hash,
+                    plot_limits,
+                    show_points,
+                ):
+                    mach_plot = _point_interpolated.plot_mach()
+                    reynolds_plot = _point_interpolated.plot_reynolds()
 
-                plots_dict = {}
-                for curve in ["head", "eff", "discharge_pressure", "power"]:
-                    flow_v_units = plot_limits.get(curve, {}).get("x", {}).get("units")
-                    curve_units = plot_limits.get(curve, {}).get("y", {}).get("units")
+                    plots_dict = {}
+                    for curve in ["head", "eff", "discharge_pressure", "power"]:
+                        flow_v_units = plot_limits.get(curve, {}).get("x", {}).get("units")
+                        curve_units = plot_limits.get(curve, {}).get("y", {}).get("units")
 
-                    kwargs = {}
-                    if flow_v_units is not None and flow_v_units != "":
-                        kwargs["flow_v_units"] = flow_v_units
-                    if curve_units is not None and curve_units != "":
+                        kwargs = {}
+                        if flow_v_units is not None and flow_v_units != "":
+                            kwargs["flow_v_units"] = flow_v_units
+                        if curve_units is not None and curve_units != "":
+                            if curve == "discharge_pressure":
+                                kwargs["p_units"] = curve_units
+                            else:
+                                kwargs[f"{curve}_units"] = curve_units
+
                         if curve == "discharge_pressure":
-                            kwargs["p_units"] = curve_units
+                            curve_plot_method = "disch.p"
                         else:
-                            kwargs[f"{curve}_units"] = curve_units
+                            curve_plot_method = curve
 
-                    if curve == "discharge_pressure":
-                        curve_plot_method = "disch.p"
-                    else:
-                        curve_plot_method = curve
-
-                    plots_dict[curve] = r_getattr(
-                        straight_through,
-                        # getattr(straight_through, f"imp_flange_sp"),
-                        f"{curve_plot_method}_plot",
-                    )(
-                        show_points=show_points,
-                        **kwargs,
-                    )
-                    plots_dict[curve] = r_getattr(
-                        point_interpolated, f"{curve_plot_method}_plot"
-                    )(
-                        fig=plots_dict[curve],
-                        show_points=show_points,
-                        **kwargs,
-                    )
-
-                    plots_dict[curve].data[0].update(
-                        name=f"Converted Curve {straight_through.speed_operational.to('rpm').m:.0f} RPM",
-                    )
-                    if curve == "discharge_pressure":
-                        plots_dict[curve].data[1].update(
-                            name=f"Flow: {point_interpolated.flow_v.to(flow_v_units):.~2f}, {curve.capitalize()}: {r_getattr(point_interpolated, curve_plot_method)(curve_units):.~2f}".replace(
-                                "m ** 3 / h", "m³/h"
-                            ).replace("Discharge_pressure", "Disch. p")
+                        plots_dict[curve] = r_getattr(
+                            _straight_through,
+                            f"{curve_plot_method}_plot",
+                        )(
+                            show_points=show_points,
+                            **kwargs,
                         )
-                    else:
-                        plots_dict[curve].data[1].update(
-                            name=f"Flow: {point_interpolated.flow_v.to(flow_v_units):.~2f}, {curve.capitalize()}: {r_getattr(point_interpolated, curve_plot_method).to(curve_units):.~2f}".replace(
-                                "m ** 3 / h", "m³/h"
-                            ).replace("Discharge_pressure", "Disch. p")
+                        plots_dict[curve] = r_getattr(
+                            _point_interpolated, f"{curve_plot_method}_plot"
+                        )(
+                            fig=plots_dict[curve],
+                            show_points=show_points,
+                            **kwargs,
                         )
 
-                    plots_dict[curve].update_layout(
-                        showlegend=True,
-                        # position legend at the bottom left
-                        legend=dict(
-                            yanchor="bottom",
-                            y=0.01,
-                            xanchor="left",
-                            x=0.01,
-                        ),
-                    )
+                        plots_dict[curve].data[0].update(
+                            name=f"Converted Curve {_straight_through.speed_operational.to('rpm').m:.0f} RPM",
+                        )
+                        if curve == "discharge_pressure":
+                            plots_dict[curve].data[1].update(
+                                name=f"Flow: {_point_interpolated.flow_v.to(flow_v_units):.~2f}, {curve.capitalize()}: {r_getattr(_point_interpolated, curve_plot_method)(curve_units):.~2f}".replace(
+                                    "m ** 3 / h", "m³/h"
+                                ).replace("Discharge_pressure", "Disch. p")
+                            )
+                        else:
+                            plots_dict[curve].data[1].update(
+                                name=f"Flow: {_point_interpolated.flow_v.to(flow_v_units):.~2f}, {curve.capitalize()}: {r_getattr(_point_interpolated, curve_plot_method).to(curve_units):.~2f}".replace(
+                                    "m ** 3 / h", "m³/h"
+                                ).replace("Discharge_pressure", "Disch. p")
+                            )
 
-                    x_lower = plot_limits.get(curve, {}).get("x", {}).get("lower_limit")
-                    x_upper = plot_limits.get(curve, {}).get("x", {}).get("upper_limit")
-                    y_lower = plot_limits.get(curve, {}).get("y", {}).get("lower_limit")
-                    y_upper = plot_limits.get(curve, {}).get("y", {}).get("upper_limit")
-
-                    if (
-                        x_lower is not None
-                        and x_lower != ""
-                        and x_upper is not None
-                        and x_upper != ""
-                        and y_lower is not None
-                        and y_lower != ""
-                        and y_upper is not None
-                        and y_upper != ""
-                    ):
                         plots_dict[curve].update_layout(
-                            xaxis_range=(
-                                plot_limits[curve]["x"]["lower_limit"],
-                                plot_limits[curve]["x"]["upper_limit"],
-                            ),
-                            yaxis_range=(
-                                plot_limits[curve]["y"]["lower_limit"],
-                                plot_limits[curve]["y"]["upper_limit"],
+                            showlegend=True,
+                            legend=dict(
+                                yanchor="bottom",
+                                y=0.01,
+                                xanchor="left",
+                                x=0.01,
                             ),
                         )
 
+                        x_lower = plot_limits.get(curve, {}).get("x", {}).get("lower_limit")
+                        x_upper = plot_limits.get(curve, {}).get("x", {}).get("upper_limit")
+                        y_lower = plot_limits.get(curve, {}).get("y", {}).get("lower_limit")
+                        y_upper = plot_limits.get(curve, {}).get("y", {}).get("upper_limit")
+
+                        if (
+                            x_lower is not None
+                            and x_lower != ""
+                            and x_upper is not None
+                            and x_upper != ""
+                            and y_lower is not None
+                            and y_lower != ""
+                            and y_upper is not None
+                            and y_upper != ""
+                        ):
+                            plots_dict[curve].update_layout(
+                                xaxis_range=(
+                                    plot_limits[curve]["x"]["lower_limit"],
+                                    plot_limits[curve]["x"]["upper_limit"],
+                                ),
+                                yaxis_range=(
+                                    plot_limits[curve]["y"]["lower_limit"],
+                                    plot_limits[curve]["y"]["upper_limit"],
+                                ),
+                            )
+
+                    return mach_plot, reynolds_plot, plots_dict
+
+                mach_plot, reynolds_plot, plots_dict = generate_st_plots(
+                    straight_through,
+                    point_interpolated,
+                    id(straight_through),
+                    plot_limits,
+                    show_points,
+                )
+
+                # Apply background images outside cache
+                for curve in ["head", "eff", "discharge_pressure", "power"]:
                     if (
                         st.session_state.get(f"fig_{curve}") is not None
                         and st.session_state.get(f"fig_{curve}") != ""
@@ -1541,6 +1553,11 @@ def main():
                             fig=plots_dict[curve],
                             image=st.session_state[f"fig_{curve}"],
                         )
+
+                with st.container():
+                    mach_col, reynolds_col = st.columns(2)
+                    mach_col.plotly_chart(mach_plot, width="stretch")
+                    reynolds_col.plotly_chart(reynolds_plot, width="stretch")
 
                 with st.container():
                     head_col, eff_col = st.columns(2)
