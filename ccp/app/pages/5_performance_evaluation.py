@@ -128,8 +128,6 @@ def main():
         # Initialize online monitoring state
         if "monitoring_active" not in st.session_state:
             st.session_state.monitoring_active = False
-        if "evaluation" not in st.session_state:
-            st.session_state.evaluation = None
         if "monitoring_results" not in st.session_state:
             st.session_state.monitoring_results = None
         if "accumulated_results" not in st.session_state:
@@ -374,7 +372,6 @@ def main():
 
                 for key in [
                     "hist_evaluation",
-                    "evaluation",
                     "monitoring_results",
                     "accumulated_results",
                     "last_fetch",
@@ -1336,32 +1333,30 @@ def main():
         with st.expander("Online Monitoring", expanded=False):
             st.markdown("### Real-Time Performance Monitoring")
 
-            # Get available cases (those with loaded impellers)
-            available_cases, impellers_list = get_available_impellers()
+            hist_eval = st.session_state.get("hist_evaluation")
 
-            if not available_cases:
-                st.warning(
-                    "No design cases loaded. Please upload performance curves for at least one case."
+            if hist_eval is None:
+                st.info(
+                    "Run a **Performance Evaluation** first to enable online monitoring."
                 )
             else:
-                # First row: Start date, Start time, refresh, similarity, Start/Stop Monitoring button
-                control_row1 = st.columns([1, 1, 1, 1, 1])
+                # Restore orifice params on loaded evaluation (lost during save/load)
+                flow_method = st.session_state.get("flow_method", "Direct")
+                if flow_method != "Direct":
+                    hist_eval.D = Q_(
+                        st.session_state.get("orifice_D", 0.5905),
+                        st.session_state.get("orifice_D_unit", "m"),
+                    )
+                    hist_eval.d = Q_(
+                        st.session_state.get("orifice_d", 0.3661),
+                        st.session_state.get("orifice_d_unit", "m"),
+                    )
+                    hist_eval.tappings = st.session_state.get(
+                        "orifice_tappings", "flange"
+                    )
+                # Controls row: refresh interval, similarity, Start/Stop button
+                control_row1 = st.columns([1, 1, 1])
                 with control_row1[0]:
-                    default_start = datetime.now() - timedelta(hours=1)
-                    start_date = st.date_input(
-                        "Start Date",
-                        value=default_start.date(),
-                        key="start_date",
-                        disabled=st.session_state.monitoring_active,
-                    )
-                with control_row1[1]:
-                    start_time_input = st.time_input(
-                        "Start Time",
-                        value=default_start.time(),
-                        key="start_time",
-                        disabled=st.session_state.monitoring_active,
-                    )
-                with control_row1[2]:
                     refresh_interval = st.slider(
                         "Refresh interval (s)",
                         min_value=5,
@@ -1370,13 +1365,13 @@ def main():
                         key="refresh_interval",
                         disabled=st.session_state.monitoring_active,
                     )
-                with control_row1[3]:
+                with control_row1[1]:
                     show_similarity = st.checkbox(
                         "Show similarity",
                         value=False,
                         key="show_similarity",
                     )
-                with control_row1[4]:
+                with control_row1[2]:
                     if not st.session_state.monitoring_active:
                         start_button = st.button(
                             "Start Monitoring",
@@ -1390,7 +1385,7 @@ def main():
                             type="secondary",
                         )
 
-                # Build tag mappings and data units
+                # Build tag mappings for data fetching
                 tag_mappings = build_tag_mappings()
 
                 # Handle Start Monitoring button
@@ -1400,71 +1395,22 @@ def main():
                     and st.session_state.start_monitoring
                 ):
                     try:
-                        # Combine date and time inputs into a datetime
-                        start_datetime = datetime.combine(start_date, start_time_input)
-
-                        # Fetch initial historical data
-                        df_raw = fetch_pi_data(
-                            tag_mappings, start_time=start_datetime, testing=TESTING_MODE
-                        )
-
-                        data_units = build_data_units(tag_mappings)
-                        evaluation_kwargs = build_evaluation_kwargs(
-                            tag_mappings, data_units, impellers_list, df_raw,
-                            testing=TESTING_MODE,
-                        )
-
-                        # Create Evaluation with all impellers
                         with st.spinner("Initializing monitoring..."):
-                            # Debug: show Evaluation kwargs
-                            if TESTING_MODE:
-                                display_debug_data(
-                                    "ccp.Evaluation kwargs",
-                                    evaluation_kwargs,
-                                    expanded=True,
-                                )
-
-                            evaluation = ccp.Evaluation(**evaluation_kwargs)
-
-                            # Debug: show calculate_points input data
-                            if TESTING_MODE:
-                                display_debug_data(
-                                    "evaluation.calculate_points() input",
-                                    {"data": df_raw.tail(5), "drop_invalid_values": False},
-                                    expanded=True,
-                                )
-
-                            # Calculate initial points for last 5 points
-                            df_results = evaluation.calculate_points(
-                                df_raw.tail(5),
+                            # Use hist_evaluation to calculate initial points
+                            # from the last 5 rows of its data
+                            df_results = hist_eval.calculate_points(
+                                hist_eval.data.tail(5),
                                 drop_invalid_values=False,
                                 parallel=not TESTING_MODE,
                             )
 
-                            # Debug: show calculate_points results
                             if TESTING_MODE:
                                 display_debug_data(
-                                    "evaluation.calculate_points() results",
+                                    "Initial monitoring calculate_points() results",
                                     df_results,
                                     expanded=True,
                                 )
-                                # Show calculation errors if any
-                                errors = df_results[df_results["error"].notna()]
-                                if not errors.empty:
-                                    display_debug_data(
-                                        "Calculation Errors",
-                                        errors[
-                                            [
-                                                "error",
-                                                "error_type",
-                                                "expected_error",
-                                                "expected_error_type",
-                                            ]
-                                        ],
-                                        expanded=True,
-                                    )
 
-                        st.session_state.evaluation = evaluation
                         # Filter for successfully calculated points (head > 0)
                         valid_calculated = df_results[df_results["head"] > 0]
                         if valid_calculated.empty:
@@ -1499,7 +1445,6 @@ def main():
                 # Display results
                 if st.session_state.get("monitoring_results") is not None:
                     df_results = st.session_state.monitoring_results
-                    evaluation = st.session_state.evaluation
 
                     # Get the latest valid point
                     valid_results = df_results[df_results["valid"] == True]
@@ -1510,7 +1455,7 @@ def main():
 
                     # Get converted impeller for plotting
                     cluster_idx = int(latest.cluster) if not pd.isna(latest.cluster) else 0
-                    converted_impeller = evaluation.impellers_new[cluster_idx]
+                    converted_impeller = hist_eval.impellers_new[cluster_idx]
 
                     st.markdown("### Performance Curves with Current Point")
 
@@ -1886,16 +1831,15 @@ def main():
                 # Auto-refresh logic when monitoring is active (fragment handles timing via run_every)
                 if (
                     st.session_state.monitoring_active
-                    and st.session_state.get("evaluation") is not None
+                    and hist_eval is not None
                     and mon_run_every is not None
                 ):
                     # Fetch new 3 points
                     try:
                         df_new = fetch_pi_data_online(tag_mappings, testing=TESTING_MODE)
 
-                        # Calculate points for new data
-                        evaluation = st.session_state.evaluation
-                        df_new_results = evaluation.calculate_points(
+                        # Calculate points for new data using hist_evaluation
+                        df_new_results = hist_eval.calculate_points(
                             df_new,
                             drop_invalid_values=False,
                             parallel=not TESTING_MODE,
