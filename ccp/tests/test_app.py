@@ -182,7 +182,7 @@ class TestCurvesConversion:
 
 class TestOnlineMonitoring:
     page_path = os.path.join(PAGES_DIR, "5_performance_evaluation.py")
-    example_path = os.path.join(APP_DIR, "example_online.ccp")
+    example_path = os.path.join(APP_DIR, "example_evaluation_pi.ccp")
 
     @pytest.fixture(autouse=True)
     def _enable_testing_mode(self):
@@ -208,13 +208,16 @@ class TestOnlineMonitoring:
         at = AppTest.from_file(self.page_path, default_timeout=TIMEOUT)
         populate_session_state(at, session_data)
 
-        # Populate CSV files for case A
-        csv_items = sorted(csv_files.items())
-        for i, (name, content) in enumerate(csv_items, start=1):
-            at.session_state[f"curves_file_{i}_case_A"] = {
-                "name": name,
-                "content": content,
-            }
+        # Populate CSV files per case based on filename pattern
+        for name, content in csv_files.items():
+            if "curves_file_" in name:
+                parts = name.replace(".csv", "").split("_")
+                file_num = parts[2]
+                case = parts[-1]
+                at.session_state[f"curves_file_{file_num}_case_{case}"] = {
+                    "name": name,
+                    "content": content,
+                }
 
         at.run(timeout=TIMEOUT)
         assert not at.exception
@@ -239,7 +242,7 @@ class TestOnlineMonitoring:
 
 class TestPerformanceEvaluation:
     page_path = os.path.join(PAGES_DIR, "5_performance_evaluation.py")
-    example_path = os.path.join(APP_DIR, "example_online.ccp")
+    example_path = os.path.join(APP_DIR, "example_evaluation_pi.ccp")
 
     @pytest.fixture(autouse=True)
     def _enable_testing_mode(self):
@@ -265,13 +268,16 @@ class TestPerformanceEvaluation:
         at = AppTest.from_file(self.page_path, default_timeout=TIMEOUT)
         populate_session_state(at, session_data)
 
-        # Populate CSV files for case A
-        csv_items = sorted(csv_files.items())
-        for i, (name, content) in enumerate(csv_items, start=1):
-            at.session_state[f"curves_file_{i}_case_A"] = {
-                "name": name,
-                "content": content,
-            }
+        # Populate CSV files per case based on filename pattern
+        for name, content in csv_files.items():
+            if "curves_file_" in name:
+                parts = name.replace(".csv", "").split("_")
+                file_num = parts[2]
+                case = parts[-1]
+                at.session_state[f"curves_file_{file_num}_case_{case}"] = {
+                    "name": name,
+                    "content": content,
+                }
 
         at.run(timeout=TIMEOUT)
         assert not at.exception
@@ -294,13 +300,16 @@ class TestPerformanceEvaluation:
         at = AppTest.from_file(self.page_path, default_timeout=TIMEOUT)
         populate_session_state(at, session_data)
 
-        # Populate CSV files for case A
-        csv_items = sorted(csv_files.items())
-        for i, (name, content) in enumerate(csv_items, start=1):
-            at.session_state[f"curves_file_{i}_case_A"] = {
-                "name": name,
-                "content": content,
-            }
+        # Populate CSV files per case based on filename pattern
+        for name, content in csv_files.items():
+            if "curves_file_" in name:
+                parts = name.replace(".csv", "").split("_")
+                file_num = parts[2]
+                case = parts[-1]
+                at.session_state[f"curves_file_{file_num}_case_{case}"] = {
+                    "name": name,
+                    "content": content,
+                }
 
         at.run(timeout=TIMEOUT)
         assert not at.exception

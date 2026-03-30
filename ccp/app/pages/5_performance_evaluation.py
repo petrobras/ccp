@@ -266,7 +266,7 @@ def main():
 
     # Auto-load example file in testing mode
     if TESTING_MODE and "test_file_loaded_eval" not in st.session_state:
-        example_file = Path(__file__).parent.parent / "example_online.ccp"
+        example_file = Path(__file__).parent.parent / "example_evaluation_pi.ccp"
         if example_file.exists():
             if load_ccp_file(example_file):
                 st.session_state.test_file_loaded_eval = True
@@ -1514,15 +1514,17 @@ def main():
 
                     st.markdown("### Performance Curves with Current Point")
 
-                    # Plot curves units
-                    plot_flow_units = "m³/h"
+                    # Plot curves units (match performance evaluation section)
+                    plot_flow_units = st.session_state.get(
+                        "loaded_curves_flow_units", "m³/s"
+                    )
                     plot_head_units = "kJ/kg"
                     plot_power_units = "kW"
                     plot_p_units = "bar"
 
                     # Get expected point values from latest results
-                    # Convert flow_v from data units to plot units
-                    flow_v_data_units = st.session_state.get("flow_unit", "m³/h")
+                    # Evaluation results are in ccp internal units (flow_v: m³/s)
+                    flow_v_data_units = "m³/s"
                     expected_flow = (
                         Q_(latest.flow_v, flow_v_data_units).to(plot_flow_units).m
                     )
