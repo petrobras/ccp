@@ -5,6 +5,7 @@ import io
 import json
 import logging
 import os
+import random
 import shutil
 import tempfile
 import time
@@ -856,6 +857,89 @@ def fetch_pi_data(tag_mappings, start_time=None, end_time=None, testing=False):
         df = merge_redundant_parameter_tags(df, tag_mappings)
         print(f"[fetch_pi_data] sanitized DataFrame:\n{df}")
         print(f"[fetch_pi_data] sanitized dtypes:\n{df.dtypes}")
+        df = apply_fluid_unit_conversions(df, tag_mappings)
+        return df
+
+
+def fetch_pi_data_online(tag_mappings, testing=False):
+    """Fetch latest 3 points from PI server for online monitoring.
+
+    Parameters
+    ----------
+    tag_mappings : dict
+        Dictionary with tag mappings (used to determine which file to load).
+    testing : bool, optional
+        If True, returns 3 adjacent points from a random position in test data,
+        with timestamps adjusted to simulate real-time data.
+
+    Returns
+    -------
+    pd.DataFrame
+        DataFrame with 3 latest data points.
+    """
+    if testing:
+        # Load test data from parquet files
+        data_path = Path(ccp.__file__).parent / "tests/data"
+
+        if tag_mappings.get("delta_p_tag"):
+            df = pd.read_parquet(data_path / "data_delta_p.parquet")
+        else:
+            df = pd.read_parquet(data_path / "data.parquet")
+
+        # Filter for valid data (speed > 9000)
+        df = df[df["speed"] > 9000].reset_index(drop=True)
+
+        # Select random position and return 3 adjacent points
+        max_start_idx = len(df) - 3
+        if max_start_idx <= 0:
+            df_sample = df.copy()
+        else:
+            start_idx = random.randint(0, max_start_idx)
+            df_sample = df.iloc[start_idx : start_idx + 3].copy()
+
+        # Adjust timestamps to simulate real-time data
+        # Last point: current time
+        # Middle point: current time - 7 min 30 sec
+        # First point: current time - 15 min
+        now = datetime.now()
+        new_timestamps = [
+            now - timedelta(minutes=15),
+            now - timedelta(minutes=7, seconds=30),
+            now,
+        ]
+        df_sample.index = pd.DatetimeIndex(new_timestamps[: len(df_sample)])
+
+        return df_sample
+    else:
+        from pandaspi import SessionWeb
+
+        tags_list, rename_map, alias_map = build_pi_query(tag_mappings)
+        if not tags_list:
+            raise ValueError("No PI tags configured. Please fill in the tag names.")
+
+        now = datetime.now()
+        start_time = now - timedelta(minutes=15)
+
+        print(f"[fetch_pi_data_online] tags={tags_list}, time_range=({format_pi_time(start_time)}, {format_pi_time(now)})")
+        session = SessionWeb(
+            server_name=tag_mappings.get("pi_server_name", ""),
+            login=tag_mappings.get("pi_login"),
+            tags=tags_list,
+            time_range=(format_pi_time(start_time), format_pi_time(now)),
+            time_span="450s",
+            authentication=tag_mappings.get("pi_auth_method", "kerberos"),
+        )
+
+        print(f"[fetch_pi_data_online] raw PI DataFrame:\n{session.df}")
+        print(f"[fetch_pi_data_online] raw dtypes:\n{session.df.dtypes}")
+        df = session.df.rename(columns=rename_map)
+        df = sanitize_pi_dataframe(df)
+        for alias_col, source_col in alias_map.items():
+            if source_col in df.columns:
+                df[alias_col] = df[source_col]
+        df = merge_redundant_parameter_tags(df, tag_mappings)
+        print(f"[fetch_pi_data_online] sanitized DataFrame:\n{df}")
+        print(f"[fetch_pi_data_online] sanitized dtypes:\n{df.dtypes}")
         df = apply_fluid_unit_conversions(df, tag_mappings)
         return df
 

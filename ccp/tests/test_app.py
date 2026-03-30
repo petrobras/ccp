@@ -181,7 +181,7 @@ class TestCurvesConversion:
 
 
 class TestOnlineMonitoring:
-    page_path = os.path.join(PAGES_DIR, "4_online_monitoring.py")
+    page_path = os.path.join(PAGES_DIR, "5_performance_evaluation.py")
     example_path = os.path.join(APP_DIR, "example_online.ccp")
 
     @pytest.fixture(autouse=True)
