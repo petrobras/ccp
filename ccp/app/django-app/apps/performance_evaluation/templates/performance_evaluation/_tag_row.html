@@ -1,0 +1,16 @@
+{# Single tag-mapping row for parameter ``row.parameter``. HTMX-swappable. #}
+<div class="ccp-row tag-row" data-parameter="{{ row.parameter }}">
+  <label>{{ row.label }}</label>
+  <input type="text" name="tag_{{ row.parameter }}_tag_1" value="{{ row.tag_1 }}" placeholder="Tag 1">
+  <select name="tag_{{ row.parameter }}_unit_1">
+    {% for u in row.units %}<option value="{{ u }}" {% if u == row.unit_1 %}selected{% endif %}>{{ u }}</option>{% endfor %}
+  </select>
+  <input type="text" name="tag_{{ row.parameter }}_tag_2" value="{{ row.tag_2 }}" placeholder="Tag 2">
+  <select name="tag_{{ row.parameter }}_unit_2">
+    {% for u in row.units %}<option value="{{ u }}" {% if u == row.unit_2 %}selected{% endif %}>{{ u }}</option>{% endfor %}
+  </select>
+  <button type="button"
+          hx-post="{% url 'performance_evaluation:tag_mapping_remove' row.parameter %}"
+          hx-target="closest .tag-row"
+          hx-swap="outerHTML">Remover</button>
+</div>

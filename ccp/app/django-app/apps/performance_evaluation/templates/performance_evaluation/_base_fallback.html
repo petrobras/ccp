@@ -1,0 +1,23 @@
+{# Local fallback used only when templates/base.html (Unit 1) is absent. #}
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <title>{% block title %}ccp - Performance Evaluation{% endblock %}</title>
+  <style>
+    body { font-family: monospace; color: #2c3e50; }
+    .ccp-expander { border: 1px solid #2c3e50; padding: 0.5rem; margin-bottom: 0.5rem; }
+    .ccp-expander > summary { font-weight: bold; cursor: pointer; }
+    .ccp-row { display: flex; gap: 0.25rem; margin-bottom: 0.25rem; }
+    label { display: block; }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>ccp - Centrifugal Compressor Performance</h1>
+  </header>
+  <main>
+    {% block content %}{% endblock %}
+  </main>
+</body>
+</html>

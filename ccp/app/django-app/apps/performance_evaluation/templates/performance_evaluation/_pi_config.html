@@ -1,0 +1,17 @@
+{# PI server configuration partial. #}
+<details class="ccp-expander" open>
+  <summary>Servidor PI</summary>
+  <div class="ccp-row">
+    <div>{{ forms.pi_form.pi_server_name.label_tag }} {{ forms.pi_form.pi_server_name }}</div>
+    <div>{{ forms.pi_form.pi_auth_method.label_tag }} {{ forms.pi_form.pi_auth_method }}</div>
+    <div x-data="{ auth: '{{ forms.pi_form.pi_auth_method.value }}' }" x-init="$watch('auth', v => v)">
+      <template x-if="auth === 'basic'">
+        <div>
+          {{ forms.pi_form.pi_username.label_tag }} {{ forms.pi_form.pi_username }}
+          {{ forms.pi_form.pi_password.label_tag }} {{ forms.pi_form.pi_password }}
+        </div>
+      </template>
+    </div>
+  </div>
+  {% for err in forms.pi_form.non_field_errors %}<p class="errors">{{ err }}</p>{% endfor %}
+</details>

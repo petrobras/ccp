@@ -1,0 +1,60 @@
+{% extends base_template %}
+{% load static %}
+
+{% block title %}ccp - Avaliação de Desempenho{% endblock %}
+
+{% block content %}
+<section class="performance-evaluation-config">
+  <h2>Performance Evaluation</h2>
+  <p>Avaliação de desempenho histórica do compressor centrífugo. Carregue os arquivos de curvas, configure os tags do PI e selecione o intervalo de dados desejado.</p>
+
+  <details class="ccp-expander" open>
+    <summary>Sessão / Arquivo</summary>
+    <form method="post" action="{% url 'performance_evaluation:load_ccp' %}" enctype="multipart/form-data">
+      {% csrf_token %}
+      {{ forms.session_form.session_name.label_tag }} {{ forms.session_form.session_name }}
+      {{ forms.session_form.ccp_file.label_tag }} {{ forms.session_form.ccp_file }}
+      <button type="submit">Carregar</button>
+    </form>
+  </details>
+
+  <form method="post" action="{% url 'performance_evaluation:config' %}" id="pe-config-form">
+    {% csrf_token %}
+
+    {% include "performance_evaluation/_design_cases.html" %}
+    {% include "performance_evaluation/_pi_config.html" %}
+    {% include "performance_evaluation/_tag_mappings.html" %}
+    {% include "performance_evaluation/_ai_options.html" %}
+
+    <details class="ccp-expander" open>
+      <summary>Intervalo de Dados</summary>
+      <div class="ccp-row">
+        <div>{{ forms.date_form.start_date.label_tag }} {{ forms.date_form.start_date }}</div>
+        <div>{{ forms.date_form.start_time.label_tag }} {{ forms.date_form.start_time }}</div>
+        <div>{{ forms.date_form.end_date.label_tag }} {{ forms.date_form.end_date }}</div>
+        <div>{{ forms.date_form.end_time.label_tag }} {{ forms.date_form.end_time }}</div>
+      </div>
+      {% for err in forms.date_form.non_field_errors %}<p class="errors">{{ err }}</p>{% endfor %}
+    </details>
+
+    <details class="ccp-expander" open>
+      <summary>Unidades das Curvas Carregadas</summary>
+      <div class="ccp-row">
+        {% for f in forms.curves_units_form %}
+          <div>{{ f.label_tag }} {{ f }}</div>
+        {% endfor %}
+      </div>
+    </details>
+
+    <button type="submit">Salvar configuração</button>
+  </form>
+
+  <p>
+    <a href="{% url 'performance_evaluation:compute' %}">Executar avaliação</a>
+    &middot;
+    <a href="{% url 'performance_evaluation:monitoring' %}">Monitoramento online</a>
+    &middot;
+    <a href="{% url 'performance_evaluation:results' %}">Resultados</a>
+  </p>
+</section>
+{% endblock %}

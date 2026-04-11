@@ -1,0 +1,38 @@
+{# Tag mappings HTMX block. Re-rendered on flow-method change. #}
+<details class="ccp-expander" open id="tag-mappings-block">
+  <summary>Configuração de Tags</summary>
+
+  <div class="ccp-row">
+    {{ forms.flow_form.flow_method.label_tag }}
+    <select name="flow-flow_method"
+            hx-post="{% url 'performance_evaluation:flow_method_change' %}"
+            hx-trigger="change"
+            hx-target="#tag-mappings-rows"
+            hx-include="closest form">
+      {% for value, label in forms.flow_form.flow_method.field.choices %}
+        <option value="{{ value }}" {% if value == flow_method %}selected{% endif %}>{{ label }}</option>
+      {% endfor %}
+    </select>
+  </div>
+
+  <div id="tag-mappings-rows">
+    <p>Cada parâmetro aceita um ou dois tags. Quando ambos são válidos, o tag 2 é convertido para a unidade do tag 1 e os valores são médios.</p>
+    {% for row in tag_rows %}
+      {% include "performance_evaluation/_tag_row.html" with row=row %}
+    {% endfor %}
+  </div>
+
+  {% if flow_method == "Orifice" %}
+    <div class="ccp-row">
+      {{ forms.flow_form.orifice_tappings.label_tag }} {{ forms.flow_form.orifice_tappings }}
+      {{ forms.flow_form.orifice_D.label_tag }} {{ forms.flow_form.orifice_D }} {{ forms.flow_form.orifice_D_unit }}
+      {{ forms.flow_form.orifice_d.label_tag }} {{ forms.flow_form.orifice_d }} {{ forms.flow_form.orifice_d_unit }}
+    </div>
+  {% endif %}
+
+  <h4>Componente do Fluido</h4>
+  <div class="ccp-row">
+    {{ forms.fluid_source_form.fluid_source.label_tag }} {{ forms.fluid_source_form.fluid_source }}
+    {{ forms.fluid_source_form.operation_fluid_gas.label_tag }} {{ forms.fluid_source_form.operation_fluid_gas }}
+  </div>
+</details>

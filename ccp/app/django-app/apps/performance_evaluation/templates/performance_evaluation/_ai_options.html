@@ -1,0 +1,18 @@
+{# AI analysis options partial. #}
+<details class="ccp-expander">
+  <summary>Opções de IA</summary>
+  <div class="ccp-row">
+    {{ forms.ai_form.ai_enabled }} {{ forms.ai_form.ai_enabled.label_tag }}
+  </div>
+  <div class="ccp-row">
+    {{ forms.ai_form.ai_provider.label_tag }} {{ forms.ai_form.ai_provider }}
+    {{ forms.ai_form.ai_api_key.label_tag }} {{ forms.ai_form.ai_api_key }}
+  </div>
+  <div class="ccp-row">
+    {{ forms.ai_form.ai_azure_endpoint.label_tag }} {{ forms.ai_form.ai_azure_endpoint }}
+    {{ forms.ai_form.ai_azure_deployment.label_tag }} {{ forms.ai_form.ai_azure_deployment }}
+  </div>
+  {% for field in forms.ai_form %}
+    {% for err in field.errors %}<p class="errors">{{ field.label }}: {{ err }}</p>{% endfor %}
+  {% endfor %}
+</details>
