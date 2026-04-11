@@ -1,0 +1,28 @@
+{# STUB: replaced by Unit 1 at merge time. Minimal base used when the real
+    templates/base.html from Unit 1 is not yet present in the worktree. #}
+<!doctype html>
+<html lang="pt-BR">
+<head>
+    <meta charset="utf-8">
+    <title>{% block title %}ccp - Centrifugal Compressor{% endblock %}</title>
+    <style>
+        body { font-family: monospace; color: #2c3e50; margin: 1rem; }
+        .header { display: flex; align-items: center; gap: 1rem; }
+        .header h1 { font-size: 1.4rem; margin: 0; }
+        .expander { border: 1px solid #2c3e50; border-radius: 4px; margin: 0.5rem 0; padding: 0.5rem; }
+        .grid { display: grid; gap: 0.25rem; }
+        button.primary { background: #2c3e50; color: #fff; border: 0; padding: 0.4rem 0.8rem; cursor: pointer; }
+    </style>
+    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+    <script src="https://unpkg.com/htmx.org@1.9.10"></script>
+    <script defer src="https://unpkg.com/alpinejs@3"></script>
+</head>
+<body>
+    <header class="header">
+        <h1>ccp - Centrifugal Compressor</h1>
+    </header>
+    <main>
+        {% block content %}{% endblock %}
+    </main>
+</body>
+</html>

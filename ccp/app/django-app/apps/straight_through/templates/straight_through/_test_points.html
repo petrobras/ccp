@@ -1,0 +1,20 @@
+<table class="grid">
+    <thead>
+        <tr>
+            <th></th>
+            <th>Units</th>
+            {% for i in test_point_indices %}<th>Point {{ i }}</th>{% endfor %}
+        </tr>
+    </thead>
+    <tbody>
+        {% for parameter in test_parameters %}
+            <tr>
+                <th>{{ parameter }}</th>
+                <td><input type="text" name="{{ parameter }}_unit_test" size="6"></td>
+                {% for i in test_point_indices %}
+                    <td><input type="text" name="{{ parameter }}_point_{{ i }}"></td>
+                {% endfor %}
+            </tr>
+        {% endfor %}
+    </tbody>
+</table>

@@ -1,0 +1,15 @@
+{# Data sheet (guarantee) point inputs. Field names match the flat form-data
+    keys that services.run_straight_through consumes. #}
+<table class="grid">
+    <thead>
+        <tr><th></th><th>Units</th><th>Value</th></tr>
+    </thead>
+    <tbody>
+        {% for row in guarantee_form %}
+            <tr>
+                <th>{{ row.label }}</th>
+                <td>{{ row }}</td>
+            </tr>
+        {% endfor %}
+    </tbody>
+</table>

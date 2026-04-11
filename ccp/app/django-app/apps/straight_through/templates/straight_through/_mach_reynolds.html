@@ -1,0 +1,6 @@
+{# Mach / Reynolds diagnostic plots. #}
+{% load ccp_tags %}
+<div class="grid" style="grid-template-columns: 1fr 1fr;">
+    <div>{% plotly_figure figures.mach "fig-mach" %}</div>
+    <div>{% plotly_figure figures.reynolds "fig-reynolds" %}</div>
+</div>
