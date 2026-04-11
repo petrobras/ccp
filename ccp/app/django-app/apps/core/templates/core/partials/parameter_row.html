@@ -1,0 +1,31 @@
+{% comment %}
+Single parameter input row: label + number input + unit dropdown + help tooltip.
+Expected context:
+  key            - field name
+  label          - visible label (falls back to key)
+  value          - current value
+  units          - list of unit options
+  selected_unit  - currently selected unit
+  help           - tooltip text
+{% endcomment %}
+<div class="ccp-param-row" data-ccp-key="{{ key }}">
+  <label for="ccp-param-{{ key }}" class="ccp-param-label">
+    {{ label|default:key }}
+    {% if help %}
+      <span class="ccp-help" title="{{ help }}">?</span>
+    {% endif %}
+  </label>
+  <input type="number"
+         step="any"
+         id="ccp-param-{{ key }}"
+         name="{{ key }}"
+         value="{{ value|default_if_none:'' }}"
+         class="ccp-param-value">
+  {% if units %}
+  <select name="{{ key }}_unit" class="ccp-param-unit">
+    {% for unit in units %}
+      <option value="{{ unit }}" {% if unit == selected_unit %}selected{% endif %}>{{ unit }}</option>
+    {% endfor %}
+  </select>
+  {% endif %}
+</div>

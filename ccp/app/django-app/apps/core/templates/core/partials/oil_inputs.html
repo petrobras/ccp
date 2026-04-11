@@ -1,0 +1,83 @@
+{% comment %}
+Oil properties widget. Ports ccp/app/common.py::oil_input_widgets.
+Props:
+  specific_heat_units - list of str
+  density_units       - list of str
+  iso_options         - list of ISO VG grades
+  default_specific_heat      (float)
+  default_specific_heat_unit (str)
+  default_density            (float)
+  default_density_unit       (str)
+  default_iso                (str)
+{% endcomment %}
+<div class="ccp-oil-inputs"
+     x-data="{
+       oil_specific_heat: false,
+       oil_iso: false,
+       toggleSpecificHeat() { if (this.oil_specific_heat) { this.oil_iso = false; } },
+       toggleIso() { if (this.oil_iso) { this.oil_specific_heat = false; } }
+     }">
+  <p class="ccp-oil-section-title">Test Lube Oil</p>
+
+  <label class="ccp-checkbox">
+    <input type="checkbox"
+           name="oil_specific_heat"
+           x-model="oil_specific_heat"
+           @change="toggleSpecificHeat()">
+    <span>Specific Heat</span>
+    <span class="ccp-help"
+          title="If marked, uses this oil specific heat and density for bearing mechanical losses calculation and disables ISO oil classification.">?</span>
+  </label>
+
+  <div class="ccp-param-row">
+    <label for="oil_specific_heat_magnitude" class="ccp-sr-only">Oil Specific Heat</label>
+    <input type="number"
+           step="any"
+           id="oil_specific_heat_magnitude"
+           name="oil_specific_heat_magnitude"
+           value="{{ default_specific_heat|default:'2.03' }}"
+           :disabled="!oil_specific_heat">
+    <select name="oil_specific_heat_unit" :disabled="!oil_specific_heat">
+      {% for u in specific_heat_units %}
+        <option value="{{ u }}" {% if u == default_specific_heat_unit %}selected{% endif %}>{{ u }}</option>
+      {% endfor %}
+    </select>
+  </div>
+
+  <p class="ccp-oil-section-title">Density</p>
+  <div class="ccp-param-row">
+    <label for="oil_density_magnitude" class="ccp-sr-only">Oil Density</label>
+    <input type="number"
+           step="any"
+           id="oil_density_magnitude"
+           name="oil_density_magnitude"
+           value="{{ default_density|default:'846.9' }}"
+           :disabled="!oil_specific_heat">
+    <select name="oil_density_unit" :disabled="!oil_specific_heat">
+      {% for u in density_units %}
+        <option value="{{ u }}" {% if u == default_density_unit %}selected{% endif %}>{{ u }}</option>
+      {% endfor %}
+    </select>
+  </div>
+
+  <label class="ccp-checkbox">
+    <input type="checkbox"
+           name="oil_iso"
+           x-model="oil_iso"
+           @change="toggleIso()">
+    <span>Oil ISO Classification</span>
+    <span class="ccp-help"
+          title="If marked, uses the ISO oil classification for bearing mechanical losses calculation and disables specific heat and density input.">?</span>
+  </label>
+
+  <div class="ccp-param-row">
+    <label for="oil_iso_classification" class="ccp-sr-only">ISO</label>
+    <select id="oil_iso_classification"
+            name="oil_iso_classification"
+            :disabled="!oil_iso">
+      {% for iso in iso_options %}
+        <option value="{{ iso }}" {% if iso == default_iso %}selected{% endif %}>{{ iso }}</option>
+      {% endfor %}
+    </select>
+  </div>
+</div>

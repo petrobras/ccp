@@ -1,0 +1,79 @@
+{% comment %}
+Sidebar options block, ported from ccp/app/pages/1_straight_through.py sidebar.
+Props:
+  polytropic_methods - dict {label: internal_key}
+  selected_polytropic_method - str label
+  pressure_units     - list
+  defaults           - dict of boolean defaults for checkboxes
+{% endcomment %}
+{% with d=defaults %}
+<div class="ccp-sidebar-options">
+  <h3 class="ccp-sidebar-options-title">Opções</h3>
+
+  <label class="ccp-checkbox">
+    <input type="checkbox" name="reynolds_correction"
+           {% if d.reynolds_correction|default:True %}checked{% endif %}>
+    <span>Reynolds Correction</span>
+  </label>
+
+  <label class="ccp-checkbox">
+    <input type="checkbox" name="casing_heat_loss"
+           {% if d.casing_heat_loss|default:True %}checked{% endif %}>
+    <span>Casing Heat Loss</span>
+  </label>
+
+  <label class="ccp-checkbox">
+    <input type="checkbox" name="bearing_mechanical_losses"
+           {% if d.bearing_mechanical_losses|default:True %}checked{% endif %}>
+    <span>Bearing Mechanical Losses</span>
+  </label>
+
+  <label class="ccp-checkbox">
+    <input type="checkbox" name="calculate_leakages"
+           {% if d.calculate_leakages|default:True %}checked{% endif %}>
+    <span>Calculate Leakages</span>
+  </label>
+
+  <label class="ccp-checkbox">
+    <input type="checkbox" name="seal_gas_flow"
+           {% if d.seal_gas_flow|default:True %}checked{% endif %}>
+    <span>Seal Gas Flow</span>
+  </label>
+
+  <label class="ccp-checkbox">
+    <input type="checkbox" name="variable_speed"
+           {% if d.variable_speed|default:True %}checked{% endif %}>
+    <span>Variable Speed</span>
+  </label>
+
+  <label class="ccp-checkbox">
+    <input type="checkbox" name="show_points"
+           {% if d.show_points|default:True %}checked{% endif %}>
+    <span>Show Points</span>
+  </label>
+
+  <div class="ccp-param-row">
+    <label for="ccp-polytropic-method">Polytropic Method</label>
+    <select id="ccp-polytropic-method" name="polytropic_method">
+      {% for label, internal in polytropic_methods.items %}
+        <option value="{{ label }}" {% if label == selected_polytropic_method %}selected{% endif %}>{{ label }}</option>
+      {% endfor %}
+    </select>
+  </div>
+
+  <p class="ccp-sidebar-section-title">Ambient Pressure</p>
+  <div class="ccp-param-row">
+    <label for="ccp-ambient-pressure" class="ccp-sr-only">Ambient Pressure</label>
+    <input type="number"
+           step="any"
+           id="ccp-ambient-pressure"
+           name="ambient_pressure"
+           value="{{ ambient_pressure_value|default:'1.01325' }}">
+    <select name="ambient_pressure_unit">
+      {% for u in pressure_units %}
+        <option value="{{ u }}" {% if u == ambient_pressure_unit %}selected{% endif %}>{{ u }}</option>
+      {% endfor %}
+    </select>
+  </div>
+</div>
+{% endwith %}

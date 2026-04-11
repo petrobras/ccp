@@ -1,0 +1,49 @@
+{% comment %}
+Sidebar file load/save widget. HTMX endpoints come from props.
+Props:
+  session_name     - current session name
+  save_url         - URL for save POST
+  load_url         - URL for load POST (upload)
+  target_id        - HTMX target id (default "ccp-file-feedback")
+{% endcomment %}
+{% with target=target_id|default:"ccp-file-feedback" %}
+<div class="ccp-file-sidebar">
+  <h3 class="ccp-file-sidebar-title">Sessão</h3>
+
+  <div class="ccp-param-row">
+    <label for="ccp-session-name">Nome da sessão</label>
+    <input type="text"
+           id="ccp-session-name"
+           name="session_name"
+           value="{{ session_name|default:'' }}"
+           placeholder="minha_sessao">
+  </div>
+
+  <form class="ccp-file-sidebar-save"
+        hx-post="{{ save_url }}"
+        hx-target="#{{ target }}"
+        hx-swap="innerHTML"
+        hx-include="[name='session_name']">
+    {% csrf_token %}
+    <button type="submit" class="ccp-button ccp-button-primary">Salvar .ccp</button>
+  </form>
+
+  <form class="ccp-file-sidebar-load"
+        hx-post="{{ load_url }}"
+        hx-target="#{{ target }}"
+        hx-swap="innerHTML"
+        hx-encoding="multipart/form-data">
+    {% csrf_token %}
+    <div class="ccp-param-row">
+      <label for="ccp-file-upload">Carregar arquivo .ccp</label>
+      <input type="file"
+             id="ccp-file-upload"
+             name="ccp_file"
+             accept=".ccp">
+    </div>
+    <button type="submit" class="ccp-button">Carregar</button>
+  </form>
+
+  <div id="{{ target }}" class="ccp-file-feedback" aria-live="polite"></div>
+</div>
+{% endwith %}

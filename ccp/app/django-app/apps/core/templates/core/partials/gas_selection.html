@@ -1,0 +1,45 @@
+{% comment %}
+Gas composition selector — 6 rows of fluid + mole fraction inputs.
+Props:
+  name_prefix  - prefix used for form field names (default "gas")
+  composition  - list of {"component": str, "fraction": float} dicts (optional)
+  fluid_list   - list of str fluids available in the dropdown
+{% endcomment %}
+{% with prefix=name_prefix|default:"gas" %}
+<div class="ccp-gas-selection" data-ccp-gas-prefix="{{ prefix }}">
+  <div class="ccp-gas-selection-header">
+    <span class="ccp-gas-selection-title">Gas Composition</span>
+  </div>
+  <table class="ccp-gas-selection-table">
+    <thead>
+      <tr>
+        <th scope="col">Componente</th>
+        <th scope="col">Fração molar</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for i in "123456"|make_list %}
+      <tr class="ccp-gas-row">
+        <td>
+          <select name="{{ prefix }}_component_{{ forloop.counter }}" class="ccp-gas-component">
+            <option value=""></option>
+            {% for fluid in fluid_list %}
+              <option value="{{ fluid }}">{{ fluid }}</option>
+            {% endfor %}
+          </select>
+        </td>
+        <td>
+          <input type="number"
+                 step="any"
+                 min="0"
+                 max="1"
+                 name="{{ prefix }}_fraction_{{ forloop.counter }}"
+                 class="ccp-gas-fraction"
+                 value="">
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endwith %}

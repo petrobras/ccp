@@ -1,0 +1,18 @@
+{% load static %}
+<div class="ccp-expander" x-data="{ open: {% if expanded %}true{% else %}false{% endif %} }">
+  <button type="button"
+          class="ccp-expander-header"
+          :aria-expanded="open.toString()"
+          aria-controls="{{ body_id }}"
+          @click="open = !open">
+    <span class="ccp-expander-icon" x-text="open ? '▾' : '▸'">▸</span>
+    <span class="ccp-expander-title">{{ title }}</span>
+  </button>
+  <div id="{{ body_id }}"
+       class="ccp-expander-body"
+       x-show="open"
+       x-cloak
+       x-transition>
+    {% if body %}{{ body|safe }}{% else %}{% block body %}{% endblock %}{% endif %}
+  </div>
+</div>
