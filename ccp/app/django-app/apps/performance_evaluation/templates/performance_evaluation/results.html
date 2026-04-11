@@ -1,0 +1,51 @@
+{% extends "base.html" %}
+{% load ccp_tags %}
+
+{% block title %}Performance Evaluation Results{% endblock %}
+
+{% block content %}
+<section class="ccp-results" id="performance-evaluation-results">
+    <h2>Resultados da Avaliação de Desempenho</h2>
+
+    {% if error %}
+        <div class="ccp-alert ccp-alert-error">
+            <strong>Erro ao executar avaliação:</strong> {{ error }}
+        </div>
+    {% endif %}
+
+    {% if not result.evaluation %}
+        <div class="ccp-alert ccp-alert-info">
+            Nenhum dado de avaliação disponível. Clique em <em>Run Evaluation</em>
+            para iniciar o cálculo.
+        </div>
+    {% else %}
+        <div class="ccp-tabs" x-data="{ tab: 'trend' }">
+            <nav class="ccp-tabnav">
+                <button type="button" :class="tab === 'trend' && 'active'"
+                        @click="tab = 'trend'">Trend Analysis</button>
+                <button type="button" :class="tab === 'perf' && 'active'"
+                        @click="tab = 'perf'">Performance Plots</button>
+                <button type="button" :class="tab === 'data' && 'active'"
+                        @click="tab = 'data'">Data Table</button>
+            </nav>
+
+            <div class="ccp-tabpanel" x-show="tab === 'trend'">
+                {% include "performance_evaluation/_trends.html" %}
+            </div>
+            <div class="ccp-tabpanel" x-show="tab === 'perf'">
+                {% include "performance_evaluation/_performance.html" %}
+            </div>
+            <div class="ccp-tabpanel" x-show="tab === 'data'">
+                {% include "performance_evaluation/_summary.html" %}
+            </div>
+        </div>
+
+        {% if ai_summary %}
+            <section class="ccp-ai-summary">
+                <h3>Análise Técnica (IA)</h3>
+                <pre>{{ ai_summary }}</pre>
+            </section>
+        {% endif %}
+    {% endif %}
+</section>
+{% endblock %}

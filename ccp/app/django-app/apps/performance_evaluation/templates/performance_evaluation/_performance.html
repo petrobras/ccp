@@ -1,0 +1,24 @@
+{% load ccp_tags %}
+<section class="ccp-performance">
+    <h3>Curvas de Desempenho com Pontos Históricos</h3>
+    {% if not perf_figures %}
+        <div class="ccp-alert ccp-alert-warning">
+            Nenhum ponto válido para a curva convertida selecionada.
+        </div>
+    {% else %}
+        <div class="ccp-grid ccp-grid-2">
+            {% if perf_figures.head %}
+                <div class="ccp-cell">{% plotly_figure perf_figures.head %}</div>
+            {% endif %}
+            {% if perf_figures.eff %}
+                <div class="ccp-cell">{% plotly_figure perf_figures.eff %}</div>
+            {% endif %}
+            {% if perf_figures.power %}
+                <div class="ccp-cell">{% plotly_figure perf_figures.power %}</div>
+            {% endif %}
+            {% if perf_figures.p_disch %}
+                <div class="ccp-cell">{% plotly_figure perf_figures.p_disch %}</div>
+            {% endif %}
+        </div>
+    {% endif %}
+</section>

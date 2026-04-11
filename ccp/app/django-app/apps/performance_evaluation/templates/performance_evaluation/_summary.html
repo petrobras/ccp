@@ -1,0 +1,21 @@
+{% load ccp_tags %}
+<section class="ccp-summary">
+    <h3>Tabela de Resultados</h3>
+    {% if summary_df is None %}
+        <div class="ccp-alert ccp-alert-info">
+            Nenhuma estatística-resumo disponível.
+        </div>
+    {% else %}
+        <div class="ccp-summary-table">
+            {{ summary_html|safe }}
+        </div>
+    {% endif %}
+    <p class="ccp-download">
+        <a class="ccp-btn ccp-btn-primary"
+           href="/performance-evaluation/report/"
+           hx-post="/performance-evaluation/report/"
+           hx-swap="none">
+            Baixar Relatório HTML
+        </a>
+    </p>
+</section>

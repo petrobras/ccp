@@ -1,0 +1,25 @@
+{% load ccp_tags %}
+<section class="ccp-trends">
+    <h3>Tendências de Desempenho ao Longo do Tempo</h3>
+    {% if not trend_figures %}
+        <div class="ccp-alert ccp-alert-warning">
+            Sem pontos calculados válidos para exibir.
+        </div>
+    {% else %}
+        <div class="ccp-grid ccp-grid-2">
+            {% for col, fig in trend_figures.items %}
+                <div class="ccp-cell" id="trend-{{ col }}">
+                    {% plotly_figure fig %}
+                </div>
+            {% endfor %}
+        </div>
+    {% endif %}
+    {% if monitoring.active %}
+        <div class="ccp-monitoring-status"
+             hx-get="/performance-evaluation/monitoring/poll/"
+             hx-trigger="every 30s"
+             hx-target="#performance-evaluation-results">
+            <em>Monitoramento ativo — atualizando a cada 30s.</em>
+        </div>
+    {% endif %}
+</section>
