@@ -1,0 +1,155 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Curves Conversion - ccp{% endblock %}
+
+{% block content %}
+<div class="ccp-page ccp-curves-conversion">
+  <h2>Curves Conversion</h2>
+  <p>Converta curvas de desempenho digitalizadas (Engauge) para novas condições de sucção.</p>
+
+  <section class="ccp-expander" x-data="{ open: true }">
+    <button type="button" class="ccp-expander-header" @click="open = !open">
+      Original Curves Suction Conditions
+    </button>
+    <div class="ccp-expander-body" x-show="open">
+      <form id="original-suction-form" method="post">
+        {% csrf_token %}
+        <div class="ccp-row">
+          <label>Suction Pressure</label>
+          {{ original_form.pressure }}
+          {{ original_form.pressure_unit }}
+        </div>
+        <div class="ccp-row">
+          <label>Suction Temperature</label>
+          {{ original_form.temperature }}
+          {{ original_form.temperature_unit }}
+        </div>
+      </form>
+    </div>
+  </section>
+
+  <section class="ccp-expander" x-data="{ open: true }">
+    <button type="button" class="ccp-expander-header" @click="open = !open">
+      Original Curves (Engauge CSV Upload)
+    </button>
+    <div class="ccp-expander-body" x-show="open">
+      <p>
+        Envie os arquivos CSV exportados do Engauge Digitizer contendo as curvas
+        de desempenho. Convenção de nome: <code>&lt;curve-name&gt;-head.csv</code>
+        e <code>&lt;curve-name&gt;-eff.csv</code>.
+      </p>
+      <form id="upload-form"
+            hx-post="{{ upload_url }}"
+            hx-encoding="multipart/form-data"
+            hx-target="#upload-status"
+            method="post"
+            enctype="multipart/form-data">
+        {% csrf_token %}
+        <div class="ccp-row">
+          <label>Performance Curves File 1</label>
+          {{ upload_form.curves_file_1 }}
+        </div>
+        <div class="ccp-row">
+          <label>Performance Curves File 2</label>
+          {{ upload_form.curves_file_2 }}
+        </div>
+        <button type="submit" class="ccp-btn ccp-btn-secondary">Enviar CSVs</button>
+        <span id="upload-status"></span>
+      </form>
+    </div>
+  </section>
+
+  <section class="ccp-expander" x-data="{ open: true }">
+    <button type="button" class="ccp-expander-header" @click="open = !open">
+      New Suction Conditions
+    </button>
+    <div class="ccp-expander-body" x-show="open">
+      <form id="converted-suction-form" method="post">
+        {% csrf_token %}
+        <div class="ccp-row">
+          <label>Suction Pressure</label>
+          {{ converted_form.pressure }}
+          {{ converted_form.pressure_unit }}
+        </div>
+        <div class="ccp-row">
+          <label>Suction Temperature</label>
+          {{ converted_form.temperature }}
+          {{ converted_form.temperature_unit }}
+        </div>
+      </form>
+    </div>
+  </section>
+
+  <section class="ccp-expander" x-data="{ open: true }">
+    <button type="button" class="ccp-expander-header" @click="open = !open">
+      Conversion Options
+    </button>
+    <div class="ccp-expander-body" x-show="open">
+      <form id="conversion-form"
+            hx-post="{{ convert_url }}"
+            hx-target="#plots-area"
+            hx-swap="innerHTML"
+            method="post">
+        {% csrf_token %}
+        <div class="ccp-row">
+          <label>Find Method</label>
+          {{ params_form.find_method }}
+        </div>
+        <div class="ccp-row">
+          <label>Speed Option</label>
+          {{ params_form.speed_option }}
+        </div>
+
+        <h4>Loaded Curves Units</h4>
+        <div class="ccp-units-grid">
+          <label>Flow {{ params_form.loaded_flow_unit }}</label>
+          <label>Head {{ params_form.loaded_head_unit }}</label>
+          <label>Power {{ params_form.loaded_power_unit }}</label>
+          <label>Disch. P {{ params_form.loaded_disch_p_unit }}</label>
+          <label>Disch. T {{ params_form.loaded_disch_T_unit }}</label>
+          <label>Speed {{ params_form.loaded_speed_unit }}</label>
+        </div>
+
+        <h4>Plot Curves Units</h4>
+        <div class="ccp-units-grid">
+          <label>Flow {{ params_form.plot_flow_unit }}</label>
+          <label>Head {{ params_form.plot_head_unit }}</label>
+          <label>Power {{ params_form.plot_power_unit }}</label>
+          <label>Disch. P {{ params_form.plot_disch_p_unit }}</label>
+          <label>Disch. T {{ params_form.plot_disch_T_unit }}</label>
+          <label>Speed {{ params_form.plot_speed_unit }}</label>
+        </div>
+
+        <div class="ccp-row">
+          <label>Operational Flow</label>
+          {{ params_form.operational_flow }}
+        </div>
+        <div class="ccp-row">
+          <label>Operational Speed</label>
+          {{ params_form.operational_speed }}
+        </div>
+
+        <button type="submit" class="ccp-btn ccp-btn-primary">Convert Curves</button>
+      </form>
+    </div>
+  </section>
+
+  <section class="ccp-ccp-file">
+    <form method="get" action="{{ save_url }}">
+      <button type="submit" class="ccp-btn">Salvar .ccp</button>
+    </form>
+    <form method="post"
+          action="{{ load_url }}"
+          enctype="multipart/form-data"
+          hx-post="{{ load_url }}"
+          hx-encoding="multipart/form-data">
+      {% csrf_token %}
+      <input type="file" name="ccp_file" accept=".ccp">
+      <button type="submit" class="ccp-btn">Carregar .ccp</button>
+    </form>
+  </section>
+
+  <section id="plots-area" class="ccp-plots-area"></section>
+</div>
+{% endblock %}

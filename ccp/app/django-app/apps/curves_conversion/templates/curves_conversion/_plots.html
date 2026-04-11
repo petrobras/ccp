@@ -1,0 +1,66 @@
+{% load static %}
+<div class="ccp-plots">
+  <h3>Original Curves</h3>
+  <div class="ccp-plot-grid">
+    <div class="ccp-plot-col">
+      {{ original_figures.head|safe }}
+      {{ original_figures.power|safe }}
+      {{ original_figures.disch_T|safe }}
+    </div>
+    <div class="ccp-plot-col">
+      {{ original_figures.eff|safe }}
+      {{ original_figures.disch_p|safe }}
+      <h4>Project Point</h4>
+      <pre class="ccp-point-box">
+-----------------------------
+    Speed:                 {{ original_figures.project_point.speed }} {{ original_figures.project_point.speed_unit }}
+    Flow:                  {{ original_figures.project_point.flow }} {{ original_figures.project_point.flow_unit }}
+    Head:                  {{ original_figures.project_point.head }} {{ original_figures.project_point.head_unit }}
+    Eff:                   {{ original_figures.project_point.eff }}
+    Power:                 {{ original_figures.project_point.power }} {{ original_figures.project_point.power_unit }}
+
+    Suction Conditions
+    --------------------
+    Suction Pressure:      {{ original_figures.project_point.suc_p }} {{ original_figures.project_point.disch_p_unit }}
+    Suction Temperature:   {{ original_figures.project_point.suc_T }} {{ original_figures.project_point.disch_T_unit }}
+
+    Discharge Conditions
+    --------------------
+    Discharge Pressure:    {{ original_figures.project_point.disch_p }} {{ original_figures.project_point.disch_p_unit }}
+    Discharge Temperature: {{ original_figures.project_point.disch_T }} {{ original_figures.project_point.disch_T_unit }}
+      </pre>
+    </div>
+  </div>
+
+  <h3>Converted Curves</h3>
+  <div class="ccp-plot-grid">
+    <div class="ccp-plot-col">
+      {{ converted_figures.head|safe }}
+      {{ converted_figures.power|safe }}
+      {{ converted_figures.disch_T|safe }}
+    </div>
+    <div class="ccp-plot-col">
+      {{ converted_figures.eff|safe }}
+      {{ converted_figures.disch_p|safe }}
+      <h4>New Point</h4>
+      <pre class="ccp-point-box">
+-----------------------------
+    Speed:                 {{ converted_figures.project_point.speed }} {{ converted_figures.project_point.speed_unit }}
+    Flow:                  {{ converted_figures.project_point.flow }} {{ converted_figures.project_point.flow_unit }}
+    Head:                  {{ converted_figures.project_point.head }} {{ converted_figures.project_point.head_unit }}
+    Eff:                   {{ converted_figures.project_point.eff }}
+    Power:                 {{ converted_figures.project_point.power }} {{ converted_figures.project_point.power_unit }}
+
+    Suction Conditions
+    --------------------
+    Suction Pressure:      {{ converted_figures.project_point.suc_p }} {{ converted_figures.project_point.disch_p_unit }}
+    Suction Temperature:   {{ converted_figures.project_point.suc_T }} {{ converted_figures.project_point.disch_T_unit }}
+
+    Discharge Conditions
+    --------------------
+    Discharge Pressure:    {{ converted_figures.project_point.disch_p }} {{ converted_figures.project_point.disch_p_unit }}
+    Discharge Temperature: {{ converted_figures.project_point.disch_T }} {{ converted_figures.project_point.disch_T_unit }}
+      </pre>
+    </div>
+  </div>
+</div>

@@ -1,0 +1,6 @@
+<div class="ccp-errors" role="alert">
+  {% if global_error %}<p class="ccp-error">{{ global_error }}</p>{% endif %}
+  {% if original_errors %}<p class="ccp-error">Original: {{ original_errors }}</p>{% endif %}
+  {% if converted_errors %}<p class="ccp-error">New: {{ converted_errors }}</p>{% endif %}
+  {% if params_errors %}<p class="ccp-error">Params: {{ params_errors }}</p>{% endif %}
+</div>

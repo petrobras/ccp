@@ -1,0 +1,30 @@
+{# STUB: replaced by Unit 1's templates/base.html at merge time. #}
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <title>{% block title %}ccp{% endblock %}</title>
+  <style>
+    body { font-family: monospace; color: #2c3e50; margin: 1rem; }
+    .ccp-expander { margin: 0.5rem 0; border: 1px solid #2c3e50; }
+    .ccp-expander-header { width: 100%; text-align: left; padding: 0.5rem; background: #ebf0f8; border: 0; font-family: monospace; color: #2c3e50; cursor: pointer; }
+    .ccp-expander-body { padding: 0.5rem; }
+    .ccp-row { display: flex; gap: 0.25rem; align-items: center; margin: 0.25rem 0; }
+    .ccp-btn { background: #2c3e50; color: #fff; border: 0; padding: 0.4rem 0.8rem; font-family: monospace; cursor: pointer; }
+    .ccp-btn-primary { background: #2c3e50; }
+    .ccp-btn-secondary { background: #6c7a89; }
+    .ccp-plot-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem; }
+    .ccp-units-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.25rem; }
+    .ccp-errors { color: #b00020; }
+    pre.ccp-point-box { background: #f7f9fc; padding: 0.5rem; }
+  </style>
+</head>
+<body>
+  <header class="ccp-header">
+    <h1>ccp - Centrifugal Compressor Performance</h1>
+  </header>
+  <main>
+    {% block content %}{% endblock %}
+  </main>
+</body>
+</html>
