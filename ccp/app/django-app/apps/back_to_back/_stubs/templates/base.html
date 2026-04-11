@@ -1,0 +1,24 @@
+{% load static %}<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8" />
+<title>{% block title %}ccp - Centrifugal Compressor Performance{% endblock %}</title>
+<style>
+body { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; color: #2c3e50; margin: 1rem; }
+h1, h2, h3 { color: #2c3e50; }
+.ccp-expander { border: 1px solid #d0d7e2; border-radius: 4px; margin: 0.5rem 0; }
+.ccp-expander > summary { background: #ebf0f8; padding: 0.4rem 0.6rem; cursor: pointer; }
+.ccp-expander > .body { padding: 0.5rem 0.75rem; }
+.row { display: flex; gap: 0.25rem; flex-wrap: wrap; }
+.col { flex: 1 1 8rem; }
+.ccp-grid { display: grid; gap: 0.25rem; }
+input[type=text], select { font-family: inherit; width: 100%; box-sizing: border-box; }
+button.primary { background: #2c3e50; color: #fff; border: none; padding: 0.4rem 0.8rem; cursor: pointer; }
+</style>
+{% block extra_head %}{% endblock %}
+</head>
+<body>
+<header><h1>ccp - Centrifugal Compressor</h1></header>
+<main>{% block content %}{% endblock %}</main>
+</body>
+</html>

@@ -1,0 +1,56 @@
+{% load ccp_tags %}
+
+{% if error %}
+  <div class="ccp-error" role="alert">{{ error }}</div>
+{% elif figures %}
+  <h3>Results</h3>
+  <p>Final speed used in calculation: {{ speed_operational_rpm|floatformat:2 }} RPM</p>
+
+  <div class="ccp-tabs">
+    <details class="ccp-expander" open>
+      <summary>First Section</summary>
+      <div class="body">
+        <div class="row">
+          <div class="col">{% plotly_figure figures.fig_mach_sec1 "fig-mach-sec1" %}</div>
+          <div class="col">{% plotly_figure figures.fig_reynolds_sec1 "fig-reynolds-sec1" %}</div>
+        </div>
+        <div class="row">
+          <div class="col">{% plotly_figure figures.fig_head_sec1 "fig-head-sec1" %}</div>
+          <div class="col">{% plotly_figure figures.fig_eff_sec1 "fig-eff-sec1" %}</div>
+        </div>
+        <div class="row">
+          <div class="col">{% plotly_figure figures.fig_discharge_pressure_sec1 "fig-disch-sec1" %}</div>
+          <div class="col">{% plotly_figure figures.fig_power_sec1 "fig-power-sec1" %}</div>
+        </div>
+        <table class="ccp-results">
+          {% for key, value in results_sec1.items %}
+            <tr><th>{{ key }}</th><td>{{ value }}</td></tr>
+          {% endfor %}
+        </table>
+      </div>
+    </details>
+
+    <details class="ccp-expander" open>
+      <summary>Second Section</summary>
+      <div class="body">
+        <div class="row">
+          <div class="col">{% plotly_figure figures.fig_mach_sec2 "fig-mach-sec2" %}</div>
+          <div class="col">{% plotly_figure figures.fig_reynolds_sec2 "fig-reynolds-sec2" %}</div>
+        </div>
+        <div class="row">
+          <div class="col">{% plotly_figure figures.fig_head_sec2 "fig-head-sec2" %}</div>
+          <div class="col">{% plotly_figure figures.fig_eff_sec2 "fig-eff-sec2" %}</div>
+        </div>
+        <div class="row">
+          <div class="col">{% plotly_figure figures.fig_discharge_pressure_sec2 "fig-disch-sec2" %}</div>
+          <div class="col">{% plotly_figure figures.fig_power_sec2 "fig-power-sec2" %}</div>
+        </div>
+        <table class="ccp-results">
+          {% for key, value in results_sec2.items %}
+            <tr><th>{{ key }}</th><td>{{ value }}</td></tr>
+          {% endfor %}
+        </table>
+      </div>
+    </details>
+  </div>
+{% endif %}

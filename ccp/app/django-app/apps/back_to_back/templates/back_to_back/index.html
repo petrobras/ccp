@@ -1,0 +1,84 @@
+{% extends "base.html" %}
+{% load ccp_tags %}
+
+{% block title %}Performance Test Back-to-Back Compressor{% endblock %}
+
+{% block content %}
+<section>
+  <h2>Performance Test Back-to-Back Compressor</h2>
+  <p>Ferramenta para avaliação de desempenho de compressores back-to-back segundo a ASME PTC 10.</p>
+</section>
+
+<form method="post"
+      action="{% url 'back_to_back:compute' %}"
+      hx-post="{% url 'back_to_back:compute' %}"
+      hx-target="#bb-results"
+      hx-swap="innerHTML"
+      enctype="multipart/form-data">
+  {% csrf_token %}
+
+  <aside class="sidebar">
+    <details class="ccp-expander" open>
+      <summary>Opções</summary>
+      <div class="body">
+        {{ sidebar_form.as_p }}
+      </div>
+    </details>
+  </aside>
+
+  <details class="ccp-expander" open>
+    <summary>Seleção de Gás</summary>
+    <div class="body">{{ gas_form.as_p }}</div>
+  </details>
+
+  <details class="ccp-expander" open>
+    <summary>Data Sheet - First Section</summary>
+    <div class="body">{{ guarantee_section_1_form.as_p }}</div>
+  </details>
+
+  <details class="ccp-expander" open>
+    <summary>Data Sheet - Second Section</summary>
+    <div class="body">{{ guarantee_section_2_form.as_p }}</div>
+  </details>
+
+  <details class="ccp-expander">
+    <summary>Curvas de Referência</summary>
+    <div class="body">{{ curve_form.as_p }}</div>
+  </details>
+
+  <details class="ccp-expander" open>
+    <summary>Test Data - First Section</summary>
+    <div class="body">
+      {{ first_section_formset.management_form }}
+      {% for f in first_section_formset %}
+        <fieldset>
+          <legend>Point {{ forloop.counter }}</legend>
+          {{ f.as_p }}
+        </fieldset>
+      {% endfor %}
+    </div>
+  </details>
+
+  <details class="ccp-expander" open>
+    <summary>Test Data - Second Section</summary>
+    <div class="body">
+      {{ second_section_formset.management_form }}
+      {% for f in second_section_formset %}
+        <fieldset>
+          <legend>Point {{ forloop.counter }}</legend>
+          {{ f.as_p }}
+        </fieldset>
+      {% endfor %}
+    </div>
+  </details>
+
+  <div class="row">
+    <button type="submit" name="action" value="calculate" class="primary">Calculate</button>
+    <button type="submit" name="action" value="calculate_speed" class="primary">Calculate Speed</button>
+  </div>
+</form>
+
+<section id="bb-results">
+  {% include "back_to_back/_results.html" %}
+</section>
+{% endblock %}

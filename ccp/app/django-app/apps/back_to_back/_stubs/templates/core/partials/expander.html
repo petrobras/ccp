@@ -1,0 +1,4 @@
+<details class="ccp-expander"{% if expanded %} open{% endif %}>
+  <summary>{{ title }}</summary>
+  <div class="body" id="{{ body_id }}">{{ body|default:"" }}</div>
+</details>
