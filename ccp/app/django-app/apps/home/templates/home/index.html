@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}ccp - Centrifugal Compressor Peformance{% endblock %}
+
+{% block content %}
+<section class="ccp-landing">
+  <h2 class="ccp-subheader">
+    Ferramenta para o c&aacute;lculo de performance de compressores centr&iacute;fugos
+  </h2>
+  <p>
+    Essa aplica&ccedil;&atilde;o implementa o c&aacute;lculo para o acompanhamento de testes
+    de performance em f&aacute;brica conforme ASME PTC 10.
+  </p>
+  <p>
+    As equa&ccedil;&otilde;es de estado utilizadas s&atilde;o as do REFPROP e a ferramenta
+    leva em considera&ccedil;&atilde;o o vazamento no pist&atilde;o de balanceamento e
+    division wall.
+  </p>
+  <p>
+    Acessar as op&ccedil;&otilde;es na barra de navega&ccedil;&atilde;o ao lado
+    (Straight-Through ou Back-To-Back).
+  </p>
+  <p>
+    Em caso de d&uacute;vidas, sugest&otilde;es ou report de bugs, abrir um issue
+    <a href="https://codigo.petrobras.com.br/equipamentos-dinamicos/ccp/-/issues/new">aqui</a>.
+  </p>
+</section>
+{% endblock %}

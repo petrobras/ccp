@@ -1,0 +1,36 @@
+services:
+  mongo:
+    image: mongo:7
+    restart: unless-stopped
+    ports:
+      - "27017:27017"
+    volumes:
+      - ccp_mongo_data:/data/db
+
+  redis:
+    image: redis:7
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - ccp_redis_data:/data
+
+  django:
+    build:
+      context: ../../..
+      dockerfile: ccp/app/django-app/Dockerfile
+    depends_on:
+      - mongo
+      - redis
+    environment:
+      DJANGO_DEBUG: "1"
+      DJANGO_SECRET_KEY: "dev-insecure-key-change-me-in-production"
+      DJANGO_ALLOWED_HOSTS: "*"
+      MONGO_URL: "mongodb://mongo:27017/ccp"
+      REDIS_URL: "redis://redis:6379/0"
+    ports:
+      - "8000:8000"
+
+volumes:
+  ccp_mongo_data:
+  ccp_redis_data:

@@ -1,0 +1,7 @@
+db.sqlite3
+db.sqlite3-journal
+staticfiles/
+media/
+*.pyc
+__pycache__/
+.env

@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+{% load static %}
+<html lang="pt-br">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}ccp{% endblock %}</title>
+  <link rel="icon" type="image/x-icon" href="{% static 'img/favicon.ico' %}">
+  <link rel="stylesheet" href="{% static 'css/ccp-theme.css' %}">
+  <script src="{% static 'js/plotly.min.js' %}"></script>
+  <script src="{% static 'js/htmx.min.js' %}" defer></script>
+  <script src="{% static 'js/alpine.min.js' %}" defer></script>
+</head>
+<body>
+  <header class="ccp-header">
+    <div class="ccp-header__logo">
+      <img src="{% static 'img/ccp.png' %}" alt="ccp" width="100">
+    </div>
+    <div class="ccp-header__title">
+      <h1>ccp - Centrifugal Compressor Peformance</h1>
+    </div>
+  </header>
+
+  <nav class="ccp-nav">
+    <a href="/">In&iacute;cio</a>
+    <a href="/straight-through/">Straight-Through</a>
+    <a href="/back-to-back/">Back-To-Back</a>
+    <a href="/curves-conversion/">Curves Conversion</a>
+    <a href="/performance-evaluation/">Performance Evaluation</a>
+  </nav>
+
+  <main class="ccp-main">
+    {% block content %}{% endblock %}
+  </main>
+
+  <footer class="ccp-footer">
+    <a href="https://codigo.petrobras.com.br/equipamentos-dinamicos/ccp/-/issues/new">
+      Reportar issue
+    </a>
+  </footer>
+</body>
+</html>
