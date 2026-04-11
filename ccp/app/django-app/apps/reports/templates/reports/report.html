@@ -1,0 +1,218 @@
+{% load static %}<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Relatório de Desempenho CCP — {{ timestamp }}</title>
+    <style>
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+body {
+    font-family: "SFMono-Regular", Menlo, Consolas, "Liberation Mono",
+                 "Courier New", monospace;
+    color: #2c3e50;
+    background: #ffffff;
+    line-height: 1.6;
+    padding: 2rem 3rem;
+    max-width: 1400px;
+    margin: 0 auto;
+}
+.header {
+    display: flex;
+    align-items: center;
+    gap: 1.5rem;
+    border-bottom: 2px solid #e0e0e0;
+    padding-bottom: 1rem;
+    margin-bottom: 2rem;
+}
+.logo { height: 60px; }
+.header-text h1 {
+    font-size: 1.6rem;
+    font-weight: 600;
+    color: #2c3e50;
+}
+.header-text .session-name {
+    font-size: 1.1rem;
+    font-weight: 400;
+    color: #444;
+}
+.header-text .timestamp {
+    font-size: 0.9rem;
+    color: #666;
+}
+nav.toc {
+    position: fixed;
+    top: 2rem;
+    right: 2rem;
+    width: 200px;
+    font-size: 0.85rem;
+    line-height: 1.8;
+}
+nav.toc .toc-title {
+    font-weight: 600;
+    color: #2c3e50;
+    margin-bottom: 0.4rem;
+}
+nav.toc ul {
+    list-style: none;
+    border-left: 3px solid #e0e0e0;
+    padding-left: 0.75rem;
+}
+nav.toc li { padding: 0.1rem 0; }
+nav.toc a {
+    color: #555;
+    text-decoration: none;
+}
+nav.toc a:hover,
+nav.toc a.active { color: #1f77b4; }
+nav.toc li.active {
+    border-left: 3px solid #1f77b4;
+    margin-left: -0.75rem;
+    padding-left: calc(0.75rem - 3px);
+}
+.main-content { margin-right: 240px; }
+h2 {
+    font-size: 1.3rem;
+    font-weight: 600;
+    color: #2c3e50;
+    margin: 2rem 0 1rem 0;
+    padding-bottom: 0.4rem;
+    border-bottom: 1px solid #e0e0e0;
+}
+.section-description {
+    color: #444;
+    font-size: 0.95rem;
+    margin-bottom: 1rem;
+    line-height: 1.5;
+}
+.ai-analysis {
+    background: #f0f4ff;
+    border-left: 4px solid #1f77b4;
+    border-radius: 0 6px 6px 0;
+    padding: 1rem 1.25rem;
+    margin: 1rem 0 1.5rem 0;
+    font-size: 0.93rem;
+    line-height: 1.6;
+    color: #2c3e50;
+}
+.ai-analysis .ai-label {
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: #1f77b4;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin-bottom: 0.5rem;
+}
+.plot-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+}
+.plot-cell {
+    border: 1px solid #1f77b4;
+    border-radius: 6px;
+    padding: 0.5rem;
+    background: #fafafa;
+}
+.stats-table {
+    border-collapse: collapse;
+    width: 100%;
+    margin: 1rem 0;
+    font-size: 0.9rem;
+}
+.stats-table th,
+.stats-table td {
+    border: 1px solid #ddd;
+    padding: 0.5rem 0.75rem;
+    text-align: right;
+}
+.stats-table th {
+    background: #f5f5f5;
+    font-weight: 600;
+    text-align: center;
+    color: #2c3e50;
+}
+.stats-table tr:nth-child(even) { background: #fafafa; }
+.stats-table tr:hover { background: #f0f0f0; }
+@media print {
+    nav.toc { display: none; }
+    .main-content { margin-right: 0; }
+    body { padding: 1rem; }
+    .plot-grid { break-inside: avoid; }
+}
+@media (max-width: 1000px) {
+    nav.toc { display: none; }
+    .main-content { margin-right: 0; }
+}
+    </style>
+</head>
+<body>
+    <nav class="toc">
+        <div class="toc-title">Nesta página</div>
+        <ul>
+            <li><a href="#tendencia">{{ trend_title }}</a></li>
+            <li><a href="#desempenho">{{ performance_title }}</a></li>
+            <li><a href="#estatisticas">{{ stats_title }}</a></li>
+        </ul>
+    </nav>
+
+    <div class="main-content">
+        <div class="header">
+            {% if logo_data_uri %}<img src="{{ logo_data_uri }}" alt="CCP Logo" class="logo">{% endif %}
+            <div class="header-text">
+                <h1>Relatório de Avaliação de Desempenho</h1>
+                {% if session_name %}<div class="session-name">{{ session_name }}</div>{% endif %}
+                <div class="timestamp">Gerado em {{ timestamp }}</div>
+            </div>
+        </div>
+
+        <h2 id="tendencia">{{ trend_title }}</h2>
+        <p class="section-description">{{ trend_description }}</p>
+        <div class="plot-grid">
+            {% for div in trend_divs %}<div class="plot-cell">{{ div|safe }}</div>{% endfor %}
+        </div>
+        {{ trend_ai_html|safe }}
+
+        <h2 id="desempenho">{{ performance_title }}</h2>
+        <p class="section-description">{{ performance_description }}</p>
+        <div class="plot-grid">
+            {% for div in perf_divs %}<div class="plot-cell">{{ div|safe }}</div>{% endfor %}
+        </div>
+        {{ performance_ai_html|safe }}
+
+        <h2 id="estatisticas">{{ stats_title }}</h2>
+        <p class="section-description">{{ stats_description }}</p>
+        {{ stats_table_html|safe }}
+        {{ stats_ai_html|safe }}
+    </div>
+
+    <script>
+        (function() {
+            const sections = document.querySelectorAll('h2[id]');
+            const tocLinks = document.querySelectorAll('nav.toc a');
+            const tocItems = document.querySelectorAll('nav.toc li');
+            function updateActive() {
+                let current = '';
+                sections.forEach(function(section) {
+                    const top = section.getBoundingClientRect().top;
+                    if (top <= 120) { current = section.getAttribute('id'); }
+                });
+                tocLinks.forEach(function(link, i) {
+                    link.classList.remove('active');
+                    tocItems[i].classList.remove('active');
+                    if (link.getAttribute('href') === '#' + current) {
+                        link.classList.add('active');
+                        tocItems[i].classList.add('active');
+                    }
+                });
+            }
+            window.addEventListener('scroll', updateActive);
+            updateActive();
+        })();
+    </script>
+</body>
+</html>
