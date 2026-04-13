@@ -5,10 +5,28 @@ Build with:
     pyinstaller --distpath=pyinstaller_build --workpath=pyinstaller_work ccp_app.spec
 """
 
+import json
 import os
+import re
 import sys
 import importlib
 import importlib.metadata
+
+# Sync version from ccp/__init__.py to electron/package.json
+_init_file = os.path.join(os.path.dirname(SPECPATH), "ccp", "__init__.py")
+with open(_init_file) as _f:
+    _match = re.search(r'__version__\s*=\s*["\']([^"\']+)["\']', _f.read())
+    _ccp_version = _match.group(1) if _match else "0.0.0"
+
+_pkg_json_path = os.path.join(SPECPATH, "electron", "package.json")
+with open(_pkg_json_path) as _f:
+    _pkg = json.load(_f)
+if _pkg.get("version") != _ccp_version:
+    _pkg["version"] = _ccp_version
+    with open(_pkg_json_path, "w") as _f:
+        json.dump(_pkg, _f, indent=2)
+        _f.write("\n")
+    print(f"Updated electron/package.json version to {_ccp_version}")
 
 block_cipher = None
 
