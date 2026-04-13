@@ -48,6 +48,9 @@ Documentation = "https://ccp-centrifugal-compressor-performance.readthedocs.io/e
 "Bug Tracker" = "https://github.com/petrobras/ccp/issues"
 "Source Code" = "https://github.com/petrobras/ccp"
 
+[project.scripts]
+ccp-app = "ccp.app.cli:main"
+
 [project.optional-dependencies]
 app = [
     "streamlit>=1.21.0",
