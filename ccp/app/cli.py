@@ -15,7 +15,7 @@ def main():
         sys.exit(1)
 
     app_path = str(Path(__file__).parent / "ccp_app.py")
-    sys.argv = ["streamlit", "run", app_path, "--server.headless=true"]
+    sys.argv = ["streamlit", "run", app_path]
     st_main()
 
 
