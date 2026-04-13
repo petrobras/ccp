@@ -10,7 +10,6 @@ __pycache__/
 # Distribution / packaging
 .Python
 env/
-build/
 develop-eggs/
 dist/
 downloads/
@@ -25,11 +24,19 @@ var/
 .installed.cfg
 *.egg
 
+# Build directory - track config files, ignore generated artifacts
+build/dist/
+build/pyinstaller_build/
+build/pyinstaller_work/
+build/node-v22.16.0-win-x64/
+build/node-v22.16.0-win-x64.zip
+build/electron/node_modules/
+build/wheels/*.whl
+
 # PyInstaller
 #  Usually these files are written by a python script from a template
 #  before PyInstaller builds the exe, so as to inject date/other infos into it.
 *.manifest
-*.spec
 
 # Installer logs
 pip-log.txt

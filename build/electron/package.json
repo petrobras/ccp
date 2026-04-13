@@ -1,0 +1,49 @@
+{
+  "name": "ccp-app",
+  "version": "1.0.0",
+  "description": "CCP - Centrifugal Compressor Performance",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "build": "electron-builder --win --dir",
+    "dist": "electron-builder --win portable"
+  },
+  "author": "Petrobras",
+  "license": "Apache-2.0",
+  "devDependencies": {
+    "electron": "^33.0.0",
+    "electron-builder": "^25.0.0",
+    "rcedit": "^4.0.0"
+  },
+  "build": {
+    "appId": "com.petrobras.ccp",
+    "productName": "CCP App",
+    "win": {
+      "target": [
+        {
+          "target": "portable",
+          "arch": ["x64"]
+        }
+      ],
+      "icon": "icon.png",
+      "signAndEditExecutable": false
+    },
+    "portable": {
+      "artifactName": "${productName}-${version}-portable.${ext}"
+    },
+    "extraResources": [
+      {
+        "from": "../pyinstaller_build/ccp_streamlit",
+        "to": "ccp_streamlit",
+        "filter": ["**/*"]
+      }
+    ],
+    "files": [
+      "main.js",
+      "package.json"
+    ],
+    "directories": {
+      "output": "../dist"
+    }
+  }
+}
