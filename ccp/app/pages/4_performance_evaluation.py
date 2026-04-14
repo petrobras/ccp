@@ -1247,6 +1247,8 @@ def main():
                     st.markdown("### Evaluation Results Data")
 
                     display_cols = [
+                        "flow_v",
+                        "flow_m",
                         "eff",
                         "expected_eff",
                         "delta_eff",
