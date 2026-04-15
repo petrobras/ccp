@@ -1,19 +1,13 @@
 import ccp
 import io
-import zipfile
 import streamlit as st
-import pandas as pd
-import base64
 import time
 import logging
 import json
 import toml
-import tempfile
-import os
-import shutil
-from pathlib import Path
 
 from ccp.app.common import (
+    default_components,
     pressure_units,
     temperature_units,
     flow_units,
@@ -21,13 +15,14 @@ from ccp.app.common import (
     speed_units,
     head_units,
     power_units,
-    parameters_map,
     get_gas_composition,
     file_sidebar,
-    gas_selection_form,
+    gas_selection_ui,
+    design_cases_section,
+    curves_upload_section,
+    get_available_impellers,
     init_sentry,
     setup_page,
-    get_fluid_list,
     run_app,
 )
 
@@ -46,13 +41,8 @@ def main():
     )
 
     def get_session():
-        # Initialize session state variables
         if "session_name" not in st.session_state:
             st.session_state.session_name = ""
-        if "impeller_conversion_state" not in st.session_state:
-            st.session_state.impeller_conversion_state = ""
-        if "original_impeller" not in st.session_state:
-            st.session_state.original_impeller = None
         if "converted_impeller" not in st.session_state:
             st.session_state.converted_impeller = None
         if "expander_state" not in st.session_state:
@@ -61,32 +51,38 @@ def main():
             st.session_state.ccp_version = ccp.__version__
         if "app_type" not in st.session_state:
             st.session_state.app_type = "curves_conversion"
-        if "uploaded_csv_files" not in st.session_state:
-            st.session_state.uploaded_csv_files = {}
+
+        for case in ["A", "B", "C", "D", "E"]:
+            if f"impeller_case_{case}" not in st.session_state:
+                st.session_state[f"impeller_case_{case}"] = None
+            if f"curves_file_1_case_{case}" not in st.session_state:
+                st.session_state[f"curves_file_1_case_{case}"] = None
+            if f"curves_file_2_case_{case}" not in st.session_state:
+                st.session_state[f"curves_file_2_case_{case}"] = None
 
     get_session()
 
     def _load_curves_conversion(my_zip, version):
+        session_state_data = {}
         for name in my_zip.namelist():
             if name.endswith(".json"):
                 session_state_data = json.loads(my_zip.read(name))
-                if (
-                    "app_type" not in session_state_data
-                    or session_state_data.get("app_type") != "curves_conversion"
-                ):
-                    session_state_data["app_type"] = "curves_conversion"
-        csv_file_number = 1
+                session_state_data["app_type"] = "curves_conversion"
+
         for name in my_zip.namelist():
-            if name.endswith(".csv"):
-                session_state_data[f"curves_file_{csv_file_number}"] = {
+            if name.endswith(".csv") and "curves_file_" in name and "_case_" in name:
+                parts = name.replace(".csv", "").split("_")
+                file_num = parts[2]
+                case = parts[-1]
+                session_state_data[f"curves_file_{file_num}_case_{case}"] = {
                     "name": name,
                     "content": my_zip.read(name),
                 }
-                csv_file_number += 1
             if name.endswith(".toml"):
                 impeller_file = io.StringIO(my_zip.read(name).decode("utf-8"))
-                if name.startswith("original_impeller"):
-                    session_state_data["original_impeller"] = ccp.Impeller.load(
+                if name.startswith("impeller_case_"):
+                    case = name.replace("impeller_case_", "").replace(".toml", "")
+                    session_state_data[f"impeller_case_{case}"] = ccp.Impeller.load(
                         impeller_file
                     )
                 elif name.startswith("converted_impeller"):
@@ -98,25 +94,29 @@ def main():
     def _save_curves_conversion(my_zip, session_state_dict_copy):
         for key, value in dict(session_state_dict_copy).items():
             if isinstance(value, ccp.Impeller):
-                if key == "original_impeller":
-                    my_zip.writestr(
-                        "original_impeller.toml",
-                        toml.dumps(value._dict_to_save()),
-                    )
-                elif key == "converted_impeller":
+                if key == "converted_impeller":
                     my_zip.writestr(
                         "converted_impeller.toml",
                         toml.dumps(value._dict_to_save()),
                     )
+                elif key.startswith("impeller_case_"):
+                    my_zip.writestr(
+                        f"{key}.toml",
+                        toml.dumps(value._dict_to_save()),
+                    )
                 del session_state_dict_copy[key]
-            if key.startswith("curves_file_"):
-                my_zip.writestr(
-                    session_state_dict_copy[key]["name"],
-                    session_state_dict_copy[key]["content"],
-                )
+            if key.startswith("curves_file_") and "_case_" in key:
+                if session_state_dict_copy[key] is not None:
+                    parts = key.split("_")
+                    file_num = parts[2]
+                    case = parts[-1]
+                    my_zip.writestr(
+                        f"curves_file_{file_num}_case_{case}.csv",
+                        session_state_dict_copy[key]["content"],
+                    )
                 del session_state_dict_copy[key]
 
-        session_state_dict_copy["app_type"] = "impeller_conversion"
+        session_state_dict_copy["app_type"] = "curves_conversion"
 
         keys_to_remove = []
         for key in session_state_dict_copy.keys():
@@ -134,371 +134,225 @@ def main():
 
     file_sidebar(_load_curves_conversion, _save_curves_conversion)
 
-    # Gas selection
-    fluid_list, default_components = get_fluid_list()
-    gas_compositions_table = gas_selection_form(fluid_list, default_components)
+    # Shared UI sections
+    fluid_list, gas_compositions_table = gas_selection_ui()
+    design_cases_section()
+    curves_upload_section()
 
-    # Original Impeller Suction Conditions
+    # New Suction Conditions
     with st.expander(
-        "Original Curves Suction Conditions", expanded=st.session_state.expander_state
+        "New Suction Conditions", expanded=st.session_state.expander_state
     ):
-        st.markdown("### Original Suction Conditions")
-        st.markdown("Define the suction conditions for the original curves data.")
+        st.markdown("### Target Suction Conditions")
+        st.markdown("Define the new suction conditions for the curves conversion.")
 
-        # Gas selection for original impeller
         gas_options = [st.session_state[f"gas_{i}"] for i in range(6)]
 
-        # Gas selection container
-        gas_container = st.container()
-        gas_col1, gas_col2, gas_col3 = gas_container.columns(3)
+        new_gas_container = st.container()
+        new_gas_col1, new_gas_col2, new_gas_col3 = new_gas_container.columns(3)
 
-        gas_col1.markdown("Gas Selection")
-        gas_col2.markdown("")
-        original_gas = gas_col3.selectbox(
-            "Gas for Original Curves",
+        new_gas_col1.markdown("Gas Selection")
+        new_gas_col2.markdown("")
+        new_gas = new_gas_col3.selectbox(
+            "Gas for New Conditions",
             options=gas_options,
-            key="original_gas_selection",
+            key="new_gas_selection",
             label_visibility="collapsed",
-            help="Select the gas composition for the original curves",
+            help="Select the gas composition for the new suction conditions",
         )
 
-        # Suction Pressure
-        pressure_container = st.container()
-        pressure_col1, pressure_col2, pressure_col3 = pressure_container.columns(3)
+        new_pressure_container = st.container()
+        new_pressure_col1, new_pressure_col2, new_pressure_col3 = (
+            new_pressure_container.columns(3)
+        )
 
-        pressure_col1.markdown("Suction Pressure")
-        original_suc_p_unit = pressure_col2.selectbox(
-            "Original Suction P Unit",
+        new_pressure_col1.markdown("Suction Pressure")
+        new_suc_p_unit = new_pressure_col2.selectbox(
+            "New Suction P Unit",
             options=pressure_units,
-            key="original_suc_p_unit",
+            key="new_suc_p_unit",
             label_visibility="collapsed",
             index=0,
         )
-        original_suc_p = pressure_col3.number_input(
-            "Original Suction Pressure",
-            key="original_suc_p",
+        new_suc_p = new_pressure_col3.number_input(
+            "New Suction Pressure",
+            key="new_suc_p",
             label_visibility="collapsed",
-            help="Suction pressure for the original curves data",
+            help="New suction pressure",
         )
 
-        # Suction Temperature
-        temperature_container = st.container()
-        temperature_col1, temperature_col2, temperature_col3 = (
-            temperature_container.columns(3)
+        new_temperature_container = st.container()
+        new_temperature_col1, new_temperature_col2, new_temperature_col3 = (
+            new_temperature_container.columns(3)
         )
 
-        temperature_col1.markdown("Suction Temperature")
-        original_suc_t_unit = temperature_col2.selectbox(
-            "Original Suction T Unit",
+        new_temperature_col1.markdown("Suction Temperature")
+        new_suc_t_unit = new_temperature_col2.selectbox(
+            "New Suction T Unit",
             options=temperature_units,
-            key="original_suc_t_unit",
+            key="new_suc_t_unit",
             label_visibility="collapsed",
             index=1,
         )
-        original_suc_t = temperature_col3.number_input(
-            "Original Suction Temperature",
-            key="original_suc_t",
+        new_suc_t = new_temperature_col3.number_input(
+            "New Suction Temperature",
+            key="new_suc_t",
             label_visibility="collapsed",
-            help="Suction temperature for the original curves data",
+            help="New suction temperature",
         )
 
-    # Original Impeller Curves
-    with st.expander("Original Curves", expanded=st.session_state.expander_state):
-        # Units for curves
-        st.markdown("### Loaded Curves Units")
-        loaded_curves_units_cols = st.columns(6)
+    # Conversion Options
+    with st.expander("Conversion Options", expanded=st.session_state.expander_state):
+        st.markdown("### Conversion Parameters")
 
-        with loaded_curves_units_cols[0]:
-            loaded_curves_speed_units = st.selectbox(
-                "Speed",
-                options=speed_units,
-                key="loaded_curves_speed_units",
-                index=0,
-            )
-        with loaded_curves_units_cols[1]:
-            loaded_curves_flow_units = st.selectbox(
-                "Flow",
-                options=flow_units,
-                key="loaded_curves_flow_units",
-                index=6,
-            )
-        with loaded_curves_units_cols[2]:
-            loaded_curves_disch_p_units = st.selectbox(
-                "Disch. Pres.",
-                options=pressure_units,
-                key="loaded_curves_disch_p_units",
-                index=0,
-            )
-        with loaded_curves_units_cols[3]:
-            loaded_curves_disch_T_units = st.selectbox(
-                "Disch. Temp.",
-                options=temperature_units,
-                key="loaded_curves_disch_T_units",
-                index=0,
-            )
-        with loaded_curves_units_cols[4]:
-            loaded_curves_head_units = st.selectbox(
-                "Head",
-                options=head_units,
-                key="loaded_curves_head_units",
-                index=0,
-            )
-        with loaded_curves_units_cols[5]:
-            loaded_curves_power_units = st.selectbox(
-                "Power",
-                options=power_units,
-                key="loaded_curves_power_units",
-                index=0,
-            )
-
-        st.markdown("### Plot Curves Units")
-
-        plot_curves_units_cols = st.columns(6)
-
-        with plot_curves_units_cols[0]:
-            plot_curves_speed_units = st.selectbox(
-                "Speed",
-                options=speed_units,
-                key="plot_curves_speed_units",
-                index=0,
-            )
-        with plot_curves_units_cols[1]:
-            plot_curves_flow_units = st.selectbox(
-                "Flow",
-                options=flow_units,
-                key="plot_curves_flow_units",
-                index=6,
-            )
-        with plot_curves_units_cols[2]:
-            plot_curves_disch_p_units = st.selectbox(
-                "Disch. Pres.",
-                options=pressure_units,
-                key="plot_curves_disch_p_units",
-                index=0,
-            )
-        with plot_curves_units_cols[3]:
-            plot_curves_disch_T_units = st.selectbox(
-                "Disch. Temp.",
-                options=temperature_units,
-                key="plot_curves_disch_T_units",
-                index=0,
-            )
-        with plot_curves_units_cols[4]:
-            plot_curves_head_units = st.selectbox(
-                "Head",
-                options=head_units,
-                key="plot_curves_head_units",
-                index=0,
-            )
-        with plot_curves_units_cols[5]:
-            plot_curves_power_units = st.selectbox(
-                "Power",
-                options=power_units,
-                key="plot_curves_power_units",
-                index=0,
-            )
-
-        if loaded_curves_flow_units in flow_v_units:
-            loaded_curves_flow_v_units = loaded_curves_flow_units
-        else:
-            loaded_curves_flow_v_units = "m³/h"
-
-        if plot_curves_flow_units in flow_v_units:
-            plot_curves_flow_v_units = plot_curves_flow_units
-        else:
-            plot_curves_flow_v_units = "m³/h"
-
-        st.markdown("### Upload Engauge Digitized Files")
-        st.markdown(
-            """
-        Upload CSV files from Engauge Digitizer containing the original performance curves. \n\n
-        If you are uploading head and eff files, they should be saved with the following convention:\n
-            - <curve-name>-head.csv
-            - <curve-name>-eff.csv
-        Check in the link how to get points with Engauge Digitizer:
-        [Engauge Digitizer Guide](https://ccp-centrifugal-compressor-performance.readthedocs.io/en/stable/user_guide/engauge.html).
-        """
-        )
-
-        # File upload areas
         col1, col2 = st.columns(2)
 
         with col1:
-            st.markdown("#### Performance Curves File 1")
-            uploaded_curves_file_1 = st.file_uploader(
-                "Upload first curves file",
-                type=["csv"],
-                key="uploaded_curves_file_1",
-                help="CSV file from Engauge Digitizer with performance curve data",
+            find_method = st.selectbox(
+                "Find Method",
+                options=["speed", "volume_ratio"],
+                help="Method for conversion: 'speed' keeps volume ratio constant, 'volume_ratio' uses specified speed",
             )
 
         with col2:
-            st.markdown("#### Performance Curves File 2")
-            uploaded_curves_file_2 = st.file_uploader(
-                "Upload second curves file",
-                type=["csv"],
-                key="uploaded_curves_file_2",
-                help="CSV file from Engauge Digitizer with performance curve data (optional)",
+            speed_option = st.selectbox(
+                "Speed Option",
+                options=["same", "calculate"],
+                help="Keep same speed or calculate new speed",
             )
 
-        # Store uploaded files in session state immediately upon upload
-        if uploaded_curves_file_1 is not None:
-            st.session_state["curves_file_1"] = {
-                "name": uploaded_curves_file_1.name,
-                "content": uploaded_curves_file_1.getvalue(),
-            }
+            if speed_option == "calculate":
+                speed_option_arg = None
+            else:
+                speed_option_arg = "same"
 
-        if uploaded_curves_file_2 is not None:
-            st.session_state["curves_file_2"] = {
-                "name": uploaded_curves_file_2.name,
-                "content": uploaded_curves_file_2.getvalue(),
-            }
+    # Convert Button
+    convert_button = st.button(
+        "Convert Curves",
+        type="primary",
+        width="stretch",
+        help="Convert the curves to new suction conditions",
+    )
 
-        # Load impeller button
-        load_impeller_button = st.button(
-            "Load Original Curves",
-            type="secondary",
-            help="Load the original curves from the uploaded files",
-        )
+    if convert_button:
+        available_cases, impellers_list = get_available_impellers()
 
-        # Process uploaded files
-        if load_impeller_button:
-            # Check if we have files from uploader or from session state
-            try:
-                has_files_from_session = bool(
-                    bool(st.session_state.curves_file_1)
-                    and bool(st.session_state.curves_file_2)
+        if not available_cases:
+            st.error(
+                "Please load at least one design case before converting. "
+                "Upload curves in the 'Performance Curves Upload' expander."
+            )
+            return
+
+        if new_suc_p <= 0 or new_suc_t <= 0:
+            st.error("Please fill in all new suction condition values")
+            return
+
+        progress_bar = st.progress(0, text="Starting conversion...")
+
+        try:
+            progress_bar.progress(30, text="Creating new suction conditions...")
+
+            gas_composition_new = get_gas_composition(
+                new_gas,
+                gas_compositions_table,
+                default_components,
+            )
+
+            new_suc_state = ccp.State(
+                p=Q_(new_suc_p, new_suc_p_unit),
+                T=Q_(new_suc_t, new_suc_t_unit),
+                fluid=gas_composition_new,
+            )
+
+            progress_bar.progress(60, text="Converting curves...")
+
+            if len(impellers_list) == 1:
+                original_for_convert = impellers_list[0]
+                st.caption(
+                    f"Converting from case **{available_cases[0]}** to target conditions."
                 )
-            except AttributeError as e:
-                st.error(f"No curves files uploaded: {str(e)}")
-                logging.error(f"No curves files uploaded: {e}")
-                return
+            else:
+                original_for_convert = impellers_list
+                st.caption(
+                    f"Multiple design cases loaded ({', '.join(available_cases)}). "
+                    "ccp will pick the closest case based on speed of sound."
+                )
 
-            if has_files_from_session:
-                try:
-                    # Create temporary directory for files
-
-                    # Function to extract curve name from filename
-                    def extract_curve_name(filename):
-                        """Extract curve name from filename, removing suffix like -head, -eff, etc."""
-                        # Remove file extension
-                        name = filename.rsplit(".", 1)[0]
-
-                        # Check for known suffixes
-                        suffixes = [
-                            "head",
-                            "eff",
-                            "power",
-                            "power_shaft",
-                            "pressure_ratio",
-                            "disch_T",
-                        ]
-                        for suffix in suffixes:
-                            if name.endswith(f"-{suffix}"):
-                                return name[: -len(f"-{suffix}")]
-
-                        # If no suffix found, return the full name
-                        return name
-
-                    # Create temporary directory
-                    temp_dir = tempfile.mkdtemp()
-                    temp_path = Path(temp_dir)
-
-                    # Get curve name from first available file
-                    filenames = [
-                        st.session_state["curves_file_1"]["name"],
-                        st.session_state["curves_file_2"]["name"],
-                    ]
-                    if filenames:
-                        curve_name = extract_curve_name(filenames[0])
-                        st.session_state.curve_name = curve_name
-
-                        # Save session state CSV files to temporary directory
-                        for csv_file in [
-                            st.session_state["curves_file_1"],
-                            st.session_state["curves_file_2"],
-                        ]:
-                            file_path = temp_path / csv_file["name"]
-                            with open(file_path, "wb") as f:
-                                f.write(csv_file["content"])
-                    else:
-                        st.error("No CSV files found in session state")
-                        return
-
-                    # Create suction state
-                    gas_composition_original = get_gas_composition(
-                        original_gas, gas_compositions_table, default_components
-                    )
-
-                    original_suc_state = ccp.State(
-                        p=Q_(original_suc_p, original_suc_p_unit),
-                        T=Q_(original_suc_t, original_suc_t_unit),
-                        fluid=gas_composition_original,
-                    )
-
-                    # Load impeller from Engauge files
-                    progress_bar = st.progress(0, text="Loading curves from files...")
-
-                    original_impeller = ccp.Impeller.load_from_engauge_csv(
-                        suc=original_suc_state,
-                        curve_name=curve_name,
-                        curve_path=temp_path,
-                        flow_units=loaded_curves_flow_units,
-                        disch_p_units=loaded_curves_disch_p_units,
-                        disch_T_units=loaded_curves_disch_T_units,
-                        head_units=loaded_curves_head_units,
-                        power_units=loaded_curves_power_units,
-                        speed_units=loaded_curves_speed_units,
-                    )
-
-                    progress_bar.progress(100, text="Curves loaded successfully!")
-                    time.sleep(0.5)
-                    progress_bar.empty()
-
-                    # Store in session state
-                    st.session_state.original_impeller = original_impeller
-
-                    # Clean up temporary files
-                    shutil.rmtree(temp_dir)
-
-                    st.success(
-                        f"Original curves loaded successfully with {len(original_impeller.points)} points!"
-                    )
-
-                except Exception as e:
-                    st.error(f"Error loading impeller: {str(e)}")
-                    logging.error(f"Error loading impeller: {e}")
-
-                    # Clean up temporary directory on error
-                    try:
-                        shutil.rmtree(temp_dir)
-                    except:
-                        pass
-
-        if st.session_state.original_impeller is not None:
-            # Display basic info
-            st.markdown("#### Loaded Curves Information")
-            st.write(f"Curve name: {st.session_state.curve_name}")
-            st.write(
-                f"Number of points: {len(st.session_state.original_impeller.points)}"
+            converted_impeller = ccp.Impeller.convert_from(
+                original_impeller=original_for_convert,
+                suc=new_suc_state,
+                find=find_method,
+                speed=speed_option_arg,
             )
-            st.write(
-                f"Number of curves: {len(st.session_state.original_impeller.curves)}"
-            )
-            if st.session_state.original_impeller.points:
-                speeds = [
-                    p.speed.to("rpm").m
-                    for p in st.session_state.original_impeller.points
-                ]
-                st.write(f"Speed range: {min(speeds):.0f} - {max(speeds):.0f} RPM")
-                flows = [
-                    p.flow_v.to("m³/h").m
-                    for p in st.session_state.original_impeller.points
-                ]
-                st.write(f"Flow range: {min(flows):.2f} - {max(flows):.2f} m³/h")
+            st.session_state.converted_impeller = converted_impeller
 
-            # Display curves
-            st.markdown("#### Curves")
+            progress_bar.progress(100, text="Conversion complete!")
+            time.sleep(0.5)
+            progress_bar.empty()
+
+            st.success("Curves conversion completed successfully!")
+
+        except Exception as e:
+            st.error(f"Error during conversion: {str(e)}")
+            logging.error(f"Conversion error: {e}")
+            progress_bar.empty()
+            return
+
+    # Results Display
+    if st.session_state.converted_impeller is not None:
+        with st.expander("Conversion Results", expanded=True):
+            st.markdown("### Plot Curves Units")
+
+            plot_curves_units_cols = st.columns(6)
+
+            with plot_curves_units_cols[0]:
+                plot_curves_speed_units = st.selectbox(
+                    "Speed",
+                    options=speed_units,
+                    key="plot_curves_speed_units",
+                    index=0,
+                )
+            with plot_curves_units_cols[1]:
+                plot_curves_flow_units = st.selectbox(
+                    "Flow",
+                    options=flow_units,
+                    key="plot_curves_flow_units",
+                    index=6,
+                )
+            with plot_curves_units_cols[2]:
+                plot_curves_disch_p_units = st.selectbox(
+                    "Disch. Pres.",
+                    options=pressure_units,
+                    key="plot_curves_disch_p_units",
+                    index=0,
+                )
+            with plot_curves_units_cols[3]:
+                plot_curves_disch_T_units = st.selectbox(
+                    "Disch. Temp.",
+                    options=temperature_units,
+                    key="plot_curves_disch_T_units",
+                    index=0,
+                )
+            with plot_curves_units_cols[4]:
+                plot_curves_head_units = st.selectbox(
+                    "Head",
+                    options=head_units,
+                    key="plot_curves_head_units",
+                    index=0,
+                )
+            with plot_curves_units_cols[5]:
+                plot_curves_power_units = st.selectbox(
+                    "Power",
+                    options=power_units,
+                    key="plot_curves_power_units",
+                    index=0,
+                )
+
+            if plot_curves_flow_units in flow_v_units:
+                plot_curves_flow_v_units = plot_curves_flow_units
+            else:
+                plot_curves_flow_v_units = "m³/h"
 
             @st.cache_data
             def generate_plots(
@@ -556,47 +410,31 @@ def main():
                     point,
                 )
 
-            @st.fragment
-            def display_original_plots():
-                # Project Flow
-                project_flow_container = st.container()
-                (
-                    project_flow_col1,
-                    project_flow_col2,
-                    dummy_project_flow_col3,
-                    dummy_project_flow_col4,
-                ) = project_flow_container.columns(4)
-                project_flow_col1.markdown(
-                    f"Operational Flow (**{plot_curves_flow_v_units}**)"
-                )
-                project_flow = project_flow_col2.number_input(
-                    "Operational Flow (m³/h)",
+            def render_impeller_plots(impeller, key_prefix, label):
+                flow_container = st.container()
+                flow_col1, flow_col2, _, _ = flow_container.columns(4)
+                flow_col1.markdown(f"Operational Flow (**{plot_curves_flow_v_units}**)")
+                project_flow = flow_col2.number_input(
+                    f"{label} Flow",
                     min_value=0.0,
-                    value=st.session_state.original_impeller.points[0]
-                    .flow_v.to(plot_curves_flow_v_units)
-                    .m,
+                    value=impeller.points[0].flow_v.to(plot_curves_flow_v_units).m,
                     help="Select an operational flow to display the curves at that flow",
                     label_visibility="collapsed",
+                    key=f"{key_prefix}_flow_input",
                 )
-                # Project Speed
-                project_speed_container = st.container()
-                (
-                    project_speed_col1,
-                    project_speed_col2,
-                    dummy_project_speed_col3,
-                    dummy_project_speed_col4,
-                ) = project_speed_container.columns(4)
-                project_speed_col1.markdown(
+
+                speed_container = st.container()
+                speed_col1, speed_col2, _, _ = speed_container.columns(4)
+                speed_col1.markdown(
                     f"Operational Speed (**{plot_curves_speed_units}**)"
                 )
-                project_speed = project_speed_col2.number_input(
-                    "Operational Speed (RPM)",
+                project_speed = speed_col2.number_input(
+                    f"{label} Speed",
                     min_value=0.0,
-                    value=st.session_state.original_impeller.points[0]
-                    .speed.to(plot_curves_speed_units)
-                    .m,
+                    value=impeller.points[0].speed.to(plot_curves_speed_units).m,
                     help="Select an operational speed to display the curves at that speed",
                     label_visibility="collapsed",
+                    key=f"{key_prefix}_speed_input",
                 )
 
                 (
@@ -607,8 +445,8 @@ def main():
                     disch_p_plot,
                     project_point,
                 ) = generate_plots(
-                    st.session_state.original_impeller,
-                    hash(st.session_state.original_impeller),
+                    impeller,
+                    hash(impeller),
                     project_flow,
                     plot_curves_flow_v_units,
                     project_speed,
@@ -619,17 +457,23 @@ def main():
                     disch_p_units=plot_curves_disch_p_units,
                 )
 
-                # Display 4 plots (head, eff, power, discharge pressure) in 2 columns and 2 rows
                 plot_col1, plot_col2 = st.columns(2)
                 with plot_col1:
-                    st.plotly_chart(head_plot, width="stretch")
-                    st.plotly_chart(power_plot, width="stretch")
-                    st.plotly_chart(disch_T_plot, width="stretch")
+                    st.plotly_chart(
+                        head_plot, width="stretch", key=f"{key_prefix}_head"
+                    )
+                    st.plotly_chart(
+                        power_plot, width="stretch", key=f"{key_prefix}_power"
+                    )
+                    st.plotly_chart(
+                        disch_T_plot, width="stretch", key=f"{key_prefix}_disch_T"
+                    )
                 with plot_col2:
-                    st.plotly_chart(eff_plot, width="stretch")
-                    st.plotly_chart(disch_p_plot, width="stretch")
-                    # Display summary table
-                    st.markdown("#### Project Point")
+                    st.plotly_chart(eff_plot, width="stretch", key=f"{key_prefix}_eff")
+                    st.plotly_chart(
+                        disch_p_plot, width="stretch", key=f"{key_prefix}_disch_p"
+                    )
+                    st.markdown(f"#### {label} Point")
                     st.code(
                         f"""
                             -----------------------------\n
@@ -649,187 +493,26 @@ def main():
                                 Discharge Pressure:    {project_point.disch.p(plot_curves_disch_p_units).m:.2f} {plot_curves_disch_p_units}
                                 Discharge Temperature: {project_point.disch.T(plot_curves_disch_T_units).m:.2f} {plot_curves_disch_T_units}
 
-"""
+""",
                     )
 
-            display_original_plots()
+            @st.fragment
+            def display_results():
+                available_cases, impellers_list = get_available_impellers()
+                converted_imp = st.session_state.converted_impeller
 
-    # New Suction Conditions
-    with st.expander(
-        "New Suction Conditions", expanded=st.session_state.expander_state
-    ):
-        st.markdown("### Target Suction Conditions")
-        st.markdown("Define the new suction conditions for the curves conversion.")
+                if available_cases:
+                    st.markdown("### Original (Design) Curves")
+                    tabs = st.tabs([f"Case {c}" for c in available_cases])
+                    for tab, case, imp in zip(tabs, available_cases, impellers_list):
+                        with tab:
+                            render_impeller_plots(
+                                imp,
+                                key_prefix=f"orig_case_{case}",
+                                label=f"Design Case {case}",
+                            )
 
-        # Gas selection container
-        new_gas_container = st.container()
-        new_gas_col1, new_gas_col2, new_gas_col3 = new_gas_container.columns(3)
-
-        new_gas_col1.markdown("Gas Selection")
-        new_gas_col2.markdown("")
-        new_gas = new_gas_col3.selectbox(
-            "Gas for New Conditions",
-            options=gas_options,
-            key="new_gas_selection",
-            label_visibility="collapsed",
-            help="Select the gas composition for the new suction conditions",
-        )
-
-        # New Suction Pressure
-        new_pressure_container = st.container()
-        new_pressure_col1, new_pressure_col2, new_pressure_col3 = (
-            new_pressure_container.columns(3)
-        )
-
-        new_pressure_col1.markdown("Suction Pressure")
-        new_suc_p_unit = new_pressure_col2.selectbox(
-            "New Suction P Unit",
-            options=pressure_units,
-            key="new_suc_p_unit",
-            label_visibility="collapsed",
-            index=0,
-        )
-        new_suc_p = new_pressure_col3.number_input(
-            "New Suction Pressure",
-            key="new_suc_p",
-            label_visibility="collapsed",
-            help="New suction pressure",
-        )
-
-        # New Suction Temperature
-        new_temperature_container = st.container()
-        new_temperature_col1, new_temperature_col2, new_temperature_col3 = (
-            new_temperature_container.columns(3)
-        )
-
-        new_temperature_col1.markdown("Suction Temperature")
-        new_suc_t_unit = new_temperature_col2.selectbox(
-            "New Suction T Unit",
-            options=temperature_units,
-            key="new_suc_t_unit",
-            label_visibility="collapsed",
-            index=1,
-        )
-        new_suc_t = new_temperature_col3.number_input(
-            "New Suction Temperature",
-            key="new_suc_t",
-            label_visibility="collapsed",
-            help="New suction temperature",
-        )
-
-    # Conversion Options
-    with st.expander("Conversion Options", expanded=st.session_state.expander_state):
-        st.markdown("### Conversion Parameters")
-
-        col1, col2 = st.columns(2)
-
-        with col1:
-            find_method = st.selectbox(
-                "Find Method",
-                options=["speed", "volume_ratio"],
-                help="Method for conversion: 'speed' keeps volume ratio constant, 'volume_ratio' uses specified speed",
-            )
-
-        with col2:
-            speed_option = st.selectbox(
-                "Speed Option",
-                options=["same", "calculate"],
-                help="Keep same speed or calculate new speed",
-            )
-
-            if speed_option == "calculate":
-                speed_option_arg = None
-            else:
-                speed_option_arg = "same"
-
-    # Convert Button
-    convert_button = st.button(
-        "Convert Curves",
-        type="primary",
-        width="stretch",
-        help="Convert the curves to new suction conditions",
-    )
-
-    # Conversion Process
-    if convert_button:
-        # Validate inputs
-        if st.session_state.original_impeller is None:
-            st.error(
-                "Please load the original curves first using the 'Load Original Curves' button"
-            )
-            return
-
-        if new_suc_p <= 0 or new_suc_t <= 0:
-            st.error("Please fill in all new suction condition values")
-            return
-
-        progress_bar = st.progress(0, text="Starting conversion...")
-
-        try:
-            # Get original impeller from session state
-            original_impeller = st.session_state.original_impeller
-
-            progress_bar.progress(30, text="Creating new suction conditions...")
-
-            # Create new suction conditions
-            gas_composition_new = get_gas_composition(
-                new_gas, gas_compositions_table, default_components
-            )
-
-            new_suc_state = ccp.State(
-                p=Q_(new_suc_p, new_suc_p_unit),
-                T=Q_(new_suc_t, new_suc_t_unit),
-                fluid=gas_composition_new,
-            )
-
-            progress_bar.progress(60, text="Converting curves...")
-
-            # Convert impeller
-            conversion_kwargs = {
-                "original_impeller": original_impeller,
-                "suc": new_suc_state,
-                "find": find_method,
-                "speed": speed_option_arg,
-            }
-
-            converted_impeller = ccp.Impeller.convert_from(**conversion_kwargs)
-            st.session_state.converted_impeller = converted_impeller
-
-            progress_bar.progress(100, text="Conversion complete!")
-            time.sleep(0.5)
-            progress_bar.empty()
-
-            st.success("Curves conversion completed successfully!")
-
-        except Exception as e:
-            st.error(f"Error during conversion: {str(e)}")
-            logging.error(f"Conversion error: {e}")
-            progress_bar.empty()
-            return
-
-    # Results Display
-    if st.session_state.converted_impeller is not None:
-        with st.expander("Conversion Results", expanded=True):
-            st.markdown("### Converted Curves")
-
-            original_imp = st.session_state.original_impeller
-            converted_imp = st.session_state.converted_impeller
-
-            # Display summary
-            col1, col2 = st.columns(2)
-
-            with col1:
-                st.markdown("#### Original Curves")
-                st.write(f"Number of points: {len(original_imp.points)}")
-                st.write(
-                    f"Speed range: {min(p.speed.to('rpm').m for p in original_imp.points):.0f} - {max(p.speed.to('rpm').m for p in original_imp.points):.0f} RPM"
-                )
-                st.write(
-                    f"Flow range: {min(p.flow_v.to('m³/h').m for p in original_imp.points):.2f} - {max(p.flow_v.to('m³/h').m for p in original_imp.points):.2f} m³/h"
-                )
-
-            with col2:
-                st.markdown("#### Converted Curves")
+                st.markdown("### Converted Curves")
                 st.write(f"Number of points: {len(converted_imp.points)}")
                 st.write(
                     f"Speed range: {min(p.speed.to('rpm').m for p in converted_imp.points):.0f} - {max(p.speed.to('rpm').m for p in converted_imp.points):.0f} RPM"
@@ -837,102 +520,13 @@ def main():
                 st.write(
                     f"Flow range: {min(p.flow_v.to('m³/h').m for p in converted_imp.points):.2f} - {max(p.flow_v.to('m³/h').m for p in converted_imp.points):.2f} m³/h"
                 )
-
-            # Performance curves
-            st.markdown("#### Curves")
-
-            @st.fragment
-            def display_converted_plots():
-                # New Flow
-                new_flow_container = st.container()
-                new_flow_col1, new_flow_col2, dummy_new_flow_col3, dummy_new_flow_col4 = (
-                    new_flow_container.columns(4)
-                )
-                new_flow_col1.markdown(f"Operational Flow (**{plot_curves_flow_v_units}**)")
-                new_flow = new_flow_col2.number_input(
-                    "Operational Flow (m³/h)",
-                    min_value=0.0,
-                    value=st.session_state.converted_impeller.points[0]
-                    .flow_v.to(plot_curves_flow_v_units)
-                    .m,
-                    help="Select an operational flow to display the curves at that flow",
-                    label_visibility="collapsed",
-                    key="new_flow_input",
-                )
-                # New Speed
-                new_speed_container = st.container()
-                (
-                    new_speed_col1,
-                    new_speed_col2,
-                    dummy_new_speed_col3,
-                    dummy_new_speed_col4,
-                ) = new_speed_container.columns(4)
-                new_speed_col1.markdown(
-                    f"Operational Speed (**{plot_curves_speed_units}**)"
-                )
-                new_speed = new_speed_col2.number_input(
-                    "Operational Speed (RPM)",
-                    min_value=0.0,
-                    value=st.session_state.converted_impeller.points[0]
-                    .speed.to(plot_curves_speed_units)
-                    .m,
-                    help="Select an operational speed to display the curves at that speed",
-                    label_visibility="collapsed",
-                    key="new_speed_input",
+                render_impeller_plots(
+                    converted_imp,
+                    key_prefix="converted",
+                    label="Converted",
                 )
 
-                (
-                    new_head_plot,
-                    new_power_plot,
-                    new_disch_T_plot,
-                    new_eff_plot,
-                    new_disch_p_plot,
-                    new_point,
-                ) = generate_plots(
-                    st.session_state.converted_impeller,
-                    hash(st.session_state.converted_impeller),
-                    new_flow,
-                    plot_curves_flow_v_units,
-                    new_speed,
-                    plot_curves_speed_units,
-                    head_units=plot_curves_head_units,
-                    power_units=plot_curves_power_units,
-                    disch_T_units=plot_curves_disch_T_units,
-                    disch_p_units=plot_curves_disch_p_units,
-                )
-
-                plot_conv_col1, plot_conv_col2 = st.columns(2)
-                with plot_conv_col1:
-                    st.plotly_chart(new_head_plot, width="stretch")
-                    st.plotly_chart(new_power_plot, width="stretch")
-                    st.plotly_chart(new_disch_T_plot, width="stretch")
-                with plot_conv_col2:
-                    st.plotly_chart(new_eff_plot, width="stretch")
-                    st.plotly_chart(new_disch_p_plot, width="stretch")
-                    st.markdown("#### New Point")
-                    st.code(
-                        f"""
-                            -----------------------------\n
-                                Speed:                 {new_point.speed.to("rpm").m:.0f} {plot_curves_speed_units}
-                                Flow:                  {new_point.flow_v.to(plot_curves_flow_v_units).m:.2f} {plot_curves_flow_v_units}
-                                Head:                  {new_point.head.to(plot_curves_head_units).m:.2f} {plot_curves_head_units}
-                                Eff:                   {new_point.eff.m:.2f} %
-                                Power:                 {new_point.power.to(plot_curves_power_units).m:.2f} {plot_curves_power_units}
-
-                                Suction Conditions
-                                --------------------
-                                Suction Pressure:      {new_point.suc.p(plot_curves_disch_p_units).m:.2f} {plot_curves_disch_p_units}
-                                Suction Temperature:   {new_point.suc.T(plot_curves_disch_T_units).m:.2f} {plot_curves_disch_T_units}
-
-                                Discharge Conditions
-                                --------------------
-                                Discharge Pressure:    {new_point.disch.p(plot_curves_disch_p_units).m:.2f} {plot_curves_disch_p_units}
-                                Discharge Temperature: {new_point.disch.T(plot_curves_disch_T_units).m:.2f} {plot_curves_disch_T_units}
-
-"""
-                    )
-
-            display_converted_plots()
+            display_results()
 
 
 if __name__ == "__main__":

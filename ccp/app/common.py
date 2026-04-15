@@ -383,17 +383,13 @@ def gas_selection_form(fluid_list, default_components):
     )
     with st.container(key="gas_selection_container"):
         with st.form(key="form_gas_selection", enter_to_submit=False, border=False):
-            with st.expander(
-                "Gas Selection", expanded=st.session_state.expander_state
-            ):
+            with st.expander("Gas Selection", expanded=st.session_state.expander_state):
                 gas_compositions_table = {}
                 gas_columns = st.columns(6)
                 for i, gas_column in enumerate(gas_columns):
                     gas_compositions_table[f"gas_{i}"] = {}
 
-                    gas_compositions_table[f"gas_{i}"][
-                        "name"
-                    ] = gas_column.text_input(
+                    gas_compositions_table[f"gas_{i}"]["name"] = gas_column.text_input(
                         "Gas Name",
                         value=f"gas_{i}",
                         key=f"gas_{i}",
@@ -455,21 +451,15 @@ def gas_selection_form(fluid_list, default_components):
 
                     for column in gas_composition_df_edited:
                         for j, value in enumerate(gas_composition_df_edited[column]):
-                            gas_compositions_table[f"gas_{i}"][
-                                f"{column}_{j}"
-                            ] = value
+                            gas_compositions_table[f"gas_{i}"][f"{column}_{j}"] = value
 
-                submit_composition = st.form_submit_button(
-                    "Submit", type="primary"
-                )
+                submit_composition = st.form_submit_button("Submit", type="primary")
 
                 if (
                     "gas_compositions_table" not in st.session_state
                     or submit_composition
                 ):
-                    st.session_state[
-                        "gas_compositions_table"
-                    ] = gas_compositions_table
+                    st.session_state["gas_compositions_table"] = gas_compositions_table
 
     return gas_compositions_table
 
@@ -920,7 +910,9 @@ def fetch_pi_data_online(tag_mappings, testing=False):
         now = datetime.now()
         start_time = now - timedelta(minutes=15)
 
-        print(f"[fetch_pi_data_online] tags={tags_list}, time_range=({format_pi_time(start_time)}, {format_pi_time(now)})")
+        print(
+            f"[fetch_pi_data_online] tags={tags_list}, time_range=({format_pi_time(start_time)}, {format_pi_time(now)})"
+        )
         session = SessionWeb(
             server_name=tag_mappings.get("pi_server_name", ""),
             login=tag_mappings.get("pi_login"),
@@ -1048,7 +1040,7 @@ def curves_upload_section():
         )
 
         st.markdown("### Loaded Curves Units")
-        loaded_curves_units_cols = st.columns(4)
+        loaded_curves_units_cols = st.columns(6)
 
         with loaded_curves_units_cols[0]:
             loaded_curves_speed_units = st.selectbox(
@@ -1076,6 +1068,20 @@ def curves_upload_section():
                 "Power",
                 options=power_units,
                 key="loaded_curves_power_units",
+                index=0,
+            )
+        with loaded_curves_units_cols[4]:
+            loaded_curves_disch_p_units = st.selectbox(
+                "Disch. Pres.",
+                options=pressure_units,
+                key="loaded_curves_disch_p_units",
+                index=0,
+            )
+        with loaded_curves_units_cols[5]:
+            loaded_curves_disch_T_units = st.selectbox(
+                "Disch. Temp.",
+                options=temperature_units,
+                key="loaded_curves_disch_T_units",
                 index=0,
             )
 
@@ -1199,6 +1205,8 @@ def curves_upload_section():
                         head_units=loaded_curves_head_units,
                         power_units=loaded_curves_power_units,
                         speed_units=loaded_curves_speed_units,
+                        disch_p_units=loaded_curves_disch_p_units,
+                        disch_T_units=loaded_curves_disch_T_units,
                     )
 
                     progress_bar.progress(100, text="Curves loaded!")
@@ -1530,9 +1538,7 @@ def build_tag_mappings():
         tag_mappings["delta_p_tag_2"] = st.session_state.get("delta_p_tag_2", "")
         tag_mappings["delta_p_unit"] = st.session_state.get("delta_p_unit", "bar")
         tag_mappings["delta_p_unit_2"] = st.session_state.get("delta_p_unit_2", "bar")
-        tag_mappings["p_downstream_tag"] = st.session_state.get(
-            "p_downstream_tag", ""
-        )
+        tag_mappings["p_downstream_tag"] = st.session_state.get("p_downstream_tag", "")
         tag_mappings["p_downstream_tag_2"] = st.session_state.get(
             "p_downstream_tag_2", ""
         )
@@ -1592,9 +1598,7 @@ def build_data_units(tag_mappings):
         data_units["flow_v"] = st.session_state.get("flow_unit", "m³/h")
     else:
         data_units["delta_p"] = st.session_state.get("delta_p_unit", "bar")
-        data_units["p_downstream"] = st.session_state.get(
-            "p_downstream_unit", "bar"
-        )
+        data_units["p_downstream"] = st.session_state.get("p_downstream_unit", "bar")
 
     return data_units
 
@@ -1633,9 +1637,7 @@ def build_evaluation_kwargs(
         "n_clusters": len(impellers_list),
         "calculate_points": False,
         "parallel": not testing,
-        "temperature_fluctuation": st.session_state.get(
-            "temperature_fluctuation", 0.5
-        ),
+        "temperature_fluctuation": st.session_state.get("temperature_fluctuation", 0.5),
         "pressure_fluctuation": st.session_state.get("pressure_fluctuation", 2.0),
         "speed_fluctuation": st.session_state.get("speed_fluctuation", 0.5),
     }
@@ -1868,6 +1870,7 @@ def oil_input_widgets():
     oil_iso_classification : str
         Selected ISO classification.
     """
+
     def on_oil_specific_heat_change():
         if st.session_state.oil_specific_heat:
             st.session_state.oil_iso = False
@@ -1952,7 +1955,13 @@ def oil_input_widgets():
         disabled=not st.session_state.oil_iso,
     )
 
-    return oil_specific_heat, oil_specific_heat_value, oil_density_value, oil_iso, oil_iso_classification
+    return (
+        oil_specific_heat,
+        oil_specific_heat_value,
+        oil_density_value,
+        oil_iso,
+        oil_iso_classification,
+    )
 
 
 def add_background_image(limits, fig, image):
@@ -1982,10 +1991,8 @@ def add_background_image(limits, fig, image):
             yref="y",
             x=limits["x"]["lower_limit"],
             y=limits["y"]["upper_limit"],
-            sizex=float(limits["x"]["upper_limit"])
-            - float(limits["x"]["lower_limit"]),
-            sizey=float(limits["y"]["upper_limit"])
-            - float(limits["y"]["lower_limit"]),
+            sizex=float(limits["x"]["upper_limit"]) - float(limits["x"]["lower_limit"]),
+            sizey=float(limits["y"]["upper_limit"]) - float(limits["y"]["lower_limit"]),
             sizing="stretch",
             opacity=0.5,
             layer="below",
