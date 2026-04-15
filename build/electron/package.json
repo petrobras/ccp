@@ -1,6 +1,6 @@
 {
   "name": "ccp-app",
-  "version": "0.3.29",
+  "version": "0.3.30",
   "description": "CCP - Centrifugal Compressor Performance",
   "main": "main.js",
   "scripts": {
@@ -18,11 +18,14 @@
   "build": {
     "appId": "com.petrobras.ccp",
     "productName": "CCP App",
+    "afterPack": "./afterPack.js",
     "win": {
       "target": [
         {
           "target": "portable",
-          "arch": ["x64"]
+          "arch": [
+            "x64"
+          ]
         }
       ],
       "icon": "icon.png",
@@ -35,12 +38,15 @@
       {
         "from": "../pyinstaller_build/ccp_streamlit",
         "to": "ccp_streamlit",
-        "filter": ["**/*"]
+        "filter": [
+          "**/*"
+        ]
       }
     ],
     "files": [
       "main.js",
-      "package.json"
+      "package.json",
+      "icon.ico"
     ],
     "directories": {
       "output": "../dist"
