@@ -105,6 +105,8 @@ dev = [
     "sphinx-panels",
     "sphinx-copybutton",
     "sphinx-rtd-theme",
+    "sphinx-design",
+    "sphinxcontrib-googleanalytics",
 ]
 
 [tool.uv]
