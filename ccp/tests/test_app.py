@@ -143,26 +143,30 @@ class TestCurvesConversion:
         at = AppTest.from_file(self.page_path, default_timeout=TIMEOUT)
         populate_session_state(at, session_data)
 
-        # Populate CSV files in session state (as the file loader would)
-        csv_items = sorted(csv_files.items())
-        for i, (name, content) in enumerate(csv_items, start=1):
-            at.session_state[f"curves_file_{i}"] = {
-                "name": name,
-                "content": content,
-            }
+        # Pre-populate case A impeller directly from the saved toml (mirrors
+        # what the page's _load_curves_conversion does for .ccp files).
+        import io
+
+        impeller_toml = toml_files.get("impeller_case_A.toml")
+        assert impeller_toml, "impeller_case_A.toml missing from example file"
+        at.session_state["impeller_case_A"] = ccp.Impeller.load(
+            io.StringIO(impeller_toml)
+        )
+
+        # Populate CSV files per case based on filename pattern (same pattern
+        # as performance evaluation).
+        for name, content in csv_files.items():
+            if "curves_file_" in name and "_case_" in name:
+                parts = name.replace(".csv", "").split("_")
+                file_num = parts[2]
+                case = parts[-1]
+                at.session_state[f"curves_file_{file_num}_case_{case}"] = {
+                    "name": name,
+                    "content": content,
+                }
 
         at.run(timeout=TIMEOUT)
         assert not at.exception
-
-        # Click "Load Original Curves"
-        load_buttons = [b for b in at.button if b.label == "Load Original Curves"]
-        assert load_buttons, "Load Original Curves button not found"
-        load_buttons[0].click().run(timeout=TIMEOUT)
-        assert not at.exception
-
-        original_imp = at.session_state["original_impeller"]
-        assert original_imp is not None, "original_impeller not created"
-        assert len(original_imp.points) > 0
 
         # Click "Convert Curves"
         convert_buttons = [b for b in at.button if b.label == "Convert Curves"]
@@ -223,9 +227,7 @@ class TestOnlineMonitoring:
         assert not at.exception
 
         # Click "Load Curves for Case A"
-        load_buttons = [
-            b for b in at.button if b.label == "Load Curves for Case A"
-        ]
+        load_buttons = [b for b in at.button if b.label == "Load Curves for Case A"]
         assert load_buttons, "Load Curves for Case A button not found"
         load_buttons[0].click().run(timeout=TIMEOUT)
         assert not at.exception
@@ -283,9 +285,7 @@ class TestPerformanceEvaluation:
         assert not at.exception
 
         # Click "Load Curves for Case A"
-        load_buttons = [
-            b for b in at.button if b.label == "Load Curves for Case A"
-        ]
+        load_buttons = [b for b in at.button if b.label == "Load Curves for Case A"]
         assert load_buttons, "Load Curves for Case A button not found"
         load_buttons[0].click().run(timeout=TIMEOUT)
         assert not at.exception
@@ -315,9 +315,7 @@ class TestPerformanceEvaluation:
         assert not at.exception
 
         # Click "Load Curves for Case A"
-        load_buttons = [
-            b for b in at.button if b.label == "Load Curves for Case A"
-        ]
+        load_buttons = [b for b in at.button if b.label == "Load Curves for Case A"]
         assert load_buttons, "Load Curves for Case A button not found"
         load_buttons[0].click().run(timeout=TIMEOUT)
         assert not at.exception
@@ -329,7 +327,9 @@ class TestPerformanceEvaluation:
         at.run(timeout=TIMEOUT)
         assert not at.exception
 
-        assert "hist_evaluation" in at.session_state, "hist_evaluation not in session_state"
+        assert "hist_evaluation" in at.session_state, (
+            "hist_evaluation not in session_state"
+        )
         evaluation = at.session_state["hist_evaluation"]
         assert evaluation is not None, "hist_evaluation not created"
         assert hasattr(evaluation, "df"), "evaluation has no df attribute"
