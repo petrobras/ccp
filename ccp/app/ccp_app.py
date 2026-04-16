@@ -16,7 +16,7 @@ def main():
     icon, header = st.columns([2, 8])
     icon.image(str(ccp_ico), width=100)
 
-    header.header("ccp - Centrifugal Compressor Peformance")
+    header.header("ccp - Centrifugal Compressor Performance")
 
     st.write("")
     st.subheader("Ferramenta para o cálculo de performance de compressores centrífugos")
