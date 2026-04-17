@@ -878,6 +878,8 @@ class State(CP.AbstractState):
                 super().update(CP.HmassSmass_INPUTS, h.magnitude, s.magnitude)
             elif T is not None and s is not None:
                 super().update(CP.SmassT_INPUTS, s.magnitude, T.magnitude)
+            elif T is not None and h is not None:
+                super().update(CP.HmassT_INPUTS, h.magnitude, T.magnitude)
             else:
                 raise KeyError(f"Update key {args} not implemented")
         except ValueError as e:
