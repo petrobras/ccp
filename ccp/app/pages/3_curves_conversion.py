@@ -70,12 +70,37 @@ def main():
                 session_state_data["app_type"] = "curves_conversion"
 
         for name in my_zip.namelist():
-            if name.endswith(".csv") and "curves_file_" in name and "_case_" in name:
+            # New format: case_{CASE}/<original-engauge-name>.csv
+            if name.endswith(".csv") and name.startswith("case_") and "/" in name:
+                prefix, original_name = name.split("/", 1)
+                case = prefix.replace("case_", "")
+                target_key = None
+                for file_num in ("1", "2"):
+                    k = f"curves_file_{file_num}_case_{case}"
+                    if session_state_data.get(k) is None:
+                        target_key = k
+                        break
+                if target_key is None:
+                    target_key = f"curves_file_2_case_{case}"
+                session_state_data[target_key] = {
+                    "name": original_name,
+                    "content": my_zip.read(name),
+                }
+            # Legacy format: curves_file_{N}_case_{CASE}.csv (original name lost).
+            # Reconstruct engauge name from curve_name_case_{CASE} + head/eff
+            # convention (file 1 = head, file 2 = eff) so "Load Curves" works.
+            elif name.endswith(".csv") and "curves_file_" in name and "_case_" in name:
                 parts = name.replace(".csv", "").split("_")
                 file_num = parts[2]
                 case = parts[-1]
+                curve_name = session_state_data.get(f"curve_name_case_{case}")
+                if curve_name:
+                    suffix = "head" if file_num == "1" else "eff"
+                    restored_name = f"{curve_name}-{suffix}.csv"
+                else:
+                    restored_name = name
                 session_state_data[f"curves_file_{file_num}_case_{case}"] = {
-                    "name": name,
+                    "name": restored_name,
                     "content": my_zip.read(name),
                 }
             if name.endswith(".toml"):
@@ -89,6 +114,11 @@ def main():
                     session_state_data["converted_impeller"] = ccp.Impeller.load(
                         impeller_file
                     )
+
+        for key in list(session_state_data.keys()):
+            if key.startswith(("load_curves", "convert_curves")):
+                del session_state_data[key]
+
         return session_state_data
 
     def _save_curves_conversion(my_zip, session_state_dict_copy):
@@ -108,10 +138,12 @@ def main():
             if key.startswith("curves_file_") and "_case_" in key:
                 if session_state_dict_copy[key] is not None:
                     parts = key.split("_")
-                    file_num = parts[2]
                     case = parts[-1]
+                    original_name = session_state_dict_copy[key].get(
+                        "name", f"{key}.csv"
+                    )
                     my_zip.writestr(
-                        f"curves_file_{file_num}_case_{case}.csv",
+                        f"case_{case}/{original_name}",
                         session_state_dict_copy[key]["content"],
                     )
                 del session_state_dict_copy[key]
@@ -121,7 +153,15 @@ def main():
         keys_to_remove = []
         for key in session_state_dict_copy.keys():
             if key.startswith(
-                ("FormSubmitter", "my_form", "uploaded", "form", "table")
+                (
+                    "FormSubmitter",
+                    "my_form",
+                    "uploaded",
+                    "form",
+                    "table",
+                    "load_curves",
+                    "convert_curves",
+                )
             ) or isinstance(
                 session_state_dict_copy[key],
                 (bytes, st.runtime.uploaded_file_manager.UploadedFile),
@@ -381,7 +421,7 @@ def main():
                 )
                 disch_T_plot = _impeller.disch.T_plot(
                     flow_v_units=point_flow_v_units,
-                    temperature_units=disch_T_units,
+                    T_units=disch_T_units,
                     flow_v=Q_(point_flow, point_flow_v_units),
                     speed=Q_(point_speed, point_speed_units),
                 )
@@ -473,6 +513,20 @@ def main():
                     st.plotly_chart(
                         disch_p_plot, width="stretch", key=f"{key_prefix}_disch_p"
                     )
+                    gas_items = sorted(
+                        (
+                            (comp, float(frac))
+                            for comp, frac in project_point.suc.fluid.items()
+                            if float(frac) > 0
+                        ),
+                        key=lambda kv: kv[1],
+                        reverse=True,
+                    )
+                    gas_lines = "\n".join(
+                        f"                                {comp.lower():<22s} {frac * 100:>7.3f} %"
+                        for comp, frac in gas_items
+                    )
+
                     st.markdown(f"#### {label} Point")
                     st.code(
                         f"""
@@ -492,6 +546,10 @@ def main():
                                 --------------------
                                 Discharge Pressure:    {project_point.disch.p(plot_curves_disch_p_units).m:.2f} {plot_curves_disch_p_units}
                                 Discharge Temperature: {project_point.disch.T(plot_curves_disch_T_units).m:.2f} {plot_curves_disch_T_units}
+
+                                Gas Composition (mol %)
+                                --------------------
+{gas_lines}
 
 """,
                     )
