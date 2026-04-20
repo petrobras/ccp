@@ -421,7 +421,7 @@ def main():
                 )
                 disch_T_plot = _impeller.disch.T_plot(
                     flow_v_units=point_flow_v_units,
-                    temperature_units=disch_T_units,
+                    T_units=disch_T_units,
                     flow_v=Q_(point_flow, point_flow_v_units),
                     speed=Q_(point_speed, point_speed_units),
                 )
