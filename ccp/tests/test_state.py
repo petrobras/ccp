@@ -309,7 +309,7 @@ def test_mix_composition():
 
     with pytest.raises(ValueError) as exc:
         State(p=Q_(0.804, "kgf/cm**2"), T=Q_(37.4, "degC"), fluid=fluid)
-    assert "You might have repeated" in str(exc.value)
+    assert "Repeated components in the fluid dictionary" in str(exc.value)
 
 
 def test_pickle():
