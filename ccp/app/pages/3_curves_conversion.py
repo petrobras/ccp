@@ -89,6 +89,11 @@ def main():
                     session_state_data["converted_impeller"] = ccp.Impeller.load(
                         impeller_file
                     )
+
+        for key in list(session_state_data.keys()):
+            if key.startswith(("load_curves", "convert_curves")):
+                del session_state_data[key]
+
         return session_state_data
 
     def _save_curves_conversion(my_zip, session_state_dict_copy):
@@ -121,7 +126,15 @@ def main():
         keys_to_remove = []
         for key in session_state_dict_copy.keys():
             if key.startswith(
-                ("FormSubmitter", "my_form", "uploaded", "form", "table")
+                (
+                    "FormSubmitter",
+                    "my_form",
+                    "uploaded",
+                    "form",
+                    "table",
+                    "load_curves",
+                    "convert_curves",
+                )
             ) or isinstance(
                 session_state_dict_copy[key],
                 (bytes, st.runtime.uploaded_file_manager.UploadedFile),
