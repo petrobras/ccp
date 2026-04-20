@@ -2818,12 +2818,24 @@ def disch_from_suc_head_eff(suc, head, eff, polytropic_method=None):
     #  consider first an isentropic compression
     disch = State(h=h_disch, s=suc.s(), fluid=suc.fluid)
 
-    def update_pressure(p):
-        disch.update(h=h_disch, p=p)
+    def update_state(x, update_type):
+        if update_type == "pressure":
+            disch.update(h=h_disch, p=x)
+        elif update_type == "temperature":
+            disch.update(h=h_disch, T=x)
         new_head = head_calc_func(suc, disch)
         return (new_head - head).magnitude
 
-    newton(update_pressure, disch.p().magnitude, tol=1e-1)
+    try:
+        newton(update_state, disch.p().magnitude, args=("pressure",), tol=1e-1)
+    except (RuntimeError, ValueError):
+        disch = State(h=h_disch, s=suc.s(), fluid=suc.fluid)
+        newton(
+            update_state,
+            disch.T().magnitude,
+            args=("temperature",),
+            tol=1e-1,
+        )
 
     return disch
 
