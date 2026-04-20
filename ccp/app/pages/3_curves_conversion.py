@@ -513,6 +513,20 @@ def main():
                     st.plotly_chart(
                         disch_p_plot, width="stretch", key=f"{key_prefix}_disch_p"
                     )
+                    gas_items = sorted(
+                        (
+                            (comp, float(frac))
+                            for comp, frac in project_point.suc.fluid.items()
+                            if float(frac) > 0
+                        ),
+                        key=lambda kv: kv[1],
+                        reverse=True,
+                    )
+                    gas_lines = "\n".join(
+                        f"                                {comp.lower():<22s} {frac * 100:>7.3f} %"
+                        for comp, frac in gas_items
+                    )
+
                     st.markdown(f"#### {label} Point")
                     st.code(
                         f"""
@@ -532,6 +546,10 @@ def main():
                                 --------------------
                                 Discharge Pressure:    {project_point.disch.p(plot_curves_disch_p_units).m:.2f} {plot_curves_disch_p_units}
                                 Discharge Temperature: {project_point.disch.T(plot_curves_disch_T_units).m:.2f} {plot_curves_disch_T_units}
+
+                                Gas Composition (mol %)
+                                --------------------
+{gas_lines}
 
 """,
                     )
