@@ -652,13 +652,13 @@ class Impeller:
         if extrapolated:
             if speed.m > curves[1].speed.m:
                 # The extrapolated curve is above the maximum speed of the performance map
-                current_curve = extrapolated_parameters(
+                current_curve = extrapolated_curve(
                     curves[1], speed, number_of_points, p0, power_losses, extrapolated
                 )
 
             elif speed.m < curves[0].speed.m:
                 # The extrapolated curve is below the minimum speed of the performance map
-                current_curve = extrapolated_parameters(
+                current_curve = extrapolated_curve(
                     curves[0], speed, number_of_points, p0, power_losses, extrapolated
                 )
             else:
@@ -667,7 +667,7 @@ class Impeller:
                 )
         else:
             if len(speeds) == 1: # Only one curve
-                current_curve = extrapolated_parameters(
+                current_curve = extrapolated_curve(
                     curves[0], speed, number_of_points, p0, power_losses, extrapolated
                 )
             else:
@@ -1624,10 +1624,10 @@ def interpolate_between_curves(
     return current_curve
 
 
-def extrapolated_parameters(
+def extrapolated_curve(
     curve, speed, number_of_points, p0, power_losses, extrapolated
 ):
-    """Function to interpolate between two given curves.
+    """Function to extrapolate a curve based on another. The efficiency and volume ratio is considered the same, therefore the polytropic head is calculated through the fan law.
 
     Parameters
     ----------
@@ -1648,7 +1648,7 @@ def extrapolated_parameters(
     Returns
     -------
         current_curve : list
-            List with the interpolated points.
+            List with the extrapolated points.
     """
     current_curve = []
 
