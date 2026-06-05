@@ -16,6 +16,7 @@ from scipy.interpolate import interp1d, UnivariateSpline, PchipInterpolator
 from scipy.optimize import fsolve
 
 from ccp import Q_, State, Point, Curve
+from ccp.point import phi, psi, mach, reynolds
 from ccp.config.units import check_units
 from ccp.config.utilities import r_getattr, r_setattr
 from ccp.data_io.read_csv import read_data_from_engauge_csv
@@ -622,15 +623,6 @@ class Impeller:
         """
         speeds = np.array([curve.speed.magnitude for curve in self.curves])
 
-        # handle case where we only have one curve and can't interpolate
-        if len(speeds) == 1:
-            current_curve = self.curves[0]
-            if speed is not None and not np.allclose(speed, current_curve.speed):
-                raise ValueError(
-                    f"Can only interpolate for speed={current_curve.speed}"
-                )
-            return current_curve
-
         # calculate power losses
         power_losses = calculate_power_losses(
             power_losses_ref=self.curves[0].power_losses,
@@ -644,10 +636,6 @@ class Impeller:
             self.curves[closest_curves_idxs[1]],
         ]
 
-        # calculate factor
-        speed_range = curves[1].speed.m - curves[0].speed.m
-        factor_0 = (speed.m - curves[0].speed.m) / speed_range
-        factor_1 = (curves[1].speed.m - speed.m) / speed_range
         # if curve was extrapolated from two other curves extrapolated is true
         if np.all([p._extrapolated for p in curves[0].points]) or np.all(
             [p._extrapolated for p in curves[1].points]
@@ -658,64 +646,34 @@ class Impeller:
         else:
             extrapolated = True
 
-        current_curve = []
         p0 = self.points[0]
         number_of_points = len(curves[0])
 
-        for i in range(number_of_points):
-            flow_eff, eff = get_interpolated_values(
-                factor_0,
-                factor_1,
-                curves[0][i].flow_v.magnitude,
-                curves[0][i].eff.m,
-                curves[1][i].flow_v.magnitude,
-                curves[1][i].eff.m,
-            )
-            flow_head, head = get_interpolated_values(
-                factor_0,
-                factor_1,
-                curves[0][i].flow_v.magnitude,
-                curves[0][i].head.m,
-                curves[1][i].flow_v.magnitude,
-                curves[1][i].head.m,
-            )
+        if extrapolated:
+            if speed.m > curves[1].speed.m:
+                # The extrapolated curve is above the maximum speed of the performance map
+                current_curve = extrapolated_parameters(
+                    curves[1], speed, number_of_points, p0, power_losses, extrapolated
+                )
 
-            phi_ratio = (
-                factor_1 * curves[0][i].phi_ratio + factor_0 * curves[1][i].phi_ratio
-            )
-            psi_ratio = (
-                factor_1 * curves[0][i].psi_ratio + factor_0 * curves[1][i].psi_ratio
-            )
-            volume_ratio_ratio = (
-                factor_1 * curves[0][i].volume_ratio_ratio
-                + factor_0 * curves[1][i].volume_ratio_ratio
-            )
-            reynolds_ratio = (
-                factor_1 * curves[0][i].reynolds_ratio
-                + factor_0 * curves[1][i].reynolds_ratio
-            )
-            mach_diff = (
-                factor_1 * curves[0][i].mach_diff + factor_0 * curves[1][i].mach_diff
-            )
-
-            p = Point(
-                suc=p0.suc,
-                head=head,
-                eff=eff,
-                flow_v=(flow_eff + flow_head) / 2,
-                speed=speed,
-                power_losses=power_losses,
-                b=p0.b,
-                D=p0.D,
-                phi_ratio=phi_ratio,
-                psi_ratio=psi_ratio,
-                volume_ratio_ratio=volume_ratio_ratio,
-                reynolds_ratio=reynolds_ratio,
-                mach_diff=mach_diff,
-                extrapolated=extrapolated,
-            )
-
-            current_curve.append(p)
+            elif speed.m < curves[0].speed.m:
+                # The extrapolated curve is below the minimum speed of the performance map
+                current_curve = extrapolated_parameters(
+                    curves[0], speed, number_of_points, p0, power_losses, extrapolated
+                )
+            else:
+                current_curve = interpolate_between_curves(
+                    curves, speed, number_of_points, p0, power_losses, extrapolated
+                )
+        else:
+            if len(speeds) == 1: # Only one curve
+                current_curve = extrapolated_parameters(
+                    curves[0], speed, number_of_points, p0, power_losses, extrapolated
+                )
+            else:
+                current_curve = interpolate_between_curves(
+                    curves, speed, number_of_points, p0, power_losses, extrapolated
+                )
 
         current_curve = Curve(current_curve, extrapolated)
 
@@ -1457,6 +1415,9 @@ def find_closest_speeds(array, value):
     diff = array - value
     idx = np.abs(diff).argmin()
 
+    if len(array) == 1:
+        return [0, 0]
+
     if idx == 0:
         return [0, 1]
     elif idx == len(array) - 1:
@@ -1570,3 +1531,155 @@ def calc_min_head_point(x, speed, imp, min_head):
     except ValueError:
         head = -x + min_head
     return head - min_head
+
+
+def interpolate_between_curves(
+    curves, speed, number_of_points, p0, power_losses, extrapolated
+):
+    """Function to interpolate between two given curves.
+
+    Parameters
+    ----------
+    curves : list
+        List of curves with the lower and upper curve where the interpolation is going to take place.
+    speed : pint.Quantity
+        Speed (rad/s) of the interpolated curve.
+    number_of_points : int
+        The number of points to be interpolated.
+    p0 : ccp.Point
+        Reference point to acquire suction conditions and geometric parameters.
+    power_losses : pint.Quantity
+        Mechanical power losses (Watt) which includes bearing and seal.
+    extrapolated : bool
+        If true, the point is an extrapolation from other curves or its flow is
+        outside surge and choke limits.
+
+    Returns
+    -------
+        current_curve : list
+            List with the interpolated points.
+    """
+    # calculate factor
+    speed_range = curves[1].speed.m - curves[0].speed.m
+    factor_0 = (speed.m - curves[0].speed.m) / speed_range
+    factor_1 = (curves[1].speed.m - speed.m) / speed_range
+
+    current_curve = []
+
+    for i in range(number_of_points):
+        flow_eff, eff = get_interpolated_values(
+            factor_0,
+            factor_1,
+            curves[0][i].flow_v.magnitude,
+            curves[0][i].eff.m,
+            curves[1][i].flow_v.magnitude,
+            curves[1][i].eff.m,
+        )
+        flow_head, head = get_interpolated_values(
+            factor_0,
+            factor_1,
+            curves[0][i].flow_v.magnitude,
+            curves[0][i].head.m,
+            curves[1][i].flow_v.magnitude,
+            curves[1][i].head.m,
+        )
+
+        phi_ratio = (
+            factor_1 * curves[0][i].phi_ratio + factor_0 * curves[1][i].phi_ratio
+        )
+        psi_ratio = (
+            factor_1 * curves[0][i].psi_ratio + factor_0 * curves[1][i].psi_ratio
+        )
+        volume_ratio_ratio = (
+            factor_1 * curves[0][i].volume_ratio_ratio
+            + factor_0 * curves[1][i].volume_ratio_ratio
+        )
+        reynolds_ratio = (
+            factor_1 * curves[0][i].reynolds_ratio
+            + factor_0 * curves[1][i].reynolds_ratio
+        )
+        mach_diff = (
+            factor_1 * curves[0][i].mach_diff + factor_0 * curves[1][i].mach_diff
+        )
+
+        p = Point(
+            suc=p0.suc,
+            head=head,
+            eff=eff,
+            flow_v=(flow_eff + flow_head) / 2,
+            speed=speed,
+            power_losses=power_losses,
+            b=p0.b,
+            D=p0.D,
+            phi_ratio=phi_ratio,
+            psi_ratio=psi_ratio,
+            volume_ratio_ratio=volume_ratio_ratio,
+            reynolds_ratio=reynolds_ratio,
+            mach_diff=mach_diff,
+            extrapolated=extrapolated,
+        )
+
+        current_curve.append(p)
+
+    return current_curve
+
+
+def extrapolated_parameters(
+    curve, speed, number_of_points, p0, power_losses, extrapolated
+):
+    """Function to interpolate between two given curves.
+
+    Parameters
+    ----------
+    curve : ccp.Curve
+        Curve on which the extrapolation will occur.
+    speed : pint.Quantity
+        Speed (rad/s) of the interpolated curve.
+    number_of_points : int
+        The number of points to be interpolated.
+    p0 : ccp.Point
+        Reference point to acquire suction conditions and geometric parameters.
+    power_losses : pint.Quantity
+        Mechanical power losses (Watt) which includes bearing and seal.
+    extrapolated : bool
+        If true, the point is an extrapolation from other curves or its flow is
+        outside surge and choke limits.
+
+    Returns
+    -------
+        current_curve : list
+            List with the interpolated points.
+    """
+    current_curve = []
+
+    for i in range(number_of_points):
+        flow_v = (speed.m / curve.speed.m) * curve[i].flow_v.m
+        head = ((speed.m / curve.speed.m) ** 2) * curve[i].head.m
+        eff = curve[i].eff.m
+
+        phi_ratio = phi(flow_v, speed, p0.D) / curve[i].phi
+        psi_ratio = psi(head, speed, p0.D) / curve[i].psi
+        reynolds_ratio = reynolds(p0.suc, speed, p0.b, p0.D) / curve[i].reynolds
+        volume_ratio_ratio = 1
+        mach_diff = mach(p0.suc, speed, p0.D) - curve[i].mach
+
+        p = Point(
+            suc=p0.suc,
+            head=head,
+            eff=eff,
+            flow_v=flow_v,
+            speed=speed,
+            power_losses=power_losses,
+            b=p0.b,
+            D=p0.D,
+            phi_ratio=phi_ratio,
+            psi_ratio=psi_ratio,
+            volume_ratio_ratio=volume_ratio_ratio,
+            reynolds_ratio=reynolds_ratio,
+            mach_diff=mach_diff,
+            extrapolated=extrapolated,
+        )
+
+        current_curve.append(p)
+
+    return current_curve
