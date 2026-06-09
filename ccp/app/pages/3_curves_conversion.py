@@ -389,6 +389,13 @@ def main():
                     index=0,
                 )
 
+            option_container = st.container()
+            show_design_curves = option_container.checkbox(
+                "Plot design curves",
+                value=False,
+                key="show_design_curves",
+            )
+
             if plot_curves_flow_units in flow_v_units:
                 plot_curves_flow_v_units = plot_curves_flow_units
             else:
@@ -406,35 +413,41 @@ def main():
                 power_units,
                 disch_T_units,
                 disch_p_units,
+                similarity,
             ):
                 head_plot = _impeller.head_plot(
                     flow_v_units=point_flow_v_units,
                     head_units=head_units,
                     flow_v=Q_(point_flow, point_flow_v_units),
                     speed=Q_(point_speed, point_speed_units),
+                    similarity=similarity,
                 )
                 power_plot = _impeller.power_plot(
                     flow_v_units=point_flow_v_units,
                     power_units=power_units,
                     flow_v=Q_(point_flow, point_flow_v_units),
                     speed=Q_(point_speed, point_speed_units),
+                    similarity=similarity,
                 )
                 disch_T_plot = _impeller.disch.T_plot(
                     flow_v_units=point_flow_v_units,
                     T_units=disch_T_units,
                     flow_v=Q_(point_flow, point_flow_v_units),
                     speed=Q_(point_speed, point_speed_units),
+                    similarity=similarity,
                 )
                 eff_plot = _impeller.eff_plot(
                     flow_v_units=point_flow_v_units,
                     flow_v=Q_(point_flow, point_flow_v_units),
                     speed=Q_(point_speed, point_speed_units),
+                    similarity=similarity,
                 )
                 disch_p_plot = _impeller.disch.p_plot(
                     flow_v_units=point_flow_v_units,
                     p_units=disch_p_units,
                     flow_v=Q_(point_flow, point_flow_v_units),
                     speed=Q_(point_speed, point_speed_units),
+                    similarity=similarity,
                 )
                 point = _impeller.point(
                     flow_v=Q_(point_flow, point_flow_v_units),
@@ -452,7 +465,7 @@ def main():
 
             def render_impeller_plots(impeller, key_prefix, label):
                 flow_container = st.container()
-                flow_col1, flow_col2, _, _ = flow_container.columns(4)
+                flow_col1, flow_col2, flow_col3, _ = flow_container.columns(4)
                 flow_col1.markdown(f"Operational Flow (**{plot_curves_flow_v_units}**)")
                 project_flow = flow_col2.number_input(
                     f"{label} Flow",
@@ -476,6 +489,12 @@ def main():
                     label_visibility="collapsed",
                     key=f"{key_prefix}_speed_input",
                 )
+                options_container = st.container()
+                similarity = options_container.checkbox(
+                    "Show similarity",
+                    value=False,
+                    key=f"{key_prefix}_show_similarity",
+                )
 
                 (
                     head_plot,
@@ -495,6 +514,7 @@ def main():
                     power_units=plot_curves_power_units,
                     disch_T_units=plot_curves_disch_T_units,
                     disch_p_units=plot_curves_disch_p_units,
+                    similarity=similarity,
                 )
 
                 plot_col1, plot_col2 = st.columns(2)
@@ -523,43 +543,41 @@ def main():
                         reverse=True,
                     )
                     gas_lines = "\n".join(
-                        f"                                {comp.lower():<22s} {frac * 100:>7.3f} %"
+                        f"    {comp.lower():<22s} {frac * 100:>7.3f} %"
                         for comp, frac in gas_items
                     )
+                    
+                    summary = "\n".join([
+                        "-----------------------------",
+                        f"    Speed:                 {project_point.speed.to("rpm").m:.0f} {plot_curves_speed_units}",
+                        f"    Flow:                  {project_point.flow_v.to(plot_curves_flow_v_units).m:.2f} {plot_curves_flow_v_units}",
+                        f"    Head:                  {project_point.head.to(plot_curves_head_units).m:.2f} {plot_curves_head_units}",
+                        f"    Eff:                   {(project_point.eff.m * 100):.2f} %",
+                        f"    Power:                 {project_point.power.to(plot_curves_power_units).m:.2f} {plot_curves_power_units}",
+                        "",
+                        "    Suction Conditions",
+                        "    --------------------",
+                        f"    Suction Pressure:      {project_point.suc.p(plot_curves_disch_p_units).m:.2f} {plot_curves_disch_p_units}",
+                        f"    Suction Temperature:   {project_point.suc.T(plot_curves_disch_T_units).m:.2f} {plot_curves_disch_T_units}",
+                        "",
+                        "    Discharge Conditions",
+                        "    --------------------",
+                        f"    Discharge Pressure:    {project_point.disch.p(plot_curves_disch_p_units).m:.2f} {plot_curves_disch_p_units}",
+                        f"    Discharge Temperature: {project_point.disch.T(plot_curves_disch_T_units).m:.2f} {plot_curves_disch_T_units}",
+                        "",
+                        "    Gas Composition (mol %)",
+                        "    --------------------\n",
+                    ]) + gas_lines
 
                     st.markdown(f"#### {label} Point")
-                    st.code(
-                        f"""
-                            -----------------------------\n
-                                Speed:                 {project_point.speed.to("rpm").m:.0f} {plot_curves_speed_units}
-                                Flow:                  {project_point.flow_v.to(plot_curves_flow_v_units).m:.2f} {plot_curves_flow_v_units}
-                                Head:                  {project_point.head.to(plot_curves_head_units).m:.2f} {plot_curves_head_units}
-                                Eff:                   {project_point.eff.m:.2f} %
-                                Power:                 {project_point.power.to(plot_curves_power_units).m:.2f} {plot_curves_power_units}
-
-                                Suction Conditions
-                                --------------------
-                                Suction Pressure:      {project_point.suc.p(plot_curves_disch_p_units).m:.2f} {plot_curves_disch_p_units}
-                                Suction Temperature:   {project_point.suc.T(plot_curves_disch_T_units).m:.2f} {plot_curves_disch_T_units}
-
-                                Discharge Conditions
-                                --------------------
-                                Discharge Pressure:    {project_point.disch.p(plot_curves_disch_p_units).m:.2f} {plot_curves_disch_p_units}
-                                Discharge Temperature: {project_point.disch.T(plot_curves_disch_T_units).m:.2f} {plot_curves_disch_T_units}
-
-                                Gas Composition (mol %)
-                                --------------------
-{gas_lines}
-
-""",
-                    )
+                    st.code(summary)
 
             @st.fragment
             def display_results():
                 available_cases, impellers_list = get_available_impellers()
                 converted_imp = st.session_state.converted_impeller
 
-                if available_cases:
+                if available_cases and show_design_curves:
                     st.markdown("### Original (Design) Curves")
                     tabs = st.tabs([f"Case {c}" for c in available_cases])
                     for tab, case, imp in zip(tabs, available_cases, impellers_list):
