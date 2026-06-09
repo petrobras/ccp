@@ -16,7 +16,6 @@ from scipy.interpolate import interp1d, UnivariateSpline, PchipInterpolator
 from scipy.optimize import fsolve
 
 from ccp import Q_, State, Point, Curve
-from ccp.point import phi, psi, mach, reynolds
 from ccp.config.units import check_units
 from ccp.config.utilities import r_getattr, r_setattr
 from ccp.data_io.read_csv import read_data_from_engauge_csv
@@ -662,9 +661,14 @@ class Impeller:
                     curves[0], speed, number_of_points, p0, power_losses, extrapolated
                 )
             else:
-                current_curve = interpolate_between_curves(
-                    curves, speed, number_of_points, p0, power_losses, extrapolated
-                )
+                if len(speeds) == 1: # Only one curve
+                    current_curve = extrapolated_curve(
+                        curves[0], speed, number_of_points, p0, power_losses, extrapolated
+                    )
+                else:
+                    current_curve = interpolate_between_curves(
+                        curves, speed, number_of_points, p0, power_losses, extrapolated
+                    )
         else:
             if len(speeds) == 1: # Only one curve
                 current_curve = extrapolated_curve(
@@ -1657,11 +1661,22 @@ def extrapolated_curve(
         head = ((speed.m / curve.speed.m) ** 2) * curve[i].head.m
         eff = curve[i].eff.m
 
-        phi_ratio = phi(flow_v, speed, p0.D) / curve[i].phi
-        psi_ratio = psi(head, speed, p0.D) / curve[i].psi
-        reynolds_ratio = reynolds(p0.suc, speed, p0.b, p0.D) / curve[i].reynolds
-        volume_ratio_ratio = 1
-        mach_diff = mach(p0.suc, speed, p0.D) - curve[i].mach
+        p_i = Point(
+            suc=p0.suc,
+            head=head,
+            eff=eff,
+            flow_v=flow_v,
+            speed=speed,
+            power_losses=power_losses,
+            b=p0.b,
+            D=p0.D,
+        )
+
+        phi_ratio = p_i.phi / curve[i].phi
+        psi_ratio = p_i.psi / curve[i].psi
+        reynolds_ratio = p_i.reynolds / curve[i].reynolds
+        mach_diff = p_i.mach - curve[i].mach
+        volume_ratio_ratio = p_i.volume_ratio / curve[i].volume_ratio
 
         p = Point(
             suc=p0.suc,
