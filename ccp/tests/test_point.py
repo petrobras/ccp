@@ -496,6 +496,59 @@ def test_converted_from_find_speed(point_eff_flow_v_head_speed_suc_1):
     assert_allclose(point_converted_from_find_speed.power.m, 1084977.717171, rtol=1e-2)
 
 
+def test_isentropic_disch_from_rho_dense_co2():
+    # dense, CO2-rich, near-critical suction: the compressed discharge density admits
+    # two states with the same (rho, s) and CoolProp's flash may return the spurious
+    # low-pressure root. isentropic_disch_from_rho must return the physical
+    # compression root (disch.p > suc.p) with the target density and suction entropy.
+    fluid = dict(
+        co2=0.70823,
+        methane=0.27457,
+        ethane=0.0121,
+        propane=0.0022,
+        n2=0.002,
+        nbutane=0.0004,
+        ibutane=0.0002,
+        h2s=0.0002,
+        npentane=0.0001,
+    )
+    suc = State(p=Q_(104.6, "bar"), T=Q_(40, "degC"), fluid=fluid)
+    disch_rho = suc.rho() * 1.554831  # volume ratio of a measured curve point
+
+    disch = isentropic_disch_from_rho(suc, disch_rho)
+
+    assert disch.p() > suc.p()
+    assert_allclose(
+        disch.rho().to("kg/m**3").m, disch_rho.to("kg/m**3").m, rtol=1e-4
+    )
+    assert_allclose(disch.s().m, suc.s().m, rtol=1e-4)
+
+
+def test_converted_from_find_speed_dense_co2_target(point_eff_flow_v_head_speed_suc_1):
+    # converting a map to a dense, CO2-rich, near-critical suction used to raise
+    # "Could not calculate point" because the discharge solve was seeded from a
+    # spurious flash root; it must now succeed with efficiency preserved.
+    fluid = dict(
+        co2=0.70823,
+        methane=0.27457,
+        ethane=0.0121,
+        propane=0.0022,
+        n2=0.002,
+        nbutane=0.0004,
+        ibutane=0.0002,
+        h2s=0.0002,
+        npentane=0.0001,
+    )
+    suc_dense = State(p=Q_(104.6, "bar"), T=Q_(40, "degC"), fluid=fluid)
+    converted = Point.convert_from(
+        original_point=point_eff_flow_v_head_speed_suc_1, suc=suc_dense, find="speed"
+    )
+    assert converted.disch.p() > suc_dense.p()
+    assert_allclose(
+        converted.eff.m, point_eff_flow_v_head_speed_suc_1.eff.m, rtol=1e-3
+    )
+
+
 def test_converted_from_find_volume_ratio(point_eff_flow_v_head_speed_suc_1):
     suc_2 = State(p=Q_(0.2, "MPa"), T=301.58, fluid={"n2": 1 - 1e-15, "co2": 1e-15})
     point_converted_from_find_volume_ratio = Point.convert_from(
