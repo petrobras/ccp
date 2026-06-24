@@ -460,7 +460,7 @@ class Point:
         disch_rho = 1 / disch_v
 
         # consider first an isentropic compression
-        disch = State(rho=disch_rho, s=suc.s(), fluid=suc.fluid)
+        disch = State(rho=disch_rho, s=suc.s(), fluid=suc.fluid, phase=suc.phase)
 
         def update_state(x, update_type):
             if update_type == "pressure":
@@ -478,7 +478,7 @@ class Point:
         except ValueError:
             # re-instantiate disch, since update with temperature not converging
             # might break the state
-            disch = State(rho=disch_rho, s=suc.s(), fluid=suc.fluid)
+            disch = State(rho=disch_rho, s=suc.s(), fluid=suc.fluid, phase=suc.phase)
             newton(update_state, disch.p().magnitude, args=("pressure",), tol=1e-1)
 
         self.disch = disch
@@ -739,7 +739,7 @@ class Point:
         disch_T = self.disch_T
         pressure_ratio = self.pressure_ratio
         disch_p = suc.p() * pressure_ratio
-        self.disch = State(p=disch_p, T=disch_T, fluid=suc.fluid)
+        self.disch = State(p=disch_p, T=disch_T, fluid=suc.fluid, phase=suc.phase)
         self._calc_from_disch_flow_v_speed_suc()
 
     def _calc_from_disch_T_flow_v_pressure_ratio_speed_suc_torque(self):
@@ -747,7 +747,7 @@ class Point:
         disch_T = self.disch_T
         pressure_ratio = self.pressure_ratio
         disch_p = suc.p() * pressure_ratio
-        self.disch = State(p=disch_p, T=disch_T, fluid=suc.fluid)
+        self.disch = State(p=disch_p, T=disch_T, fluid=suc.fluid, phase=suc.phase)
         self._calc_from_disch_flow_v_speed_suc_torque()
 
     def _calc_from_disch_T_flow_v_power_losses_pressure_ratio_speed_suc(self):
@@ -755,7 +755,7 @@ class Point:
         disch_T = self.disch_T
         pressure_ratio = self.pressure_ratio
         disch_p = suc.p() * pressure_ratio
-        self.disch = State(p=disch_p, T=disch_T, fluid=suc.fluid)
+        self.disch = State(p=disch_p, T=disch_T, fluid=suc.fluid, phase=suc.phase)
         self._calc_from_disch_flow_v_power_losses_speed_suc()
 
     def _calc_from_disch_T_flow_m_pressure_ratio_speed_suc(self):
@@ -763,7 +763,7 @@ class Point:
         disch_T = self.disch_T
         pressure_ratio = self.pressure_ratio
         disch_p = suc.p() * pressure_ratio
-        self.disch = State(p=disch_p, T=disch_T, fluid=suc.fluid)
+        self.disch = State(p=disch_p, T=disch_T, fluid=suc.fluid, phase=suc.phase)
         self._calc_from_disch_flow_m_speed_suc()
 
     def _calc_from_disch_T_flow_m_pressure_ratio_speed_suc_torque(self):
@@ -771,7 +771,7 @@ class Point:
         disch_T = self.disch_T
         pressure_ratio = self.pressure_ratio
         disch_p = suc.p() * pressure_ratio
-        self.disch = State(p=disch_p, T=disch_T, fluid=suc.fluid)
+        self.disch = State(p=disch_p, T=disch_T, fluid=suc.fluid, phase=suc.phase)
         self._calc_from_disch_flow_m_speed_suc_torque()
 
     def _calc_from_disch_T_flow_m_power_losses_pressure_ratio_speed_suc(self):
@@ -779,7 +779,7 @@ class Point:
         disch_T = self.disch_T
         pressure_ratio = self.pressure_ratio
         disch_p = suc.p() * pressure_ratio
-        self.disch = State(p=disch_p, T=disch_T, fluid=suc.fluid)
+        self.disch = State(p=disch_p, T=disch_T, fluid=suc.fluid, phase=suc.phase)
         self._calc_from_disch_flow_m_power_losses_speed_suc()
 
     def _calc_from_disch_T_flow_v_head_speed_suc(self):
@@ -968,6 +968,7 @@ class Point:
             p=str(self.suc.p()),
             T=str(self.suc.T()),
             fluid=self.suc.fluid,
+            phase=str(self.suc.phase),
             speed=str(self.speed),
             flow_v=str(self.flow_v),
             head=str(self.head),
@@ -987,10 +988,16 @@ class Point:
     @staticmethod
     def _dict_from_load(dict_parameters):
         """Change dict to format that can be used by load constructor."""
+        phase = dict_parameters.pop("phase", None)
+        # backwards compatibility: older files store no phase, newer ones may
+        # store the string "None" when no phase was forced.
+        if phase in (None, "None", ""):
+            phase = None
         suc = State(
             p=Q_(dict_parameters.pop("p")),
             T=Q_(dict_parameters.pop("T")),
             fluid=dict_parameters.pop("fluid"),
+            phase=phase,
         )
         extrapolated = dict_parameters.pop("extrapolated", False)
         # Convert string to boolean if needed (for backwards compatibility)
@@ -2090,7 +2097,7 @@ def head_reference(suc, disch, num_steps=100):
     """
 
     def calc_step_discharge_temp(T1, p1, p0, h0, v0, e):
-        s1 = State(p=p1, T=T1, fluid=suc.fluid)
+        s1 = State(p=p1, T=T1, fluid=suc.fluid, phase=suc.phase)
         h1 = s1.h()
 
         vm = (v0 + s1.v()) / 2
@@ -2117,11 +2124,11 @@ def head_reference(suc, disch, num_steps=100):
 
         # TODO implement p_intervals considering pressure ratio
         for p0, p1 in zip(p_intervals[:-1], p_intervals[1:]):
-            s0 = State(p=p0, T=T0, fluid=suc.fluid)
+            s0 = State(p=p0, T=T0, fluid=suc.fluid, phase=suc.phase)
             T1 = newton(
                 calc_step_discharge_temp, (T0 + 1e-3), args=(p1, p0, s0.h(), s0.v(), e)
             )
-            s1 = State(p=p1, T=T1, fluid=suc.fluid)
+            s1 = State(p=p1, T=T1, fluid=suc.fluid, phase=suc.phase)
             _ref_H += head_pol(s0, s1)
 
             T0 = T1
@@ -2183,7 +2190,7 @@ def head_reference_2017(suc, disch, num_steps=100):
         p = next_p
         p_intervals.append(p)
 
-    state1 = ccp.State(p=suc.p(), s=suc.s(), fluid=suc.fluid)
+    state1 = ccp.State(p=suc.p(), s=suc.s(), fluid=suc.fluid, phase=suc.phase)
 
     def calc_step_discharge_z(s1, s0, p1, p0, z0, R, e):
         state1.update(p=p1, s=s1)
@@ -2202,11 +2209,11 @@ def head_reference_2017(suc, disch, num_steps=100):
         s0 = suc.s().magnitude
 
         for p0, p1 in zip(p_intervals[:-1], p_intervals[1:]):
-            state0 = ccp.State(p=p0, s=s0, fluid=suc.fluid)
+            state0 = ccp.State(p=p0, s=s0, fluid=suc.fluid, phase=suc.phase)
             z0 = state0.z()
 
             s1 = newton(calc_step_discharge_z, (s0 + 1e-8), args=(s0, p1, p0, z0, R, e))
-            state1 = ccp.State(p=p1, s=s1, fluid=suc.fluid)
+            state1 = ccp.State(p=p1, s=s1, fluid=suc.fluid, phase=suc.phase)
             _ref_H_2017 += ccp.point.head_pol(state0, state1)
 
             s0 = s1
@@ -2345,11 +2352,15 @@ def head_pol_sandberg_colby_multistep(suc, disch, nstep=10):
 
             for _ in range(nstep):
                 # Isentropic discharge state for step j
-                disch_j = ccp.State(p=pd_j, s=suc_j.s(), fluid=suc_j.fluid)
+                disch_j = ccp.State(
+                    p=pd_j, s=suc_j.s(), fluid=suc_j.fluid, phase=suc_j.phase
+                )
 
                 def calc_delta_eff_p(Td_j):
                     """Calculate Δη_p = η_p,j - η_p for step j."""
-                    disch_j = ccp.State(p=pd_j, T=Td_j, fluid=suc_j.fluid)
+                    disch_j = ccp.State(
+                        p=pd_j, T=Td_j, fluid=suc_j.fluid, phase=suc_j.phase
+                    )
                     wp_j = head_pol_sandberg_colby(suc_j, disch_j)
                     eff_p_j = wp_j / (disch_j.h() - suc_j.h())
                     return (eff_p_j - eff_p).m
@@ -2361,7 +2372,9 @@ def head_pol_sandberg_colby_multistep(suc, disch, nstep=10):
                 Td_j = brentq(calc_delta_eff_p, T_isen, T_isen + 20)
 
                 # Update discharge state with calculated temperature
-                disch_j = ccp.State(p=pd_j, T=Td_j, fluid=suc_j.fluid)
+                disch_j = ccp.State(
+                    p=pd_j, T=Td_j, fluid=suc_j.fluid, phase=suc_j.phase
+                )
 
                 # Prepare for next step: suc_j+1 = disch_j
                 suc_j.update(p=disch_j.p(), T=disch_j.T())
@@ -2541,7 +2554,7 @@ def eff_pol_huntington(suc, disch, disch_s=None):
     error = 1
     n = 0
     while error > 1e-10:
-        state3 = State(p=p3, T=T3, fluid=suc.fluid)
+        state3 = State(p=p3, T=T3, fluid=suc.fluid, phase=suc.phase)
         s3 = state3.s()
         z3 = state3.z()
         cp3 = state3.cp()
@@ -2816,7 +2829,7 @@ def disch_from_suc_head_eff(suc, head, eff, polytropic_method=None):
     h_disch = head / eff + suc.h()
 
     #  consider first an isentropic compression
-    disch = State(h=h_disch, s=suc.s(), fluid=suc.fluid)
+    disch = State(h=h_disch, s=suc.s(), fluid=suc.fluid, phase=suc.phase)
 
     def update_state(x, update_type):
         if update_type == "pressure":
@@ -2829,7 +2842,7 @@ def disch_from_suc_head_eff(suc, head, eff, polytropic_method=None):
     try:
         newton(update_state, disch.p().magnitude, args=("pressure",), tol=1e-1)
     except (RuntimeError, ValueError):
-        disch = State(h=h_disch, s=suc.s(), fluid=suc.fluid)
+        disch = State(h=h_disch, s=suc.s(), fluid=suc.fluid, phase=suc.phase)
         newton(
             update_state,
             disch.T().magnitude,
@@ -2861,7 +2874,7 @@ def disch_from_suc_disch_p_eff(suc, disch_p, eff, polytropic_method=None):
     if polytropic_method is None:
         polytropic_method = ccp.config.POLYTROPIC_METHOD
 
-    disch = ccp.State(p=disch_p, s=suc.s(), fluid=suc.fluid)
+    disch = ccp.State(p=disch_p, s=suc.s(), fluid=suc.fluid, phase=suc.phase)
     eff_calc_func = globals()[f"eff_pol_{polytropic_method}"]
 
     def update_state(x):
@@ -2896,7 +2909,7 @@ def disch_from_suc_disch_T_head(suc, disch_T, head, polytropic_method=None):
     if polytropic_method is None:
         polytropic_method = ccp.config.POLYTROPIC_METHOD
 
-    disch = ccp.State(T=disch_T, s=suc.s(), fluid=suc.fluid)
+    disch = ccp.State(T=disch_T, s=suc.s(), fluid=suc.fluid, phase=suc.phase)
     head_calc_func = globals()[f"head_pol_{polytropic_method}"]
 
     def update_state(x):

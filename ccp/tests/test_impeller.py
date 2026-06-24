@@ -95,6 +95,35 @@ def imp1():
     return imp1
 
 
+def test_impeller_phase_propagation():
+    # a forced suction phase must propagate to every state held by the impeller
+    # (suction and discharge of every point), survive construction (deepcopy)
+    # and survive conversion to a new suction state.
+    fluid = {"methane": 0.7, "ethane": 0.2, "propane": 0.1}
+    points = []
+    for flow_v, head, eff in [(0.4, 90, 0.42), (0.5, 88, 0.46), (0.6, 84, 0.45)]:
+        suc = State(p=Q_(20, "bar"), T=Q_(310, "K"), fluid=fluid, phase="gas")
+        points.append(
+            Point(
+                suc=suc,
+                head=Q_(head, "kJ/kg"),
+                eff=eff,
+                flow_v=Q_(flow_v, "m**3/s"),
+                speed=Q_(1000, "rad/s"),
+                b=Q_(0.01, "m"),
+                D=Q_(0.3, "m"),
+            )
+        )
+    imp = Impeller(points)
+    assert all(p.suc.phase == "gas" for p in imp.points)
+    assert all(p.disch.phase == "gas" for p in imp.points)
+
+    new_suc = State(p=Q_(25, "bar"), T=Q_(305, "K"), fluid=fluid, phase="gas")
+    imp_conv = Impeller.convert_from(imp, suc=new_suc, find="speed")
+    assert all(p.suc.phase == "gas" for p in imp_conv.points)
+    assert all(p.disch.phase == "gas" for p in imp_conv.points)
+
+
 def test_impeller_new_suction(imp1):
     new_suc = State(p=Q_(0.2, "MPa"), T=301.58, fluid={"n2": 1 - 1e-15, "co2": 1e-15})
     imp2 = Impeller.convert_from(imp1, suc=new_suc, find="speed")
