@@ -145,7 +145,12 @@ def _disch_from_disch_T_head(v, ctx):
 def _disch_from_disch_T_disch_p(v, ctx):
     # covers the disch_T + pressure_ratio path (disch_p derived above)
     if _has(v, "disch_T", "disch_p") and _missing(v, "disch"):
-        disch = State(p=v["disch_p"], T=v["disch_T"], fluid=ctx.suc.fluid)
+        disch = State(
+            p=v["disch_p"],
+            T=v["disch_T"],
+            fluid=ctx.suc.fluid,
+            phase=ctx.suc.phase,
+        )
         return {"disch": disch}
 
 
@@ -157,7 +162,7 @@ def _disch_from_eff_volume_ratio(v, ctx):
         disch_rho = 1 / disch_v
 
         # consider first an isentropic compression
-        disch = State(rho=disch_rho, s=suc.s(), fluid=suc.fluid)
+        disch = ctx.m.isentropic_disch_from_rho(suc, disch_rho)
 
         def update_state(x, update_type):
             if update_type == "pressure":
@@ -171,11 +176,18 @@ def _disch_from_eff_volume_ratio(v, ctx):
 
         try:
             newton(update_state, disch.T().magnitude, args=("temperature",), tol=1e-1)
-        except ValueError:
+        except (ValueError, RuntimeError):
             # re-instantiate disch, since update with temperature not converging
             # might break the state
-            disch = State(rho=disch_rho, s=suc.s(), fluid=suc.fluid)
-            newton(update_state, disch.p().magnitude, args=("pressure",), tol=1e-1)
+            try:
+                disch = ctx.m.isentropic_disch_from_rho(suc, disch_rho)
+                newton(update_state, disch.p().magnitude, args=("pressure",), tol=1e-1)
+            except (ValueError, RuntimeError):
+                # the secant can diverge for dense fluids; fall back to a robust
+                # bracketed efficiency solve at fixed density.
+                disch = ctx.m.disch_from_suc_rho_eff(
+                    suc, disch_rho, eff, ctx.eff_calc_func
+                )
 
         return {"disch": disch}
 

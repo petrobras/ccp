@@ -1,6 +1,7 @@
 import pytest
 import pickle
 import ccp
+from copy import copy, deepcopy
 from ccp.state import *
 from numpy.testing import assert_allclose
 
@@ -315,6 +316,22 @@ def test_mix_composition():
 def test_pickle():
     state = State(p=100000, T=300, fluid={"Methane": 1 - 1e-15, "Ethane": 1e-15})
     assert pickle.loads(pickle.dumps(state)) == state
+
+
+def test_copy_preserves_phase_and_eos():
+    # forced phase (and EOS) must survive copy/deepcopy/pickle so that it
+    # propagates through Point and Impeller (which deepcopy/pickle their states).
+    state = State(
+        p=100000,
+        T=300,
+        fluid={"Methane": 0.5, "Ethane": 0.5},
+        phase="gas",
+    )
+    assert state.phase == "gas"
+    assert copy(state).phase == "gas"
+    assert deepcopy(state).phase == "gas"
+    assert pickle.loads(pickle.dumps(state)).phase == "gas"
+    assert deepcopy(state).EOS == state.EOS
 
 
 def test_improved_error_message():

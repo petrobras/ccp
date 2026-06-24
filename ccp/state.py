@@ -153,9 +153,7 @@ class State(CP.AbstractState):
                 from collections import Counter
 
                 dupes = [
-                    name
-                    for name, count in Counter(constituents).items()
-                    if count > 1
+                    name for name, count in Counter(constituents).items() if count > 1
                 ]
                 raise ValueError(
                     f"Repeated components in the fluid dictionary: {dupes}. "
@@ -666,7 +664,9 @@ class State(CP.AbstractState):
         return conductivity
 
     def __reduce__(self):
-        kwargs = dict(p=self.p(), T=self.T(), fluid=self.fluid)
+        kwargs = dict(
+            p=self.p(), T=self.T(), fluid=self.fluid, EOS=self.EOS, phase=self.phase
+        )
         return self._rebuild, (self.__class__, kwargs)
 
     @staticmethod

@@ -524,6 +524,7 @@ class Point:
             p=str(self.suc.p()),
             T=str(self.suc.T()),
             fluid=self.suc.fluid,
+            phase=str(self.suc.phase),
             speed=str(self.speed),
             flow_v=str(self.flow_v),
             head=str(self.head),
@@ -543,10 +544,16 @@ class Point:
     @staticmethod
     def _dict_from_load(dict_parameters):
         """Change dict to format that can be used by load constructor."""
+        phase = dict_parameters.pop("phase", None)
+        # backwards compatibility: older files store no phase, newer ones may
+        # store the string "None" when no phase was forced.
+        if phase in (None, "None", ""):
+            phase = None
         suc = State(
             p=Q_(dict_parameters.pop("p")),
             T=Q_(dict_parameters.pop("T")),
             fluid=dict_parameters.pop("fluid"),
+            phase=phase,
         )
         extrapolated = dict_parameters.pop("extrapolated", False)
         # Convert string to boolean if needed (for backwards compatibility)
@@ -1646,7 +1653,7 @@ def head_reference(suc, disch, num_steps=100):
     """
 
     def calc_step_discharge_temp(T1, p1, p0, h0, v0, e):
-        s1 = State(p=p1, T=T1, fluid=suc.fluid)
+        s1 = State(p=p1, T=T1, fluid=suc.fluid, phase=suc.phase)
         h1 = s1.h()
 
         vm = (v0 + s1.v()) / 2
@@ -1673,11 +1680,11 @@ def head_reference(suc, disch, num_steps=100):
 
         # TODO implement p_intervals considering pressure ratio
         for p0, p1 in zip(p_intervals[:-1], p_intervals[1:]):
-            s0 = State(p=p0, T=T0, fluid=suc.fluid)
+            s0 = State(p=p0, T=T0, fluid=suc.fluid, phase=suc.phase)
             T1 = newton(
                 calc_step_discharge_temp, (T0 + 1e-3), args=(p1, p0, s0.h(), s0.v(), e)
             )
-            s1 = State(p=p1, T=T1, fluid=suc.fluid)
+            s1 = State(p=p1, T=T1, fluid=suc.fluid, phase=suc.phase)
             _ref_H += head_pol(s0, s1)
 
             T0 = T1
@@ -1739,7 +1746,7 @@ def head_reference_2017(suc, disch, num_steps=100):
         p = next_p
         p_intervals.append(p)
 
-    state1 = ccp.State(p=suc.p(), s=suc.s(), fluid=suc.fluid)
+    state1 = ccp.State(p=suc.p(), s=suc.s(), fluid=suc.fluid, phase=suc.phase)
 
     def calc_step_discharge_z(s1, s0, p1, p0, z0, R, e):
         state1.update(p=p1, s=s1)
@@ -1758,11 +1765,11 @@ def head_reference_2017(suc, disch, num_steps=100):
         s0 = suc.s().magnitude
 
         for p0, p1 in zip(p_intervals[:-1], p_intervals[1:]):
-            state0 = ccp.State(p=p0, s=s0, fluid=suc.fluid)
+            state0 = ccp.State(p=p0, s=s0, fluid=suc.fluid, phase=suc.phase)
             z0 = state0.z()
 
             s1 = newton(calc_step_discharge_z, (s0 + 1e-8), args=(s0, p1, p0, z0, R, e))
-            state1 = ccp.State(p=p1, s=s1, fluid=suc.fluid)
+            state1 = ccp.State(p=p1, s=s1, fluid=suc.fluid, phase=suc.phase)
             _ref_H_2017 += ccp.point.head_pol(state0, state1)
 
             s0 = s1
@@ -1901,11 +1908,15 @@ def head_pol_sandberg_colby_multistep(suc, disch, nstep=10):
 
             for _ in range(nstep):
                 # Isentropic discharge state for step j
-                disch_j = ccp.State(p=pd_j, s=suc_j.s(), fluid=suc_j.fluid)
+                disch_j = ccp.State(
+                    p=pd_j, s=suc_j.s(), fluid=suc_j.fluid, phase=suc_j.phase
+                )
 
                 def calc_delta_eff_p(Td_j):
                     """Calculate Δη_p = η_p,j - η_p for step j."""
-                    disch_j = ccp.State(p=pd_j, T=Td_j, fluid=suc_j.fluid)
+                    disch_j = ccp.State(
+                        p=pd_j, T=Td_j, fluid=suc_j.fluid, phase=suc_j.phase
+                    )
                     wp_j = head_pol_sandberg_colby(suc_j, disch_j)
                     eff_p_j = wp_j / (disch_j.h() - suc_j.h())
                     return (eff_p_j - eff_p).m
@@ -1917,7 +1928,9 @@ def head_pol_sandberg_colby_multistep(suc, disch, nstep=10):
                 Td_j = brentq(calc_delta_eff_p, T_isen, T_isen + 20)
 
                 # Update discharge state with calculated temperature
-                disch_j = ccp.State(p=pd_j, T=Td_j, fluid=suc_j.fluid)
+                disch_j = ccp.State(
+                    p=pd_j, T=Td_j, fluid=suc_j.fluid, phase=suc_j.phase
+                )
 
                 # Prepare for next step: suc_j+1 = disch_j
                 suc_j.update(p=disch_j.p(), T=disch_j.T())
@@ -2097,7 +2110,7 @@ def eff_pol_huntington(suc, disch, disch_s=None):
     error = 1
     n = 0
     while error > 1e-10:
-        state3 = State(p=p3, T=T3, fluid=suc.fluid)
+        state3 = State(p=p3, T=T3, fluid=suc.fluid, phase=suc.phase)
         s3 = state3.s()
         z3 = state3.z()
         cp3 = state3.cp()
@@ -2348,6 +2361,109 @@ def head_from_psi(D, psi, speed):
     return head.to("J/kg")
 
 
+def isentropic_disch_from_rho(suc, disch_rho):
+    """Discharge state of an isentropic compression to a target density.
+
+    The discharge is normally obtained from a ``State(rho=disch_rho, s=suc.s())``
+    flash (CoolProp ``DmassSmass`` inputs). For dense fluids that flash can return a
+    spurious root: two states share the same ``(rho, s)`` — the physical compression
+    (``disch.p >= suc.p``) and a cold, liquid-like root *below* suction pressure — and
+    the flash may return the cold one. Seeding the downstream efficiency solve from
+    that non-physical root makes it diverge (e.g. converting a performance map to a
+    dense, CO2-rich, near-critical suction condition).
+
+    When the flash lands on such a non-compression root we re-solve for the pressure
+    on the suction isentrope that matches ``disch_rho``. Density increases
+    monotonically with pressure along an isentrope, so bracketing from the suction
+    pressure upward selects the physical compression root.
+
+    Parameters
+    ----------
+    suc : ccp.State
+        Suction state.
+    disch_rho : pint.Quantity
+        Target discharge density.
+
+    Returns
+    -------
+    disch : ccp.State
+        Discharge state of the isentropic compression to ``disch_rho``.
+    """
+    disch = State(rho=disch_rho, s=suc.s(), fluid=suc.fluid, phase=suc.phase)
+
+    # for a compression (disch_rho > suc.rho) the physical isentropic discharge must
+    # have disch.p >= suc.p; otherwise the (rho, s) flash returned a spurious root.
+    if not (disch_rho > suc.rho() and disch.p() < suc.p()):
+        return disch
+
+    s_suc = suc.s()
+    rho_target = disch_rho.to("kg/m**3").magnitude
+
+    def rho_err(p_pa):
+        disch.update(p=Q_(p_pa, "Pa"), s=s_suc)
+        return disch.rho().to("kg/m**3").magnitude - rho_target
+
+    # bracket: rho_err < 0 at suction pressure; expand the upper bound until the
+    # isentrope reaches the target density (rho_err >= 0).
+    p_lo = suc.p().to("Pa").magnitude
+    p_hi = 2.0 * p_lo
+    for _ in range(60):
+        if rho_err(p_hi) >= 0.0:
+            break
+        p_hi *= 2.0
+    p_sol = brentq(rho_err, p_lo, p_hi, xtol=1.0)
+    disch.update(p=Q_(p_sol, "Pa"), s=s_suc)
+    return disch
+
+
+def disch_from_suc_rho_eff(suc, disch_rho, eff, eff_calc_func):
+    """Discharge at a fixed density matching a polytropic efficiency.
+
+    Robust alternative to the secant iteration used in the volume-ratio conversion.
+    Starting from the isentropic discharge (polytropic efficiency ~ 1.0), the
+    polytropic efficiency decreases monotonically as temperature rises at constant
+    density, so the target efficiency (< 1) is bracketed between the isentropic
+    temperature and a higher one and found with ``brentq``. The secant can diverge
+    for dense fluids — its tiny initial step yields a near-zero efficiency slope and
+    overshoots to a non-physical state — so this is used as a fallback there.
+
+    Parameters
+    ----------
+    suc : ccp.State
+        Suction state.
+    disch_rho : pint.Quantity
+        Target discharge density.
+    eff : pint.Quantity, float
+        Target polytropic efficiency.
+    eff_calc_func : callable
+        ``eff_calc_func(suc, disch)`` returning the polytropic efficiency.
+
+    Returns
+    -------
+    disch : ccp.State
+        Discharge state.
+    """
+    disch = isentropic_disch_from_rho(suc, disch_rho)
+    T_lo = disch.T().to("kelvin").magnitude
+
+    def eff_err(T):
+        disch.update(rho=disch_rho, T=Q_(T, "kelvin"))
+        return (eff_calc_func(suc, disch) - eff).magnitude
+
+    f_lo = eff_err(T_lo)
+    T_hi = T_lo * 1.02
+    for _ in range(80):
+        if f_lo * eff_err(T_hi) < 0:
+            break
+        T_hi *= 1.02
+    else:
+        raise ValueError("Could not bracket efficiency in volume-ratio conversion")
+
+    T_sol = brentq(eff_err, T_lo, T_hi, xtol=1e-2)
+    disch.update(rho=disch_rho, T=Q_(T_sol, "kelvin"))
+    return disch
+
+
 def disch_from_suc_head_eff(suc, head, eff, polytropic_method=None):
     """Calculate discharge state from suction, head and efficiency.
 
@@ -2372,7 +2488,7 @@ def disch_from_suc_head_eff(suc, head, eff, polytropic_method=None):
     h_disch = head / eff + suc.h()
 
     #  consider first an isentropic compression
-    disch = State(h=h_disch, s=suc.s(), fluid=suc.fluid)
+    disch = State(h=h_disch, s=suc.s(), fluid=suc.fluid, phase=suc.phase)
 
     def update_state(x, update_type):
         if update_type == "pressure":
@@ -2385,7 +2501,7 @@ def disch_from_suc_head_eff(suc, head, eff, polytropic_method=None):
     try:
         newton(update_state, disch.p().magnitude, args=("pressure",), tol=1e-1)
     except (RuntimeError, ValueError):
-        disch = State(h=h_disch, s=suc.s(), fluid=suc.fluid)
+        disch = State(h=h_disch, s=suc.s(), fluid=suc.fluid, phase=suc.phase)
         newton(
             update_state,
             disch.T().magnitude,
@@ -2417,7 +2533,7 @@ def disch_from_suc_disch_p_eff(suc, disch_p, eff, polytropic_method=None):
     if polytropic_method is None:
         polytropic_method = ccp.config.POLYTROPIC_METHOD
 
-    disch = ccp.State(p=disch_p, s=suc.s(), fluid=suc.fluid)
+    disch = ccp.State(p=disch_p, s=suc.s(), fluid=suc.fluid, phase=suc.phase)
     eff_calc_func = globals()[f"eff_pol_{polytropic_method}"]
 
     def update_state(x):
@@ -2452,7 +2568,7 @@ def disch_from_suc_disch_T_head(suc, disch_T, head, polytropic_method=None):
     if polytropic_method is None:
         polytropic_method = ccp.config.POLYTROPIC_METHOD
 
-    disch = ccp.State(T=disch_T, s=suc.s(), fluid=suc.fluid)
+    disch = ccp.State(T=disch_T, s=suc.s(), fluid=suc.fluid, phase=suc.phase)
     head_calc_func = globals()[f"head_pol_{polytropic_method}"]
 
     def update_state(x):
