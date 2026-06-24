@@ -460,7 +460,7 @@ class Point:
         disch_rho = 1 / disch_v
 
         # consider first an isentropic compression
-        disch = State(rho=disch_rho, s=suc.s(), fluid=suc.fluid, phase=suc.phase)
+        disch = isentropic_disch_from_rho(suc, disch_rho)
 
         def update_state(x, update_type):
             if update_type == "pressure":
@@ -475,11 +475,16 @@ class Point:
 
         try:
             newton(update_state, disch.T().magnitude, args=("temperature",), tol=1e-1)
-        except ValueError:
+        except (ValueError, RuntimeError):
             # re-instantiate disch, since update with temperature not converging
             # might break the state
-            disch = State(rho=disch_rho, s=suc.s(), fluid=suc.fluid, phase=suc.phase)
-            newton(update_state, disch.p().magnitude, args=("pressure",), tol=1e-1)
+            try:
+                disch = isentropic_disch_from_rho(suc, disch_rho)
+                newton(update_state, disch.p().magnitude, args=("pressure",), tol=1e-1)
+            except (ValueError, RuntimeError):
+                # the secant can diverge for dense fluids; fall back to a robust
+                # bracketed efficiency solve at fixed density.
+                disch = disch_from_suc_rho_eff(suc, disch_rho, eff, self.eff_calc_func)
 
         self.disch = disch
         self.head = self.head_calc_func(suc, disch, self._dummy_state)
@@ -2803,6 +2808,109 @@ def head_from_psi(D, psi, speed):
     head = psi * (u**2 / 2)
 
     return head.to("J/kg")
+
+
+def isentropic_disch_from_rho(suc, disch_rho):
+    """Discharge state of an isentropic compression to a target density.
+
+    The discharge is normally obtained from a ``State(rho=disch_rho, s=suc.s())``
+    flash (CoolProp ``DmassSmass`` inputs). For dense fluids that flash can return a
+    spurious root: two states share the same ``(rho, s)`` — the physical compression
+    (``disch.p >= suc.p``) and a cold, liquid-like root *below* suction pressure — and
+    the flash may return the cold one. Seeding the downstream efficiency solve from
+    that non-physical root makes it diverge (e.g. converting a performance map to a
+    dense, CO2-rich, near-critical suction condition).
+
+    When the flash lands on such a non-compression root we re-solve for the pressure
+    on the suction isentrope that matches ``disch_rho``. Density increases
+    monotonically with pressure along an isentrope, so bracketing from the suction
+    pressure upward selects the physical compression root.
+
+    Parameters
+    ----------
+    suc : ccp.State
+        Suction state.
+    disch_rho : pint.Quantity
+        Target discharge density.
+
+    Returns
+    -------
+    disch : ccp.State
+        Discharge state of the isentropic compression to ``disch_rho``.
+    """
+    disch = State(rho=disch_rho, s=suc.s(), fluid=suc.fluid, phase=suc.phase)
+
+    # for a compression (disch_rho > suc.rho) the physical isentropic discharge must
+    # have disch.p >= suc.p; otherwise the (rho, s) flash returned a spurious root.
+    if not (disch_rho > suc.rho() and disch.p() < suc.p()):
+        return disch
+
+    s_suc = suc.s()
+    rho_target = disch_rho.to("kg/m**3").magnitude
+
+    def rho_err(p_pa):
+        disch.update(p=Q_(p_pa, "Pa"), s=s_suc)
+        return disch.rho().to("kg/m**3").magnitude - rho_target
+
+    # bracket: rho_err < 0 at suction pressure; expand the upper bound until the
+    # isentrope reaches the target density (rho_err >= 0).
+    p_lo = suc.p().to("Pa").magnitude
+    p_hi = 2.0 * p_lo
+    for _ in range(60):
+        if rho_err(p_hi) >= 0.0:
+            break
+        p_hi *= 2.0
+    p_sol = brentq(rho_err, p_lo, p_hi, xtol=1.0)
+    disch.update(p=Q_(p_sol, "Pa"), s=s_suc)
+    return disch
+
+
+def disch_from_suc_rho_eff(suc, disch_rho, eff, eff_calc_func):
+    """Discharge at a fixed density matching a polytropic efficiency.
+
+    Robust alternative to the secant iteration used in the volume-ratio conversion.
+    Starting from the isentropic discharge (polytropic efficiency ~ 1.0), the
+    polytropic efficiency decreases monotonically as temperature rises at constant
+    density, so the target efficiency (< 1) is bracketed between the isentropic
+    temperature and a higher one and found with ``brentq``. The secant can diverge
+    for dense fluids — its tiny initial step yields a near-zero efficiency slope and
+    overshoots to a non-physical state — so this is used as a fallback there.
+
+    Parameters
+    ----------
+    suc : ccp.State
+        Suction state.
+    disch_rho : pint.Quantity
+        Target discharge density.
+    eff : pint.Quantity, float
+        Target polytropic efficiency.
+    eff_calc_func : callable
+        ``eff_calc_func(suc, disch)`` returning the polytropic efficiency.
+
+    Returns
+    -------
+    disch : ccp.State
+        Discharge state.
+    """
+    disch = isentropic_disch_from_rho(suc, disch_rho)
+    T_lo = disch.T().to("kelvin").magnitude
+
+    def eff_err(T):
+        disch.update(rho=disch_rho, T=Q_(T, "kelvin"))
+        return (eff_calc_func(suc, disch) - eff).magnitude
+
+    f_lo = eff_err(T_lo)
+    T_hi = T_lo * 1.02
+    for _ in range(80):
+        if f_lo * eff_err(T_hi) < 0:
+            break
+        T_hi *= 1.02
+    else:
+        raise ValueError("Could not bracket efficiency in volume-ratio conversion")
+
+    T_sol = brentq(eff_err, T_lo, T_hi, xtol=1e-2)
+    disch.update(rho=disch_rho, T=Q_(T_sol, "kelvin"))
+    return disch
 
 
 def disch_from_suc_head_eff(suc, head, eff, polytropic_method=None):
