@@ -864,6 +864,7 @@ class Impeller:
         power_curves=None,
         power_shaft_curves=None,
         pressure_ratio_curves=None,
+        disch_p_curves=None,
         disch_T_curves=None,
         b=Q_(0.005, "m"),
         D=Q_(0.5, "m"),
@@ -874,10 +875,12 @@ class Impeller:
         flow_units_power=None,
         flow_units_power_shaft=None,
         flow_units_pressure_ratio=None,
+        flow_units_disch_p=None,
         flow_units_disch_T=None,
         head_units="J/kg",
         eff_units="dimensionless",
         pressure_ratio_units="dimensionless",
+        disch_p_units="Pa",
         disch_T_units="degK",
         power_units="W",
         power_shaft_units="W",
@@ -927,6 +930,9 @@ class Impeller:
         flow_units_pressure_ratio: str
             Flow units used  in the dict for pressure ratio curves.
             Only needed when flow units for efficiency curve differs from other curves.
+        flow_units_disch_p: str
+            Flow units used  in the dict for discharge pressure curves.
+            Only needed when flow units for discharge pressure curve differs from other curves.
         flow_units_disch_T: str
             Flow units used  in the dict for discharge Temperature curves.
             Only needed when flow units for efficiency curve differs from other curves.
@@ -943,6 +949,8 @@ class Impeller:
             Mechanical power losses units used in the dict.
         pressure_ratio_units : str
             Pressure ratio units used in the dict.
+        disch_p_units : str
+            Discharge pressure units used in the dict.
         disch_T_units : str
             Discharge temperature units used in the dict.
         speed_units : str
@@ -1218,6 +1226,7 @@ class Impeller:
         flow_units_power=None,
         flow_units_power_shaft=None,
         flow_units_pressure_ratio=None,
+        flow_units_disch_p=None,
         flow_units_disch_T=None,
         head_units="J/kg",
         eff_units="dimensionless",
@@ -1225,6 +1234,7 @@ class Impeller:
         power_shaft_units="W",
         power_losses_units="W",
         pressure_ratio_units="dimensionless",
+        disch_p_units="Pa",
         disch_T_units="degK",
         speed_units="RPM",
         **kwargs,
@@ -1305,6 +1315,7 @@ class Impeller:
             "power",
             "power_shaft",
             "pressure_ratio",
+            "disch_p",
             "disch_T",
         ]:
             param_path = curve_path / (curve_name + f"-{param}.csv")
@@ -1335,10 +1346,12 @@ class Impeller:
             flow_units_power=flow_units_power,
             flow_units_power_shaft=flow_units_power_shaft,
             flow_units_pressure_ratio=flow_units_pressure_ratio,
+            flow_units_disch_p=flow_units_disch_p,
             flow_units_disch_T=flow_units_disch_T,
             eff_units=eff_units,
             speed_units=speed_units,
             pressure_ratio_units=pressure_ratio_units,
+            disch_p_units=disch_p_units,
             disch_T_units=disch_T_units,
             **curves_path_dict,
         )
