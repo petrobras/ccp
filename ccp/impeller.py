@@ -20,6 +20,7 @@ from ccp.config.units import check_units
 from ccp.config.utilities import r_getattr, r_setattr
 from ccp.data_io.read_csv import read_data_from_engauge_csv
 from ccp.plotly_theme import tableau_colors
+from ccp.surrogate import convert_from_gp_surrogate
 
 
 class ImpellerStateParameter:
@@ -684,7 +685,9 @@ class Impeller:
         return current_curve
 
     @classmethod
-    def convert_from(cls, original_impeller, suc=None, find="speed", speed=None):
+    def convert_from(
+        cls, original_impeller, suc=None, find="speed", speed=None, method="similarity"
+    ):
         """Convert performance map from an impeller.
 
         Parameters
@@ -694,6 +697,8 @@ class Impeller:
             A list of impeller can also be passed. In this case the curves will be
             converted based on the impeller with the closest suction speed of sound
             to the new suction condition.
+            For ``method="gp_surrogate"`` a list is preferred (one impeller per measured
+            suction/case): the surrogate is fit on the points of *all* the supplied maps.
         suc : ccp.State
             The new suction condition to which we want to convert to.
         find : str, optional
@@ -701,16 +706,55 @@ class Impeller:
             For now only 'speed' is implemented, which means that, based on volume ratio,
             we calculate new values of speed for each curve and the respective discharge
             condition.
+            Ignored when ``method="gp_surrogate"``.
         speed : float, pint.Quantity, str, optional
             Desired speed. If find="speed", this can be None or 'same' to keep the same
             speed values available in the original_impeller.
+            For ``method="gp_surrogate"``: a number / ``pint.Quantity`` produces a single
+            curve at that speed; ``None`` or ``"same"`` uses the speed lines of the most
+            complete supplied map (the impeller with the most curves).
+        method : str, optional
+            Conversion method. Defaults to ``"similarity"``.
+
+            - ``"similarity"``: physics similarity rescaling of the source map (the
+              behaviour described above), unchanged.
+            - ``"gp_surrogate"``: fit a Gaussian-process surrogate
+              ``psi, eff = f(phi, M_tip)`` over the points of all supplied measured
+              map(s) and re-dimensionalize it at ``suc``. The model is refit on every
+              call (no persistence). Useful when several measured maps are available and
+              for dense/supercritical suctions where the similarity flash diverges.
+              Requires scikit-learn.
 
         Returns
         -------
         converted_impeller : ccp.Impeller
             The new impeller with the converted performance map for the required
             suction condition.
+
+        Examples
+        --------
+        >>> import ccp
+        >>> imp = ccp.impeller_example()
+        >>> new_suc = imp.points[0].suc
+        >>> converted = ccp.Impeller.convert_from(imp, suc=new_suc, speed="same")
+
+        Fit a surrogate on a machine's measured maps and convert:
+
+        >>> converted = ccp.Impeller.convert_from(  # doctest: +SKIP
+        ...     [imp_case_a, imp_case_b, imp_case_c],
+        ...     suc=new_suc,
+        ...     method="gp_surrogate",
+        ... )
         """
+        if method == "gp_surrogate":
+            return convert_from_gp_surrogate(
+                cls, original_impeller, suc=suc, speed=speed
+            )
+        if method != "similarity":
+            raise ValueError(
+                f"unknown method {method!r}; expected 'similarity' or 'gp_surrogate'"
+            )
+
         all_converted_points = []
         if isinstance(original_impeller, list):
             speed_sound_diff = []
