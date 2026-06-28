@@ -27,6 +27,8 @@ Re-dimensionalization uses ccp's own coefficient definitions (``ccp/point.py``),
 from __future__ import annotations
 
 import numpy as np
+from sklearn.gaussian_process import GaussianProcessRegressor
+from sklearn.gaussian_process.kernels import RBF, ConstantKernel, WhiteKernel
 
 import ccp
 
@@ -111,19 +113,6 @@ class _GPSurrogate:
     @classmethod
     def fit(cls, impellers):
         """Fit the surrogate on a list of (measured) ``ccp.Impeller`` objects."""
-        try:
-            from sklearn.gaussian_process import GaussianProcessRegressor
-            from sklearn.gaussian_process.kernels import (
-                RBF,
-                ConstantKernel,
-                WhiteKernel,
-            )
-        except ImportError as e:
-            raise ImportError(
-                "method='gp_surrogate' requires scikit-learn. "
-                "Install it with: pip install scikit-learn"
-            ) from e
-
         phi, mach, psi, eff = _point_features(impellers)
         X = np.column_stack([phi, mach])
         x_mean = X.mean(0)

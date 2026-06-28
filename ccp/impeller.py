@@ -20,6 +20,7 @@ from ccp.config.units import check_units
 from ccp.config.utilities import r_getattr, r_setattr
 from ccp.data_io.read_csv import read_data_from_engauge_csv
 from ccp.plotly_theme import tableau_colors
+from ccp.surrogate import convert_from_gp_surrogate
 
 
 class ImpellerStateParameter:
@@ -746,10 +747,6 @@ class Impeller:
         ... )
         """
         if method == "gp_surrogate":
-            # Lazy import: avoids an import cycle (surrogate imports ccp) and keeps the
-            # sklearn dependency out of the import path unless the surrogate is used.
-            from ccp.surrogate import convert_from_gp_surrogate
-
             return convert_from_gp_surrogate(
                 cls, original_impeller, suc=suc, speed=speed
             )
