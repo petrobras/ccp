@@ -5,6 +5,7 @@ import multiprocessing
 import warnings
 
 import toml
+import json
 from copy import deepcopy
 from itertools import groupby
 from pathlib import Path
@@ -1343,19 +1344,24 @@ class Impeller:
             **curves_path_dict,
         )
 
-    def save(self, file):
-        """Save impeller to a toml file.
+    def save(self, file_name, file_type="toml"):
+        """Save impeller to a toml or json file.
 
         Parameters
         ----------
-        file : str or pathlib.Path
+        file_name : str or pathlib.Path
             Filename to which the data is saved.
+        file_type: str
+            File type can be: toml or json.
         """
-
-        with open(file, mode="w") as f:
+        file_path = ".".join([file_name, file_type])
+        with open(file_path, mode="w") as f:
             # add points to file
             dict_to_save = self._dict_to_save()
-            toml.dump(dict_to_save, f)
+            if file_type == "toml":
+                toml.dump(dict_to_save, f)
+            elif file_type == "json":
+                json.dump(dict_to_save, f)
 
     def _dict_to_save(self):
         dict_to_save = {
@@ -1364,8 +1370,8 @@ class Impeller:
         return dict_to_save
 
     @classmethod
-    def load(cls, file):
-        """Load impeller from toml file.
+    def load(cls, file_name):
+        """Load impeller from toml or json file.
 
         Parameters
         ----------
@@ -1377,7 +1383,11 @@ class Impeller:
         impeller : ccp.Impeller
             Impeller object.
         """
-        parameters = toml.load(file)
+        with open(file_name) as f:
+            if "toml" in file_name:
+                parameters = toml.load(f)
+            if "json" in file_name:
+                parameters = json.load(f)
         points = [
             Point(**Point._dict_from_load(kwargs)) for kwargs in parameters.values()
         ]

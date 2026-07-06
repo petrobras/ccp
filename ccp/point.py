@@ -1007,7 +1007,15 @@ class Point:
         )
 
     def save(self, file_name, file_type="toml"):
-        """Save point to toml or json file."""
+        """Save point to a toml or json file.
+
+        Parameters
+        ----------
+        file_name : str or pathlib.Path
+            Filename to which the data is saved.
+        file_type: str
+            File type can be: toml or json.
+        """
         file_path = ".".join([file_name, file_type])
         with open(file_path, mode="w") as f:
             if file_type == "toml":
