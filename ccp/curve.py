@@ -454,7 +454,17 @@ class Curve:
         file_type: str
             File type can be: toml or json.
         """
-        file_path = ".".join([file_name, file_type])
+        try:
+            if file_type not in file_name.suffix:
+                file_path = ".".join([file_name, file_type])
+            else:
+                file_path = file_name
+        except (TypeError, AttributeError):
+            if file_type not in file_name:
+                file_path = ".".join([file_name, file_type])
+            else:
+                file_path = file_name
+        
         with open(file_path, mode="w") as f:
             # add points to file
             dict_to_save = self._dict_to_save()
@@ -486,10 +496,16 @@ class Curve:
     @classmethod
     def load(cls, file_name):
         with open(file_name) as f:
-            if "toml" in file_name:
-                parameters = toml.load(f)
-            if "json" in file_name:
-                parameters = json.load(f)
+            try:
+                if "toml" in file_name.suffix:
+                    parameters = toml.load(f)
+                if "json" in file_name.suffix:
+                    parameters = json.load(f)
+            except (TypeError, AttributeError):
+                if "toml" in file_name:
+                    parameters = toml.load(f)
+                if "json" in file_name:
+                    parameters = json.load(f)
 
         return cls(
             [Point(**Point._dict_from_load(kwargs)) for kwargs in parameters.values()]
