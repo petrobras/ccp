@@ -103,7 +103,7 @@ def test_point1sec_no_leakage():
     assert_allclose(p.suc.fluid["CO2"], 0.80218)
 
 
-@pytest.fixture
+@pytest.fixture(scope="module")
 def straight_through():
     """P77 main b - spare"""
     fluid_sp = {
@@ -496,7 +496,7 @@ def test_point2sec_no_leakages():
     assert_allclose(p.suc.fluid["CO2"], 1.0)
 
 
-@pytest.fixture
+@pytest.fixture(scope="module")
 def back_to_back():
     fluid_sp = {
         "methane": 73.66,
@@ -989,8 +989,14 @@ def test_back_to_back(back_to_back):
     assert_allclose(p0f_sp.power, 3707235.148908142, 1e-4)
 
 
-def test_back_to_back_with_reynolds_correction(back_to_back):
-    back_to_back = BackToBack(**back_to_back, reynolds_correction="ptc1997")
+@pytest.fixture(scope="module")
+def back_to_back_ptc1997(back_to_back):
+    """Constructed once and shared by tests that only read from it."""
+    return BackToBack(**back_to_back, reynolds_correction="ptc1997")
+
+
+def test_back_to_back_with_reynolds_correction(back_to_back_ptc1997):
+    back_to_back = back_to_back_ptc1997
     # check flows for first point sec1
     p0f = back_to_back.points_flange_t_sec1[0]
     assert_allclose(p0f.end_seal_flow_m, Q_(386.62, "kg/h").to("kg/s"), rtol=1e-5)
@@ -1112,9 +1118,8 @@ def test_back_to_back_with_reynolds_correction(back_to_back):
     assert_allclose(p0r.power, 3344111.790281333, 1e-4)
 
 
-def test_back_to_back_calculate_speed(back_to_back):
-    back_to_back = BackToBack(**back_to_back, reynolds_correction="ptc1997")
-    back_to_back = back_to_back.calculate_speed_to_match_discharge_pressure()
+def test_back_to_back_calculate_speed(back_to_back_ptc1997):
+    back_to_back = back_to_back_ptc1997.calculate_speed_to_match_discharge_pressure()
     point_sp = back_to_back.point_sec2(
         speed=back_to_back.speed_operational,
         flow_m=back_to_back.guarantee_point_sec2.flow_m,
@@ -1122,8 +1127,8 @@ def test_back_to_back_calculate_speed(back_to_back):
     assert_allclose(point_sp.disch.p(), back_to_back.guarantee_point_sec2.disch.p())
 
 
-def test_save_and_load(back_to_back):
-    back_to_back = BackToBack(**back_to_back, reynolds_correction="ptc1997")
+def test_save_and_load(back_to_back_ptc1997):
+    back_to_back = back_to_back_ptc1997
 
     file = Path(tempdir) / "back_to_back.toml"
     back_to_back.save(file)
@@ -1133,7 +1138,7 @@ def test_save_and_load(back_to_back):
     assert back_to_back == back_to_back_loaded
 
 
-@pytest.fixture
+@pytest.fixture(scope="module")
 def back_to_back_no_leakage():
     fluid_sp = {
         "methane": 73.66,

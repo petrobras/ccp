@@ -32,9 +32,12 @@ This project uses **uv** for package and environment management.
 
 ### Testing
 ```bash
-uv run pytest                    # Run all tests with doctest modules
-uv run pytest ccp/tests/         # Run unit tests only
+uv run pytest -m "not slow" -n auto --dist loadfile   # fast tier (~40 s) - use during development
+uv run pytest ccp/tests -n 4 --dist loadfile          # full suite in parallel (~7 min) - run before opening a PR
+uv run pytest                                         # full suite, serial (~25 min; includes doctests)
 ```
+
+The heavy integration modules (`test_app.py`, `test_compressor.py`, `test_evaluation.py`, `test_impeller.py`) are auto-marked `slow` in `ccp/tests/conftest.py` — they run full compressor conversions. Use the fast tier while iterating and run the full suite at the end of a feature. `--dist loadfile` keeps each test file in a single xdist worker, which preserves within-file ordering and gives per-file process isolation. Use `-n 4` (not `-n auto`) for the full suite: the slow files spawn their own multiprocessing pools, and 16 workers exhaust memory on a 16 GB machine.
 
 ### Development Setup
 ```bash

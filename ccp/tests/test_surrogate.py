@@ -4,7 +4,6 @@ import numpy as np
 import pytest
 from numpy.testing import assert_allclose
 
-import ccp
 from ccp import Q_, Impeller, Point, State
 
 B = Q_(28.5, "mm")
@@ -42,7 +41,7 @@ def _map_at(suc, speeds_rpm, phis=np.linspace(0.03, 0.09, 6)):
     return Impeller(points)
 
 
-@pytest.fixture
+@pytest.fixture(scope="module")
 def maps():
     """Three measured maps at different suction pressures (-> different Mach)."""
     speeds = [9000, 10500, 12000]
@@ -112,9 +111,9 @@ def test_speed_argument_single_curve(maps):
     assert_allclose(conv.curves[0].speed.to("RPM").m, 10500, rtol=1e-6)
 
 
-def test_default_method_unchanged():
+def test_default_method_unchanged(maps):
     """method defaults to 'similarity' and matches an explicit similarity call."""
-    imp = ccp.impeller_example()
+    imp = maps[0]
     new_suc = imp.points[0].suc
     default = Impeller.convert_from(imp, suc=new_suc, speed="same")
     explicit = Impeller.convert_from(
