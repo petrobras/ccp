@@ -9,7 +9,7 @@ import ccp
 from ccp import ureg, Q_, State, Point, Curve, Impeller, impeller_example
 
 
-@pytest.fixture
+@pytest.fixture(scope="module")
 def points0():
     #  see Ludtke pg. 173 for values.
     fluid = dict(
@@ -46,14 +46,14 @@ def points0():
     return p0, p1
 
 
-@pytest.fixture
+@pytest.fixture(scope="module")
 def imp0(points0):
     p0, p1 = points0
     imp0 = Impeller([p0, p1])
     return imp0
 
 
-@pytest.fixture
+@pytest.fixture(scope="module")
 def imp1():
     fluid = dict(
         methane=0.69945,
@@ -138,7 +138,7 @@ def test_impeller_new_suction(imp1):
     assert_allclose(new_p0.speed.m, 1251.21885813, rtol=1e-3)
 
 
-@pytest.fixture()
+@pytest.fixture(scope="module")
 def imp2():
     points = [
         Point(
@@ -230,7 +230,7 @@ def test_impeller2_new_suction(imp2):
     assert_allclose(new_p0.volume_ratio_ratio.m, 0.999846036412339, rtol=1e-5)
 
 
-@pytest.fixture
+@pytest.fixture(scope="module")
 def imp3():
     # faster to load than impeller_example
     composition_fd = dict(
@@ -472,8 +472,13 @@ def test_impeller_from_head_power(imp3):
     assert_allclose(imp.eff.m, imp3.eff.m)
 
 
-def test_impeller_curve():
-    imp = impeller_example()
+@pytest.fixture(scope="module")
+def imp_example():
+    return impeller_example()
+
+
+def test_impeller_curve(imp_example):
+    imp = imp_example
     c0 = imp.curve(speed=900)
     p0 = c0[0]
     assert_allclose(p0.eff.m, 0.8171352367889275, rtol=1e-4)
@@ -481,8 +486,8 @@ def test_impeller_curve():
     assert_allclose(p0.power.m, 2963324.773894661, rtol=1e-4)
 
 
-def test_impeller_plot():
-    imp = impeller_example()
+def test_impeller_plot(imp_example):
+    imp = imp_example
     fig = imp.eff_plot(flow_v=5, speed=900)
     expected_eff_curve = np.array(
         [
@@ -522,8 +527,8 @@ def test_impeller_plot():
     assert_allclose(fig.data[6]["y"], 0.8110849213647002, rtol=1e-4)
 
 
-def test_impeller_plot_units():
-    imp = impeller_example()
+def test_impeller_plot_units(imp_example):
+    imp = imp_example
     fig = imp.disch.rho_plot(
         flow_v=Q_(20000, "m³/h"),
         speed=Q_(8594, "RPM"),
@@ -569,35 +574,9 @@ def test_impeller_plot_units():
     assert_allclose(fig.data[6]["y"], 0.008918054668713014, rtol=1e-4)
 
 
-def test_save_load():
-    composition_fd = dict(
-        n2=0.4,
-        co2=0.22,
-        methane=92.11,
-        ethane=4.94,
-        propane=1.71,
-        ibutane=0.24,
-        butane=0.3,
-        ipentane=0.04,
-        pentane=0.03,
-        hexane=0.01,
-    )
-    suc_fd = State(p=Q_(3876, "kPa"), T=Q_(11, "degC"), fluid=composition_fd)
-
-    test_dir = Path(__file__).parent
-    curve_path = test_dir / "data"
-    curve_name = "normal"
-
-    imp_fd = Impeller.load_from_engauge_csv(
-        suc=suc_fd,
-        curve_name=curve_name,
-        curve_path=curve_path,
-        b=Q_(10.6, "mm"),
-        D=Q_(390, "mm"),
-        number_of_points=6,
-        flow_units="kg/h",
-        head_units="kJ/kg",
-    )
+def test_save_load(imp3):
+    # imp3 is built with the same parameters this test used to build inline
+    imp_fd = imp3
     file = Path(tempdir) / "imp.toml"
     imp_fd.save(file)
 

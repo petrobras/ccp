@@ -107,6 +107,7 @@ dev = [
     "sphinx-rtd-theme",
     "sphinx-design",
     "sphinxcontrib-googleanalytics",
+    "pytest-xdist>=3.8.0",
 ]
 
 [tool.uv]

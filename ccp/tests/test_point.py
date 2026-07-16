@@ -749,8 +749,7 @@ def test_global_polytropic_method(suc_0, disch_0):
     p0 = Point(suc=suc_0, disch=disch_0, flow_v=1, speed=1, b=1, D=1)
     assert p0.head.units == "joule/kilogram"
     assert_allclose(p0.head.m, 82951.470027, rtol=1e-6)
-    # go back to schultz for other tests
-    ccp.config.POLYTROPIC_METHOD = "schultz"
+    # the restore_global_config fixture in conftest.py resets POLYTROPIC_METHOD
 
 
 def test_case_sc_at():
@@ -765,6 +764,9 @@ def test_case_sc_at():
 
 def test_point_casing_heat_loss():
     """P76 MAIN B - CASE A - point 0"""
+    # expected values below were calculated with the schultz method
+    # (restore_global_config in conftest.py resets this after the test)
+    ccp.config.POLYTROPIC_METHOD = "schultz"
     p = Point(
         flow_m=Q_(7.737, "kg/s"),
         speed=Q_(7894, "RPM"),
@@ -800,6 +802,9 @@ def test_point_casing_heat_loss():
 
 
 def test_ptc10_c6_sample_calculation():
+    # the PTC10 C.6 sample calculation uses the schultz method
+    # (restore_global_config in conftest.py resets this after the test)
+    ccp.config.POLYTROPIC_METHOD = "schultz"
     suc_sp = ccp.State(
         p=Q_(200, "psi"),
         T=Q_(115, "degF"),
