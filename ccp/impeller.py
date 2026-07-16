@@ -621,6 +621,11 @@ class Impeller:
         curve : ccp.Curve
             Point in the performance map.
         """
+        # accept a 1-element array (e.g. Impeller.speed for a single-curve map),
+        # since numpy >= 2.4 no longer converts those to scalars in CoolProp calls
+        if np.ndim(speed.magnitude) > 0:
+            speed = Q_(float(np.squeeze(speed.magnitude)), speed.units)
+
         speeds = np.array([curve.speed.magnitude for curve in self.curves])
 
         # calculate power losses
