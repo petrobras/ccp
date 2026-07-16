@@ -177,7 +177,12 @@ class Evaluation:
         df = df.copy()
         features = df[["speed_sound", "ps", "Ts"]]
         features_norm = (features - self.data_mean) / self.data_std
-        df["cluster"] = self.kmeans.predict(features_norm)
+        # rows with NaN features (invalid rows kept in the dataframe) get a
+        # placeholder cluster; they are skipped in the point calculation
+        complete = features_norm.notna().all(axis=1)
+        df["cluster"] = 0
+        if complete.any():
+            df.loc[complete, "cluster"] = self.kmeans.predict(features_norm[complete])
         return df
 
     def _calculate_points_from_prepared_df(self, df, parallel=None):
@@ -194,23 +199,33 @@ class Evaluation:
 
             # Get 'valid' value safely (default to True if not present)
             is_valid = row.valid if "valid" in row.index else True
+            if not is_valid:
+                # skip state construction: invalid rows can hold NaN inputs
+                args_list.append({"valid": False})
+                continue
 
-            arg_dict = {
-                "flow_v": row.flow_v,
-                "speed": Q_(row.speed, self.data_units["speed"]),
-                "suc": State(
-                    p=Q_(row.ps, self.data_units["ps"]),
-                    T=Q_(row.Ts, self.data_units["Ts"]),
-                    fluid=fluid,
-                ),
-                "disch": State(
-                    p=Q_(row.pd, self.data_units["pd"]),
-                    T=Q_(row.Td, self.data_units["Td"]),
-                    fluid=fluid,
-                ),
-                "imp_new": self.impellers_new[int(row.cluster)],
-                "valid": is_valid,
-            }
+            try:
+                arg_dict = {
+                    "flow_v": row.flow_v,
+                    "speed": Q_(row.speed, self.data_units["speed"]),
+                    "suc": State(
+                        p=Q_(row.ps, self.data_units["ps"]),
+                        T=Q_(row.Ts, self.data_units["Ts"]),
+                        fluid=fluid,
+                    ),
+                    "disch": State(
+                        p=Q_(row.pd, self.data_units["pd"]),
+                        T=Q_(row.Td, self.data_units["Td"]),
+                        fluid=fluid,
+                    ),
+                    "imp_new": self.impellers_new[int(row.cluster)],
+                    "valid": is_valid,
+                }
+            except ValueError:
+                if "valid" in df.columns:
+                    df.loc[i, "valid"] = False
+                args_list.append({"valid": False})
+                continue
 
             args_list.append(arg_dict)
 
@@ -536,48 +551,60 @@ class Evaluation:
         df["speed_sound"] = 0.0
 
         for i, row in df.iterrows():
+            # rows marked invalid can carry NaN inputs that CoolProp rejects
+            if "valid" in df.columns and not row.valid:
+                continue
+
             if self.operation_fluid is not None:
                 fluid = self.operation_fluid
             else:
                 fluid = self._get_fluid_composition(row)
 
-            if calculate_flow:
-                if "p_downstream" in df.columns:
-                    state_upstream = False
-                    state = State(
-                        p=Q_(row.p_downstream, self.data_units["p_downstream"]),
-                        T=Q_(row.Ts, self.data_units["Ts"]),
-                        fluid=fluid,
-                    )
-                elif "p_upstream" in df.columns:
-                    state_upstream = True
-                    state = State(
-                        p=Q_(row.p_upstream, self.data_units["p_upstream"]),
-                        T=Q_(row.Ts, self.data_units["Ts"]),
-                        fluid=fluid,
-                    )
-                else:
-                    raise ValueError(
-                        "Pressure upstream/downstream fo not found in the DataFrame."
-                    )
+            try:
+                if calculate_flow:
+                    if "p_downstream" in df.columns:
+                        state_upstream = False
+                        state = State(
+                            p=Q_(row.p_downstream, self.data_units["p_downstream"]),
+                            T=Q_(row.Ts, self.data_units["Ts"]),
+                            fluid=fluid,
+                        )
+                    elif "p_upstream" in df.columns:
+                        state_upstream = True
+                        state = State(
+                            p=Q_(row.p_upstream, self.data_units["p_upstream"]),
+                            T=Q_(row.Ts, self.data_units["Ts"]),
+                            fluid=fluid,
+                        )
+                    else:
+                        raise ValueError(
+                            "Pressure upstream/downstream fo not found in the DataFrame."
+                        )
 
-                delta_p = Q_(row.delta_p, self.data_units["delta_p"])
-                fo = FlowOrifice(
-                    state,
-                    delta_p,
-                    self.D,
-                    self.d,
-                    tappings=self.tappings,
-                    state_upstream=state_upstream,
-                )
-                df.loc[i, "flow_m"] = fo.qm.m
-                df.loc[i, "flow_v"] = (fo.qm * state.v()).m
-            else:
-                state = State(
-                    p=Q_(row.ps, self.data_units["ps"]),
-                    T=Q_(row.Ts, self.data_units["Ts"]),
-                    fluid=fluid,
-                )
+                    delta_p = Q_(row.delta_p, self.data_units["delta_p"])
+                    fo = FlowOrifice(
+                        state,
+                        delta_p,
+                        self.D,
+                        self.d,
+                        tappings=self.tappings,
+                        state_upstream=state_upstream,
+                    )
+                    df.loc[i, "flow_m"] = fo.qm.m
+                    df.loc[i, "flow_v"] = (fo.qm * state.v()).m
+                else:
+                    state = State(
+                        p=Q_(row.ps, self.data_units["ps"]),
+                        T=Q_(row.Ts, self.data_units["Ts"]),
+                        fluid=fluid,
+                    )
+            except ValueError:
+                # NaN or out-of-range inputs (e.g. sensor dropouts): mark the row
+                # invalid when invalid rows are being kept, otherwise fail loudly
+                if "valid" in df.columns:
+                    df.loc[i, "valid"] = False
+                    continue
+                raise
 
             df.loc[i, "v_s"] = state.v().m
             df.loc[i, "speed_sound"] = state.speed_sound().m
