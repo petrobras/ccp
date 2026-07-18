@@ -1,6 +1,8 @@
 import pytest
 import numpy as np
 import pickle
+from pathlib import Path
+from tempfile import tempdir
 from numpy.testing import assert_allclose
 from ccp import ureg, Q_
 from ccp.state import State
@@ -74,3 +76,11 @@ def test_pickle(curve0):
     assert pickled_curve0 == curve0
     assert hasattr(curve0, "head_plot") is True
     assert hasattr(pickled_curve0, "head_plot") is True
+
+
+@pytest.mark.parametrize("file_format", ["toml", "json"])
+def test_save_load(curve0, file_format):
+    file = Path(tempdir) / f"curve.{file_format}"
+    curve0.save(file)
+    curve0_loaded = Curve.load(file)
+    assert curve0 == curve0_loaded

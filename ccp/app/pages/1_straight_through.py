@@ -75,9 +75,7 @@ def main():
     def _load_straight_through(my_zip, version):
         for name in my_zip.namelist():
             if name.endswith(".json"):
-                session_state_data = convert(
-                    json.loads(my_zip.read(name)), version
-                )
+                session_state_data = convert(json.loads(my_zip.read(name)), version)
                 if "flow_point_guarantee" not in session_state_data:
                     raise ValueError("File is not a ccp straight-through file.")
         for name in my_zip.namelist():
@@ -87,8 +85,8 @@ def main():
                 straight_through_file = convert(
                     io.StringIO(my_zip.read(name).decode("utf-8")), version
                 )
-                session_state_data[name.split(".")[0]] = StraightThrough.load(
-                    straight_through_file
+                session_state_data[name.split(".")[0]] = StraightThrough.from_dict(
+                    toml.load(straight_through_file)
                 )
         return session_state_data
 
@@ -101,9 +99,7 @@ def main():
                     my_zip.writestr(f"{key}.png", value)
                 del session_state_dict_copy[key]
             if isinstance(value, StraightThrough):
-                my_zip.writestr(
-                    f"{key}.toml", toml.dumps(value._dict_to_save())
-                )
+                my_zip.writestr(f"{key}.toml", toml.dumps(value.to_dict()))
                 del session_state_dict_copy[key]
         return session_state_dict_copy
 
@@ -226,7 +222,7 @@ def main():
             options=gas_options,
             label_visibility="collapsed",
             key="gas_point_guarantee",
-            index=get_index_selected_gas(gas_options,"gas_point_guarantee"),
+            index=get_index_selected_gas(gas_options, "gas_point_guarantee"),
         )
 
         # build one container with 8 columns for each parameter
@@ -366,14 +362,15 @@ def main():
                 col.markdown("")
             else:
                 gas_options = [
-                    st.session_state[f"gas_{i}"] for i, gas in enumerate(gas_compositions_table)
+                    st.session_state[f"gas_{i}"]
+                    for i, gas in enumerate(gas_compositions_table)
                 ]
                 col.selectbox(
                     f"gas_point_{i - 1}",
                     options=gas_options,
                     label_visibility="collapsed",
                     key=f"gas_point_{i - 1}",
-                    index=get_index_selected_gas(gas_options,f"gas_point_{i - 1}"),
+                    index=get_index_selected_gas(gas_options, f"gas_point_{i - 1}"),
                 )
 
         # build one container with 8 columns for each parameter
@@ -447,14 +444,15 @@ def main():
                 col.markdown("")
             else:
                 gas_options = [
-                    st.session_state[f"gas_{i}"] for i, gas in enumerate(gas_compositions_table)
+                    st.session_state[f"gas_{i}"]
+                    for i, gas in enumerate(gas_compositions_table)
                 ]
                 col.selectbox(
                     f"gas_fo_{i - 1}",
                     options=gas_options,
                     label_visibility="collapsed",
                     key=f"gas_fo_{i - 1}",
-                    index=get_index_selected_gas(gas_options,f"gas_fo_{i - 1}"),
+                    index=get_index_selected_gas(gas_options, f"gas_fo_{i - 1}"),
                 )
 
         # build one container with 8 columns for each parameter
@@ -1448,8 +1446,12 @@ def main():
 
                     plots_dict = {}
                     for curve in ["head", "eff", "discharge_pressure", "power"]:
-                        flow_v_units = plot_limits.get(curve, {}).get("x", {}).get("units")
-                        curve_units = plot_limits.get(curve, {}).get("y", {}).get("units")
+                        flow_v_units = (
+                            plot_limits.get(curve, {}).get("x", {}).get("units")
+                        )
+                        curve_units = (
+                            plot_limits.get(curve, {}).get("y", {}).get("units")
+                        )
 
                         kwargs = {}
                         if flow_v_units is not None and flow_v_units != "":
@@ -1506,10 +1508,18 @@ def main():
                             ),
                         )
 
-                        x_lower = plot_limits.get(curve, {}).get("x", {}).get("lower_limit")
-                        x_upper = plot_limits.get(curve, {}).get("x", {}).get("upper_limit")
-                        y_lower = plot_limits.get(curve, {}).get("y", {}).get("lower_limit")
-                        y_upper = plot_limits.get(curve, {}).get("y", {}).get("upper_limit")
+                        x_lower = (
+                            plot_limits.get(curve, {}).get("x", {}).get("lower_limit")
+                        )
+                        x_upper = (
+                            plot_limits.get(curve, {}).get("x", {}).get("upper_limit")
+                        )
+                        y_lower = (
+                            plot_limits.get(curve, {}).get("y", {}).get("lower_limit")
+                        )
+                        y_upper = (
+                            plot_limits.get(curve, {}).get("y", {}).get("upper_limit")
+                        )
 
                         if (
                             x_lower is not None

@@ -76,9 +76,7 @@ def main():
     def _load_back_to_back(my_zip, version):
         for name in my_zip.namelist():
             if name.endswith(".json"):
-                session_state_data = convert(
-                    json.loads(my_zip.read(name)), version
-                )
+                session_state_data = convert(json.loads(my_zip.read(name)), version)
                 if "div_wall_flow_m_section_1_point_1" not in session_state_data:
                     raise ValueError("File is not a ccp back-to-back file.")
         for name in my_zip.namelist():
@@ -88,8 +86,8 @@ def main():
                 back_to_back_file = convert(
                     io.StringIO(my_zip.read(name).decode("utf-8")), version
                 )
-                session_state_data[name.split(".")[0]] = BackToBack.load(
-                    back_to_back_file
+                session_state_data[name.split(".")[0]] = BackToBack.from_dict(
+                    toml.load(back_to_back_file)
                 )
         return session_state_data
 
@@ -102,9 +100,7 @@ def main():
                     my_zip.writestr(f"{key}.png", value)
                 del session_state_dict_copy[key]
             if isinstance(value, BackToBack):
-                my_zip.writestr(
-                    f"{key}.toml", toml.dumps(value._dict_to_save())
-                )
+                my_zip.writestr(f"{key}.toml", toml.dumps(value.to_dict()))
                 del session_state_dict_copy[key]
         return session_state_dict_copy
 
@@ -255,13 +251,13 @@ def main():
             "gas_section_1_point_guarantee",
             options=gas_options,
             label_visibility="collapsed",
-            index=get_index_selected_gas(gas_options,"gas_section_1_point_guarantee"),
+            index=get_index_selected_gas(gas_options, "gas_section_1_point_guarantee"),
         )
         gas_name_section_2_point_guarantee = points_gas_columns[3].selectbox(
             "gas_section_2_point_guarantee",
             options=gas_options,
             label_visibility="collapsed",
-            index=get_index_selected_gas(gas_options,"gas_section_2_point_guarantee"),
+            index=get_index_selected_gas(gas_options, "gas_section_2_point_guarantee"),
         )
 
         # build one container with 8 columns for each parameter
@@ -441,7 +437,9 @@ def main():
                         f"gas_section_1_point_{i - 1}",
                         options=gas_options,
                         label_visibility="collapsed",
-                        index=get_index_selected_gas(gas_options,f"gas_section_1_point_{i - 1}"),
+                        index=get_index_selected_gas(
+                            gas_options, f"gas_section_1_point_{i - 1}"
+                        ),
                         key=f"gas_section_1_point_{i - 1}",
                     )
 
@@ -539,7 +537,9 @@ def main():
                         f"gas_section_2_point_{i - 1}",
                         options=gas_options,
                         label_visibility="collapsed",
-                        index=get_index_selected_gas(gas_options,f"gas_section_2_point_{i - 1}"),
+                        index=get_index_selected_gas(
+                            gas_options, f"gas_section_2_point_{i - 1}"
+                        ),
                         key=f"gas_section_2_point_{i - 1}",
                     )
 
@@ -1751,7 +1751,6 @@ def main():
                         tab_results = tab_results_section_2
 
                     with tab_results:
-
                         styled_df_results = df_results.style
 
                         mach_limits = point_interpolated.mach_limits()
@@ -1961,12 +1960,20 @@ def main():
                                 ):
                                     plots_dict[curve].update_layout(
                                         xaxis_range=(
-                                            section_plot_limits[curve]["x"]["lower_limit"],
-                                            section_plot_limits[curve]["x"]["upper_limit"],
+                                            section_plot_limits[curve]["x"][
+                                                "lower_limit"
+                                            ],
+                                            section_plot_limits[curve]["x"][
+                                                "upper_limit"
+                                            ],
                                         ),
                                         yaxis_range=(
-                                            section_plot_limits[curve]["y"]["lower_limit"],
-                                            section_plot_limits[curve]["y"]["upper_limit"],
+                                            section_plot_limits[curve]["y"][
+                                                "lower_limit"
+                                            ],
+                                            section_plot_limits[curve]["y"][
+                                                "upper_limit"
+                                            ],
                                         ),
                                     )
 
@@ -1984,7 +1991,9 @@ def main():
                             id(back_to_back),
                             section_plot_limits,
                             show_points,
-                            speed_operational_rpm=back_to_back.speed_operational.to("rpm").m,
+                            speed_operational_rpm=back_to_back.speed_operational.to(
+                                "rpm"
+                            ).m,
                         )
 
                         with st.container():
