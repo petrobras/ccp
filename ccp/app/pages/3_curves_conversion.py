@@ -1,5 +1,4 @@
 import ccp
-import io
 import streamlit as st
 import time
 import logging
@@ -104,15 +103,15 @@ def main():
                     "content": my_zip.read(name),
                 }
             if name.endswith(".toml"):
-                impeller_file = io.StringIO(my_zip.read(name).decode("utf-8"))
+                impeller_dict = toml.loads(my_zip.read(name).decode("utf-8"))
                 if name.startswith("impeller_case_"):
                     case = name.replace("impeller_case_", "").replace(".toml", "")
-                    session_state_data[f"impeller_case_{case}"] = ccp.Impeller.load(
-                        impeller_file
+                    session_state_data[f"impeller_case_{case}"] = (
+                        ccp.Impeller.from_dict(impeller_dict)
                     )
                 elif name.startswith("converted_impeller"):
-                    session_state_data["converted_impeller"] = ccp.Impeller.load(
-                        impeller_file
+                    session_state_data["converted_impeller"] = ccp.Impeller.from_dict(
+                        impeller_dict
                     )
 
         for key in list(session_state_data.keys()):
@@ -127,12 +126,12 @@ def main():
                 if key == "converted_impeller":
                     my_zip.writestr(
                         "converted_impeller.toml",
-                        toml.dumps(value._dict_to_save()),
+                        toml.dumps(value.to_dict()),
                     )
                 elif key.startswith("impeller_case_"):
                     my_zip.writestr(
                         f"{key}.toml",
-                        toml.dumps(value._dict_to_save()),
+                        toml.dumps(value.to_dict()),
                     )
                 del session_state_dict_copy[key]
             if key.startswith("curves_file_") and "_case_" in key:
@@ -546,28 +545,33 @@ def main():
                         f"    {comp.lower():<22s} {frac * 100:>7.3f} %"
                         for comp, frac in gas_items
                     )
-                    
-                    summary = "\n".join([
-                        "-----------------------------",
-                        f"    Speed:                 {project_point.speed.to("rpm").m:.0f} {plot_curves_speed_units}",
-                        f"    Flow:                  {project_point.flow_v.to(plot_curves_flow_v_units).m:.2f} {plot_curves_flow_v_units}",
-                        f"    Head:                  {project_point.head.to(plot_curves_head_units).m:.2f} {plot_curves_head_units}",
-                        f"    Eff:                   {(project_point.eff.m * 100):.2f} %",
-                        f"    Power:                 {project_point.power.to(plot_curves_power_units).m:.2f} {plot_curves_power_units}",
-                        "",
-                        "    Suction Conditions",
-                        "    --------------------",
-                        f"    Suction Pressure:      {project_point.suc.p(plot_curves_disch_p_units).m:.2f} {plot_curves_disch_p_units}",
-                        f"    Suction Temperature:   {project_point.suc.T(plot_curves_disch_T_units).m:.2f} {plot_curves_disch_T_units}",
-                        "",
-                        "    Discharge Conditions",
-                        "    --------------------",
-                        f"    Discharge Pressure:    {project_point.disch.p(plot_curves_disch_p_units).m:.2f} {plot_curves_disch_p_units}",
-                        f"    Discharge Temperature: {project_point.disch.T(plot_curves_disch_T_units).m:.2f} {plot_curves_disch_T_units}",
-                        "",
-                        "    Gas Composition (mol %)",
-                        "    --------------------\n",
-                    ]) + gas_lines
+
+                    summary = (
+                        "\n".join(
+                            [
+                                "-----------------------------",
+                                f"    Speed:                 {project_point.speed.to('rpm').m:.0f} {plot_curves_speed_units}",
+                                f"    Flow:                  {project_point.flow_v.to(plot_curves_flow_v_units).m:.2f} {plot_curves_flow_v_units}",
+                                f"    Head:                  {project_point.head.to(plot_curves_head_units).m:.2f} {plot_curves_head_units}",
+                                f"    Eff:                   {(project_point.eff.m * 100):.2f} %",
+                                f"    Power:                 {project_point.power.to(plot_curves_power_units).m:.2f} {plot_curves_power_units}",
+                                "",
+                                "    Suction Conditions",
+                                "    --------------------",
+                                f"    Suction Pressure:      {project_point.suc.p(plot_curves_disch_p_units).m:.2f} {plot_curves_disch_p_units}",
+                                f"    Suction Temperature:   {project_point.suc.T(plot_curves_disch_T_units).m:.2f} {plot_curves_disch_T_units}",
+                                "",
+                                "    Discharge Conditions",
+                                "    --------------------",
+                                f"    Discharge Pressure:    {project_point.disch.p(plot_curves_disch_p_units).m:.2f} {plot_curves_disch_p_units}",
+                                f"    Discharge Temperature: {project_point.disch.T(plot_curves_disch_T_units).m:.2f} {plot_curves_disch_T_units}",
+                                "",
+                                "    Gas Composition (mol %)",
+                                "    --------------------\n",
+                            ]
+                        )
+                        + gas_lines
+                    )
 
                     st.markdown(f"#### {label} Point")
                     st.code(summary)

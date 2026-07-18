@@ -1,4 +1,3 @@
-import io
 import json
 import logging
 import sys
@@ -218,21 +217,19 @@ def main():
                             "content": my_zip.read(name),
                         }
                     if name.endswith(".toml"):
-                        impeller_file = io.StringIO(my_zip.read(name).decode("utf-8"))
+                        impeller_dict = toml.loads(my_zip.read(name).decode("utf-8"))
                         if name.startswith("impeller_case_"):
                             case = name.replace("impeller_case_", "").replace(
                                 ".toml", ""
                             )
                             session_state_data[f"impeller_case_{case}"] = (
-                                ccp.Impeller.load(impeller_file)
+                                ccp.Impeller.from_dict(impeller_dict)
                             )
 
                 # Load evaluation if present
                 if "evaluation.zip" in my_zip.namelist():
                     eval_bytes = my_zip.read("evaluation.zip")
-                    eval_tmp = tempfile.NamedTemporaryFile(
-                        suffix=".zip", delete=False
-                    )
+                    eval_tmp = tempfile.NamedTemporaryFile(suffix=".zip", delete=False)
                     eval_tmp.write(eval_bytes)
                     eval_tmp.close()
                     loaded_eval = ccp.Evaluation.load(eval_tmp.name)
@@ -336,7 +333,7 @@ def main():
                     if isinstance(value, ccp.Impeller):
                         my_zip.writestr(
                             f"{key}.toml",
-                            toml.dumps(value._dict_to_save()),
+                            toml.dumps(value.to_dict()),
                         )
                         del session_state_dict_copy[key]
                     if key.startswith("curves_file_") and "_case_" in key:
@@ -356,9 +353,7 @@ def main():
                 # Save Evaluation object if present
                 hist_eval = st.session_state.get("hist_evaluation")
                 if hist_eval is not None:
-                    eval_tmp = tempfile.NamedTemporaryFile(
-                        suffix=".zip", delete=False
-                    )
+                    eval_tmp = tempfile.NamedTemporaryFile(suffix=".zip", delete=False)
                     eval_tmp.close()
                     hist_eval.save(eval_tmp.name)
                     with open(eval_tmp.name, "rb") as ef:
@@ -371,35 +366,38 @@ def main():
                 keys_to_remove = []
                 for key in session_state_dict_copy.keys():
                     value = session_state_dict_copy[key]
-                    if key.startswith(
-                        (
-                            "FormSubmitter",
-                            "my_form",
-                            "uploaded",
-                            "form",
-                            "table",
-                            "load_curves",
-                            "fetch_data",
-                            "auto_refresh",
-                            "run_evaluation",
-                            "full_rebuild_evaluation",
-                            "start_monitoring",
-                            "stop_monitoring",
+                    if (
+                        key.startswith(
+                            (
+                                "FormSubmitter",
+                                "my_form",
+                                "uploaded",
+                                "form",
+                                "table",
+                                "load_curves",
+                                "fetch_data",
+                                "auto_refresh",
+                                "run_evaluation",
+                                "full_rebuild_evaluation",
+                                "start_monitoring",
+                                "stop_monitoring",
+                            )
                         )
-                    ) or isinstance(
-                        value,
-                        (
-                            bytes,
-                            pd.DataFrame,
-                            st.runtime.uploaded_file_manager.UploadedFile,
-                            datetime,
-                            timedelta,
-                        ),
-                    ) or type(value).__name__ in ("date", "time"):
+                        or isinstance(
+                            value,
+                            (
+                                bytes,
+                                pd.DataFrame,
+                                st.runtime.uploaded_file_manager.UploadedFile,
+                                datetime,
+                                timedelta,
+                            ),
+                        )
+                        or type(value).__name__ in ("date", "time")
+                    ):
                         keys_to_remove.append(key)
                     elif isinstance(value, dict) and any(
-                        isinstance(v, (bytes, pd.DataFrame))
-                        for v in value.values()
+                        isinstance(v, (bytes, pd.DataFrame)) for v in value.values()
                     ):
                         keys_to_remove.append(key)
 
@@ -601,9 +599,7 @@ def main():
                     "Run Evaluation",
                     key="run_evaluation",
                     type="primary",
-                    on_click=lambda: st.session_state.update(
-                        _trigger_evaluation="run"
-                    ),
+                    on_click=lambda: st.session_state.update(_trigger_evaluation="run"),
                     use_container_width=True,
                 )
             with button_cols[1]:
@@ -639,9 +635,7 @@ def main():
                         "Create Report",
                         type="primary",
                         use_container_width=True,
-                        on_click=lambda: st.session_state.update(
-                            _trigger_report=True
-                        ),
+                        on_click=lambda: st.session_state.update(_trigger_report=True),
                     )
                 else:
                     st.button(
@@ -658,9 +652,8 @@ def main():
                 if report_figs is not None:
                     ai_analysis = None
                     ai_error = None
-                    if (
-                        st.session_state.get("ai_enabled")
-                        and st.session_state.get("ai_api_key")
+                    if st.session_state.get("ai_enabled") and st.session_state.get(
+                        "ai_api_key"
                     ):
                         try:
                             with st.spinner("Generating AI analysis..."):
@@ -679,12 +672,8 @@ def main():
                                     trend_regression=report_figs.get(
                                         "trend_regression", {}
                                     ),
-                                    summary_stats_df=report_figs[
-                                        "summary_stats"
-                                    ],
-                                    session_name=report_figs.get(
-                                        "session_name", ""
-                                    ),
+                                    summary_stats_df=report_figs["summary_stats"],
+                                    session_name=report_figs.get("session_name", ""),
                                 )
                         except Exception as e:
                             ai_error = str(e)
@@ -731,7 +720,9 @@ def main():
                         start_ts = align_timestamp_to_reference(
                             start_datetime, existing_start
                         )
-                        end_ts = align_timestamp_to_reference(end_datetime, existing_end)
+                        end_ts = align_timestamp_to_reference(
+                            end_datetime, existing_end
+                        )
                         append_only_window = (
                             start_ts <= existing_start and end_ts > existing_end
                         )
@@ -777,7 +768,10 @@ def main():
                             )
 
                         evaluation_kwargs = build_evaluation_kwargs(
-                            tag_mappings, data_units, impellers_list, df_raw,
+                            tag_mappings,
+                            data_units,
+                            impellers_list,
+                            df_raw,
                             testing=TESTING_MODE,
                         )
                         evaluation_kwargs["calculate_points"] = True
@@ -803,9 +797,7 @@ def main():
                     error_str = str(e)
 
                     # Check for PI tag not found (404) errors
-                    tag_match = re.search(
-                        r"Not found:\s*'([^']+)'", error_str
-                    )
+                    tag_match = re.search(r"Not found:\s*'([^']+)'", error_str)
                     if "(404)" in error_str and tag_match:
                         tag_name = tag_match.group(1)
                         st.error(
@@ -887,12 +879,9 @@ def main():
                             regression_info = None
                             # Linear regression with confidence band
                             if len(y_data) >= 3:
-                                x_num = (
-                                    y_data.index.astype("int64").values
-                                    / 1e9
-                                )
-                                slope, intercept, r, p, se = (
-                                    stats.linregress(x_num, y_data)
+                                x_num = y_data.index.astype("int64").values / 1e9
+                                slope, intercept, r, p, se = stats.linregress(
+                                    x_num, y_data
                                 )
                                 y_fit = slope * x_num + intercept
 
@@ -901,13 +890,12 @@ def main():
                                 x_mean = x_num.mean()
                                 ss_x = ((x_num - x_mean) ** 2).sum()
                                 residuals = y_data - y_fit
-                                s_err = np.sqrt(
-                                    (residuals**2).sum() / (n - 2)
-                                )
+                                s_err = np.sqrt((residuals**2).sum() / (n - 2))
                                 t_val = stats.t.ppf(0.975, n - 2)
-                                ci = t_val * s_err * np.sqrt(
-                                    1 / n
-                                    + (x_num - x_mean) ** 2 / ss_x
+                                ci = (
+                                    t_val
+                                    * s_err
+                                    * np.sqrt(1 / n + (x_num - x_mean) ** 2 / ss_x)
                                 )
 
                                 # Sort for proper band rendering
@@ -921,25 +909,17 @@ def main():
                                         x=x_sorted,
                                         y=y_fit_sorted,
                                         mode="lines",
-                                        line=dict(
-                                            color="orange", width=2
-                                        ),
+                                        line=dict(color="orange", width=2),
                                         name="Trend",
                                     )
                                 )
                                 fig.add_trace(
                                     go.Scatter(
-                                        x=np.concatenate(
-                                            [x_sorted, x_sorted[::-1]]
-                                        ),
+                                        x=np.concatenate([x_sorted, x_sorted[::-1]]),
                                         y=np.concatenate(
                                             [
-                                                y_fit_sorted
-                                                + ci_sorted,
-                                                (
-                                                    y_fit_sorted
-                                                    - ci_sorted
-                                                )[::-1],
+                                                y_fit_sorted + ci_sorted,
+                                                (y_fit_sorted - ci_sorted)[::-1],
                                             ]
                                         ),
                                         fill="toself",
@@ -951,9 +931,7 @@ def main():
                                 )
 
                                 # Slope as %/month
-                                slope_per_month = (
-                                    slope * 30.44 * 24 * 3600
-                                )
+                                slope_per_month = slope * 30.44 * 24 * 3600
                                 regression_info = {
                                     "slope_per_month": slope_per_month,
                                     "r_squared": r**2,
@@ -994,9 +972,7 @@ def main():
                                 if col_name in df_valid.columns:
                                     y_data = df_valid[col_name].dropna()
                                     if y_data.empty:
-                                        st.info(
-                                            f"Column '{col_name}' has no data."
-                                        )
+                                        st.info(f"Column '{col_name}' has no data.")
                                         continue
 
                                     fig, regression_info = generate_trend_plot(
@@ -1067,20 +1043,15 @@ def main():
 
                         # Prepare historical points with timescale coloring
                         if "timescale" not in df_cluster.columns:
-                            idx_num = pd.to_numeric(
-                                df_cluster.index.astype("int64")
-                            )
-                            df_cluster["timescale"] = (
-                                (idx_num - idx_num.min())
-                                / max(idx_num.max() - idx_num.min(), 1)
+                            idx_num = pd.to_numeric(df_cluster.index.astype("int64"))
+                            df_cluster["timescale"] = (idx_num - idx_num.min()) / max(
+                                idx_num.max() - idx_num.min(), 1
                             )
 
                         # Evaluation results are in ccp internal units (flow_v: m³/s)
                         flow_v_data_units = "m³/s"
                         hist_flow = df_cluster["flow_v"].apply(
-                            lambda v: Q_(v, flow_v_data_units)
-                            .to(plot_flow_units)
-                            .m
+                            lambda v: Q_(v, flow_v_data_units).to(plot_flow_units).m
                         )
                         hist_head = df_cluster["head"].apply(
                             lambda v: Q_(v, "J/kg").to(plot_head_units).m
@@ -1096,9 +1067,7 @@ def main():
                             )
 
                         # Use median speed for the design curve
-                        speed_data_units = st.session_state.get(
-                            "speed_unit", "rpm"
-                        )
+                        speed_data_units = st.session_state.get("speed_unit", "rpm")
                         median_speed = Q_(
                             df_cluster["speed"].median(), speed_data_units
                         )
@@ -1106,12 +1075,10 @@ def main():
                         # Build colorbar with date tick labels
                         n_ticks = min(5, len(df_cluster))
                         tick_positions = [
-                            i / max(n_ticks - 1, 1)
-                            for i in range(n_ticks)
+                            i / max(n_ticks - 1, 1) for i in range(n_ticks)
                         ]
                         tick_indices = [
-                            int(p * max(len(df_cluster) - 1, 0))
-                            for p in tick_positions
+                            int(p * max(len(df_cluster) - 1, 0)) for p in tick_positions
                         ]
                         tick_labels = [
                             df_cluster.index[i].strftime("%Y-%m-%d")
@@ -1323,9 +1290,7 @@ def main():
                             & (df_results.get("head", 0) > 0)
                         ]
                         if not df_valid_deltas.empty:
-                            summary_stats_df = df_valid_deltas[
-                                delta_cols
-                            ].describe()
+                            summary_stats_df = df_valid_deltas[delta_cols].describe()
                             st.markdown("### Summary Statistics (Delta Columns)")
                             st.dataframe(
                                 summary_stats_df,
@@ -1454,7 +1419,9 @@ def main():
                             )
                         else:
                             st.session_state.monitoring_results = valid_calculated
-                            st.session_state.accumulated_results = valid_calculated.tail(5)
+                            st.session_state.accumulated_results = (
+                                valid_calculated.tail(5)
+                            )
                             st.session_state.monitoring_active = True
                             st.session_state.last_fetch = time.time()
                             st.rerun(scope="app")
@@ -1489,7 +1456,9 @@ def main():
                         latest = df_results.iloc[-1]
 
                     # Get converted impeller for plotting
-                    cluster_idx = int(latest.cluster) if not pd.isna(latest.cluster) else 0
+                    cluster_idx = (
+                        int(latest.cluster) if not pd.isna(latest.cluster) else 0
+                    )
                     converted_impeller = hist_eval.impellers_new[cluster_idx]
 
                     st.markdown("### Performance Curves with Current Point")
@@ -1509,13 +1478,19 @@ def main():
                         Q_(latest.flow_v, flow_v_data_units).to(plot_flow_units).m
                     )
                     # Convert head from J/kg to kJ/kg using pint
-                    expected_head = Q_(latest.expected_head, "J/kg").to(plot_head_units).m
+                    expected_head = (
+                        Q_(latest.expected_head, "J/kg").to(plot_head_units).m
+                    )
                     # Efficiency is dimensionless
                     expected_eff = latest.expected_eff
                     # Convert power from W to kW using pint
-                    expected_power = Q_(latest.expected_power, "W").to(plot_power_units).m
+                    expected_power = (
+                        Q_(latest.expected_power, "W").to(plot_power_units).m
+                    )
                     # Convert discharge pressure to plot units using pint
-                    expected_p_disch = Q_(latest.expected_p_disch, "bar").to(plot_p_units).m
+                    expected_p_disch = (
+                        Q_(latest.expected_p_disch, "bar").to(plot_p_units).m
+                    )
                     # Get speed with units for plotting the current speed curve
                     speed_data_units = st.session_state.get("speed_unit", "rpm")
                     current_speed = Q_(latest.speed, speed_data_units)
@@ -1531,7 +1506,9 @@ def main():
                     for i, (idx, row) in enumerate(df_history.iterrows()):
                         # Opacity from 0.3 (oldest) to 1.0 (newest)
                         opacity = 0.3 + (0.7 * i / max(n_points - 1, 1))
-                        op_flow = Q_(row["flow_v"], flow_v_data_units).to(plot_flow_units).m
+                        op_flow = (
+                            Q_(row["flow_v"], flow_v_data_units).to(plot_flow_units).m
+                        )
                         op_head = (
                             Q_(row["head"], "J/kg").to(plot_head_units).m
                             if row["head"] > 0
@@ -1600,16 +1577,18 @@ def main():
 
                     # Create base curve plots (cached)
                     try:
-                        head_fig, power_fig, eff_fig, disch_p_fig = generate_base_curves(
-                            converted_impeller,
-                            hash(converted_impeller),
-                            current_speed.m,
-                            str(current_speed.units),
-                            plot_flow_units,
-                            plot_head_units,
-                            plot_power_units,
-                            plot_p_units,
-                            show_similarity,
+                        head_fig, power_fig, eff_fig, disch_p_fig = (
+                            generate_base_curves(
+                                converted_impeller,
+                                hash(converted_impeller),
+                                current_speed.m,
+                                str(current_speed.units),
+                                plot_flow_units,
+                                plot_head_units,
+                                plot_power_units,
+                                plot_p_units,
+                                show_similarity,
+                            )
                         )
                     except Exception as e:
                         st.error(f"Error creating base curve plots: {e}")
@@ -1623,7 +1602,9 @@ def main():
                                     x=[expected_flow],
                                     y=[expected_head],
                                     mode="markers",
-                                    marker=dict(color="green", size=10, symbol="diamond"),
+                                    marker=dict(
+                                        color="green", size=10, symbol="diamond"
+                                    ),
                                     name="Expected Point",
                                     showlegend=True,
                                 )
@@ -1635,9 +1616,13 @@ def main():
                                         x=[op["flow"]],
                                         y=[op["head"]],
                                         mode="markers",
-                                        marker=dict(color="black", size=8, symbol="circle"),
+                                        marker=dict(
+                                            color="black", size=8, symbol="circle"
+                                        ),
                                         opacity=op["opacity"],
-                                        name="Operational Point" if op["is_latest"] else None,
+                                        name="Operational Point"
+                                        if op["is_latest"]
+                                        else None,
                                         showlegend=op["is_latest"],
                                     )
                                 )
@@ -1649,7 +1634,9 @@ def main():
                                     x=[expected_flow],
                                     y=[expected_power],
                                     mode="markers",
-                                    marker=dict(color="green", size=10, symbol="diamond"),
+                                    marker=dict(
+                                        color="green", size=10, symbol="diamond"
+                                    ),
                                     name="Expected Point",
                                     showlegend=True,
                                 )
@@ -1661,9 +1648,13 @@ def main():
                                         x=[op["flow"]],
                                         y=[op["power"]],
                                         mode="markers",
-                                        marker=dict(color="black", size=8, symbol="circle"),
+                                        marker=dict(
+                                            color="black", size=8, symbol="circle"
+                                        ),
                                         opacity=op["opacity"],
-                                        name="Operational Point" if op["is_latest"] else None,
+                                        name="Operational Point"
+                                        if op["is_latest"]
+                                        else None,
                                         showlegend=op["is_latest"],
                                     )
                                 )
@@ -1675,7 +1666,9 @@ def main():
                                     x=[expected_flow],
                                     y=[expected_eff],
                                     mode="markers",
-                                    marker=dict(color="green", size=10, symbol="diamond"),
+                                    marker=dict(
+                                        color="green", size=10, symbol="diamond"
+                                    ),
                                     name="Expected Point",
                                     showlegend=True,
                                 )
@@ -1687,9 +1680,13 @@ def main():
                                         x=[op["flow"]],
                                         y=[op["eff"]],
                                         mode="markers",
-                                        marker=dict(color="black", size=8, symbol="circle"),
+                                        marker=dict(
+                                            color="black", size=8, symbol="circle"
+                                        ),
                                         opacity=op["opacity"],
-                                        name="Operational Point" if op["is_latest"] else None,
+                                        name="Operational Point"
+                                        if op["is_latest"]
+                                        else None,
                                         showlegend=op["is_latest"],
                                     )
                                 )
@@ -1701,7 +1698,9 @@ def main():
                                     x=[expected_flow],
                                     y=[expected_p_disch],
                                     mode="markers",
-                                    marker=dict(color="green", size=10, symbol="diamond"),
+                                    marker=dict(
+                                        color="green", size=10, symbol="diamond"
+                                    ),
                                     name="Expected Point",
                                     showlegend=True,
                                 )
@@ -1713,9 +1712,13 @@ def main():
                                         x=[op["flow"]],
                                         y=[op["p_disch"]],
                                         mode="markers",
-                                        marker=dict(color="black", size=8, symbol="circle"),
+                                        marker=dict(
+                                            color="black", size=8, symbol="circle"
+                                        ),
                                         opacity=op["opacity"],
-                                        name="Operational Point" if op["is_latest"] else None,
+                                        name="Operational Point"
+                                        if op["is_latest"]
+                                        else None,
                                         showlegend=op["is_latest"],
                                     )
                                 )
@@ -1757,7 +1760,9 @@ def main():
                         st.metric(
                             "Efficiency (%)",
                             f"{display_eff:.2f}" if display_eff else "N/A",
-                            f"{latest.delta_eff:.2f} %" if latest.delta_eff != -1 else None,
+                            f"{latest.delta_eff:.2f} %"
+                            if latest.delta_eff != -1
+                            else None,
                         )
                     with info_cols[1]:
                         st.metric(
@@ -1801,7 +1806,9 @@ def main():
 
                     # Use accumulated results if available
                     df_display = st.session_state.get("accumulated_results", df_results)
-                    available_cols = [c for c in display_cols if c in df_display.columns]
+                    available_cols = [
+                        c for c in display_cols if c in df_display.columns
+                    ]
 
                     # Style function to apply row opacity (older rows more transparent)
                     def style_rows_by_age(df):
@@ -1839,14 +1846,20 @@ def main():
                         )
                         # Show invalid data explanation
                         invalid_count = (
-                            (~df_debug["valid"]).sum() if "valid" in df_debug.columns else 0
+                            (~df_debug["valid"]).sum()
+                            if "valid" in df_debug.columns
+                            else 0
                         )
                         if invalid_count > 0:
                             temp_thresh = st.session_state.get(
                                 "temperature_fluctuation", 0.5
                             )
-                            pres_thresh = st.session_state.get("pressure_fluctuation", 2.0)
-                            speed_thresh = st.session_state.get("speed_fluctuation", 0.5)
+                            pres_thresh = st.session_state.get(
+                                "pressure_fluctuation", 2.0
+                            )
+                            speed_thresh = st.session_state.get(
+                                "speed_fluctuation", 0.5
+                            )
                             st.info(
                                 f"**{invalid_count} point(s) marked as invalid** (valid=False). "
                                 f"Data exceeded fluctuation thresholds:\n"
@@ -1871,7 +1884,9 @@ def main():
                 ):
                     # Fetch new 3 points
                     try:
-                        df_new = fetch_pi_data_online(tag_mappings, testing=TESTING_MODE)
+                        df_new = fetch_pi_data_online(
+                            tag_mappings, testing=TESTING_MODE
+                        )
 
                         # Calculate points for new data using hist_evaluation
                         df_new_results = hist_eval.calculate_points(

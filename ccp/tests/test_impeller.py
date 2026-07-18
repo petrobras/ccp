@@ -1,6 +1,7 @@
 import pytest
 import numpy as np
 import pickle
+import toml
 from pathlib import Path
 from tempfile import tempdir
 from numpy.testing import assert_allclose
@@ -574,16 +575,29 @@ def test_impeller_plot_units(imp_example):
     assert_allclose(fig.data[6]["y"], 0.008918054668713014, rtol=1e-4)
 
 
-def test_save_load(imp3):
+@pytest.mark.parametrize("file_format", ["toml", "json"])
+def test_save_load(imp3, file_format):
     # imp3 is built with the same parameters this test used to build inline
     imp_fd = imp3
-    file = Path(tempdir) / "imp.toml"
+    file = Path(tempdir) / f"imp.{file_format}"
     imp_fd.save(file)
 
     imp_fd_loaded = Impeller.load(file)
 
     assert imp_fd == imp_fd_loaded
     assert hash(imp_fd) == hash(imp_fd_loaded)
+
+
+def test_load_legacy_flat_file(imp3):
+    # files saved before the "points"/"version" structure store the point
+    # dicts at the top level of the file
+    file = Path(tempdir) / "imp_legacy.toml"
+    with open(file, mode="w") as f:
+        toml.dump({f"Point{i}": p.to_dict() for i, p in enumerate(imp3.points)}, f)
+
+    imp_loaded = Impeller.load(file)
+
+    assert imp_loaded == imp3
 
 
 def test_load_from_dict_isis():

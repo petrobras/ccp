@@ -3,7 +3,6 @@
 from copy import copy
 
 import ccp
-import toml
 from ccp.impeller import Impeller
 from ccp.point import Point, flow_from_phi
 from ccp.state import State
@@ -156,9 +155,9 @@ class Point1Sec(Point):
             oil_density_de = (Q_(846.9, "kg/m³"),)
             oil_density_nde = (Q_(846.9, "kg/m³"),)
 
-    def _dict_to_save(self):
-        """Returns a dict that will be saved to a toml file."""
-        dict_to_save = super()._dict_to_save()
+    def to_dict(self):
+        """Return a dict representation of the point."""
+        dict_to_save = super().to_dict()
         for param in [
             "balance_line_flow_m",
             "seal_gas_flow_m",
@@ -329,49 +328,35 @@ class StraightThrough(Impeller):
 
         super().__init__(self.points_flange_sp)
 
-    def _dict_to_save(self):
+    def to_dict(self):
+        """Return a dict representation of the compressor."""
         dict_to_save = {
             "reynolds_correction": self.reynolds_correction,
             "speed_operational": str(self.speed_operational),
         }
         # add points to file
-        dict_to_save["guarantee_point"] = self.guarantee_point._dict_to_save()
+        dict_to_save["guarantee_point"] = self.guarantee_point.to_dict()
 
         dict_to_save["test_points"] = {
-            f"Point{i}": point._dict_to_save()
-            for i, point in enumerate(self.test_points)
+            f"point{i}": point.to_dict() for i, point in enumerate(self.test_points)
         }
         return dict_to_save
 
-    def save(self, file):
-        """Save compressor as .toml file.
-
-        Parameters
-        ----------
-        file : str
-            File name.
-        """
-        with open(file, mode="w") as f:
-            toml.dump(self._dict_to_save(), f)
-
     @classmethod
-    def load(cls, file):
-        """Load compressor from .toml file.
-
-        Parameters
-        ----------
-        file : str
-            File name.
-        """
-        parameters = toml.load(file)
-        kwargs = {"speed_operational": Q_(parameters.pop("speed_operational", None))}
+    def from_dict(cls, dict_parameters):
+        """Create a compressor from a dict created with :meth:`to_dict`."""
+        dict_parameters = dict(dict_parameters)
+        dict_parameters.pop("ccp_version", None)
+        kwargs = {
+            "speed_operational": Q_(dict_parameters.pop("speed_operational", None))
+        }
         # guarantee_point, test_points, speed=None, reynolds_correction=False
 
-        for k, v in parameters.items():
+        for k, v in dict_parameters.items():
             if "guarantee_point" in k:
-                kwargs[k] = Point(**Point._dict_from_load(v))
+                kwargs[k] = Point.from_dict(v)
             elif "test_points" in k:
-                kwargs[k] = [Point1Sec(**Point._dict_from_load(v)) for v in v.values()]
+                kwargs[k] = [Point1Sec.from_dict(p) for p in v.values()]
             else:
                 kwargs[k] = v
 
@@ -617,9 +602,9 @@ class PointFirstSection(Point):
             p=self.div_wall_downstream_state.p(), h=self.div_wall_upstream_state.h()
         )
 
-    def _dict_to_save(self):
-        """Returns a dict that will be saved to a toml file."""
-        dict_to_save = super()._dict_to_save()
+    def to_dict(self):
+        """Return a dict representation of the point."""
+        dict_to_save = super().to_dict()
         parameters = [
             "balance_line_flow_m",
             "first_section_discharge_flow_m",
@@ -1166,58 +1151,41 @@ class BackToBack(Impeller):
                     ):
                         return True
 
-    def _dict_to_save(self):
+    def to_dict(self):
+        """Return a dict representation of the compressor."""
         dict_to_save = {
             "reynolds_correction": self.reynolds_correction,
             "speed_operational": str(self.speed_operational),
         }
         # add points to file
-        dict_to_save["guarantee_point_sec1"] = self.guarantee_point_sec1._dict_to_save()
-        dict_to_save["guarantee_point_sec2"] = self.guarantee_point_sec2._dict_to_save()
+        dict_to_save["guarantee_point_sec1"] = self.guarantee_point_sec1.to_dict()
+        dict_to_save["guarantee_point_sec2"] = self.guarantee_point_sec2.to_dict()
         dict_to_save["test_points_sec1"] = {
-            f"Point{i}": point._dict_to_save()
+            f"point{i}": point.to_dict()
             for i, point in enumerate(self.test_points_sec1)
         }
         dict_to_save["test_points_sec2"] = {
-            f"Point{i}": point._dict_to_save()
+            f"point{i}": point.to_dict()
             for i, point in enumerate(self.test_points_sec2)
         }
         return dict_to_save
 
-    def save(self, file):
-        """Save compressor as .toml file.
-
-        Parameters
-        ----------
-        file : str
-            File name.
-        """
-        with open(file, mode="w") as f:
-            toml.dump(self._dict_to_save(), f)
-
     @classmethod
-    def load(cls, file):
-        """Load compressor from .toml file.
+    def from_dict(cls, dict_parameters):
+        """Create a compressor from a dict created with :meth:`to_dict`."""
+        dict_parameters = dict(dict_parameters)
+        dict_parameters.pop("ccp_version", None)
+        kwargs = {
+            "speed_operational": Q_(dict_parameters.pop("speed_operational", None))
+        }
 
-        Parameters
-        ----------
-        file : str
-            File name.
-        """
-        parameters = toml.load(file)
-        kwargs = {"speed_operational": Q_(parameters.pop("speed_operational", None))}
-
-        for k, v in parameters.items():
+        for k, v in dict_parameters.items():
             if "guarantee_point" in k:
-                kwargs[k] = Point(**Point._dict_from_load(v))
+                kwargs[k] = Point.from_dict(v)
             elif "test_points_sec1" in k:
-                kwargs[k] = [
-                    PointFirstSection(**Point._dict_from_load(v)) for v in v.values()
-                ]
+                kwargs[k] = [PointFirstSection.from_dict(p) for p in v.values()]
             elif "test_points_sec2" in k:
-                kwargs[k] = [
-                    PointSecondSection(**Point._dict_from_load(v)) for v in v.values()
-                ]
+                kwargs[k] = [PointSecondSection.from_dict(p) for p in v.values()]
             else:
                 kwargs[k] = v
 

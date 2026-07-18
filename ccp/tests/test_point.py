@@ -117,9 +117,7 @@ def test_point_eff_flow_v_head_speed_suc(
     assert_allclose(
         point_eff_flow_v_head_speed_suc.disch.p().m, 590693.425495, rtol=1e-4
     )
-    assert_allclose(
-        point_eff_flow_v_head_speed_suc.disch.T().m, 405.700523, rtol=1e-4
-    )
+    assert_allclose(point_eff_flow_v_head_speed_suc.disch.T().m, 405.700523, rtol=1e-4)
     assert_allclose(point_eff_flow_v_head_speed_suc.flow_v.m, 1.0, rtol=1e-4)
     assert_allclose(point_eff_flow_v_head_speed_suc.flow_m.m, 3.072307, rtol=1e-4)
     assert_allclose(point_eff_flow_v_head_speed_suc.speed.m, 1.0, rtol=1e-4)
@@ -146,9 +144,7 @@ def test_point_eff_flow_m_head_speed_suc(
     assert_allclose(
         point_eff_flow_m_head_speed_suc.disch.p().m, 590693.425495, rtol=1e-4
     )
-    assert_allclose(
-        point_eff_flow_m_head_speed_suc.disch.T().m, 405.700523, rtol=1e-4
-    )
+    assert_allclose(point_eff_flow_m_head_speed_suc.disch.T().m, 405.700523, rtol=1e-4)
     assert_allclose(point_eff_flow_m_head_speed_suc.flow_v.m, 1.0, rtol=1e-4)
     assert_allclose(point_eff_flow_m_head_speed_suc.flow_m.m, 3.072307, rtol=1e-4)
     assert_allclose(point_eff_flow_m_head_speed_suc.speed.m, 1.0, rtol=1e-4)
@@ -178,9 +174,7 @@ def test_point_disch_p_eff_flow_m_head_speed_suc(
     suc_0, disch_0, point_disch_p_eff_flow_m_speed_suc
 ):
     assert point_disch_p_eff_flow_m_speed_suc.suc == suc_0
-    assert_allclose(
-        point_disch_p_eff_flow_m_speed_suc.disch.p().m, 590200.0, rtol=1e-4
-    )
+    assert_allclose(point_disch_p_eff_flow_m_speed_suc.disch.p().m, 590200.0, rtol=1e-4)
     assert_allclose(
         point_disch_p_eff_flow_m_speed_suc.disch.T().m, 405.609169, rtol=1e-4
     )
@@ -211,9 +205,7 @@ def test_point_disch_p_eff_flow_v_head_speed_suc(
     suc_0, disch_0, point_disch_p_eff_flow_v_speed_suc
 ):
     assert point_disch_p_eff_flow_v_speed_suc.suc == suc_0
-    assert_allclose(
-        point_disch_p_eff_flow_v_speed_suc.disch.p().m, 590200.0, rtol=1e-4
-    )
+    assert_allclose(point_disch_p_eff_flow_v_speed_suc.disch.p().m, 590200.0, rtol=1e-4)
     assert_allclose(
         point_disch_p_eff_flow_v_speed_suc.disch.T().m, 405.609169, rtol=1e-4
     )
@@ -518,9 +510,7 @@ def test_isentropic_disch_from_rho_dense_co2():
     disch = isentropic_disch_from_rho(suc, disch_rho)
 
     assert disch.p() > suc.p()
-    assert_allclose(
-        disch.rho().to("kg/m**3").m, disch_rho.to("kg/m**3").m, rtol=1e-4
-    )
+    assert_allclose(disch.rho().to("kg/m**3").m, disch_rho.to("kg/m**3").m, rtol=1e-4)
     assert_allclose(disch.s().m, suc.s().m, rtol=1e-4)
 
 
@@ -544,9 +534,7 @@ def test_converted_from_find_speed_dense_co2_target(point_eff_flow_v_head_speed_
         original_point=point_eff_flow_v_head_speed_suc_1, suc=suc_dense, find="speed"
     )
     assert converted.disch.p() > suc_dense.p()
-    assert_allclose(
-        converted.eff.m, point_eff_flow_v_head_speed_suc_1.eff.m, rtol=1e-3
-    )
+    assert_allclose(converted.eff.m, point_eff_flow_v_head_speed_suc_1.eff.m, rtol=1e-3)
 
 
 def test_converted_from_find_volume_ratio(point_eff_flow_v_head_speed_suc_1):
@@ -730,11 +718,19 @@ def test_converted_from_find_volume_ratio_reynolds_plot(
     assert_allclose(fig.data[2]["y"], 68772.606726, rtol=1e-4)
 
 
-def test_save_load(point_disch_flow_v_speed_suc):
-    file = Path(tempdir) / "suc_0.toml"
+@pytest.mark.parametrize("file_format", ["toml", "json"])
+def test_save_load(point_disch_flow_v_speed_suc, file_format):
+    file = Path(tempdir) / f"suc_0.{file_format}"
     point_disch_flow_v_speed_suc.save(file)
     point_0_loaded = Point.load(file)
     assert point_disch_flow_v_speed_suc == point_0_loaded
+
+
+def test_save_load_unsupported_format(point_disch_flow_v_speed_suc):
+    with pytest.raises(ValueError, match="Unsupported file format"):
+        point_disch_flow_v_speed_suc.save(Path(tempdir) / "suc_0.yaml")
+    with pytest.raises(ValueError, match="Unsupported file format"):
+        Point.load(Path(tempdir) / "suc_0")
 
 
 def test_pickle(point_disch_flow_v_speed_suc):

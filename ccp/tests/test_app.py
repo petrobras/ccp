@@ -145,12 +145,12 @@ class TestCurvesConversion:
 
         # Pre-populate case A impeller directly from the saved toml (mirrors
         # what the page's _load_curves_conversion does for .ccp files).
-        import io
+        import toml
 
         impeller_toml = toml_files.get("impeller_case_A.toml")
         assert impeller_toml, "impeller_case_A.toml missing from example file"
-        at.session_state["impeller_case_A"] = ccp.Impeller.load(
-            io.StringIO(impeller_toml)
+        at.session_state["impeller_case_A"] = ccp.Impeller.from_dict(
+            toml.loads(impeller_toml)
         )
 
         # Populate CSV files per case based on filename pattern (same pattern
