@@ -1,3 +1,4 @@
+import json
 from copy import copy
 
 import numpy as np
@@ -568,16 +569,47 @@ class Point:
             **{k: Q_(v) for k, v in dict_parameters.items()},
         )
 
-    def save(self, file_name):
-        """Save point to toml file."""
-        with open(file_name, mode="w") as f:
-            toml.dump(self._dict_to_save(), f)
+    def save(self, file_name, file_type="toml"):
+        """Save point to a toml or json file.
+
+        Parameters
+        ----------
+        file_name : str or pathlib.Path
+            Filename to which the data is saved.
+        file_type: str
+            File type can be: toml or json.
+        """
+        try:
+            if file_type not in file_name.suffix:
+                file_path = ".".join([file_name, file_type])
+            else:
+                file_path = file_name
+        except (TypeError, AttributeError):
+            if file_type not in file_name:
+                file_path = ".".join([file_name, file_type])
+            else:
+                file_path = file_name
+
+        with open(file_path, mode="w") as f:
+            if file_type == "toml":
+                toml.dump(self._dict_to_save(), f)
+            elif file_type == "json":
+                json.dump(self._dict_to_save(), f)
 
     @classmethod
     def load(cls, file_name):
-        """Load point from toml file."""
+        """Load point from toml or json file."""
         with open(file_name) as f:
-            parameters = toml.load(f)
+            try:
+                if "toml" in file_name.suffix:
+                    parameters = toml.load(f)
+                if "json" in file_name.suffix:
+                    parameters = json.load(f)
+            except (TypeError, AttributeError):
+                if "toml" in file_name:
+                    parameters = toml.load(f)
+                if "json" in file_name:
+                    parameters = json.load(f)
 
         return cls(**cls._dict_from_load(parameters))
 
