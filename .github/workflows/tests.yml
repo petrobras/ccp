@@ -1,0 +1,74 @@
+name: Tests
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # REFPROP is proprietary (NIST license), so the compiled library lives in a
+  # private repository and is fetched with a read-only deploy key stored as
+  # the REFPROP_DEPLOY_KEY secret. Secrets are never exposed to workflows
+  # triggered by pull requests from forks, so the test job is skipped there:
+  # forks need their own private REFPROP repository and secret to run CI.
+  # Do NOT convert the pull_request trigger to pull_request_target - that
+  # would expose the secret to arbitrary code from fork PRs.
+  check-secret:
+    name: Check REFPROP secret
+    runs-on: ubuntu-latest
+    outputs:
+      has-key: ${{ steps.check.outputs.has-key }}
+    steps:
+      - id: check
+        env:
+          KEY: ${{ secrets.REFPROP_DEPLOY_KEY }}
+        run: |
+          if [ -n "$KEY" ]; then
+            echo "has-key=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "has-key=false" >> "$GITHUB_OUTPUT"
+          fi
+
+  test:
+    name: Tests (REFPROP)
+    needs: check-secret
+    if: needs.check-secret.outputs.has-key == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    env:
+      RPPREFIX: ${{ github.workspace }}/refprop
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Fetch REFPROP (private repository)
+        uses: actions/checkout@v4
+        with:
+          repository: raphaeltimbo/refprop-linux
+          ssh-key: ${{ secrets.REFPROP_DEPLOY_KEY }}
+          path: refprop
+
+      - name: Install libgfortran
+        run: sudo apt-get update -q && sudo apt-get install -y -q libgfortran5
+
+      - uses: astral-sh/setup-uv@v6
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: uv sync --locked --all-extras
+
+      - name: Check REFPROP is loaded
+        run: |
+          uv run python -c "
+          import ccp
+          assert ccp.REFPROP_AVAILABLE, 'librefprop.so not found at RPPREFIX'
+          print(ccp.__version__full)
+          "
+
+      - name: Run tests
+        run: uv run pytest ccp/tests -n 4 --dist loadfile

@@ -116,7 +116,9 @@ _library_path = _path / _shared_library
 
 # Auto-switch to HEOS if REFPROP is not available
 
-if not _library_path.is_file():
+REFPROP_AVAILABLE = _library_path.is_file()
+
+if not REFPROP_AVAILABLE:
     _warnings.warn(
         f"{_library_path}.\nREFPROP not configured. "
         f"Automatically switching to EOS='HEOS' (CoolProp backend)."
