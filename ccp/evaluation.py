@@ -1,6 +1,5 @@
 """Module for performance evaluation based on historical data."""
 
-import multiprocessing
 import zipfile
 import toml
 import pandas as pd
@@ -10,6 +9,7 @@ from .state import State
 from .point import Point
 from .fo import FlowOrifice
 from .impeller import Impeller
+from .parallel import get_mp_context
 from . import Q_
 from sklearn.cluster import KMeans
 from tqdm.auto import tqdm
@@ -230,7 +230,7 @@ class Evaluation:
             args_list.append(arg_dict)
 
         if parallel:
-            with multiprocessing.Pool() as pool:
+            with get_mp_context().Pool() as pool:
                 print("Calculating points...")
                 results = list(tqdm(pool.imap(create_points_parallel, args_list)))
                 print("Calculating expected points...")

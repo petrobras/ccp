@@ -60,6 +60,7 @@ imp.disch.T_plot()
 # set refprop path in the beginning to avoid strange behavior
 ###############################################################################
 
+import ctypes as _ctypes
 import os as _os
 import sys as _sys
 import warnings as _warnings
@@ -67,6 +68,7 @@ from pathlib import Path as _Path
 
 import CoolProp.CoolProp as _CP
 from ctREFPROP.ctREFPROP import REFPROPFunctionLibrary as _REFPROPFunctionLibrary
+from ctREFPROP.ctREFPROP import REFPROPInstance as _REFPROPInstance
 
 # import ccp.config as _config
 from . import config as _config
@@ -99,12 +101,6 @@ except UnicodeEncodeError:
 if not unicode_error:
     _CP.set_config_string(_CP.ALTERNATIVE_REFPROP_PATH, str(_path))
 
-try:
-    _RP = _REFPROPFunctionLibrary(_path)
-    _RP.SETPATHdll(str(_path))
-except TypeError:
-    _RP = _REFPROPFunctionLibrary
-
 if _sys.platform == "darwin":
     _shared_library = "librefprop.dylib"
 elif _os.name == "posix":
@@ -113,6 +109,23 @@ else:
     _shared_library = "REFPRP64.DLL"
 
 _library_path = _path / _shared_library
+
+try:
+    if _library_path.is_file():
+        # Load with ctypes.PyDLL, which keeps the GIL held for the duration of
+        # every call. The REFPROP Fortran library has process-global state
+        # (mixture setup, Fortran I/O units) and must never be entered by two
+        # threads at once; holding the GIL serializes direct _RP calls against
+        # each other, against CoolProp's REFPROP backend (which also holds the
+        # GIL), and against os.fork() in multiprocessing. PyDLL uses the cdecl
+        # convention, which on 64-bit Windows is identical to stdcall
+        # (REFPROP is only used 64-bit: REFPRP64.DLL).
+        _RP = _REFPROPInstance(_ctypes.PyDLL(str(_library_path)))
+    else:
+        _RP = _REFPROPFunctionLibrary(_path)
+    _RP.SETPATHdll(str(_path))
+except TypeError:
+    _RP = _REFPROPFunctionLibrary
 
 # Auto-switch to HEOS if REFPROP is not available
 

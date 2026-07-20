@@ -289,18 +289,39 @@ class State(CP.AbstractState):
         if phase:
             input_str += refprop_phase_dict[phase]
 
-        fluids = self._fluid.replace("&", "*")
-        r = _RP.REFPROPdll(
-            fluids,
-            input_str,
-            "P,T,D,H,S",
-            _RP.MASS_BASE_SI,
-            0,
-            0,
-            args_values[0].m,
-            args_values[1].m,
-            self.get_mole_fractions(),
-        )
+        # The fluid string passed to REFPROPdll is always empty: it makes
+        # REFPROP reuse the fluids currently loaded in the DLL. Passing an
+        # explicit fluid string instead would re-run SETUP behind CoolProp's
+        # back, breaking the invariant CoolProp relies on (loaded fluids ==
+        # what its setup cache says), after which CoolProp flashes compute
+        # with the wrong mixture loaded and return silently wrong values.
+        # The molar mass returned by REFPROP is cross-checked against this
+        # state's own molar mass to detect the case where the loaded fluids
+        # are not this state's mixture (the z array would be reinterpreted
+        # against the wrong component slate, which does not necessarily raise
+        # an error); the reload is then triggered through CoolProp itself so
+        # its cache stays coherent.
+        molar_mass = self.molar_mass().m
+        z = self.get_mole_fractions()
+        r = None
+        for _attempt in range(3):
+            r = _RP.REFPROPdll(
+                "",
+                input_str,
+                "P,T,D,H,S,M",
+                _RP.MASS_BASE_SI,
+                0,
+                0,
+                args_values[0].m,
+                args_values[1].m,
+                z,
+            )
+            if r.ierr <= 0 and abs(r.Output[5] - molar_mass) <= 1e-8 * molar_mass:
+                break
+            self._load_fluids_through_coolprop()
+        else:
+            herr = r.herr if r is not None else ""
+            raise ValueError(f"REFPROP could not calculate state ({input_str}): {herr}")
 
         output = {
             "p": r.Output[0],
@@ -310,6 +331,23 @@ class State(CP.AbstractState):
             "s": r.Output[4],
         }
         return output
+
+    def _load_fluids_through_coolprop(self):
+        """Make CoolProp load this state's mixture into the REFPROP DLL.
+
+        Uses a throwaway AbstractState so CoolProp's own setup cache stays
+        coherent with the DLL (loading the fluids directly through REFPROP
+        would desynchronize the two) and this state's thermodynamic point is
+        left untouched. The flash on the throwaway state may fail for
+        mixtures that do not converge at the benign point; only the fluid
+        setup that precedes the flash is needed, so the error is ignored.
+        """
+        tmp = CP.AbstractState("REFPROP", self._fluid)
+        tmp.set_mole_fractions(self.get_mole_fractions())
+        try:
+            tmp.update(CP.PT_INPUTS, 101325.0, 300.0)
+        except ValueError:
+            pass
 
     def gas_constant(self, units=None):
         """Gas constant in joule / (mol kelvin).
@@ -374,19 +412,29 @@ class State(CP.AbstractState):
         cp = Q_(super().cpmass(), "joule/(kilogram kelvin)")
         # use REFPROP directly with forced gas condition if cp value does not converge
         if cp < 0:
-            fluids = self._fluid.replace("&", "*")
-            r = _RP.REFPROPdll(
-                fluids,
-                "PTV",
-                "Cp",
-                _RP.MASS_BASE_SI,
-                0,
-                0,
-                self.p("kPa").m,
-                self.T().m,
-                self.get_mole_fractions(),
-            )
-            cp = Q_(r.Output[0], "joule/(kilogram kelvin)")
+            # empty fluid string: reuse the fluids already loaded in the DLL,
+            # cross-checking the molar mass to detect a wrong loaded mixture
+            # (see _call_REFPROP); MASS_BASE_SI expects pressure in Pa
+            molar_mass = self.molar_mass().m
+            z = self.get_mole_fractions()
+            r = None
+            for _attempt in range(3):
+                r = _RP.REFPROPdll(
+                    "",
+                    "PTV",
+                    "Cp,M",
+                    _RP.MASS_BASE_SI,
+                    0,
+                    0,
+                    self.p().m,
+                    self.T().m,
+                    z,
+                )
+                if r.ierr <= 0 and abs(r.Output[1] - molar_mass) <= 1e-8 * molar_mass:
+                    break
+                self._load_fluids_through_coolprop()
+            if r is not None:
+                cp = Q_(r.Output[0], "joule/(kilogram kelvin)")
 
         if units:
             cp = cp.to(units)
