@@ -52,7 +52,7 @@ def test_eos():
     )
     assert state.p().units == "pascal"
     assert state.T().units == "kelvin"
-    assert state.p().magnitude == 100000
+    assert_allclose(state.p().magnitude, 100000)
     assert state.T().magnitude == 300
     assert_allclose(state.rhomass(), 0.6445687063978816, rtol=1e-6)
 
@@ -61,7 +61,7 @@ def test_eos():
     )
     assert state.p().units == "pascal"
     assert state.T().units == "kelvin"
-    assert state.p().magnitude == 100000
+    assert_allclose(state.p().magnitude, 100000)
     assert state.T().magnitude == 300
     assert_allclose(state.rhomass(), 0.6442384800595821, rtol=1e-6)
 
@@ -88,7 +88,7 @@ def test_eos_config():
     state = State(p=100000, T=300, fluid={"Methane": 1 - 1e-15, "Ethane": 1e-15})
     assert state.p().units == "pascal"
     assert state.T().units == "kelvin"
-    assert state.p().magnitude == 100000
+    assert_allclose(state.p().magnitude, 100000)
     assert state.T().magnitude == 300
     assert_allclose(state.rhomass(), 0.6445687063978816, rtol=1e-6)
 
@@ -96,7 +96,7 @@ def test_eos_config():
     state = State(p=100000, T=300, fluid={"Methane": 1 - 1e-15, "Ethane": 1e-15})
     assert state.p().units == "pascal"
     assert state.T().units == "kelvin"
-    assert state.p().magnitude == 100000
+    assert_allclose(state.p().magnitude, 100000)
     assert state.T().magnitude == 300
     assert_allclose(state.rhomass(), 0.6442384800595821, rtol=1e-6)
 

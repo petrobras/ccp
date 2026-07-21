@@ -112,7 +112,3 @@ dev = [
 
 [tool.uv]
 package = true
-# Dev/CI resolution constraint only (does not affect published metadata):
-# CoolProp 8 changed the exception type raised for unknown fluids and the
-# cubic-EOS roundoff, breaking three tests. Remove once ccp is adapted.
-constraint-dependencies = ["coolprop<8"]
