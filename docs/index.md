@@ -96,3 +96,11 @@ caption: Contributing
 ---
 contributing
 ```
+
+```{toctree}
+---
+maxdepth: 1
+caption: Release Notes
+---
+release_notes/release_notes
+```

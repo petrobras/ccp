@@ -138,7 +138,7 @@ if not REFPROP_AVAILABLE:
     )
     _config.EOS = "HEOS"
 
-__version__ = "0.3.32"
+__version__ = "0.4.0"
 
 with _warnings.catch_warnings():
     if unicode_error:
