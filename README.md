@@ -2,7 +2,8 @@
 
 [![PyPI Version](https://img.shields.io/pypi/v/ccp-performance.svg)](https://pypi.org/project/ccp-performance/)
 [![License](https://img.shields.io/pypi/l/ccp-performance.svg)](https://github.com/petrobras/ccp/blob/main/LICENSE)
-[![code style black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
+[![CI](https://github.com/petrobras/ccp/actions/workflows/tests.yml/badge.svg)](https://github.com/petrobras/ccp/actions/workflows/tests.yml)
+[![Ruff](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/ruff/main/assets/badge/v2.json)](https://github.com/astral-sh/ruff)
 
 ccp is a python library for calculation of centrifugal compressor performance. It uses CoolProp/REFPROP for the gas properties calculations.
 
