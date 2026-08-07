@@ -11,7 +11,7 @@ def fluctuation(x):
 
     Parameters
     ----------
-    x : array-like
+    x : pandas.Series or numpy.ndarray
         Array of values.
 
     Returns
@@ -21,9 +21,10 @@ def fluctuation(x):
 
     Examples
     --------
-    >>> fluctuation([1, 2, 3, 4, 5])
-    80.0
-    >>> fluctuation([1, 1, 1, 1, 1])
+    >>> import pandas as pd
+    >>> float(fluctuation(pd.Series([1, 2, 3, 4, 5])))
+    133.33333333333334
+    >>> float(fluctuation(pd.Series([1, 1, 1, 1, 1])))
     0.0
     """
     if x.mean() == 0:
@@ -53,16 +54,12 @@ def fluctuation_data(df, window=3):
     >>> import pandas as pd
     >>> df = pd.DataFrame({'a': [1, 2, 3], 'b': [4, 5, 6]})
     >>> fluctuation_data(df)
-         a    b
-    0  0.0  0.0
-    1  0.0  0.0
-    2  0.0  0.0
-    >>> df = pd.DataFrame({'a': [1, 2, 3], 'b': [4, 5, 6]})
+           a     b
+    2  100.0  40.0
     >>> fluctuation_data(df, window=2)
-            a    b
-    0     0.0  0.0
-    1  1000.0  0.0
-    2  1000.0  0.0
+               a          b
+    1  66.666667  22.222222
+    2  40.000000  18.181818
     """
     fluctuation_df = (
         df.apply(pd.to_numeric)
@@ -98,17 +95,13 @@ def mean_data(df, window=3):
     --------
     >>> import pandas as pd
     >>> df = pd.DataFrame({'a': [1, 2, 3], 'b': [4, 5, 6]})
-    >>> fluctuation_data(df)
+    >>> mean_data(df)
          a    b
-    0  0.0  0.0
-    1  0.0  0.0
-    2  0.0  0.0
-    >>> df = pd.DataFrame({'a': [1, 2, 3], 'b': [4, 5, 6]})
-    >>> fluctuation_data(df, window=2)
-            a    b
-    0     0.0  0.0
-    1  1000.0  0.0
-    2  1000.0  0.0
+    2  2.0  5.0
+    >>> mean_data(df, window=2)
+         a    b
+    1  1.5  4.5
+    2  2.5  5.5
     """
     mean_df = (
         df.apply(pd.to_numeric)
@@ -180,6 +173,8 @@ def filter_data(
     >>> df = pd.DataFrame({'a': [1, 2, 3, 4, 4.01, 4.02], 'b': [4, 5, 6, 6.01, 6.02, 6.03]})
     >>> data_type = {'a': 'pressure', 'b': 'temperature'}
     >>> filter_data(df, window=3, data_type=data_type)
+          a     b  valid
+    5  4.01  6.02   True
     """
     fluctuation_df = fluctuation_data(df, window=window)
     mean_df = mean_data(df, window=window)
