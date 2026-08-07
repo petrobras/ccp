@@ -117,6 +117,15 @@ units = {
     "reynolds_ratio": "dimensionless",
     "mach_diff": "dimensionless",
     "volume_ratio_ratio": "dimensionless",
+    "voltage": "volt",
+    "current": "ampere",
+    # full-name entries: the token scan would match "power" -> watt
+    "power_factor": "dimensionless",
+    "rated_power_factor": "dimensionless",
+    "efficiency": "dimensionless",
+    # full-name entries: the token scan would match "frequency" -> radian/second
+    "rated_frequency": "hertz",
+    "supply_frequency": "hertz",
 }
 for i, unit in zip(["k", "c"], ["N/m", "N*s/m"]):
     for j in ["x", "y", "z"]:
