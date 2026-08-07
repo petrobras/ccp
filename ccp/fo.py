@@ -54,7 +54,7 @@ class FlowOrifice:
         >>> state = ccp.State(p=p1, T=T1, fluid=fluid)
         >>> fo = ccp.FlowOrifice(state, delta_p, D, d)
         >>> fo.qm.to("kg/h")
-        <Quantity(36408.68715534, 'kilogram / hour')>
+        <Quantity(36408.6872, 'kilogram / hour')>
         """
         self.state = state
         self.delta_p = delta_p

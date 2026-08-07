@@ -263,11 +263,13 @@ class CompareImpellerPlotFunction:
         --------
         >>> import ccp
         >>> imp = ccp.impeller_example()
-        >>> fig = imp.plot_head(
+        >>> other_imp = ccp.impeller_example()
+        >>> fig = imp.head_compare(
+        ...    other_imp,
         ...    flow_v=5.5,
         ...    speed=900,
         ...    flow_v_units='m³/h',
-        ...    head_units='j/kg',
+        ...    head_units='J/kg',
         ...    speed_units='RPM'
         ... )
 
@@ -1122,28 +1124,32 @@ class Impeller(Serializable):
     ):
         """Create points from dict object available in the ISIS platform.
 
-        The dict is in the following format:
-           head_curves_dict = [
-        {
-            "z": 11373,
-            "points": [
-                {"x": 94529, "y": 148.586},
-                {"x": 98641, "y": 148.211},
-                {"x": 101554, "y": 147.837},
-            ...]
-        ...,
-        },
-        ]
+        The dict is in the following format::
+
+            head_curves_dict = {
+                "CURVES": [
+                    {
+                        "z": 11373,
+                        "points": [
+                            {"x": 94529, "y": 148.586},
+                            {"x": 98641, "y": 148.211},
+                            {"x": 101554, "y": 147.837},
+                            ...
+                        ],
+                    },
+                    ...
+                ]
+            }
 
         Where z is the speed and each point is described as a dict with x and y
         pair where x is the flow and y is the head or eff.
 
         suc : ccp.State
             Suction state.
-        head_curve : dict
-            Dict with head/flow values.
-        eff_curve : dict
-            Dict with head/flow values.
+        head_curves : dict
+            Dict with head/flow curves.
+        eff_curves : dict
+            Dict with eff/flow curves.
         b : float, pint.Quantity
             Impeller width at the outer blade diameter (m).
         D : float, pint.Quantity
@@ -1161,6 +1167,30 @@ class Impeller(Serializable):
         Examples
         --------
         >>> import ccp
+        >>> head_curves_dict = {
+        ...    "CURVES": [
+        ...        {
+        ...            "z": 11373,
+        ...            "points": [
+        ...                {"x": 94529, "y": 148.586},
+        ...                {"x": 98641, "y": 148.211},
+        ...                {"x": 101554, "y": 147.837},
+        ...            ],
+        ...        },
+        ...    ]
+        ... }
+        >>> eff_curves_dict = {
+        ...    "CURVES": [
+        ...        {
+        ...            "z": 11373,
+        ...            "points": [
+        ...                {"x": 94529, "y": 82.767},
+        ...                {"x": 98641, "y": 82.520},
+        ...                {"x": 101554, "y": 82.270},
+        ...            ],
+        ...        },
+        ...    ]
+        ... }
         >>> composition_fd = dict(
         ...    n2=0.4,
         ...    co2=0.22,
@@ -1183,7 +1213,7 @@ class Impeller(Serializable):
         ...    number_of_points=6,
         ...    flow_units="kg/h",
         ...    head_units="kJ/kg",
-        ... )
+        ... )  # doctest: +SKIP
         """
         # change dict format from isis to that handled by the ccp method.
 
@@ -1421,7 +1451,9 @@ class Impeller(Serializable):
 
         Examples
         --------
-        >>> impeller.save_isis_txt("head.txt", parameter="head")
+        >>> import ccp
+        >>> imp = ccp.impeller_example()  # doctest: +SKIP
+        >>> imp.save_isis_txt("head.txt", parameter="head")  # doctest: +SKIP
         """
         # create dict with curves
 

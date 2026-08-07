@@ -143,21 +143,23 @@ def check_units(func):
     will be split into ['inlet', 'pressure'], and since we have the name 'pressure'
     in the dictionary mapped to 'Pa', we will automatically convert the value to
     this default unit.
-    For example:
-    >>> units = {
-    ... "L": "meter",
-    ... }
+    For example, 'L' is mapped to 'meter' in the units dictionary:
+
     >>> @check_units
     ... def foo(L=None):
     ...     print(L)
-    ...
-    If we call the function with the argument as a float:
+
+    If we call the function with the argument as a float, it is assumed to be
+    in the default unit:
+
     >>> foo(L=0.5)
-    0.5
+    0.5 meter
+
     If we call the function with a pint.Quantity object the value is automatically
     converted to the default:
+
     >>> foo(L=Q_(0.5, 'inches'))
-    0.0127
+    0.0127 meter
     """
 
     @wraps(func)
