@@ -192,6 +192,7 @@ from .impeller import Impeller, impeller_example
 from .fo import FlowOrifice
 from .similarity import check_similarity
 from .evaluation import Evaluation
+from .drivers import Driver, InductionMotor
 
 __all__ = [
     "State",
@@ -203,4 +204,6 @@ __all__ = [
     "check_similarity",
     "impeller_example",
     "Evaluation",
+    "Driver",
+    "InductionMotor",
 ]
