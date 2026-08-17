@@ -50,6 +50,7 @@ Documentation = "https://ccp-centrifugal-compressor-performance.readthedocs.io/e
 
 [project.scripts]
 ccp-app = "ccp.app.cli:main"
+ccp-install-skill = "ccp.agent_skills.install:main"
 
 [project.optional-dependencies]
 app = [
@@ -67,6 +68,7 @@ version = {attr = "ccp.__version__"}
 include = ["ccp*"]
 
 [tool.setuptools.package-data]
+"ccp.agent_skills" = ["ccp/*.md"]
 "ccp.config" = ["new_units.txt", "legacy_water_units.txt"]
 "ccp.tests" = ["*.py"]
 "ccp.tests.data" = ["*"]

@@ -56,6 +56,26 @@ imp.head_plot()
 imp.disch.T_plot()
 ```
 
+# Installation
+
+Install ccp with:
+
+```bash
+pip install ccp-performance
+```
+
+If you work with an AI coding agent (Claude Code, GitHub Copilot, Cursor, Codex), install the ccp agent skill so your agent knows how to build states, points and impellers and run performance analyses:
+
+```bash
+ccp-install-skill
+```
+
+The skill activates automatically whenever you ask your agent about centrifugal compressor performance with ccp. In Claude Code you can also invoke it explicitly:
+
+```
+/ccp create an impeller from these test points and convert the curves to the new suction condition
+```
+
 # Documentation 
 Access the documentation [here](https://ccp-centrifugal-compressor-performance.readthedocs.io/en/stable/).
 

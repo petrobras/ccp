@@ -25,6 +25,14 @@ This is **ccp** (Centrifugal Compressor Performance), a Python library for calcu
 - **Streamlit App**: Web interface located in `ccp/app/` with example files and pages
 - **Data I/O**: CSV/Excel reading utilities in `ccp/data_io/`
 
+### Agent Skill
+- `ccp/agent_skills/ccp/` holds the ccp cookbook (SKILL.md + recipe files) shipped
+  with the package and installed for AI coding agents via the `ccp-install-skill`
+  console script (`ccp/agent_skills/install.py`). Recipes must stay self-contained
+  (only link to files inside the folder) and their code examples are expected to
+  run against the current API — update them when the API changes
+  (tests: `ccp/tests/test_agent_skills.py`).
+
 ## Common Development Commands
 
 ### Package Manager
