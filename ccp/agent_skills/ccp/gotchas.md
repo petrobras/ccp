@@ -30,7 +30,7 @@
 
 ## Multiprocessing
 
-- ccp parallelizes impeller construction, conversion and evaluation internally with a **forkserver/spawn** multiprocessing context (`ccp/parallel.py`). Workers re-import your `__main__` module, so a plain script that builds an `Impeller` (including `load_from_engauge_csv`), calls `Impeller.convert_from` or creates an `Evaluation` at module top level dies with `RuntimeError: An attempt has been made to start a new process before the current process has finished its bootstrapping phase`. Put the code under a guard:
+- ccp parallelizes impeller construction, conversion and evaluation internally with a **forkserver/spawn** multiprocessing context (`ccp/parallel.py`). Workers re-import your `__main__` module, so a plain script that builds an `Impeller` (including `load_from_engauge_csv`), calls `Impeller.convert_from` or creates an `Evaluation` at module top level cannot start its workers and fails with a `RuntimeError` telling you to guard the entry point:
 
 ```python
 if __name__ == "__main__":
@@ -38,6 +38,8 @@ if __name__ == "__main__":
 ```
 
 - Interactive sessions (IPython, Jupyter, `python` REPL) are not affected.
+- `ccp.config.PARALLEL = False` (or the `CCP_PARALLEL=0` environment variable) disables multiprocessing entirely — everything runs serially in the current process, no guard needed. Useful for debugging, small jobs and restricted environments (containers, sandboxes).
+- `ccp.config.POOL_SIZE = 4` (or `CCP_POOL_SIZE=4`) caps the number of worker processes; the default is one per CPU, and every worker loads REFPROP.
 
 ## Performance
 

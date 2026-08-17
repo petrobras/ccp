@@ -18,7 +18,7 @@ from ccp.config.units import check_units
 from ccp.config.utilities import r_getattr, r_setattr
 from ccp.data_io.read_csv import read_data_from_engauge_csv
 from ccp.data_io.serializers import Serializable
-from ccp.parallel import get_mp_context
+from ccp.parallel import create_pool
 from ccp.plotly_theme import tableau_colors
 from ccp.surrogate import convert_from_gp_surrogate
 
@@ -702,6 +702,10 @@ class Impeller(Serializable):
     ):
         """Convert performance map from an impeller.
 
+        Points are converted in a multiprocessing pool. Set
+        ccp.config.PARALLEL = False (or CCP_PARALLEL=0) to run serially and
+        ccp.config.POOL_SIZE (or CCP_POOL_SIZE) to limit worker processes.
+
         Parameters
         ----------
         original_impeller : ccp.Impeller, list
@@ -785,7 +789,7 @@ class Impeller(Serializable):
             curve_lengths.append(len(converter_args))
 
         # Convert all points in parallel using a single pool
-        with get_mp_context().Pool() as pool:
+        with create_pool() as pool:
             all_converted = pool.map(converter, all_converter_args)
 
         # Split results back into curves and apply speed correction
@@ -906,6 +910,10 @@ class Impeller(Serializable):
         speed_units="RPM",
     ):
         """Create points from dict object.
+
+        Points are created in a multiprocessing pool. Set
+        ccp.config.PARALLEL = False (or CCP_PARALLEL=0) to run serially and
+        ccp.config.POOL_SIZE (or CCP_POOL_SIZE) to limit worker processes.
 
         In this case the dict is in the following format:
 
@@ -1104,7 +1112,7 @@ class Impeller(Serializable):
                     arg_dict["flow_m"] = Q_(flow, flow_units)
                 args_list.append(arg_dict)
 
-            with get_mp_context().Pool() as pool:
+            with create_pool() as pool:
                 points += pool.map(create_points_parallel, args_list)
 
         return cls(points)

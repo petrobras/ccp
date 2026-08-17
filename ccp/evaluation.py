@@ -9,7 +9,7 @@ from .state import State
 from .point import Point
 from .fo import FlowOrifice
 from .impeller import Impeller
-from .parallel import get_mp_context
+from .parallel import create_pool, parallel_enabled
 from . import Q_
 from sklearn.cluster import KMeans
 from tqdm.auto import tqdm
@@ -94,6 +94,8 @@ class Evaluation:
         parallel : bool, optional
             If True, uses multiprocessing for point calculation.
             Set to False for debugging to get detailed error messages.
+            Ignored (runs serially) when parallel execution is globally
+            disabled with ccp.config.PARALLEL = False or CCP_PARALLEL=0.
             The default is True.
         verbose : bool, optional
             If True, shows progress bar.
@@ -189,6 +191,8 @@ class Evaluation:
         """Calculate points from a dataframe with flow and cluster columns."""
         if parallel is None:
             parallel = self.parallel
+        # ccp.config.PARALLEL / CCP_PARALLEL globally force serial mode.
+        parallel = parallel and parallel_enabled()
 
         args_list = []
         for i, row in df.iterrows():
@@ -230,7 +234,7 @@ class Evaluation:
             args_list.append(arg_dict)
 
         if parallel:
-            with get_mp_context().Pool() as pool:
+            with create_pool() as pool:
                 print("Calculating points...")
                 results = list(tqdm(pool.imap(create_points_parallel, args_list)))
                 print("Calculating expected points...")
@@ -319,9 +323,7 @@ class Evaluation:
                 if total_seconds == 0:
                     df.loc[i, "timescale"] = 0.0
                 else:
-                    df.loc[i, "timescale"] = (
-                        sample_time.total_seconds() / total_seconds
-                    )
+                    df.loc[i, "timescale"] = sample_time.total_seconds() / total_seconds
         elif "timescale" not in df.columns:
             df["timescale"] = 0.0
 
@@ -347,6 +349,8 @@ class Evaluation:
         parallel : bool, optional
             If True, uses multiprocessing for point calculation.
             If None, uses the value from the instance.
+            Ignored (runs serially) when parallel execution is globally
+            disabled with ccp.config.PARALLEL = False or CCP_PARALLEL=0.
         use_filter_history : bool, optional
             If True, prepends last window-1 rows from existing data to preserve
             fluctuation filtering continuity at the batch boundary.
@@ -647,6 +651,8 @@ class Evaluation:
             If True, uses multiprocessing for point calculation.
             Set to False for debugging to get detailed error messages.
             If None, uses the value from the instance.
+            Ignored (runs serially) when parallel execution is globally
+            disabled with ccp.config.PARALLEL = False or CCP_PARALLEL=0.
             The default is None.
 
         Returns
@@ -698,7 +704,9 @@ class Evaluation:
                     pickle.dump(imp, pickle_file)
             with zip_file.open("kmeans.pickle", "w") as pickle_file:
                 pickle.dump(self.kmeans, pickle_file)
-            zip_file.writestr("data_mean.parquet", self.data_mean.to_frame().to_parquet())
+            zip_file.writestr(
+                "data_mean.parquet", self.data_mean.to_frame().to_parquet()
+            )
             zip_file.writestr("data_std.parquet", self.data_std.to_frame().to_parquet())
             # create dict with arguments and save to toml
             args_dict = {
@@ -747,7 +755,9 @@ class Evaluation:
                 with zip_file.open("kmeans.pickle", "r") as pickle_file:
                     kmeans = pickle.load(pickle_file)
             if "data_mean.parquet" in zip_file.namelist():
-                data_mean = pd.read_parquet(zip_file.open("data_mean.parquet")).iloc[:, 0]
+                data_mean = pd.read_parquet(zip_file.open("data_mean.parquet")).iloc[
+                    :, 0
+                ]
             if "data_std.parquet" in zip_file.namelist():
                 data_std = pd.read_parquet(zip_file.open("data_std.parquet")).iloc[:, 0]
             evaluation = cls(
