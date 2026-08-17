@@ -31,6 +31,10 @@ def restore_global_config():
     """
     eos = ccp.config.EOS
     polytropic_method = ccp.config.POLYTROPIC_METHOD
+    parallel = ccp.config.PARALLEL
+    pool_size = ccp.config.POOL_SIZE
     yield
     ccp.config.EOS = eos
     ccp.config.POLYTROPIC_METHOD = polytropic_method
+    ccp.config.PARALLEL = parallel
+    ccp.config.POOL_SIZE = pool_size
