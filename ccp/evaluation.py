@@ -9,7 +9,7 @@ from .state import State
 from .point import Point
 from .fo import FlowOrifice
 from .impeller import Impeller
-from .parallel import create_pool, parallel_enabled
+from .parallel import create_pool
 from . import Q_
 from sklearn.cluster import KMeans
 from tqdm.auto import tqdm
@@ -191,8 +191,6 @@ class Evaluation:
         """Calculate points from a dataframe with flow and cluster columns."""
         if parallel is None:
             parallel = self.parallel
-        # ccp.config.PARALLEL / CCP_PARALLEL globally force serial mode.
-        parallel = parallel and parallel_enabled()
 
         args_list = []
         for i, row in df.iterrows():
@@ -233,24 +231,13 @@ class Evaluation:
 
             args_list.append(arg_dict)
 
-        if parallel:
-            with create_pool() as pool:
-                print("Calculating points...")
-                results = list(tqdm(pool.imap(create_points_parallel, args_list)))
-                print("Calculating expected points...")
-                expected_results = list(
-                    tqdm(pool.imap(get_interpolated_point, args_list))
-                )
-        else:
-            # Sequential mode prints complete tracebacks for debugging.
-            print("Calculating points (sequential mode)...")
-            results = []
-            for args in tqdm(args_list):
-                results.append(create_points_parallel(args))
-            print("Calculating expected points (sequential mode)...")
-            expected_results = []
-            for args in tqdm(args_list):
-                expected_results.append(get_interpolated_point(args))
+        # parallel=False (a debugging switch) and a global disable both
+        # yield the serial stand-in, keeping a single pipeline.
+        with create_pool(parallel=parallel) as pool:
+            print("Calculating points...")
+            results = list(tqdm(pool.imap(create_points_parallel, args_list)))
+            print("Calculating expected points...")
+            expected_results = list(tqdm(pool.imap(get_interpolated_point, args_list)))
 
         # -1.0 marks rows where points were not computed (typically invalid rows).
         df["eff"] = -1.0

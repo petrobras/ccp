@@ -16,9 +16,13 @@ Parallel execution is controlled globally:
 - ``ccp.config.POOL_SIZE = 4`` caps the number of worker processes per
   pool; the default (``None``) is one worker per CPU.
 
-The ``CCP_PARALLEL`` and ``CCP_POOL_SIZE`` environment variables override
-the corresponding globals, so parallelism can be tuned without touching
-code (e.g. ``CCP_PARALLEL=0`` in a container).
+The ``CCP_PARALLEL`` and ``CCP_POOL_SIZE`` environment variables, when set
+to a non-empty value, override the corresponding globals, so parallelism
+can be tuned without touching code (e.g. ``CCP_PARALLEL=0`` in a
+container). ``CCP_POOL_START_TIMEOUT`` (seconds, default 60) bounds how
+long a pool may take to start its workers before ccp gives up — raise it
+on machines where worker startup (one ccp + REFPROP import per worker) is
+slow.
 """
 
 import multiprocessing
@@ -31,10 +35,10 @@ from . import config
 
 _mp_context = None
 
-_FALSY = {"0", "false", "no", "off", ""}
+_FALSY = {"0", "false", "no", "off"}
 
 _GUARD_MESSAGE = (
-    "ccp worker processes are failing to start.\n"
+    "ccp worker processes are dying during startup.\n"
     "The most common cause is a script that runs ccp multiprocessing "
     "(Impeller construction/conversion, Evaluation) at module top level: "
     "worker processes re-import the main module and recurse into pool "
@@ -43,6 +47,16 @@ _GUARD_MESSAGE = (
     "        ...\n\n"
     "or disable multiprocessing with ccp.config.PARALLEL = False (or the "
     "CCP_PARALLEL=0 environment variable)."
+)
+
+_TIMEOUT_MESSAGE = (
+    "ccp worker pool startup timed out after {timeout:.0f} s.\n"
+    "The workers are alive but slow to start (each one imports ccp and "
+    "loads REFPROP), which can happen on cold starts and heavily loaded "
+    "machines. Raise the deadline with the CCP_POOL_START_TIMEOUT "
+    "environment variable (seconds), lower the worker count with "
+    "ccp.config.POOL_SIZE (or CCP_POOL_SIZE), or disable multiprocessing "
+    "with ccp.config.PARALLEL = False (or CCP_PARALLEL=0)."
 )
 
 
@@ -74,13 +88,23 @@ def parallel_enabled():
     -------
     enabled : bool
         False if the CCP_PARALLEL environment variable is set to a falsy
-        value ("0", "false", "no", "off") or, with the variable unset,
-        if ``ccp.config.PARALLEL`` is False.
+        value ("0", "false", "no", "off") or, with the variable unset or
+        empty, if ``ccp.config.PARALLEL`` is False.
     """
-    env = os.environ.get("CCP_PARALLEL")
-    if env is not None:
-        return env.strip().lower() not in _FALSY
-    return bool(getattr(config, "PARALLEL", True))
+    env = os.environ.get("CCP_PARALLEL", "").strip()
+    if env:
+        return env.lower() not in _FALSY
+    return bool(config.PARALLEL)
+
+
+def _positive_int(value, source):
+    try:
+        size = int(value)
+    except (TypeError, ValueError):
+        size = 0
+    if size < 1:
+        raise ValueError(f"{source} must be a positive integer, got {value!r}")
+    return size
 
 
 def pool_size():
@@ -89,22 +113,38 @@ def pool_size():
     Returns
     -------
     size : int or None
-        The CCP_POOL_SIZE environment variable if set, otherwise
-        ``ccp.config.POOL_SIZE``. None means the multiprocessing default
-        (one worker per CPU).
+        The CCP_POOL_SIZE environment variable if set to a non-empty
+        value, otherwise ``ccp.config.POOL_SIZE``. None means one worker
+        per CPU available to this process.
+
+    Raises
+    ------
+    ValueError
+        If the configured value is not a positive integer.
     """
     env = os.environ.get("CCP_POOL_SIZE", "").strip()
     if env:
-        return max(1, int(env))
-    size = getattr(config, "POOL_SIZE", None)
+        return _positive_int(env, "the CCP_POOL_SIZE environment variable")
+    size = config.POOL_SIZE
     if size is not None:
-        return max(1, int(size))
+        return _positive_int(size, "ccp.config.POOL_SIZE")
     return None
 
 
 def _start_timeout():
     env = os.environ.get("CCP_POOL_START_TIMEOUT", "").strip()
-    return float(env) if env else 60.0
+    if not env:
+        return 60.0
+    try:
+        timeout = float(env)
+    except ValueError:
+        timeout = 0.0
+    if not timeout > 0:
+        raise ValueError(
+            "the CCP_POOL_START_TIMEOUT environment variable must be a "
+            f"positive number of seconds, got {env!r}"
+        )
+    return timeout
 
 
 def _ping():
@@ -117,22 +157,27 @@ def _await_pool_ready(pool, processes, timeout):
     multiprocessing.Pool silently replaces dead workers forever, so a pool
     whose workers cannot start (typically a script missing the
     ``if __name__ == "__main__"`` guard) hangs indefinitely instead of
-    raising. Watch a no-op task: if a full generation of workers is
-    replaced, or the timeout expires, before it completes, abort with an
-    actionable error.
+    raising. Watch a no-op task: if two full generations of workers die
+    before it completes, abort with the missing-guard error; if the
+    deadline expires with workers still alive, abort with a slow-start
+    error instead. A single worker death is tolerated so that a transient
+    failure (e.g. one worker OOM-killed) is not misdiagnosed as a missing
+    guard.
     """
     result = pool.apply_async(_ping)
     deadline = time.monotonic() + timeout
-    seen_workers = set()
+    dead_workers = set()
     while True:
         try:
             result.get(timeout=0.5)
             return
         except multiprocessing.TimeoutError:
             pass
-        seen_workers.update(p.pid for p in getattr(pool, "_pool", []))
-        if len(seen_workers) >= 2 * processes or time.monotonic() >= deadline:
+        dead_workers.update(p.pid for p in pool._pool if p.exitcode is not None)
+        if len(dead_workers) >= 2 * processes:
             raise RuntimeError(_GUARD_MESSAGE)
+        if time.monotonic() >= deadline:
+            raise RuntimeError(_TIMEOUT_MESSAGE.format(timeout=timeout))
 
 
 class _SerialPool:
@@ -146,8 +191,11 @@ class _SerialPool:
         return (func(item) for item in iterable)
 
 
+_startup_verified = False
+
+
 @contextmanager
-def create_pool(processes=None):
+def create_pool(processes=None, parallel=None):
     """Context manager yielding the worker pool used by ccp calculations.
 
     Honors ``ccp.config.PARALLEL``/``ccp.config.POOL_SIZE`` and the
@@ -161,19 +209,25 @@ def create_pool(processes=None):
     ----------
     processes : int, optional
         Number of worker processes. Defaults to ``pool_size()``.
+    parallel : bool, optional
+        False forces a serial pool (a call site's explicit debugging
+        switch). The default (None) follows ``parallel_enabled()``; True
+        does not override a global disable.
 
     Yields
     ------
     pool
         A ``multiprocessing.pool.Pool`` or a serial stand-in.
     """
-    if not parallel_enabled():
+    if parallel is False or not parallel_enabled():
         yield _SerialPool()
         return
     if processes is None:
         processes = pool_size()
     if processes is None:
-        processes = os.cpu_count() or 1
+        # process_cpu_count (3.13+) respects CPU affinity, e.g. in
+        # cpuset-limited containers.
+        processes = getattr(os, "process_cpu_count", os.cpu_count)() or 1
     try:
         pool = get_mp_context().Pool(processes)
     except RuntimeError as exc:
@@ -183,5 +237,11 @@ def create_pool(processes=None):
             raise RuntimeError(_GUARD_MESSAGE) from exc
         raise
     with pool:
-        _await_pool_ready(pool, processes, _start_timeout())
+        # The missing-guard failure is deterministic per process, so one
+        # verified startup proves later pools cannot hit it — skip the
+        # blocking readiness check after the first success.
+        global _startup_verified
+        if not _startup_verified:
+            _await_pool_ready(pool, processes, _start_timeout())
+            _startup_verified = True
         yield pool

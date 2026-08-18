@@ -40,6 +40,7 @@ if __name__ == "__main__":
 - Interactive sessions (IPython, Jupyter, `python` REPL) are not affected.
 - `ccp.config.PARALLEL = False` (or the `CCP_PARALLEL=0` environment variable) disables multiprocessing entirely — everything runs serially in the current process, no guard needed. Useful for debugging, small jobs and restricted environments (containers, sandboxes).
 - `ccp.config.POOL_SIZE = 4` (or `CCP_POOL_SIZE=4`) caps the number of worker processes; the default is one per CPU, and every worker loads REFPROP.
+- Worker startup is bounded by a 60 s deadline; on machines where it is genuinely slow (cold starts, antivirus-scanned spawn on Windows), raise it with `CCP_POOL_START_TIMEOUT=180` (seconds).
 
 ## Performance
 
