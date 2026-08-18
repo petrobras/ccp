@@ -42,3 +42,11 @@ nav.bd-links ul.nav.sidenav_l1 {
 img {
     margin-bottom: 1em;
 }
+
+/* In dark mode pydata-sphinx-theme paints a white box behind every content
+   image (html[data-theme=dark] .bd-content img). The landing-page card icons
+   are transparent-background SVGs that read fine on the dark card surface,
+   so drop the box. */
+html[data-theme="dark"] .sd-card img[src*=".svg"] {
+    background-color: transparent;
+}
