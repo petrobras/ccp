@@ -73,7 +73,6 @@ pio.templates["ccp"] = go.layout.Template(
         },
         "hoverlabel": {"align": "left"},
         "hovermode": "closest",
-        "mapbox": {"style": "light"},
         "paper_bgcolor": "white",
         "plot_bgcolor": "white",
         "polar": {
@@ -304,12 +303,6 @@ pio.templates["ccp"] = go.layout.Template(
             {
                 "marker": {"colorbar": {"outlinewidth": 0, "ticks": ""}},
                 "type": "scattergl",
-            }
-        ],
-        "scattermapbox": [
-            {
-                "marker": {"colorbar": {"outlinewidth": 0, "ticks": ""}},
-                "type": "scattermapbox",
             }
         ],
         "scatterpolar": [
