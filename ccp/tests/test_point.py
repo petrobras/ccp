@@ -377,6 +377,22 @@ def test_point_eff_pol_sandberg_colby_multistep(suc_PTC10_22, disch_PTC10_22):
     )
 
 
+def test_point_solver_failure_raises_value_error(monkeypatch, suc_0):
+    # regression: a ValueError raised inside the solver was swallowed and the
+    # constructor went on to crash with AttributeError on the missing disch
+    import ccp.point_solver
+
+    def failing_solve(point):
+        raise ValueError("flash did not converge")
+
+    monkeypatch.setattr(ccp.point_solver, "solve", failing_solve)
+    with pytest.raises(ValueError, match="Could not calculate point") as excinfo:
+        Point(suc=suc_0, head=82876.226229, eff=1.5, flow_v=1, speed=1, b=1, D=1)
+    assert "flash did not converge" in str(excinfo.value)
+    assert "'eff'" in str(excinfo.value)
+    assert isinstance(excinfo.value.__cause__, ValueError)
+
+
 def test_point_with_sandberg_colby_multistep_method(suc_PTC10_22, disch_PTC10_22):
     # regression: the multistep functions did not accept the scratch state
     # passed by the point solver, so this raised TypeError
