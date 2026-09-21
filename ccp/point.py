@@ -266,12 +266,14 @@ class Point(Serializable):
         # not determine (empty when the point is fully defined).
         from ccp.point_solver import solve
 
+        solver_error = None
         try:
             unresolved = solve(self)
-        except (ValueError, RuntimeError):
+        except (ValueError, RuntimeError) as exc:
             # a thermodynamic relation failed to converge, typically because an
             # argument is out of a physically reasonable range
-            unresolved = None
+            solver_error = exc
+            unresolved = True
 
         if unresolved:
             kwargs_repr = (
@@ -292,13 +294,21 @@ class Point(Serializable):
                         # add this to the out of range dict
                         out_of_range_dict[k] = kwargs_dict[k]
 
+            if solver_error is None:
+                reason = (
+                    "The provided arguments are insufficient to fully define the point."
+                )
+            else:
+                reason = (
+                    "A thermodynamic relation failed to converge: "
+                    f"{type(solver_error).__name__}: {solver_error}"
+                )
             raise ValueError(
                 f"Could not calculate point with ccp.Point(**{kwargs_repr}).\n"
-                "The provided arguments are insufficient to fully define the "
-                "point.\n"
+                f"{reason}\n"
                 "The following kwargs seems out of reasonable range: "
                 f"{out_of_range_dict}."
-            )
+            ) from solver_error
 
         self.reynolds = reynolds(self.suc, self.speed, self.b, self.D)
         self.mach = mach(self.suc, self.speed, self.D)
