@@ -61,11 +61,11 @@ All are pint quantities: convert with `.to("kJ/kg")`, take magnitude with `.m`.
 
 ## Polytropic methods
 
-The default head/efficiency calculation is Schultz (`"schultz"`, as in ASME PTC 10). Change globally or per point:
+The default head/efficiency calculation is Sandberg-Colby (`"sandberg_colby"`, one of the methods sanctioned by ASME PTC 10-2022). Change globally or per point:
 
 ```python
-ccp.config.POLYTROPIC_METHOD = "huntington"   # global — affects every Point created afterwards
-ccp.config.POLYTROPIC_METHOD = "schultz"      # restore the default when done
+ccp.config.POLYTROPIC_METHOD = "huntington"       # global — affects every Point created afterwards
+ccp.config.POLYTROPIC_METHOD = "sandberg_colby"   # restore the default when done
 
 # or per point, leaving the global default alone:
 point = ccp.Point(

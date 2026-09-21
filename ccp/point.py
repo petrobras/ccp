@@ -67,7 +67,7 @@ class Point(Serializable):
         Polytropic method used for head and efficiency calculation.
         Options are: "mallen_saville", "sandberg_colby",
         "sandberg_colby_multistep", "schultz" and "huntington".
-        The default is "schultz".
+        The default is "sandberg_colby".
         The default value can be changed in a global level with:
         ccp.config.POLYTROPIC_METHOD = "<desired value>"
     extrapolated: bool, optional
