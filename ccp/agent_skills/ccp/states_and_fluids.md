@@ -22,7 +22,8 @@ suc = ccp.State(fluid=fluid, p=Q_(3, "bar"), T=300)
 - Any **two** of `p`, `T`, `h`, `s`, `rho` define the state (e.g. `ccp.State(fluid=fluid, h=..., s=...)` for an isentropic discharge).
 - Plain floats are SI: `T=300` means 300 K, `p=101325` means Pa. Use `Q_` for anything else: `T=Q_(40, "degC")`, `p=Q_(30, "bar")`.
 - `EOS` (str, optional): `"REFPROP"` (default when available), `"HEOS"` (CoolProp), `"PR"` or `"SRK"`. The global default is `ccp.config.EOS`; ccp automatically falls back to `"HEOS"` when REFPROP is not installed.
-- `phase` (str, optional): skip the phase flash by declaring `"gas"`, `"liquid"`, `"supercritical"`, etc.
+- `phase` (str, None or False, optional): declaring `"gas"`, `"liquid"`, `"supercritical"`, etc. imposes that phase on every flash. Left as `None` (the default), ccp determines the phase once with an unconstrained flash and then imposes `ccp.config.DEFAULT_PHASE` (`"gas"`) if that reproduces the resolved density; states derived from it by the point solvers inherit the imposed phase, which is what makes point creation and map conversion fast. Two-phase, liquid and dense states that fail the check stay unconstrained. `phase=False` never imposes a phase on that state (legacy behaviour); `ccp.config.DEFAULT_PHASE = None` disables the policy globally.
+- A general `state.update(p=..., h=...)` (or `(p, s)`, `(h, s)`) is an equilibrium flash even under an imposed phase, so a state throttled into the phase envelope resolves to the two-phase state; only the discharge closures inside `Point` solve single phase.
 
 ## Fluid names
 

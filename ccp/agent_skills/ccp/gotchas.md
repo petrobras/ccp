@@ -44,5 +44,8 @@ if __name__ == "__main__":
 
 ## Performance
 
-- REFPROP flash calculations dominate runtime. Creating points (especially `Impeller` construction and `convert_from`) takes seconds — expect map conversions to take minutes for many curves; ccp parallelizes conversions internally with multiprocessing.
+- REFPROP flash calculations dominate runtime. With the default phase policy (`ccp.config.DEFAULT_PHASE = "gas"`, see states_and_fluids.md) a point costs a few milliseconds and an 18-point map converts in well under a second on REFPROP; the first multiprocessing pool of a process costs 1 to 2 s to start (`ccp.parallel.warm_up()` pays it early, e.g. from an application's startup).
+- `Impeller.point()` and `Impeller.curve()` interpolate from cached curve data (one point solve per `point()` call); the cache lives on the impeller and is dropped when it is pickled.
+- CoolProp `HEOS` is usable for multi-component mixtures only with the phase policy on: an unconstrained HEOS flash of a 10-component gas takes 10 to 200 ms and the historical unconstrained point solve took over a minute.
+- `ccp.config.PHASE_CHECK = True` verifies every solved discharge with an unconstrained flash (a phase-stability analysis per point, up to ten times the point solve); it re-solves the point without an imposed phase and emits `ccp.point.PhaseWarning` when the discharge lies inside the phase envelope. Off by default.
 - Prefer `state.update(...)` over creating new `State` objects in loops.
