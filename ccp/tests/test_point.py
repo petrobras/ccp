@@ -377,6 +377,30 @@ def test_point_eff_pol_sandberg_colby_multistep(suc_PTC10_22, disch_PTC10_22):
     )
 
 
+def test_point_with_sandberg_colby_multistep_method(suc_PTC10_22, disch_PTC10_22):
+    # regression: the multistep functions did not accept the scratch state
+    # passed by the point solver, so this raised TypeError
+    point = Point(
+        suc=suc_PTC10_22,
+        disch=disch_PTC10_22,
+        flow_m=Q_(10, "kg/s"),
+        speed=Q_(7000, "RPM"),
+        b=Q_(0.03, "m"),
+        D=Q_(0.4, "m"),
+        polytropic_method="sandberg_colby_multistep",
+    )
+    assert_allclose(
+        point.head.m,
+        head_pol_sandberg_colby_multistep(suc_PTC10_22, disch_PTC10_22).m,
+        rtol=1e-8,
+    )
+    assert_allclose(
+        point.eff.m,
+        eff_pol_sandberg_colby_multistep(suc_PTC10_22, disch_PTC10_22).m,
+        rtol=1e-8,
+    )
+
+
 def test_point_eff_pol_sandberg_colby(suc_PTC10_22, disch_PTC10_22):
     assert_allclose(
         eff_pol_sandberg_colby(suc_PTC10_22, disch_PTC10_22).m, 0.593539, rtol=1e-5
