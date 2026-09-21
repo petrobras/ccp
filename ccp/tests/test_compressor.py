@@ -1,3 +1,4 @@
+from copy import deepcopy
 import pytest
 import numpy as np
 from numpy.testing import assert_allclose
@@ -1584,3 +1585,83 @@ def test_back_to_back_no_leakage(back_to_back_no_leakage):
     assert_allclose(p0f_sp.eff, 0.39, rtol=1e-4)
     # power in this case is the 'real' power consumed by the rotor
     assert_allclose(p0f_sp.power, 4164603.266245641, 1e-4)
+
+
+def _set_oil_data(point, outlet_temperature):
+    point.oil_flow_journal_bearing_de = Q_(30, "l/min")
+    point.oil_flow_journal_bearing_nde = Q_(20, "l/min")
+    point.oil_flow_thrust_bearing_nde = Q_(100, "l/min")
+    point.oil_inlet_temperature = Q_(40, "degC")
+    point.oil_outlet_temperature_de = outlet_temperature
+    point.oil_outlet_temperature_nde = outlet_temperature
+    point.oil_specific_heat_de = Q_(2.02, "kJ/kg/degK")
+    point.oil_specific_heat_nde = Q_(2.02, "kJ/kg/degK")
+    point.oil_density_de = Q_(846.9, "kg/m³")
+    point.oil_density_nde = Q_(846.9, "kg/m³")
+
+
+def _expected_losses(point):
+    delta_T_de = point.oil_outlet_temperature_de - point.oil_inlet_temperature
+    delta_T_nde = point.oil_outlet_temperature_nde - point.oil_inlet_temperature
+    return (
+        point.oil_density_de
+        * point.oil_flow_journal_bearing_de
+        * point.oil_specific_heat_de
+        * delta_T_de
+        + point.oil_density_nde
+        * point.oil_flow_journal_bearing_nde
+        * point.oil_specific_heat_nde
+        * delta_T_nde
+        + point.oil_density_nde
+        * point.oil_flow_thrust_bearing_nde
+        * point.oil_specific_heat_nde
+        * delta_T_nde
+    ).to("W")
+
+
+def test_back_to_back_bearing_losses_per_section(back_to_back):
+    # regression: the second section losses were computed from the last first
+    # section point instead of from each second section point
+    kwargs = {
+        k: deepcopy(v)
+        for k, v in back_to_back.items()
+        if k in ("test_points_sec1", "test_points_sec2")
+    }
+    kwargs.update({k: v for k, v in back_to_back.items() if k not in kwargs})
+    for point in kwargs["test_points_sec1"]:
+        _set_oil_data(point, Q_(50, "degC"))
+    for point in kwargs["test_points_sec2"]:
+        _set_oil_data(point, Q_(45, "degC"))
+
+    compressor = BackToBack(bearing_mechanical_losses=True, **kwargs)
+
+    losses_sec1 = _expected_losses(kwargs["test_points_sec1"][0])
+    losses_sec2 = _expected_losses(kwargs["test_points_sec2"][0])
+    assert losses_sec1.m > losses_sec2.m > 0
+
+    for point in compressor.points_rotor_t_sec1:
+        assert_allclose(point.power_losses.to("W").m, losses_sec1.m)
+    for point in compressor.points_rotor_t_sec2:
+        assert_allclose(point.power_losses.to("W").m, losses_sec2.m)
+
+
+def test_section_point_oil_defaults_without_bearing_losses(back_to_back):
+    # regression: the default oil properties were assigned to throwaway
+    # local variables instead of the point attributes
+    reference = back_to_back["test_points_sec1"][0]
+    kwargs = dict(
+        suc=reference.suc,
+        disch=reference.disch,
+        flow_m=reference.flow_m,
+        speed=reference.speed,
+        b=reference.b,
+        D=reference.D,
+        leakages=False,
+        bearing_mechanical_losses=False,
+    )
+    for point in (Point1Sec(**kwargs), PointFirstSection(**kwargs)):
+        assert point.oil_specific_heat_de == Q_(2.02, "kJ/kg/degK")
+        assert point.oil_specific_heat_nde == Q_(2.02, "kJ/kg/degK")
+        assert point.oil_density_de == Q_(846.9, "kg/m³")
+        assert point.oil_density_nde == Q_(846.9, "kg/m³")
+        assert point.oil_flow_journal_bearing_de == Q_(0, "m³/s")

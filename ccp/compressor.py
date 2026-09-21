@@ -150,10 +150,10 @@ class Point1Sec(Point):
             self.oil_inlet_temperature = self.suc.T()
             self.oil_outlet_temperature_de = self.suc.T()
             self.oil_outlet_temperature_nde = self.suc.T()
-            oil_specific_heat_de = (Q_(2.02, "kJ/kg/degK"),)
-            oil_specific_heat_nde = (Q_(2.02, "kJ/kg/degK"),)
-            oil_density_de = (Q_(846.9, "kg/m³"),)
-            oil_density_nde = (Q_(846.9, "kg/m³"),)
+            self.oil_specific_heat_de = Q_(2.02, "kJ/kg/degK")
+            self.oil_specific_heat_nde = Q_(2.02, "kJ/kg/degK")
+            self.oil_density_de = Q_(846.9, "kg/m³")
+            self.oil_density_nde = Q_(846.9, "kg/m³")
 
     def to_dict(self):
         """Return a dict representation of the point."""
@@ -577,10 +577,10 @@ class PointFirstSection(Point):
             self.oil_inlet_temperature = self.suc.T()
             self.oil_outlet_temperature_de = self.suc.T()
             self.oil_outlet_temperature_nde = self.suc.T()
-            oil_specific_heat_de = (Q_(2.02, "kJ/kg/degK"),)
-            oil_specific_heat_nde = (Q_(2.02, "kJ/kg/degK"),)
-            oil_density_de = (Q_(846.9, "kg/m³"),)
-            oil_density_nde = (Q_(846.9, "kg/m³"),)
+            self.oil_specific_heat_de = Q_(2.02, "kJ/kg/degK")
+            self.oil_specific_heat_nde = Q_(2.02, "kJ/kg/degK")
+            self.oil_density_de = Q_(846.9, "kg/m³")
+            self.oil_density_nde = Q_(846.9, "kg/m³")
 
         self.end_seal_upstream_state = State(
             p=self.end_seal_upstream_pressure,
@@ -884,18 +884,27 @@ class BackToBack(Impeller):
             # calculate power losses
             if bearing_mechanical_losses:
                 power_losses = (
-                    point.oil_density_de
-                    * point.oil_flow_journal_bearing_de
-                    * point.oil_specific_heat_de
-                    * (point.oil_outlet_temperature_de - point.oil_inlet_temperature)
-                    + point.oil_density_nde
-                    * point.oil_flow_journal_bearing_nde
-                    * point.oil_specific_heat_nde
-                    * (point.oil_outlet_temperature_nde - point.oil_inlet_temperature)
-                    + point.oil_density_nde
-                    * point.oil_flow_thrust_bearing_nde
-                    * point.oil_specific_heat_nde
-                    * (point.oil_outlet_temperature_nde - point.oil_inlet_temperature)
+                    point_f.oil_density_de
+                    * point_f.oil_flow_journal_bearing_de
+                    * point_f.oil_specific_heat_de
+                    * (
+                        point_f.oil_outlet_temperature_de
+                        - point_f.oil_inlet_temperature
+                    )
+                    + point_f.oil_density_nde
+                    * point_f.oil_flow_journal_bearing_nde
+                    * point_f.oil_specific_heat_nde
+                    * (
+                        point_f.oil_outlet_temperature_nde
+                        - point_f.oil_inlet_temperature
+                    )
+                    + point_f.oil_density_nde
+                    * point_f.oil_flow_thrust_bearing_nde
+                    * point_f.oil_specific_heat_nde
+                    * (
+                        point_f.oil_outlet_temperature_nde
+                        - point_f.oil_inlet_temperature
+                    )
                 )
             else:
                 power_losses = 0
