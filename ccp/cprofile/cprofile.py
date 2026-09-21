@@ -14,6 +14,7 @@ import subprocess
 import sys
 from pathlib import Path
 
+import ccp
 from ccp import Q_, State, Point, Impeller
 
 
@@ -92,8 +93,8 @@ def create_ccp_points():
     )
     suc_fd = State(p=Q_(3876, "kPa"), T=Q_(11, "degC"), fluid=composition_fd)
 
-    test_dir = Path.home() / "ccp/ccp/tests"
-    curve_path = test_dir / "data"
+    # the test data shipped with the package
+    curve_path = Path(ccp.__file__).parent / "tests" / "data"
     curve_name = "normal"
 
     imp_fd = Impeller.load_from_engauge_csv(
@@ -111,8 +112,16 @@ def create_ccp_points():
     imp_conv = Impeller.convert_from(imp_fd, suc=new_suc, find="speed")
 
 
+TARGETS = {"state": state, "impeller": impeller, "create_ccp_points": create_ccp_points}
+
+
 if __name__ == "__main__":
+    if len(sys.argv) != 2 or sys.argv[1] not in TARGETS:
+        sys.exit(f"usage: python cprofile.py <{'|'.join(TARGETS)}>")
     func = sys.argv[1]
-    func_path = os.path.abspath(func)
-    file_name = generate_label(func_path)
-    cProfile.run(func_path + "()", file_name)
+    file_name = generate_label(func)
+    # warm up so that the profile shows steady-state costs, not the first
+    # REFPROP setup of each mixture or the worker pool start
+    TARGETS[func]()
+    cProfile.run(f"TARGETS[{func!r}]()", str(file_name))
+    print(f"profile written to {file_name}")

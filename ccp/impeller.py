@@ -3,7 +3,6 @@
 import csv
 import warnings
 
-from copy import deepcopy
 from itertools import groupby
 from pathlib import Path
 
@@ -348,7 +347,9 @@ class Impeller(Serializable):
 
     @check_units
     def __init__(self, points):
-        points_init = deepcopy(points)
+        # points are not mutated after construction, so they are shared rather
+        # than deep-copied (a deep copy re-flashes every state they hold)
+        points_init = list(points)
 
         losses_dict = {p.power_losses: p.speed for p in points_init}
         max_losses = max(losses_dict.keys())
@@ -376,7 +377,7 @@ class Impeller(Serializable):
                             extrapolated=p._extrapolated,
                         )
                     else:
-                        p_new = deepcopy(p)
+                        p_new = p
                     points.append(p_new)
                     points_update.append(p_new)
             else:
@@ -427,6 +428,138 @@ class Impeller(Serializable):
     def __getitem__(self, item):
         return self.points.__getitem__(item)
 
+    def __getstate__(self):
+        # the interpolated-curve cache is derived data; rebuilt on demand
+        return {k: v for k, v in self.__dict__.items() if k != "_curve_cache"}
+
+    def _curve_data(self, speed):
+        """Interpolated curve at ``speed`` as arrays, without building points.
+
+        The values of a curve interpolated between two stored curves (flow,
+        head, efficiency and the similarity ratios) are linear combinations
+        of the stored points' values, so they are computed directly; the
+        historical implementation built one ``Point`` per value (a Newton
+        solve over flash calculations each) only to read those inputs back.
+        A curve extrapolated with the fan law needs one point solve per value
+        (the volume-ratio ratio depends on the discharge state), so that case
+        builds its points here and reuses them.
+
+        Results are memoised per speed on the impeller (dropped on pickling).
+
+        Parameters
+        ----------
+        speed : pint.Quantity
+            Speed (rad/s).
+
+        Returns
+        -------
+        data : dict
+            ``speed`` and ``power_losses`` (quantities), ``extrapolated``
+            (bool), ``flow_v``, ``head``, ``eff``, ``phi_ratio``,
+            ``psi_ratio``, ``reynolds_ratio``, ``mach_diff`` and
+            ``volume_ratio_ratio`` (numpy arrays in SI units, sorted by flow)
+            and ``points`` (the extrapolated points, or None when the curve
+            was interpolated).
+        """
+        # accept a 1-element array (e.g. Impeller.speed for a single-curve map),
+        # since numpy >= 2.4 no longer converts those to scalars in CoolProp calls
+        if np.ndim(speed.magnitude) > 0:
+            speed = Q_(float(np.squeeze(speed.magnitude)), speed.units)
+        speed = speed.to("rad/s")
+        key = float(speed.magnitude)
+        cache = self.__dict__.setdefault("_curve_cache", {})
+        if key in cache:
+            return cache[key]
+
+        speeds = np.array([curve.speed.magnitude for curve in self.curves])
+
+        # calculate power losses
+        power_losses = calculate_power_losses(
+            power_losses_ref=self.curves[0].power_losses,
+            speed_ref=self.curves[0].speed,
+            speed=speed,
+        )
+
+        closest_curves_idxs = find_closest_speeds(speeds, speed.magnitude)
+        curves = [
+            self.curves[closest_curves_idxs[0]],
+            self.curves[closest_curves_idxs[1]],
+        ]
+
+        # if curve was extrapolated from two other curves extrapolated is true
+        if np.all([p._extrapolated for p in curves[0].points]) or np.all(
+            [p._extrapolated for p in curves[1].points]
+        ):
+            extrapolated = True
+        elif speed.m >= curves[0].speed.m and speed.m <= curves[1].speed.m:
+            extrapolated = False
+        else:
+            extrapolated = True
+
+        p0 = self.points[0]
+        number_of_points = len(curves[0])
+
+        # the curve the fan law is applied to, or None to interpolate
+        if extrapolated and speed.m > curves[1].speed.m:
+            # The extrapolated curve is above the maximum speed of the performance map
+            base_curve = curves[1]
+        elif extrapolated and speed.m < curves[0].speed.m:
+            # The extrapolated curve is below the minimum speed of the performance map
+            base_curve = curves[0]
+        elif len(speeds) == 1:  # Only one curve
+            base_curve = curves[0]
+        else:
+            base_curve = None
+
+        ratio_names = [
+            "phi_ratio",
+            "psi_ratio",
+            "reynolds_ratio",
+            "mach_diff",
+            "volume_ratio_ratio",
+        ]
+        data = dict(speed=speed, power_losses=power_losses, extrapolated=extrapolated)
+        if base_curve is not None:
+            points = extrapolated_curve(
+                base_curve, speed, number_of_points, p0, power_losses, extrapolated
+            )
+            points = sorted(points, key=lambda p: p.flow_v)
+            data["points"] = points
+            data["flow_v"] = np.array([p.flow_v.m for p in points])
+            data["head"] = np.array([p.head.m for p in points])
+            data["eff"] = np.array([p.eff.m for p in points])
+            for name in ratio_names:
+                data[name] = np.array([getattr(p, name).m for p in points])
+        else:
+            # interpolate_between_curves without the points
+            speed_range = curves[1].speed.m - curves[0].speed.m
+            factor_0 = (speed.m - curves[0].speed.m) / speed_range
+            factor_1 = (curves[1].speed.m - speed.m) / speed_range
+            columns = {name: [] for name in ["flow_v", "head", "eff"] + ratio_names}
+            for i in range(number_of_points):
+                c0 = curves[0][i]
+                c1 = curves[1][i]
+                flow_eff, eff = get_interpolated_values(
+                    factor_0, factor_1, c0.flow_v.m, c0.eff.m, c1.flow_v.m, c1.eff.m
+                )
+                flow_head, head = get_interpolated_values(
+                    factor_0, factor_1, c0.flow_v.m, c0.head.m, c1.flow_v.m, c1.head.m
+                )
+                columns["flow_v"].append((flow_eff + flow_head) / 2)
+                columns["head"].append(head)
+                columns["eff"].append(eff)
+                for name in ratio_names:
+                    columns[name].append(
+                        factor_1 * getattr(c0, name).m + factor_0 * getattr(c1, name).m
+                    )
+            order = np.argsort(columns["flow_v"])
+            for name, values in columns.items():
+                data[name] = np.array(values)[order]
+            data["points"] = None
+
+        cache[key] = data
+        return data
+
     def __eq__(self, other):
         if isinstance(other, self.__class__):
             points_other = sorted(other.points, key=lambda x: x.flow_v)
@@ -468,60 +601,36 @@ class Impeller(Serializable):
         if flow_v is None and flow_m is None:
             raise ValueError("Either flow_v or flow_m must be defined.")
 
-        current_curve = self.curve(speed)
+        # interpolated curve as arrays (memoised): no intermediate points
+        current_curve = self._curve_data(speed)
+        p0 = self.points[0]
         if flow_m:
-            flow_v = current_curve.points[0].suc.v() * flow_m
+            flow_v = p0.suc.v() * flow_m
+        flow_v = flow_v.to("m**3/s")
+        curve_flow_v = current_curve["flow_v"]
+        curve_head = current_curve["head"]
+        curve_eff = current_curve["eff"]
 
-        func_head = interp1d(
-            current_curve.flow_v.m, current_curve.head.m, fill_value="extrapolate"
-        )
-        func_eff = interp1d(
-            current_curve.flow_v.m, current_curve.eff.m, fill_value="extrapolate"
-        )
+        func_head = interp1d(curve_flow_v, curve_head, fill_value="extrapolate")
+        func_eff = interp1d(curve_flow_v, curve_eff, fill_value="extrapolate")
 
         # interpolate similarity parameters for converted points
+        ratio_names = ["phi_ratio", "psi_ratio", "reynolds_ratio", "volume_ratio_ratio"]
         if not np.all(
-            np.concatenate(
-                (
-                    [p.phi_ratio.m for p in current_curve.points],
-                    [p.psi_ratio.m for p in current_curve.points],
-                    [p.reynolds_ratio.m for p in current_curve.points],
-                    [p.volume_ratio_ratio.m for p in current_curve.points],
-                )
-            )
-            == 1
-        ) or not np.all(np.array([p.mach_diff.m for p in current_curve.points]) == 0):
+            np.concatenate([current_curve[name] for name in ratio_names]) == 1
+        ) or not np.all(current_curve["mach_diff"] == 0):
             converted_curve = True
-            func_phi_ratio = interp1d(
-                current_curve.flow_v.m,
-                [p.phi_ratio.m for p in current_curve.points],
-                fill_value="extrapolate",
-            )
-            func_psi_ratio = interp1d(
-                current_curve.flow_v.m,
-                [p.psi_ratio.m for p in current_curve.points],
-                fill_value="extrapolate",
-            )
-            func_reynolds_ratio = interp1d(
-                current_curve.flow_v.m,
-                [p.reynolds_ratio.m for p in current_curve.points],
-                fill_value="extrapolate",
-            )
-            func_mach_diff = interp1d(
-                current_curve.flow_v.m,
-                [p.mach_diff.m for p in current_curve.points],
-                fill_value="extrapolate",
-            )
-            func_volume_ratio_ratio = interp1d(
-                current_curve.flow_v.m,
-                [p.volume_ratio_ratio.m for p in current_curve.points],
-                fill_value="extrapolate",
-            )
+            ratio_funcs = {
+                name: interp1d(
+                    curve_flow_v, current_curve[name], fill_value="extrapolate"
+                )
+                for name in ratio_names + ["mach_diff"]
+            }
         else:
             converted_curve = False
 
-        min_flow_v = min(current_curve.flow_v)
-        max_flow_v = max(current_curve.flow_v)
+        min_flow_v = Q_(curve_flow_v[0], "m**3/s")
+        max_flow_v = Q_(curve_flow_v[-1], "m**3/s")
         if flow_v < min_flow_v or max_flow_v < flow_v:
             warnings.warn(
                 f"Expected point is being extrapolated.\n"
@@ -529,70 +638,63 @@ class Impeller(Serializable):
                 f"Expected point flow: {flow_v:.3f~P}"
             )
             extrapolated = True
-        elif current_curve._extrapolated:
+        elif current_curve["extrapolated"]:
             extrapolated = True
         else:
             extrapolated = False
 
-        flow_at_min_head = (
-            np.log(current_curve[-1].head.m + np.exp(4 * max_flow_v.m))
-        ) / 4
-        flow_at_min_eff = (
-            np.log(current_curve[-1].eff.m + np.exp(4 * max_flow_v.m))
-        ) / 4
+        # last point of the curve (highest flow)
+        last_head = curve_head[-1]
+        last_eff = curve_eff[-1]
+        last_flow_v = curve_flow_v[-1]
+        flow_at_min_head = (np.log(last_head + np.exp(4 * max_flow_v.m))) / 4
+        flow_at_min_eff = (np.log(last_eff + np.exp(4 * max_flow_v.m))) / 4
 
         # Extrapolation code for choke region
         if flow_v <= max_flow_v:
-            head = float(func_head(flow_v))
+            head = float(func_head(flow_v.m))
         elif flow_v.m < flow_at_min_head:
             head = round(
-                current_curve[-1].head.m
-                + np.exp(4 * current_curve[-1].flow_v.m)
-                - np.exp(4 * flow_v.m),
+                last_head + np.exp(4 * last_flow_v) - np.exp(4 * flow_v.m),
                 2,
             )
         else:
             head = 0.001
 
         if flow_v <= max_flow_v:
-            eff = float(func_eff(flow_v))
+            eff = float(func_eff(flow_v.m))
         elif flow_v.m < flow_at_min_eff:
             eff = round(
-                current_curve[-1].eff.m
-                + np.exp(4 * current_curve[-1].flow_v.m)
-                - np.exp(4 * flow_v.m),
+                last_eff + np.exp(4 * last_flow_v) - np.exp(4 * flow_v.m),
                 2,
             )
         else:
             eff = round(
-                current_curve[-1].eff.m
-                + np.exp(4 * flow_at_min_eff)
-                - np.exp(4 * flow_at_min_eff),
+                last_eff + np.exp(4 * flow_at_min_eff) - np.exp(4 * flow_at_min_eff),
                 2,
             )
 
         # interpolate similarity parameters for converted curves
         if flow_v >= min_flow_v and flow_v <= max_flow_v and converted_curve:
-            phi_ratio = float(func_phi_ratio(flow_v))
-            psi_ratio = float(func_psi_ratio(flow_v))
-            reynolds_ratio = float(func_reynolds_ratio(flow_v))
-            mach_diff = float(func_mach_diff(flow_v))
-            volume_ratio_ratio = float(func_volume_ratio_ratio(flow_v))
+            phi_ratio = float(ratio_funcs["phi_ratio"](flow_v.m))
+            psi_ratio = float(ratio_funcs["psi_ratio"](flow_v.m))
+            reynolds_ratio = float(ratio_funcs["reynolds_ratio"](flow_v.m))
+            mach_diff = float(ratio_funcs["mach_diff"](flow_v.m))
+            volume_ratio_ratio = float(ratio_funcs["volume_ratio_ratio"](flow_v.m))
         else:
             phi_ratio = None
             psi_ratio = None
             reynolds_ratio = None
             mach_diff = None
             volume_ratio_ratio = None
-        p0 = self.points[0]
-        power_losses = current_curve.power_losses
+        power_losses = current_curve["power_losses"]
 
         point = Point(
             suc=p0.suc,
             head=head,
             eff=eff,
             flow_v=flow_v,
-            speed=current_curve.speed,
+            speed=current_curve["speed"],
             b=p0.b,
             D=p0.D,
             power_losses=power_losses,
@@ -623,78 +725,36 @@ class Impeller(Serializable):
         curve : ccp.Curve
             Point in the performance map.
         """
-        # accept a 1-element array (e.g. Impeller.speed for a single-curve map),
-        # since numpy >= 2.4 no longer converts those to scalars in CoolProp calls
-        if np.ndim(speed.magnitude) > 0:
-            speed = Q_(float(np.squeeze(speed.magnitude)), speed.units)
-
-        speeds = np.array([curve.speed.magnitude for curve in self.curves])
-
-        # calculate power losses
-        power_losses = calculate_power_losses(
-            power_losses_ref=self.curves[0].power_losses,
-            speed_ref=self.curves[0].speed,
-            speed=speed,
-        )
-
-        closest_curves_idxs = find_closest_speeds(speeds, speed.magnitude)
-        curves = [
-            self.curves[closest_curves_idxs[0]],
-            self.curves[closest_curves_idxs[1]],
-        ]
-
-        # if curve was extrapolated from two other curves extrapolated is true
-        if np.all([p._extrapolated for p in curves[0].points]) or np.all(
-            [p._extrapolated for p in curves[1].points]
-        ):
-            extrapolated = True
-        elif speed.m >= curves[0].speed.m and speed.m <= curves[1].speed.m:
-            extrapolated = False
+        data = self._curve_data(speed)
+        extrapolated = data["extrapolated"]
+        if data["points"] is not None:
+            # fan-law extrapolation: the points were built by _curve_data
+            points = data["points"]
         else:
-            extrapolated = True
-
-        p0 = self.points[0]
-        number_of_points = len(curves[0])
-
-        if extrapolated:
-            if speed.m > curves[1].speed.m:
-                # The extrapolated curve is above the maximum speed of the performance map
-                current_curve = extrapolated_curve(
-                    curves[1], speed, number_of_points, p0, power_losses, extrapolated
+            # interpolated between two curves: build the points from the
+            # interpolated values (one head/eff solve per point)
+            p0 = self.points[0]
+            points = [
+                Point(
+                    suc=p0.suc,
+                    head=data["head"][i],
+                    eff=data["eff"][i],
+                    flow_v=data["flow_v"][i],
+                    speed=data["speed"],
+                    power_losses=data["power_losses"],
+                    b=p0.b,
+                    D=p0.D,
+                    phi_ratio=data["phi_ratio"][i],
+                    psi_ratio=data["psi_ratio"][i],
+                    volume_ratio_ratio=data["volume_ratio_ratio"][i],
+                    reynolds_ratio=data["reynolds_ratio"][i],
+                    mach_diff=data["mach_diff"][i],
+                    extrapolated=extrapolated,
                 )
+                for i in range(len(data["flow_v"]))
+            ]
 
-            elif speed.m < curves[0].speed.m:
-                # The extrapolated curve is below the minimum speed of the performance map
-                current_curve = extrapolated_curve(
-                    curves[0], speed, number_of_points, p0, power_losses, extrapolated
-                )
-            else:
-                if len(speeds) == 1:  # Only one curve
-                    current_curve = extrapolated_curve(
-                        curves[0],
-                        speed,
-                        number_of_points,
-                        p0,
-                        power_losses,
-                        extrapolated,
-                    )
-                else:
-                    current_curve = interpolate_between_curves(
-                        curves, speed, number_of_points, p0, power_losses, extrapolated
-                    )
-        else:
-            if len(speeds) == 1:  # Only one curve
-                current_curve = extrapolated_curve(
-                    curves[0], speed, number_of_points, p0, power_losses, extrapolated
-                )
-            else:
-                current_curve = interpolate_between_curves(
-                    curves, speed, number_of_points, p0, power_losses, extrapolated
-                )
-
-        current_curve = Curve(current_curve, extrapolated)
-
-        return current_curve
+        return Curve(points, extrapolated)
 
     @classmethod
     def convert_from(
@@ -780,16 +840,20 @@ class Impeller(Serializable):
                 )
             original_impeller = original_impeller[np.argmin(np.abs(speed_sound_diff))]
 
-        # Collect all converter arguments from all curves
+        # Collect all converter arguments from all curves. Workers receive a
+        # scalar snapshot of each original point rather than the point itself:
+        # unpickling a point re-flashes its three states and switches the
+        # REFPROP mixture to the original fluid, which cost more than the
+        # conversion work of a task.
         all_converter_args = []
         curve_lengths = []
         for curve in original_impeller.curves:
-            converter_args = [(p, suc, find) for p in curve]
+            converter_args = [(_PointRecord(p), suc, find) for p in curve]
             all_converter_args.extend(converter_args)
             curve_lengths.append(len(converter_args))
 
         # Convert all points in parallel using a single pool
-        with create_pool() as pool:
+        with create_pool(tasks=len(all_converter_args)) as pool:
             all_converted = pool.map(converter, all_converter_args)
 
         # Split results back into curves and apply speed correction
@@ -1603,8 +1667,49 @@ def impeller_example():
     return imp
 
 
+class _PointRecord:
+    """Scalar snapshot of a point, enough for ``Point.convert_from``.
+
+    Holds the quantities the conversion reads from the original point and no
+    thermodynamic state, so it pickles to a few floats and a worker never
+    instantiates the original fluid.
+    """
+
+    _FIELDS = (
+        "speed",
+        "power_losses",
+        "eff",
+        "phi",
+        "psi",
+        "volume_ratio",
+        "b",
+        "D",
+        "reynolds",
+        "mach",
+        "phi_ratio",
+        "psi_ratio",
+        "reynolds_ratio",
+        "mach_diff",
+        "volume_ratio_ratio",
+    )
+
+    def __init__(self, point):
+        for name in self._FIELDS:
+            setattr(self, name, getattr(point, name))
+
+    def __repr__(self):
+        return (
+            f"_PointRecord(speed={self.speed:.0f~P}, phi={self.phi:.4f~P}, "
+            f"psi={self.psi:.4f~P}, eff={self.eff:.3f~P})"
+        )
+
+
 def converter(x):
-    """Helper function used to parallelize conversion of points."""
+    """Helper function used to parallelize conversion of points.
+
+    ``x`` is ``(point, suc, find)`` where ``point`` is a :class:`ccp.Point` or
+    a :class:`_PointRecord` snapshot of one.
+    """
     import traceback
 
     point, suc, find = x
@@ -1762,23 +1867,6 @@ def extrapolated_curve(curve, speed, number_of_points, p0, power_losses, extrapo
         head = ((speed.m / curve.speed.m) ** 2) * curve[i].head.m
         eff = curve[i].eff.m
 
-        p_i = Point(
-            suc=p0.suc,
-            head=head,
-            eff=eff,
-            flow_v=flow_v,
-            speed=speed,
-            power_losses=power_losses,
-            b=p0.b,
-            D=p0.D,
-        )
-
-        phi_ratio = p_i.phi / curve[i].phi
-        psi_ratio = p_i.psi / curve[i].psi
-        reynolds_ratio = p_i.reynolds / curve[i].reynolds
-        mach_diff = p_i.mach - curve[i].mach
-        volume_ratio_ratio = p_i.volume_ratio / curve[i].volume_ratio
-
         p = Point(
             suc=p0.suc,
             head=head,
@@ -1788,12 +1876,17 @@ def extrapolated_curve(curve, speed, number_of_points, p0, power_losses, extrapo
             power_losses=power_losses,
             b=p0.b,
             D=p0.D,
-            phi_ratio=phi_ratio,
-            psi_ratio=psi_ratio,
-            volume_ratio_ratio=volume_ratio_ratio,
-            reynolds_ratio=reynolds_ratio,
-            mach_diff=mach_diff,
             extrapolated=extrapolated,
+        )
+
+        # similarity ratios relative to the point the fan law was applied to
+        # (set on the solved point instead of solving an identical one again)
+        p.phi_ratio = (p.phi / curve[i].phi).to("dimensionless")
+        p.psi_ratio = (p.psi / curve[i].psi).to("dimensionless")
+        p.reynolds_ratio = (p.reynolds / curve[i].reynolds).to("dimensionless")
+        p.mach_diff = (p.mach - curve[i].mach).to("dimensionless")
+        p.volume_ratio_ratio = (p.volume_ratio / curve[i].volume_ratio).to(
+            "dimensionless"
         )
 
         current_curve.append(p)

@@ -495,3 +495,130 @@ def test_critical_properties_units():
     T_critical_C = state.T_critical(units="degC")
     assert T_critical_C.units == "degree_Celsius"
     assert_allclose(T_critical_C.m, 304.1282 - 273.15, rtol=1e-5)
+
+
+# --- ccp.config.DEFAULT_PHASE policy --------------------------------------
+
+FLUID_CO2_N2 = {"CarbonDioxide": 0.8, "Nitrogen": 0.2}
+
+
+def test_default_phase_imposed_on_single_phase_state():
+    state = State(p=Q_(10, "bar"), T=Q_(40, "degC"), fluid=FLUID_CO2_N2)
+    unconstrained = State(
+        p=Q_(10, "bar"), T=Q_(40, "degC"), fluid=FLUID_CO2_N2, phase=False
+    )
+    assert state.phase == "gas"
+    assert state._phase_auto is True
+    assert unconstrained.phase is False
+    assert unconstrained._phase_auto is False
+    assert_allclose(state.rho().m, unconstrained.rho().m, rtol=1e-9)
+    assert_allclose(state.h().m, unconstrained.h().m, rtol=1e-9)
+    # dense but single phase: still imposed, same properties
+    dense = State(p=Q_(100, "bar"), T=Q_(40, "degC"), fluid=FLUID_CO2_N2)
+    dense_free = State(
+        p=Q_(100, "bar"), T=Q_(40, "degC"), fluid=FLUID_CO2_N2, phase=False
+    )
+    assert dense.phase == "gas"
+    assert_allclose(dense.rho().m, dense_free.rho().m, rtol=1e-9)
+
+
+def test_default_phase_declined_inside_envelope():
+    # two-phase mixture: the imposed flash would return the metastable vapour
+    # root (130 kg/m3); the policy must keep the equilibrium state
+    two_phase = State(p=Q_(40, "bar"), T=Q_(250, "K"), fluid=FLUID_CO2_N2)
+    assert two_phase.phase is None
+    assert two_phase._phase_auto is False
+    assert_allclose(two_phase.rho().m, 212.68, rtol=1e-3)
+    liquid = State(p=Q_(60, "bar"), T=Q_(20, "degC"), fluid={"CarbonDioxide": 1})
+    assert liquid.phase is None
+    assert_allclose(liquid.rho().m, 782.65, rtol=1e-3)
+
+
+def test_default_phase_disabled_globally():
+    ccp.config.DEFAULT_PHASE = None
+    state = State(p=Q_(10, "bar"), T=Q_(40, "degC"), fluid=FLUID_CO2_N2)
+    assert state.phase is None
+    assert state._phase_auto is False
+
+
+def test_default_phase_survives_copy_and_pickle():
+    state = State(p=Q_(10, "bar"), T=Q_(40, "degC"), fluid=FLUID_CO2_N2)
+    for restored in (copy(state), deepcopy(state), pickle.loads(pickle.dumps(state))):
+        assert restored.phase == "gas"
+        assert restored._phase_auto is True
+        assert restored == state
+    unconstrained = State(
+        p=Q_(10, "bar"), T=Q_(40, "degC"), fluid=FLUID_CO2_N2, phase=False
+    )
+    restored = pickle.loads(pickle.dumps(unconstrained))
+    assert restored.phase is False
+    assert restored._phase_auto is False
+
+
+def test_general_update_ph_is_an_equilibrium_flash():
+    # a rich gas throttled into its phase envelope: outside the point solvers
+    # the (p, h) update must resolve to the two-phase state, as before
+    rich = {
+        "methane": 0.737,
+        "ethane": 0.115,
+        "propane": 0.074,
+        "butane": 0.019,
+        "isobutane": 0.011,
+        "pentane": 0.003,
+        "isopentane": 0.003,
+        "hexane": 0.001,
+        "nitrogen": 0.008,
+        "co2": 0.03,
+    }
+    hot = State(p=Q_(120, "bar"), T=Q_(380, "K"), fluid=rich)
+    assert hot.phase == "gas"
+    h = Q_(673345, "J/kg")
+    reference = State(p=Q_(47.39, "bar"), h=h, fluid=rich, phase=False)
+    hot.update(p=Q_(47.39, "bar"), h=h)
+    assert_allclose(hot.T().m, reference.T().m, rtol=1e-8)
+    assert 0 < reference.Q() < 1  # inside the envelope
+    # inside a solver block the imposed single-phase root is taken instead
+    with State.single_phase_solver():
+        hot.update(p=Q_(47.39, "bar"), h=h)
+    assert abs(hot.T().m - reference.T().m) > 0.5
+
+
+def test_solver_newton_flash_matches_full_flash():
+    fluid = dict(
+        n2=0.4,
+        co2=0.22,
+        methane=92.11,
+        ethane=4.94,
+        propane=1.71,
+        ibutane=0.24,
+        butane=0.3,
+        ipentane=0.04,
+        pentane=0.03,
+        hexane=0.01,
+    )
+    state = State(p=Q_(3876, "kPa"), T=Q_(11, "degC"), fluid=fluid)
+    assert state.phase == "gas"
+    p = state.p() * 1.5
+    h = state.h() + Q_(60, "kJ/kg")
+    s = state.s()
+    reference = State(p=p, h=h, fluid=fluid, phase=False)
+    with State.single_phase_solver():
+        assert state._solve_T_at_p(p.m, h.m, "h")
+    assert_allclose(state.T().m, reference.T().m, rtol=1e-8)
+    reference = State(p=p, s=s, fluid=fluid, phase=False)
+    with State.single_phase_solver():
+        assert state._solve_T_at_p(p.m, s.m, "s")
+    assert_allclose(state.T().m, reference.T().m, rtol=1e-8)
+    # not used outside a solver block
+    assert state._solve_T_at_p(p.m, h.m, "h") is False
+
+
+def test_phase_is_stable():
+    state = State(p=Q_(10, "bar"), T=Q_(40, "degC"), fluid=FLUID_CO2_N2)
+    assert state.phase_is_stable()
+    # push the imposed state inside the envelope with a constrained flash
+    state.update(p=Q_(40, "bar"), T=Q_(250, "K"))
+    rho_metastable = state.rho().m
+    assert not state.phase_is_stable()
+    # the state is left on the imposed root
+    assert_allclose(state.rho().m, rho_metastable)

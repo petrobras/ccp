@@ -795,6 +795,20 @@ def test_case_sc_at():
     disch = State(
         p=Q_("16547000 Pa"), T=Q_("416 K"), fluid={"CO2": 0.70000, "METHANE": 0.30000}
     )
+    # The Huntington intermediate state (95.5 bar, 360 K) is supercritical for
+    # this mixture (Tc = 277 K, pc = 89 bar). REFPROP's unconstrained flash
+    # there reports a spurious two-phase state (quality 1e-9) with a density
+    # 5e-4 off, which gave the historical value 0.818206; with the phase
+    # imposed (ccp.config.DEFAULT_PHASE) the flash returns the single-phase
+    # root, which agrees with CoolProp HEOS to 1e-5.
+    assert_allclose(eff_pol_huntington(suc, disch).m, 0.818286, rtol=1e-6)
+    ccp.config.DEFAULT_PHASE = None
+    suc = State(
+        p=Q_("5516000 Pa"), T=Q_("311 K"), fluid={"CO2": 0.70000, "METHANE": 0.30000}
+    )
+    disch = State(
+        p=Q_("16547000 Pa"), T=Q_("416 K"), fluid={"CO2": 0.70000, "METHANE": 0.30000}
+    )
     assert_allclose(eff_pol_huntington(suc, disch).m, 0.818206, rtol=1e-6)
 
 
@@ -880,3 +894,56 @@ def test_ptc10_c6_sample_calculation():
         find="volume_ratio",
     )
     assert_allclose(point_sp.eff.m, 0.797659, rtol=1e-6)
+
+
+def test_point_to_dict_keeps_the_user_phase_intent():
+    fluid = {"CarbonDioxide": 0.8, "Nitrogen": 0.2}
+    kwargs = dict(
+        flow_v=Q_(1.5, "m**3/s"),
+        speed=Q_(9000, "RPM"),
+        head=Q_(40, "kJ/kg"),
+        eff=0.8,
+        b=Q_(20, "mm"),
+        D=Q_(400, "mm"),
+    )
+    auto = Point(suc=State(p=Q_(10, "bar"), T=Q_(40, "degC"), fluid=fluid), **kwargs)
+    assert auto.suc.phase == "gas"
+    assert auto.to_dict()["phase"] == "None"
+    forced = Point(
+        suc=State(p=Q_(10, "bar"), T=Q_(40, "degC"), fluid=fluid, phase="gas"),
+        **kwargs,
+    )
+    assert forced.to_dict()["phase"] == "gas"
+    opted_out = Point(
+        suc=State(p=Q_(10, "bar"), T=Q_(40, "degC"), fluid=fluid, phase=False),
+        **kwargs,
+    )
+    assert opted_out.to_dict()["phase"] == "False"
+    restored = Point.from_dict(opted_out.to_dict())
+    assert restored.suc.phase is False
+    assert restored.suc._phase_auto is False
+    assert_allclose(restored.disch.p().m, opted_out.disch.p().m, rtol=1e-6)
+    assert_allclose(auto.disch.p().m, opted_out.disch.p().m, rtol=1e-6)
+
+
+def test_phase_check_resolves_point_unconstrained(monkeypatch):
+    ccp.config.PHASE_CHECK = True
+    fluid = {"CarbonDioxide": 0.8, "Nitrogen": 0.2}
+    kwargs = dict(
+        flow_v=Q_(1.5, "m**3/s"),
+        speed=Q_(9000, "RPM"),
+        head=Q_(40, "kJ/kg"),
+        eff=0.8,
+        b=Q_(20, "mm"),
+        D=Q_(400, "mm"),
+    )
+    suc = State(p=Q_(10, "bar"), T=Q_(40, "degC"), fluid=fluid)
+    reference = Point(suc=suc, **kwargs)
+    # pretend the discharge root is metastable
+    monkeypatch.setattr(State, "phase_is_stable", lambda self: False)
+    with pytest.warns(ccp.point.PhaseWarning):
+        point = Point(suc=suc, **kwargs)
+    assert point.suc.phase is False
+    assert point.disch.phase is False
+    assert_allclose(point.disch.p().m, reference.disch.p().m, rtol=1e-6)
+    assert_allclose(point.power.m, reference.power.m, rtol=1e-6)

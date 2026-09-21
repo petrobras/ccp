@@ -33,8 +33,12 @@ def restore_global_config():
     polytropic_method = ccp.config.POLYTROPIC_METHOD
     parallel = ccp.config.PARALLEL
     pool_size = ccp.config.POOL_SIZE
+    default_phase = ccp.config.DEFAULT_PHASE
+    phase_check = ccp.config.PHASE_CHECK
     yield
     ccp.config.EOS = eos
     ccp.config.POLYTROPIC_METHOD = polytropic_method
     ccp.config.PARALLEL = parallel
     ccp.config.POOL_SIZE = pool_size
+    ccp.config.DEFAULT_PHASE = default_phase
+    ccp.config.PHASE_CHECK = phase_check

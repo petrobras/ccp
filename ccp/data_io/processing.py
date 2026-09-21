@@ -61,14 +61,12 @@ def fluctuation_data(df, window=3):
     1  66.666667  22.222222
     2  40.000000  18.181818
     """
-    fluctuation_df = (
-        df.apply(pd.to_numeric)
-        .rolling(
-            window=window,
-        )
-        .apply(fluctuation)
-        .fillna(0.0)
-    )
+    # vectorised form of fluctuation() over rolling windows (rolling.apply
+    # with a Python function costs ~0.1 ms per window per column)
+    rolling = df.apply(pd.to_numeric).rolling(window=window)
+    mean = rolling.mean()
+    fluctuation_df = 100 * (rolling.max() - rolling.min()) / mean
+    fluctuation_df = fluctuation_df.where(mean != 0, 100.0).fillna(0.0)
     fluctuation_df = fluctuation_df[window - 1 :]
     return fluctuation_df
 

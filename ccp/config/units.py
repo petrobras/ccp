@@ -2,7 +2,7 @@
 
 import inspect
 import warnings
-from functools import wraps
+from functools import lru_cache, wraps
 from pathlib import Path
 
 import pint
@@ -133,6 +133,48 @@ for i, unit in zip(["k", "c"], ["N/m", "N*s/m"]):
             units["".join([i, j, k])] = unit
 
 
+@lru_cache(maxsize=None)
+def _unit_for(arg_name):
+    """Default unit for an argument name, or None when it has no unit.
+
+    The check is carried out by splitting the argument name on '_' and looking
+    each token up in :data:`units` (the full name is tried first). Resolved
+    once per name: the decorator resolves positional names when the function
+    is decorated and keyword names on first use.
+    """
+    names = arg_name.split("_")
+    if "units" in names:
+        return None
+    # treat flow_v and flow_m separately
+    if "flow_v" in arg_name:
+        names.insert(0, "flow_v")
+    if "flow_m" in arg_name:
+        names.insert(0, "flow_m")
+    if arg_name not in names:
+        # check first for arg_name in units
+        names.insert(0, arg_name)
+    for name in names:
+        if name in units:
+            return units[name]
+    return None
+
+
+def _to_default_unit(value, unit):
+    if unit is None or value is None:
+        return value
+    # For now, we only return the magnitude for the converted Quantity
+    # If pint is fully adopted by ross in the future, and we have all Quantities
+    # using it, we could remove this, which would allows us to use pint in its full capability
+    try:
+        return value.to(unit)
+    except AttributeError:
+        try:
+            return Q_(value, unit)
+        except TypeError:
+            # Handle errors that we get with bool for example
+            return value
+
+
 def check_units(func):
     """Wrapper to check and convert units to base_units.
     If we use the check_units decorator in a function the arguments are checked,
@@ -162,73 +204,17 @@ def check_units(func):
     0.0127 meter
     """
 
+    # resolved once per decorated function instead of once per call
+    arg_units = [_unit_for(name) for name in inspect.getfullargspec(func)[0]]
+
     @wraps(func)
     def inner(*args, **kwargs):
-        base_unit_args = []
-        args_names = inspect.getfullargspec(func)[0]
-
-        for arg_name, arg_value in zip(args_names, args):
-            names = arg_name.split("_")
-            if "units" in names:
-                base_unit_args.append(arg_value)
-                continue
-
-            # treat flow_v and flow_m separately
-            if "flow_v" in arg_name:
-                names.insert(0, "flow_v")
-            if "flow_m" in arg_name:
-                names.insert(0, "flow_m")
-
-            if arg_name not in names:
-                # check first for arg_name in units
-                names.insert(0, arg_name)
-            for name in names:
-                if name in units and arg_value is not None:
-                    # For now, we only return the magnitude for the converted Quantity
-                    # If pint is fully adopted by ross in the future, and we have all Quantities
-                    # using it, we could remove this, which would allows us to use pint in its full capability
-                    try:
-                        base_unit_args.append(arg_value.to(units[name]))
-                    except AttributeError:
-                        try:
-                            base_unit_args.append(Q_(arg_value, units[name]))
-                        except TypeError:
-                            # Handle erros that we get with bool for example
-                            base_unit_args.append(arg_value)
-                    break
-            else:
-                base_unit_args.append(arg_value)
-
-        base_unit_kwargs = {}
-        for k, v in kwargs.items():
-            names = k.split("_")
-            if "units" in names:
-                base_unit_kwargs[k] = v
-                continue
-
-            # treat flow_v and flow_m separately
-            if "flow_v" in k:
-                names.insert(0, "flow_v")
-            if "flow_m" in k:
-                names.insert(0, "flow_m")
-
-            if k not in names:
-                # check first for arg_name in units
-                names.insert(0, k)
-            for name in names:
-                if name in units and v is not None:
-                    try:
-                        base_unit_kwargs[k] = v.to(units[name])
-                    except AttributeError:
-                        try:
-                            base_unit_kwargs[k] = Q_(v, units[name])
-                        except TypeError:
-                            # Handle errors that we get with bool for example
-                            base_unit_kwargs[k] = v
-                    break
-            else:
-                base_unit_kwargs[k] = v
-
+        base_unit_args = [
+            _to_default_unit(value, unit) for value, unit in zip(args, arg_units)
+        ]
+        base_unit_kwargs = {
+            k: _to_default_unit(v, _unit_for(k)) for k, v in kwargs.items()
+        }
         return func(*base_unit_args, **base_unit_kwargs)
 
     return inner

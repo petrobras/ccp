@@ -1,3 +1,4 @@
+from contextlib import contextmanager
 from copy import copy
 from warnings import warn
 
@@ -41,7 +42,7 @@ class State(CP.AbstractState):
     EOS : str, optional
         String with REFPROP, HEOS, PR or SRK.
         Default is set in ccp.config.EOS
-    phase : str, optional
+    phase : str, None or False, optional
         String with phase information.
         Options are:
         - "liquid"
@@ -50,8 +51,19 @@ class State(CP.AbstractState):
         - "supercritical_liquid"
         - "supercritical_gas"
         - "supercritical"
-        Default is None, in this case REFPROP/CoolProp will determine the phase.
-        The phase calculation may require a non-trivial flash calculation which can be computationally expensive.
+        Default is None: the first flash lets REFPROP/CoolProp determine the
+        phase (a stability analysis that dominates the flash cost) and, when
+        ``ccp.config.DEFAULT_PHASE`` is set (default "gas"), that phase is
+        imposed for the later (p, T), (rho, T) and (rho, s) flashes if imposing
+        it reproduces the resolved density. States derived from this one by
+        the point solvers (discharge, isentropic and dummy states) inherit the
+        imposed phase and solve every flash single phase, which is where the
+        speed-up comes from. A general ``update`` with (p, h), (p, s) or
+        (h, s) inputs stays an equilibrium flash, so a state throttled into
+        the phase envelope resolves to the two-phase state. Pass
+        ``phase=False`` to never impose a phase on this state, or set
+        ``ccp.config.DEFAULT_PHASE = None`` to restore the legacy behaviour
+        globally.
 
     Returns
     -------
@@ -70,6 +82,37 @@ class State(CP.AbstractState):
     >>> s.h()
     <Quantity(273291.7, 'joule / kilogram')>
     """
+
+    # relative density tolerance used to accept an imposed phase as the
+    # stable single-phase root (see _impose_default_phase and phase_is_stable)
+    _PHASE_RTOL = 1e-6
+
+    # True while a compression solver runs (see single_phase_solver): the
+    # imposed phase then also drives the (p, h), (p, s) and (h, s) flashes.
+    # Outside the solvers those flashes stay equilibrium flashes, since a
+    # general update (a throttled seal leakage, for instance) can legitimately
+    # land inside the phase envelope.
+    _single_phase_solver = False
+
+    @classmethod
+    @contextmanager
+    def single_phase_solver(cls):
+        """Let the imposed phase drive every flash while the block runs.
+
+        Used by the discharge closures of :class:`ccp.Point`: a compression
+        from a single-phase suction moves away from the dew line, so the
+        single-phase root is the physical one and the (p, h), (p, s) and
+        (h, s) flashes can skip the phase-stability analysis (see
+        :meth:`_solve_T_at_p`). Not used for general state updates, where a
+        target inside the phase envelope must resolve to the equilibrium
+        two-phase state.
+        """
+        previous = cls._single_phase_solver
+        cls._single_phase_solver = True
+        try:
+            yield
+        finally:
+            cls._single_phase_solver = previous
 
     def __new__(cls, *args, **kwargs):
         fluid = kwargs.get("fluid")
@@ -115,7 +158,18 @@ class State(CP.AbstractState):
         # no call to super(). see :
         # http://stackoverflow.com/questions/18260095/
         self.EOS = EOS
+        # phase policy: None -> impose ccp.config.DEFAULT_PHASE when it is
+        # confirmed by the first (unconstrained) flash; False -> never impose
+        # (kept as False so that derived states, copies and serialised points
+        # inherit the opt-out); a string -> impose from the start, as
+        # requested by the user.
+        default_phase = None
+        if phase is None:
+            default_phase = ccp.config.DEFAULT_PHASE
         self.phase = phase
+        # True when the phase was imposed by the DEFAULT_PHASE policy rather
+        # than requested; Point verifies the discharge of such states.
+        self._phase_auto = False
         self._phase_dict = {
             "liquid": CP.iphase_liquid,
             "gas": CP.iphase_gas,
@@ -164,6 +218,78 @@ class State(CP.AbstractState):
         if phase:
             self.specify_phase(self._phase_dict[phase])
         self.update(**self.setup_args)
+        if default_phase:
+            self._impose_default_phase(default_phase)
+
+    def _impose_default_phase(self, phase):
+        """Impose ``phase`` if it reproduces the state resolved without it.
+
+        Called once, right after the unconstrained flash of a state built
+        without an explicit phase. The state is re-flashed at its resolved
+        (p, T) with ``phase`` imposed; when the densities agree the
+        imposition is kept (``self.phase`` becomes ``phase`` and the state is
+        flagged as auto-imposed), otherwise the unconstrained state is
+        restored. Two-phase and liquid states fail the test because the
+        imposed flash returns the metastable vapour root, so they keep the
+        legacy unconstrained behaviour.
+        """
+        try:
+            phase_index = self._phase_dict[phase]
+        except KeyError:
+            raise ValueError(
+                "ccp.config.DEFAULT_PHASE must be None or one of "
+                f"{list(self._phase_dict)}, got {phase!r}"
+            ) from None
+        p = CP.AbstractState.p(self)
+        T = CP.AbstractState.T(self)
+        rho = CP.AbstractState.rhomass(self)
+        self.specify_phase(phase_index)
+        try:
+            CP.AbstractState.update(self, CP.PT_INPUTS, p, T)
+            rho_imposed = CP.AbstractState.rhomass(self)
+        except ValueError:
+            rho_imposed = None
+        if rho_imposed is not None and abs(rho_imposed - rho) <= self._PHASE_RTOL * abs(
+            rho
+        ):
+            self.phase = phase
+            self._phase_auto = True
+            return
+        self.specify_phase(CP.iphase_not_imposed)
+        CP.AbstractState.update(self, CP.PT_INPUTS, p, T)
+
+    def phase_is_stable(self):
+        """Check the imposed phase against an unconstrained flash.
+
+        Re-flashes the state at its current (p, T) without the imposed phase
+        and compares densities. Returns True when no phase is imposed, when
+        the unconstrained flash reproduces the density, or when the
+        unconstrained flash fails (the check is then inconclusive). Returns
+        False when the imposed root is metastable, i.e. the (p, T) point lies
+        inside the phase envelope or on the other phase. The state is left
+        unchanged (the imposed phase is restored).
+        """
+        if not self.phase:
+            return True
+        p = CP.AbstractState.p(self)
+        T = CP.AbstractState.T(self)
+        rho = CP.AbstractState.rhomass(self)
+        self.specify_phase(CP.iphase_not_imposed)
+        try:
+            CP.AbstractState.update(self, CP.PT_INPUTS, p, T)
+            rho_free = CP.AbstractState.rhomass(self)
+        except ValueError:
+            rho_free = None
+        finally:
+            self.specify_phase(self._phase_dict[self.phase])
+        if rho_free is None:
+            CP.AbstractState.update(self, CP.PT_INPUTS, p, T)
+            return True
+        stable = abs(rho_free - rho) <= self._PHASE_RTOL * abs(rho)
+        if not stable:
+            # back to the imposed root the caller still holds references to
+            CP.AbstractState.update(self, CP.PT_INPUTS, p, T)
+        return stable
 
     def __repr__(self):
         try:
@@ -712,14 +838,24 @@ class State(CP.AbstractState):
         return conductivity
 
     def __reduce__(self):
+        # Restore from (p, T) with the phase already known: with the phase
+        # imposed the flash is a cheap single-phase solve and the
+        # DEFAULT_PHASE classification is not repeated. phase=False keeps a
+        # state that declined (or opted out of) the policy unconstrained.
         kwargs = dict(
-            p=self.p(), T=self.T(), fluid=self.fluid, EOS=self.EOS, phase=self.phase
+            p=self.p(),
+            T=self.T(),
+            fluid=self.fluid,
+            EOS=self.EOS,
+            phase=self.phase if self.phase else False,
         )
-        return self._rebuild, (self.__class__, kwargs)
+        return self._rebuild, (self.__class__, kwargs, self._phase_auto)
 
     @staticmethod
-    def _rebuild(cls, kwargs):
-        return cls(**kwargs)
+    def _rebuild(cls, kwargs, phase_auto=False):
+        state = cls(**kwargs)
+        state._phase_auto = phase_auto
+        return state
 
     @classmethod
     @check_units
@@ -780,6 +916,52 @@ class State(CP.AbstractState):
             DeprecationWarning,
         )
         return cls(p=p, T=T, h=h, s=s, rho=rho, fluid=fluid, EOS=EOS, **kwargs)
+
+    def _solve_T_at_p(self, p, target, prop, rtol=1e-10, max_iter=40):
+        """Single-phase (p, h) or (p, s) flash by Newton on T over (p, T) flashes.
+
+        Only used when a single phase ("gas" or "liquid") is imposed: the
+        property is then monotonic in T at fixed p (dh/dT = cp,
+        ds/dT = cp/T), so Newton with the analytic derivative converges in two
+        or three (p, T) flashes (0.05 ms each on REFPROP for a 10-component
+        mixture) instead of the 1.1 ms full (p, h) flash. The current T is
+        the initial guess, which is close during the solver iterations that
+        walk a discharge state along an isenthalp.
+
+        Returns
+        -------
+        solved : bool
+            False outside a :meth:`single_phase_solver` block, when no single
+            phase is imposed or when the iteration did not converge (the
+            caller then runs the regular flash).
+        """
+        if not self._single_phase_solver or self.phase not in ("gas", "liquid"):
+            return False
+        T = CP.AbstractState.T(self)
+        if not np.isfinite(T) or T <= 0:
+            T = 300.0
+        scale = max(abs(target), 1.0)
+        raw_update = CP.AbstractState.update
+        for _ in range(max_iter):
+            try:
+                raw_update(self, CP.PT_INPUTS, p, T)
+            except ValueError:
+                return False
+            if prop == "h":
+                residual = CP.AbstractState.hmass(self) - target
+                derivative = CP.AbstractState.cpmass(self)
+            else:
+                residual = CP.AbstractState.smass(self) - target
+                derivative = CP.AbstractState.cpmass(self) / T
+            if abs(residual) <= rtol * scale:
+                return True
+            if not derivative > 0:
+                return False
+            step = -residual / derivative
+            # keep the iterate physical when the guess is far from the root
+            step = max(-0.5 * T, min(0.5 * T, step))
+            T += step
+        return False
 
     @check_units
     def update(
@@ -864,7 +1046,8 @@ class State(CP.AbstractState):
 
             elif p is not None and h is not None:
                 try:
-                    super().update(CP.HmassP_INPUTS, h.magnitude, p.magnitude)
+                    if not self._solve_T_at_p(p.magnitude, h.magnitude, "h"):
+                        super().update(CP.HmassP_INPUTS, h.magnitude, p.magnitude)
                 except ValueError:
                     # handle convergence error
                     # only try REFPROP if we're using REFPROP backend
@@ -886,7 +1069,9 @@ class State(CP.AbstractState):
                             T0 = 300
                         newton(objective, x0=T0)
             elif p is not None and s is not None:
-                if ccp.config.EOS == "REFPROP":
+                if self._solve_T_at_p(p.magnitude, s.magnitude, "s"):
+                    pass
+                elif ccp.config.EOS == "REFPROP":
                     try:
                         super().update(CP.PSmass_INPUTS, p.magnitude, s.magnitude)
                     except ValueError:
@@ -923,7 +1108,22 @@ class State(CP.AbstractState):
             elif rho is not None and T is not None:
                 super().update(CP.DmassT_INPUTS, rho.magnitude, T.magnitude)
             elif h is not None and s is not None:
-                super().update(CP.HmassSmass_INPUTS, h.magnitude, s.magnitude)
+                if (
+                    self._single_phase_solver
+                    and self.phase in ("gas", "liquid")
+                    and self.backend_name() in ["REFPROP", "REFPROPMixtureBackend"]
+                ):
+                    # CoolProp runs its own (h, s) iteration on the REFPROP
+                    # backend regardless of the imposed phase (50 ms for a
+                    # CO2/N2 mixture); REFPROP's single-phase HS routine
+                    # takes 0.1 ms, so solve there and hand CoolProp the
+                    # resolved (rho, T).
+                    r = self._call_REFPROP(
+                        h=h.magnitude, s=s.magnitude, phase=self.phase
+                    )
+                    super().update(CP.DmassT_INPUTS, r["rho"], r["T"])
+                else:
+                    super().update(CP.HmassSmass_INPUTS, h.magnitude, s.magnitude)
             elif T is not None and s is not None:
                 super().update(CP.SmassT_INPUTS, s.magnitude, T.magnitude)
             elif T is not None and h is not None:
