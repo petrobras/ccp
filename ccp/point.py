@@ -1870,7 +1870,7 @@ def head_pol_sandberg_colby(suc, disch, disch_s=None):
     return h
 
 
-def eff_pol_sandberg_colby_multistep(suc, disch):
+def eff_pol_sandberg_colby_multistep(suc, disch, disch_s=None):
     """Sandberg-Colby multistep polytropic efficiency.
 
     Parameters
@@ -1879,6 +1879,10 @@ def eff_pol_sandberg_colby_multistep(suc, disch):
         Suction state.
     disch : ccp.State
         Discharge state.
+    disch_s : ccp.State, optional
+        Accepted for interface compatibility with the other polytropic
+        methods (it is the scratch state passed by the point solver) and not
+        used by this method.
 
     Returns
     -------
@@ -1891,7 +1895,7 @@ def eff_pol_sandberg_colby_multistep(suc, disch):
     return (wp / dh).to("dimensionless")
 
 
-def head_pol_sandberg_colby_multistep(suc, disch, nstep=10):
+def head_pol_sandberg_colby_multistep(suc, disch, disch_s=None, nstep=10):
     r"""Polytropic head multistep method as described in section 5-2.4
     :cite:`asmePTC10_2022`.
 
@@ -1904,6 +1908,10 @@ def head_pol_sandberg_colby_multistep(suc, disch, nstep=10):
         Suction state.
     disch : ccp.State
         Discharge state.
+    disch_s : ccp.State, optional
+        Accepted for interface compatibility with the other polytropic
+        methods (it is the scratch state passed by the point solver) and not
+        used by this method.
     nstep : int, optional
         Number of integration steps. Default is 10.
 
