@@ -502,7 +502,7 @@ class State(CP.AbstractState):
         """
         T_critical = Q_(super().T_critical(), "K")
         if units:
-            T_critical.to(units)
+            T_critical = T_critical.to(units)
         return T_critical
 
     def rho(self, units=None):

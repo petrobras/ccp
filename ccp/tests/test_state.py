@@ -484,3 +484,14 @@ def test_call_refprop():
 
     assert_allclose(r["p"], 442071.736, rtol=1e-3)
     assert_allclose(r["s"], 4158.72138, rtol=1e-3)
+
+
+def test_critical_properties_units():
+    state = State(p=Q_(1, "bar"), T=Q_(300, "degK"), fluid={"CO2": 1})
+    T_critical = state.T_critical()
+    assert T_critical.units == "kelvin"
+    assert_allclose(T_critical.m, 304.1282, rtol=1e-5)
+    # regression: the units argument was ignored and the value returned in K
+    T_critical_C = state.T_critical(units="degC")
+    assert T_critical_C.units == "degree_Celsius"
+    assert_allclose(T_critical_C.m, 304.1282 - 273.15, rtol=1e-5)
