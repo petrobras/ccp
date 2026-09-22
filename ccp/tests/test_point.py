@@ -975,8 +975,16 @@ def _closure_cases():
 
 # R12 at pressure ratio 13, dense CO2-rich gas at 114 bar, near-critical
 # ethylene with a discharge density below the suction density, the CO2/methane
-# case where REFPROP reports a spurious two-phase flash, and a natural gas
-_CLOSURE_CASE_NAMES = ["Schultz", "SC G", "ETH 8", "CO2 INJ 3", "PLANO 1 DRY"]
+# case where REFPROP reports a spurious two-phase flash, the densest CO2 case
+# (240 to 448 bar) and a natural gas
+_CLOSURE_CASE_NAMES = [
+    "Schultz",
+    "SC G",
+    "ETH 8",
+    "CO2 INJ 3",
+    "CO2 INJ 5",
+    "PLANO 1 DRY",
+]
 _CLOSURE_METHODS = [
     "schultz",
     "mallen_saville",
