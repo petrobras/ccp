@@ -2052,7 +2052,7 @@ def head_pol_sandberg_colby_multistep(suc, disch, disch_s=None, nstep=10):
         # Newton first step: the temperature rise scales with 1/eff
         eff_0 = min(max(guess, 0.02), 0.999)
         r0 = residual(eff_0)
-        eff_1 = eff_0 + r0 * eff_0 / max(r0 + T_d - T_s, 1e-3)
+        eff_1 = _newton_step(eff_0, eff_0 + r0 * eff_0 / max(r0 + T_d - T_s, 1e-3))
         return solve_monotone(
             residual,
             eff_0,
@@ -2472,6 +2472,22 @@ def _magnitude(value, units):
     return float(value)
 
 
+def _newton_step(x0, x1, lo=None, hi=None, max_move=0.25):
+    """Clamp a Newton first step to a bounded relative move and to [lo, hi].
+
+    The slope estimates behind the first steps are ideal-gas ones; for dense
+    fluids they can be far off and the secant recovers from a bounded step
+    much faster than from a wild one.
+    """
+    move = max_move * abs(x0)
+    x1 = min(max(x1, x0 - move), x0 + move)
+    if lo is not None:
+        x1 = max(x1, lo)
+    if hi is not None:
+        x1 = min(x1, hi)
+    return x1
+
+
 def _kv(suc):
     """Suction isentropic volume exponent, guarded for the initial guesses."""
     k = float(suc.kv().magnitude)
@@ -2509,7 +2525,7 @@ def _isentropic_T_at_rho(suc, disch, rho):
 
     # Newton first step with ds/dT = cv/T at the guess
     r0 = residual(T0)
-    T1 = T0 - r0 * T0 / max(disch.cv().magnitude, 1.0)
+    T1 = _newton_step(T0, T0 - r0 * T0 / max(disch.cv().magnitude, 1.0))
     T = solve_monotone(
         residual,
         T0,
@@ -2544,7 +2560,7 @@ def _isentropic_p_at_T(suc, disch, T):
 
     # Newton first step with ds/dp = -v/T (ideal gas) at the guess
     r0 = residual(p0)
-    p1 = p0 * (1.0 - r0 * T * disch.rho().magnitude / p0)
+    p1 = _newton_step(p0, p0 * (1.0 - r0 * T * disch.rho().magnitude / p0))
     p = solve_monotone(
         residual,
         p0,
@@ -2635,7 +2651,7 @@ def _solve_T_at_p_for_eff_from(
         return _magnitude(eff_calc_func(suc, disch, scratch), "dimensionless") - eff
 
     r0 = residual(T0)
-    T1 = max(T0 + r0 * (T0 - T_s), T_lo * (1.0 + 1e-6))
+    T1 = _newton_step(T0, T0 + r0 * (T0 - T_s), lo=T_lo * (1.0 + 1e-6))
     T = solve_monotone(
         residual,
         T0,
@@ -2749,7 +2765,7 @@ def _multistep_disch_from_head_eff(suc, head, eff):
 
         # Newton first step with dh/dp = v at the end of the path
         r0 = residual(guess)
-        p_1 = guess - r0 * work[0].rho().magnitude
+        p_1 = _newton_step(guess, guess - r0 * work[0].rho().magnitude)
         return solve_monotone(
             residual,
             guess,
@@ -2787,7 +2803,9 @@ def _multistep_disch_from_disch_T_head(suc, T_d, head):
         r0 = residual(guess)
         probe.update(p=Q_(guess, "Pa"), T=T_d_q)
         eff_0 = min(max(head / (probe.h().magnitude - h_s), 0.01), 1.0)
-        p_1 = guess - r0 * guess * _polytropic_exponent(suc, eff_0) / T_d
+        p_1 = _newton_step(
+            guess, guess - r0 * guess * _polytropic_exponent(suc, eff_0) / T_d
+        )
         return solve_monotone(
             residual,
             guess,
@@ -2868,7 +2886,7 @@ def _isentropic_p_at_h(suc, disch, h):
 
     # Newton first step with dh/dp = v at the guess
     r0 = residual(p0)
-    p1 = p0 - r0 * disch.rho().magnitude
+    p1 = _newton_step(p0, p0 - r0 * disch.rho().magnitude)
     p = solve_monotone(
         residual,
         p0,
@@ -2993,7 +3011,7 @@ def disch_from_suc_rho_eff(suc, disch_rho, eff, eff_calc_func):
     else:
         # Newton first step with the ideal-gas slope d(eff)/dT = -1/(T - T_s)
         r0 = residual(T0)
-        increasing, x0, x1 = False, T0, max(T0 + r0 * (T0 - T_s), T_lo)
+        increasing, x0, x1 = False, T0, _newton_step(T0, T0 + r0 * (T0 - T_s), lo=T_lo)
 
     T = solve_monotone(
         residual,
@@ -3096,7 +3114,7 @@ def disch_from_suc_head_eff(suc, head, eff, polytropic_method=None):
     # Newton first step with d(head)/dp = v_d (isenthalpic: ds/dp = -v/T)
     p0 = min(max(p0, p_s * (1.0 + 1e-9)), p_isen)
     r0 = residual(p0)
-    p1 = p0 - r0 * disch.rho().magnitude
+    p1 = _newton_step(p0, p0 - r0 * disch.rho().magnitude, lo=p_s, hi=p_isen)
     p = solve_monotone(
         residual,
         p0,
@@ -3216,7 +3234,7 @@ def disch_from_suc_disch_T_head(suc, disch_T, head, polytropic_method=None):
     lo, hi = min(p_s, p_isen), max(p_s, p_isen)
     p0 = min(max(p0, lo), hi)
     r0 = residual(p0)
-    p1 = p0 - r0 * disch.rho().magnitude
+    p1 = _newton_step(p0, p0 - r0 * disch.rho().magnitude, lo=lo, hi=hi)
     p = solve_monotone(
         residual,
         p0,

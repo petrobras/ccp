@@ -123,7 +123,14 @@ def solve_monotone(
         if gx == 0.0:
             return x
         if math.isnan(gx):
-            raise ValueError(f"{name}: not a number at x = {x}")
+            # like a failed evaluation: shorten the step
+            target = 0.5 * (lo + hi) if xp is None else xp
+            x_bad = x
+            x = 0.5 * (x + target)
+            x_next = None
+            if abs(x - x_bad) <= rtol * max(abs(x), tiny):
+                raise ValueError(f"{name}: not a number at x = {x_bad}")
+            continue
 
         # update the bracket
         bracketed_before = a is not None and b is not None
