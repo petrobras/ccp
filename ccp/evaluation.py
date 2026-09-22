@@ -2,6 +2,7 @@
 
 import zipfile
 import toml
+import numpy as np
 import pandas as pd
 import pickle
 from .data_io import filter_data
@@ -192,6 +193,10 @@ class Evaluation:
         if parallel is None:
             parallel = self.parallel
 
+        # One task per row carrying scalars only: the states are built in the
+        # worker (their flash is the row's main cost and runs in parallel) and
+        # the converted impellers are shipped once per worker through the pool
+        # initializer instead of being unpickled by every task.
         args_list = []
         for i, row in df.iterrows():
             if self.operation_fluid is not None:
@@ -206,72 +211,79 @@ class Evaluation:
                 args_list.append({"valid": False})
                 continue
 
-            try:
-                arg_dict = {
+            args_list.append(
+                {
                     "flow_v": row.flow_v,
                     "speed": Q_(row.speed, self.data_units["speed"]),
-                    "suc": State(
-                        p=Q_(row.ps, self.data_units["ps"]),
-                        T=Q_(row.Ts, self.data_units["Ts"]),
-                        fluid=fluid,
-                    ),
-                    "disch": State(
-                        p=Q_(row.pd, self.data_units["pd"]),
-                        T=Q_(row.Td, self.data_units["Td"]),
-                        fluid=fluid,
-                    ),
-                    "imp_new": self.impellers_new[int(row.cluster)],
-                    "valid": is_valid,
+                    "ps": Q_(row.ps, self.data_units["ps"]),
+                    "Ts": Q_(row.Ts, self.data_units["Ts"]),
+                    "pd": Q_(row.pd, self.data_units["pd"]),
+                    "Td": Q_(row.Td, self.data_units["Td"]),
+                    "fluid": fluid,
+                    "cluster": int(row.cluster),
+                    "valid": True,
                 }
-            except ValueError:
-                if "valid" in df.columns:
-                    df.loc[i, "valid"] = False
-                args_list.append({"valid": False})
-                continue
-
-            args_list.append(arg_dict)
+            )
 
         # parallel=False (a debugging switch) and a global disable both
         # yield the serial stand-in, keeping a single pipeline.
-        with create_pool(parallel=parallel) as pool:
-            print("Calculating points...")
-            results = list(tqdm(pool.imap(create_points_parallel, args_list)))
-            print("Calculating expected points...")
-            expected_results = list(tqdm(pool.imap(get_interpolated_point, args_list)))
+        with create_pool(
+            parallel=parallel,
+            initializer=_init_worker_impellers,
+            initargs=(self.impellers_new,),
+            tasks=len(args_list),
+        ) as pool:
+            print("Calculating points and expected points...")
+            chunksize = max(1, len(args_list) // 64)
+            results = list(
+                tqdm(
+                    pool.imap(calculate_evaluation_point, args_list, chunksize),
+                    total=len(args_list),
+                )
+            )
 
+        n = len(df)
         # -1.0 marks rows where points were not computed (typically invalid rows).
-        df["eff"] = -1.0
-        df["head"] = -1.0
-        df["power"] = -1.0
-        df["p_disch"] = -1.0
-        df["expected_eff"] = -1.0
-        df["expected_head"] = -1.0
-        df["expected_power"] = -1.0
-        df["expected_p_disch"] = -1.0
-        df["delta_eff"] = -1.0
-        df["delta_head"] = -1.0
-        df["delta_power"] = -1.0
-        df["delta_p_disch"] = -1.0
+        value_columns = [
+            "eff",
+            "head",
+            "power",
+            "p_disch",
+            "expected_eff",
+            "expected_head",
+            "expected_power",
+            "expected_p_disch",
+            "delta_eff",
+            "delta_head",
+            "delta_power",
+            "delta_p_disch",
+        ]
+        values = {name: np.full(n, -1.0) for name in value_columns}
         # Error tracking columns
-        df["error"] = None
-        df["error_type"] = None
-        df["expected_error"] = None
-        df["expected_error_type"] = None
+        error_columns = ["error", "error_type", "expected_error", "expected_error_type"]
+        errors = {name: [None] * n for name in error_columns}
+        invalid_rows = []
 
-        for i, (point_op, error_info), (point_expected, expected_error) in zip(
-            df.index, results, expected_results
-        ):
+        for k, (i, result) in enumerate(zip(df.index, results)):
+            if result["invalid_state"]:
+                invalid_rows.append(i)
+                continue
+            point_op = result["point"]
+            error_info = result["error"]
+            point_expected = result["expected"]
+            expected_error = result["expected_error"]
+
             # Store error info if calculation failed
             if error_info is not None:
-                df.loc[i, "error"] = error_info["exception"]
-                df.loc[i, "error_type"] = error_info["type"]
+                errors["error"][k] = error_info["exception"]
+                errors["error_type"][k] = error_info["type"]
                 if not parallel:
                     # In sequential mode, print full traceback for debugging
                     print(f"Error at index {i}: {error_info['traceback']}")
 
             if expected_error is not None:
-                df.loc[i, "expected_error"] = expected_error["exception"]
-                df.loc[i, "expected_error_type"] = expected_error["type"]
+                errors["expected_error"][k] = expected_error["exception"]
+                errors["expected_error_type"][k] = expected_error["type"]
                 if not parallel:
                     print(
                         f"Expected point error at index {i}: {expected_error['traceback']}"
@@ -279,38 +291,45 @@ class Evaluation:
 
             # point_op/point_expected are None when row is invalid or failed.
             if point_op is not None and point_expected is not None:
-                df.loc[i, "eff"] = point_op.eff.m
-                df.loc[i, "head"] = point_op.head.m
-                df.loc[i, "power"] = point_op.power.m
-                df.loc[i, "p_disch"] = point_op.disch.p("bar").m
-                df.loc[i, "expected_eff"] = point_expected.eff.m
-                df.loc[i, "expected_head"] = point_expected.head.m
-                df.loc[i, "expected_power"] = point_expected.power.m
-                df.loc[i, "expected_p_disch"] = point_expected.disch.p("bar").m
-                df.loc[i, "delta_eff"] = (point_op.eff - point_expected.eff).m * 100
-                df.loc[i, "delta_head"] = (
-                    (point_op.head - point_expected.head) / point_expected.head
-                ).m * 100
-                df.loc[i, "delta_power"] = (
-                    (point_op.power - point_expected.power) / point_expected.power
-                ).m * 100
-                df.loc[i, "delta_p_disch"] = (
-                    (point_op.disch.p("bar") - point_expected.disch.p("bar"))
-                    / point_expected.disch.p("bar")
-                ).m * 100
+                eff_op = point_op.eff.m
+                head_op = point_op.head.m
+                power_op = point_op.power.m
+                p_disch_op = point_op.disch.p("bar").m
+                eff_exp = point_expected.eff.m
+                head_exp = point_expected.head.m
+                power_exp = point_expected.power.m
+                p_disch_exp = point_expected.disch.p("bar").m
+                values["eff"][k] = eff_op
+                values["head"][k] = head_op
+                values["power"][k] = power_op
+                values["p_disch"][k] = p_disch_op
+                values["expected_eff"][k] = eff_exp
+                values["expected_head"][k] = head_exp
+                values["expected_power"][k] = power_exp
+                values["expected_p_disch"][k] = p_disch_exp
+                values["delta_eff"][k] = (eff_op - eff_exp) * 100
+                values["delta_head"][k] = (head_op - head_exp) / head_exp * 100
+                values["delta_power"][k] = (power_op - power_exp) / power_exp * 100
+                values["delta_p_disch"][k] = (
+                    (p_disch_op - p_disch_exp) / p_disch_exp * 100
+                )
 
-        if len(df) > 1 and hasattr(df.index, "dtype"):
+        for name in value_columns:
+            df[name] = values[name]
+        for name in error_columns:
+            df[name] = errors[name]
+        if invalid_rows and "valid" in df.columns:
+            df.loc[invalid_rows, "valid"] = False
+
+        if len(df) > 1 and pd.api.types.is_datetime64_any_dtype(df.index):
             # Use elapsed fraction in [0, 1] for coloring over time.
-            total_time = df.index[-1] - df.index[0]
-            total_seconds = total_time.total_seconds()
-            # create column for timescale
-            df["timescale"] = 0.0
-            for i, row in df.iterrows():
-                sample_time = i - df.index[0]
-                if total_seconds == 0:
-                    df.loc[i, "timescale"] = 0.0
-                else:
-                    df.loc[i, "timescale"] = sample_time.total_seconds() / total_seconds
+            total_seconds = (df.index[-1] - df.index[0]).total_seconds()
+            if total_seconds == 0:
+                df["timescale"] = 0.0
+            else:
+                df["timescale"] = (
+                    (df.index - df.index[0]).total_seconds() / total_seconds
+                )
         elif "timescale" not in df.columns:
             df["timescale"] = 0.0
 
@@ -765,6 +784,73 @@ class Evaluation:
             evaluation.data_std = data_std
 
             return evaluation
+
+
+# converted impellers of the Evaluation being calculated, set once per worker
+# by the pool initializer (see create_pool) and indexed by cluster
+_worker_impellers = None
+
+
+def _init_worker_impellers(impellers):
+    global _worker_impellers
+    _worker_impellers = impellers
+
+
+def _error_info(exc):
+    import traceback
+
+    return {
+        "exception": str(exc),
+        "type": type(exc).__name__,
+        "traceback": traceback.format_exc(),
+    }
+
+
+def calculate_evaluation_point(x):
+    """Operating point and expected point of one evaluation row.
+
+    ``x`` holds scalars only (``ps``, ``Ts``, ``pd``, ``Td``, ``fluid``,
+    ``flow_v``, ``speed``, ``cluster``, ``valid``); the states are built here
+    and the expected point comes from the converted impeller of the row's
+    cluster, shipped to the worker by the pool initializer.
+
+    Returns
+    -------
+    dict
+        ``point`` and ``expected`` (Point or None), ``error`` and
+        ``expected_error`` (error info dicts with 'exception', 'type' and
+        'traceback', or None) and ``invalid_state`` (True when the suction or
+        discharge state could not be defined, which marks the row invalid).
+        Rows with ``valid=False`` return all None: that is data that exceeded
+        the fluctuation thresholds, not an error.
+    """
+    result = {
+        "point": None,
+        "error": None,
+        "expected": None,
+        "expected_error": None,
+        "invalid_state": False,
+    }
+    if not x.get("valid", True):
+        return result
+    try:
+        suc = State(p=x["ps"], T=x["Ts"], fluid=x["fluid"])
+        disch = State(p=x["pd"], T=x["Td"], fluid=x["fluid"])
+    except ValueError:
+        result["invalid_state"] = True
+        return result
+    try:
+        result["point"] = Point(
+            suc=suc, disch=disch, flow_v=x["flow_v"], speed=x["speed"]
+        )
+    except Exception as e:
+        result["error"] = _error_info(e)
+    try:
+        imp_new = _worker_impellers[x["cluster"]]
+        result["expected"] = imp_new.point(flow_v=x["flow_v"], speed=x["speed"])
+    except Exception as e:
+        result["expected_error"] = _error_info(e)
+    return result
 
 
 def create_points_parallel(x):

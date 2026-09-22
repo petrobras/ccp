@@ -1,4 +1,7 @@
 from copy import copy
+from functools import wraps
+
+import warnings
 
 import numpy as np
 import pandas as pd
@@ -12,6 +15,15 @@ from ccp.config.utilities import r_getattr
 from ccp.data_io.serializers import Serializable
 
 from .state import State
+
+
+class PhaseWarning(UserWarning):
+    """The discharge resolved with an imposed phase was not a stable state.
+
+    Emitted when ``ccp.config.DEFAULT_PHASE`` imposed a phase on the suction
+    and the discharge derived from it lies inside the phase envelope; the
+    point is re-solved without imposing a phase.
+    """
 
 
 class Point(Serializable):
@@ -268,7 +280,10 @@ class Point(Serializable):
 
         solver_error = None
         try:
-            unresolved = solve(self)
+            # the discharge closures are compressions from the suction: the
+            # imposed phase may drive every flash (see State.single_phase_solver)
+            with State.single_phase_solver():
+                unresolved = solve(self)
         except (ValueError, RuntimeError) as exc:
             # a thermodynamic relation failed to converge, typically because an
             # argument is out of a physically reasonable range
@@ -310,6 +325,18 @@ class Point(Serializable):
                 f"{out_of_range_dict}."
             ) from solver_error
 
+        # A discharge derived under a phase imposed by ccp.config.DEFAULT_PHASE
+        # is verified once against an unconstrained flash; a metastable root
+        # (discharge inside the phase envelope) re-solves the point the legacy
+        # way, without imposing a phase.
+        if (
+            "disch" not in kwargs_dict
+            and ccp.config.PHASE_CHECK
+            and getattr(self.suc, "_phase_auto", False)
+            and not self.disch.phase_is_stable()
+        ):
+            self._solve_unconstrained(kwargs_dict)
+
         self.reynolds = reynolds(self.suc, self.speed, self.b, self.D)
         self.mach = mach(self.suc, self.speed, self.D)
         if phi_ratio is None:
@@ -336,6 +363,47 @@ class Point(Serializable):
             self.volume_ratio_ratio = volume_ratio_ratio
 
         self._add_point_plot()
+
+    def _solve_unconstrained(self, kwargs_dict):
+        """Solve the point again with an unconstrained copy of the suction.
+
+        Used when the discharge found under the phase imposed by
+        ``ccp.config.DEFAULT_PHASE`` is a metastable root: every derived state
+        inherits ``phase=False`` from the suction copy, so the solve follows the
+        legacy (full stability analysis) path and reproduces the legacy result.
+        """
+        from ccp.point_solver import VAR_NAMES, solve
+
+        warnings.warn(
+            "The discharge state found with the imposed phase "
+            f"'{self.suc.phase}' is not a stable state (it lies inside the phase "
+            "envelope); solving the point again without imposing a phase. Set "
+            "ccp.config.DEFAULT_PHASE = None to disable the phase imposition or "
+            "build the suction with phase=False.",
+            PhaseWarning,
+            stacklevel=3,
+        )
+        suc = self.suc
+        self.suc = State(
+            p=suc.p(), T=suc.T(), fluid=suc.fluid, EOS=suc.EOS, phase=False
+        )
+        self._dummy_state = copy(self.suc)
+        for k in VAR_NAMES:
+            if k not in kwargs_dict:
+                setattr(self, k, None)
+        self.casing_heat_loss = None
+        try:
+            unresolved = solve(self)
+        except RuntimeError as exc:
+            raise ValueError(
+                "A thermodynamic relation failed to converge while solving the "
+                f"point without an imposed phase: {exc}"
+            ) from exc
+        if unresolved:
+            raise ValueError(
+                "Could not calculate the point without an imposed phase; "
+                f"unresolved variables: {unresolved}."
+            )
 
     def _add_point_plot(self):
         """Add plot to point after point is fully defined."""
@@ -519,13 +587,21 @@ class Point(Serializable):
         return converted_point
 
     def __getstate__(self):
+        # plot closures are rebuilt on load; the dummy state is a scratch copy
+        # of the suction (one state less to re-flash per pickled point)
         attributes = self.__dict__.copy()
-        final_attributes = {k: v for k, v in attributes.items() if "plot" not in k}
+        final_attributes = {
+            k: v
+            for k, v in attributes.items()
+            if "plot" not in k and k != "_dummy_state"
+        }
 
         return final_attributes
 
     def __setstate__(self, state):
         self.__dict__ = state
+        if "_dummy_state" not in state:
+            self._dummy_state = copy(self.suc)
         self._add_point_plot()
 
     def to_dict(self):
@@ -539,11 +615,17 @@ class Point(Serializable):
         dict
             Dict with the parameters that define the point.
         """
+        # a phase imposed by ccp.config.DEFAULT_PHASE is a runtime policy, not
+        # part of the point's definition: store the user's intent instead
+        if getattr(self.suc, "_phase_auto", False):
+            phase = None
+        else:
+            phase = self.suc.phase
         return dict(
             p=str(self.suc.p()),
             T=str(self.suc.T()),
             fluid=self.suc.fluid,
-            phase=str(self.suc.phase),
+            phase=str(phase),
             speed=str(self.speed),
             flow_v=str(self.flow_v),
             head=str(self.head),
@@ -581,6 +663,9 @@ class Point(Serializable):
         # store the string "None" when no phase was forced.
         if phase in (None, "None", ""):
             phase = None
+        elif phase in (False, "False"):
+            # the suction opted out of ccp.config.DEFAULT_PHASE
+            phase = False
         suc = State(
             p=Q_(dict_parameters.pop("p")),
             T=Q_(dict_parameters.pop("T")),
@@ -2388,6 +2473,23 @@ def head_from_psi(D, psi, speed):
     return head.to("J/kg")
 
 
+def _single_phase_solve(func):
+    """Run a discharge closure with the imposed phase driving every flash.
+
+    The closures below compute a compression discharge from the suction, so
+    the single-phase root is the physical one (see
+    :meth:`ccp.State.single_phase_solver`).
+    """
+
+    @wraps(func)
+    def inner(*args, **kwargs):
+        with State.single_phase_solver():
+            return func(*args, **kwargs)
+
+    return inner
+
+
+@_single_phase_solve
 def isentropic_disch_from_rho(suc, disch_rho):
     """Discharge state of an isentropic compression to a target density.
 
@@ -2443,6 +2545,7 @@ def isentropic_disch_from_rho(suc, disch_rho):
     return disch
 
 
+@_single_phase_solve
 def disch_from_suc_rho_eff(suc, disch_rho, eff, eff_calc_func):
     """Discharge at a fixed density matching a polytropic efficiency.
 
@@ -2491,6 +2594,7 @@ def disch_from_suc_rho_eff(suc, disch_rho, eff, eff_calc_func):
     return disch
 
 
+@_single_phase_solve
 def disch_from_suc_head_eff(suc, head, eff, polytropic_method=None):
     """Calculate discharge state from suction, head and efficiency.
 
@@ -2539,6 +2643,7 @@ def disch_from_suc_head_eff(suc, head, eff, polytropic_method=None):
     return disch
 
 
+@_single_phase_solve
 def disch_from_suc_disch_p_eff(suc, disch_p, eff, polytropic_method=None):
     """Calculate discharge state from suction, discharge pressure and efficiency.
 
@@ -2574,6 +2679,7 @@ def disch_from_suc_disch_p_eff(suc, disch_p, eff, polytropic_method=None):
     return disch
 
 
+@_single_phase_solve
 def disch_from_suc_disch_T_head(suc, disch_T, head, polytropic_method=None):
     """Calculate discharge state from suction, discharge temperature and head.
 

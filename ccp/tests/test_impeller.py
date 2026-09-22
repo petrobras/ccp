@@ -807,3 +807,55 @@ def test_pickle(imp0):
     assert pickled_imp0 == imp0
     assert hasattr(imp0, "head_plot") is True
     assert hasattr(pickled_imp0, "head_plot") is True
+
+
+def test_curve_data_matches_curve(imp2):
+    speed = Q_(
+        (imp2.curves[0].speed.m + imp2.curves[1].speed.m) / 2, imp2.curves[0].speed.units
+    )
+    data = imp2._curve_data(speed)
+    assert data["points"] is None  # interpolated without building points
+    curve = imp2.curve(speed)
+    assert_allclose(curve.flow_v.m, data["flow_v"])
+    assert_allclose(curve.head.m, data["head"])
+    assert_allclose(curve.eff.m, data["eff"])
+    for name in ["phi_ratio", "psi_ratio", "reynolds_ratio", "mach_diff", "volume_ratio_ratio"]:
+        assert_allclose([getattr(p, name).m for p in curve], data[name])
+    assert float(speed.to("rad/s").m) in imp2._curve_cache
+    # the cache is derived data and is not pickled
+    assert "_curve_cache" not in pickle.loads(pickle.dumps(imp2)).__dict__
+    # fan-law extrapolation above the map builds its points once
+    high = imp2.curves[-1].speed * 1.1
+    data = imp2._curve_data(high)
+    assert data["extrapolated"] is True
+    assert len(data["points"]) == len(imp2.curves[-1])
+    curve = imp2.curve(high)
+    assert_allclose(curve.head.m, data["head"])
+
+
+def test_point_uses_interpolated_curve_data(imp2):
+    speed = Q_(
+        (imp2.curves[0].speed.m + imp2.curves[1].speed.m) / 2, imp2.curves[0].speed.units
+    )
+    curve = imp2.curve(speed)
+    flow_v = (curve.flow_v[1] + curve.flow_v[2]) / 2
+    point = imp2.point(flow_v=flow_v, speed=speed)
+    head = np.interp(flow_v.m, curve.flow_v.m, curve.head.m)
+    eff = np.interp(flow_v.m, curve.flow_v.m, curve.eff.m)
+    assert_allclose(point.head.m, head)
+    assert_allclose(point.eff.m, eff)
+    assert point.speed == curve.speed
+
+
+def test_point_record_converts_like_the_point(imp2):
+    from ccp.impeller import _PointRecord
+
+    new_suc = State(p=Q_(12, "bar"), T=Q_(35, "degC"), fluid={"co2": 0.7, "n2": 0.3})
+    original = imp2.points[2]
+    from_point = Point.convert_from(original, suc=new_suc, find="speed")
+    from_record = Point.convert_from(_PointRecord(original), suc=new_suc, find="speed")
+    assert_allclose(from_record.head.m, from_point.head.m)
+    assert_allclose(from_record.speed.m, from_point.speed.m)
+    assert_allclose(from_record.reynolds_ratio.m, from_point.reynolds_ratio.m)
+    assert_allclose(from_record.mach_diff.m, from_point.mach_diff.m)
+    assert_allclose(from_record.disch.T().m, from_point.disch.T().m)

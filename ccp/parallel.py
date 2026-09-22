@@ -23,8 +23,14 @@ container). ``CCP_POOL_START_TIMEOUT`` (seconds, default 60) bounds how
 long a pool may take to start its workers before ccp gives up — raise it
 on machines where worker startup (one ccp + REFPROP import per worker) is
 slow.
+
+Calls that need no per-pool state share one long-lived pool, started on
+first use (``warm_up()`` starts it early) and terminated at interpreter
+exit or by ``shutdown_pool()``. Calls that ship state to the workers
+through an initializer (``Evaluation``) get a dedicated pool.
 """
 
+import atexit
 import multiprocessing
 import os
 import sys
@@ -184,10 +190,10 @@ class _SerialPool:
     """Stand-in for the multiprocessing.Pool API ccp uses, running every
     task serially in the current process."""
 
-    def map(self, func, iterable):
+    def map(self, func, iterable, chunksize=None):
         return [func(item) for item in iterable]
 
-    def imap(self, func, iterable):
+    def imap(self, func, iterable, chunksize=1):
         return (func(item) for item in iterable)
 
 
@@ -195,7 +201,7 @@ _startup_verified = False
 
 
 @contextmanager
-def create_pool(processes=None, parallel=None):
+def create_pool(processes=None, parallel=None, initializer=None, initargs=(), tasks=None):
     """Context manager yielding the worker pool used by ccp calculations.
 
     Honors ``ccp.config.PARALLEL``/``ccp.config.POOL_SIZE`` and the
@@ -213,6 +219,16 @@ def create_pool(processes=None, parallel=None):
         False forces a serial pool (a call site's explicit debugging
         switch). The default (None) follows ``parallel_enabled()``; True
         does not override a global disable.
+    initializer : callable, optional
+        Called once in every worker with ``initargs`` before any task, the
+        way to ship a large shared object (a converted impeller, say) once
+        per worker instead of once per task. Called in-process for the
+        serial stand-in.
+    initargs : tuple, optional
+        Arguments for ``initializer``.
+    tasks : int, optional
+        Number of tasks the caller will submit; the worker count is capped
+        at it so a handful of tasks does not start a worker per CPU.
 
     Yields
     ------
@@ -220,28 +236,119 @@ def create_pool(processes=None, parallel=None):
         A ``multiprocessing.pool.Pool`` or a serial stand-in.
     """
     if parallel is False or not parallel_enabled():
+        if initializer is not None:
+            initializer(*initargs)
         yield _SerialPool()
         return
     if processes is None:
-        processes = pool_size()
+        processes = _default_processes()
+    if initializer is None:
+        # Calls without per-pool state share one long-lived pool: a fresh
+        # pool costs its startup plus a first-task warm-up in every worker
+        # (REFPROP mixture setup), which exceeds the work of a small map.
+        pool = _get_shared_pool(processes)
+        try:
+            yield pool
+        except BaseException:
+            # the pool may hold half-finished tasks; the next call starts
+            # a clean one
+            shutdown_pool()
+            raise
+        return
+    if tasks is not None:
+        processes = max(1, min(processes, int(tasks)))
+    pool = _new_pool(processes, initializer=initializer, initargs=initargs)
+    with pool:
+        _verify_startup(pool, processes)
+        yield pool
+
+
+def _default_processes():
+    processes = pool_size()
     if processes is None:
         # process_cpu_count (3.13+) respects CPU affinity, e.g. in
         # cpuset-limited containers.
         processes = getattr(os, "process_cpu_count", os.cpu_count)() or 1
+    return processes
+
+
+def _new_pool(processes, initializer=None, initargs=()):
+    kwargs = {}
+    if initializer is not None:
+        kwargs = dict(initializer=initializer, initargs=tuple(initargs))
     try:
-        pool = get_mp_context().Pool(processes)
+        return get_mp_context().Pool(processes, **kwargs)
     except RuntimeError as exc:
         # multiprocessing raises this in an unguarded child re-importing
         # the main module; replace it with an actionable message.
         if "bootstrapping phase" in str(exc):
             raise RuntimeError(_GUARD_MESSAGE) from exc
         raise
-    with pool:
-        # The missing-guard failure is deterministic per process, so one
-        # verified startup proves later pools cannot hit it — skip the
-        # blocking readiness check after the first success.
-        global _startup_verified
-        if not _startup_verified:
-            _await_pool_ready(pool, processes, _start_timeout())
-            _startup_verified = True
-        yield pool
+
+
+def _verify_startup(pool, processes):
+    # The missing-guard failure is deterministic per process, so one
+    # verified startup proves later pools cannot hit it — skip the
+    # blocking readiness check after the first success.
+    global _startup_verified
+    if not _startup_verified:
+        _await_pool_ready(pool, processes, _start_timeout())
+        _startup_verified = True
+
+
+_shared_pool = None
+_shared_pool_processes = None
+
+
+def _get_shared_pool(processes):
+    global _shared_pool, _shared_pool_processes
+    if _shared_pool is not None and _shared_pool_processes != processes:
+        shutdown_pool()
+    if _shared_pool is None:
+        pool = _new_pool(processes)
+        try:
+            _verify_startup(pool, processes)
+        except BaseException:
+            pool.terminate()
+            raise
+        _shared_pool = pool
+        _shared_pool_processes = processes
+    return _shared_pool
+
+
+def shutdown_pool():
+    """Terminate the shared worker pool.
+
+    The pool that ``Impeller.convert_from``, ``Impeller.load_from_dict`` and
+    ``Impeller.load_from_engauge_csv`` reuse between calls is started on
+    first use and terminated at interpreter exit; call this to release its
+    workers earlier (a new pool starts on the next call).
+    """
+    global _shared_pool, _shared_pool_processes
+    pool = _shared_pool
+    _shared_pool = None
+    _shared_pool_processes = None
+    if pool is not None:
+        pool.terminate()
+
+
+def warm_up():
+    """Start the shared worker pool now.
+
+    The first pool of a process pays the forkserver start and one ccp
+    import per worker (1 to 2 s); calling this early, from a background
+    thread of an application for instance, moves that cost off the first
+    calculation. Does nothing when parallel execution is disabled.
+
+    Returns
+    -------
+    started : bool
+        True if a pool is running after the call.
+    """
+    if not parallel_enabled():
+        return False
+    _get_shared_pool(_default_processes())
+    return True
+
+
+atexit.register(shutdown_pool)

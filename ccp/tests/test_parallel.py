@@ -21,6 +21,11 @@ def isolate_parallel_config(monkeypatch):
     for var in ("CCP_PARALLEL", "CCP_POOL_SIZE", "CCP_POOL_START_TIMEOUT"):
         monkeypatch.delenv(var, raising=False)
     monkeypatch.setattr(parallel, "_startup_verified", False)
+    # every test starts without the shared pool (and leaves none behind, so
+    # a fake pool never outlives the test that created it)
+    parallel.shutdown_pool()
+    yield
+    parallel.shutdown_pool()
 
 
 def test_parallel_enabled_default():
@@ -123,12 +128,16 @@ class _FakePool:
 
     def __init__(self, processes):
         self.processes = processes
+        self.terminated = False
 
     def __enter__(self):
         return self
 
     def __exit__(self, *args):
         return False
+
+    def terminate(self):
+        self.terminated = True
 
 
 class _FakeContext:
@@ -246,3 +255,71 @@ def test_await_pool_ready_returns_when_worker_responds():
 def test_create_pool_real_workers():
     with create_pool(processes=2) as pool:
         assert pool.map(abs, [-1, -2, -3]) == [1, 2, 3]
+
+
+def test_create_pool_initializer_runs_in_process_when_serial(monkeypatch):
+    monkeypatch.setattr(ccp.config, "PARALLEL", False)
+    calls = []
+    with create_pool(initializer=calls.append, initargs=(1,)) as pool:
+        assert isinstance(pool, _SerialPool)
+        assert pool.imap(abs, [-1], 1) is not None
+    assert calls == [1]
+
+
+def test_create_pool_shares_the_pool_between_calls(monkeypatch):
+    context = _FakeContext()
+    monkeypatch.setattr(parallel, "get_mp_context", lambda: context)
+    monkeypatch.setattr(parallel, "_await_pool_ready", lambda *args: None)
+    with create_pool(processes=2) as first:
+        pass
+    with create_pool(processes=2) as second:
+        pass
+    assert first is second
+    assert len(context.pools) == 1
+    assert first.terminated is False
+    # a different size starts a new pool, shutdown_pool releases it
+    with create_pool(processes=3) as third:
+        assert third is not first
+    assert first.terminated is True
+    parallel.shutdown_pool()
+    assert third.terminated is True
+    with create_pool(processes=3) as fourth:
+        assert fourth is not third
+
+
+def test_create_pool_with_initializer_is_dedicated_and_capped(monkeypatch):
+    class _Context(_FakeContext):
+        def Pool(self, processes, initializer=None, initargs=()):
+            pool = _FakePool(processes)
+            pool.initializer = initializer
+            pool.initargs = initargs
+            self.pools.append(pool)
+            return pool
+
+    context = _Context()
+    monkeypatch.setattr(parallel, "get_mp_context", lambda: context)
+    monkeypatch.setattr(parallel, "_await_pool_ready", lambda *args: None)
+    monkeypatch.setattr(ccp.config, "POOL_SIZE", 8)
+    with create_pool(initializer=len, initargs=("x",), tasks=3) as pool:
+        assert pool.processes == 3
+        assert pool.initializer is len
+        assert pool.initargs == ("x",)
+    with create_pool(initializer=len, initargs=("x",), tasks=3) as other:
+        assert other is not pool
+    assert parallel._shared_pool is None
+
+
+def test_warm_up_and_shared_pool_real_workers(monkeypatch):
+    monkeypatch.setattr(ccp.config, "POOL_SIZE", 2)
+    assert parallel.warm_up() is True
+    shared = parallel._shared_pool
+    assert shared is not None
+    with create_pool() as pool:
+        assert pool is shared
+        assert pool.map(abs, [-1, -2, -3]) == [1, 2, 3]
+    with create_pool() as pool:
+        assert pool is shared
+    parallel.shutdown_pool()
+    assert parallel._shared_pool is None
+    monkeypatch.setattr(ccp.config, "PARALLEL", False)
+    assert parallel.warm_up() is False
