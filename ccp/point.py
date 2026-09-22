@@ -3174,7 +3174,9 @@ def disch_from_suc_disch_p_eff(suc, disch_p, eff, polytropic_method=None):
         )
 
     eff_calc_func = globals()[f"eff_pol_{polytropic_method}"]
-    disch = State(p=disch_p, T=suc.T(), fluid=suc.fluid, EOS=suc.EOS, phase=suc.phase)
+    # start from the suction state: (disch_p, T_s) may lie where the imposed
+    # gas phase does not exist and HEOS refuses the flash
+    disch = State(p=suc.p(), T=suc.T(), fluid=suc.fluid, EOS=suc.EOS, phase=suc.phase)
     scratch = copy(disch)
     _solve_T_at_p_for_eff(
         suc,

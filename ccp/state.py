@@ -989,10 +989,21 @@ class State(CP.AbstractState):
             T = 300.0
         scale = max(abs(target), 1.0)
         raw_update = CP.AbstractState.update
+        bumps = 0
         for _ in range(max_iter):
             try:
                 raw_update(self, CP.PT_INPUTS, p, T)
             except ValueError:
+                # the (p, T) flash with the imposed phase fails where that
+                # phase does not exist (HEOS refuses the gas root at the
+                # suction temperature and the discharge pressure of a high
+                # pressure-ratio compression; REFPROP returns a metastable
+                # root): the target of a compression lies at a higher
+                # temperature, so move up before giving up
+                if bumps < 8:
+                    bumps += 1
+                    T *= 1.3
+                    continue
                 return False
             if prop == "h":
                 residual = CP.AbstractState.hmass(self) - target
