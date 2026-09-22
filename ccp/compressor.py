@@ -2,14 +2,15 @@
 
 from copy import copy
 
+import numpy as np
+
 import ccp
+from ccp import Q_
+from ccp.config.units import check_units
 from ccp.impeller import Impeller
 from ccp.point import Point, flow_from_phi
+from ccp.roots import solve_monotone
 from ccp.state import State
-from ccp.config.units import check_units
-from ccp import Q_
-import numpy as np
-from scipy.optimize import newton
 
 
 class Point1Sec(Point):
@@ -376,22 +377,38 @@ class StraightThrough(Impeller):
                         return True
 
     def calculate_speed_to_match_discharge_pressure(self):
-        """Calculate the speed to match the discharge pressure of the guarantee point."""
+        """Calculate the speed to match the discharge pressure of the guarantee point.
 
-        def calculate_disch_pressure_delta(x):
-            compressor = StraightThrough(
+        Every trial speed rebuilds the compressor (the test points are
+        converted to the guarantee suction at that speed), so the search is
+        organised to need few evaluations: the second guess comes from the fan
+        law with the head the guarantee suction needs to reach the target
+        pressure, and the bracketed secant of :func:`ccp.roots.solve_monotone`
+        takes it from there.
+        """
+        target = self.guarantee_point.disch.p().m + 1  # 1 Pa above, as before
+        speed_0 = self.speed_operational.m
+        flow_m = self.guarantee_point.flow_m
+        cache = {}
+
+        def rebuild(speed):
+            return StraightThrough(
                 guarantee_point=self.guarantee_point,
                 test_points=self.test_points,
-                speed_operational=x,
+                speed_operational=speed,
                 reynolds_correction=self.reynolds_correction,
                 bearing_mechanical_losses=self.bearing_mechanical_losses,
             )
 
-            point = compressor.point(flow_m=self.guarantee_point.flow_m, speed=x)
-            # add 1 pascal to guarantee that discharge pressure is higher
-            return point.disch.p().m - (self.guarantee_point.disch.p().m + 1)
+        def point_at(speed):
+            if speed not in cache:
+                cache[speed] = rebuild(speed).point(flow_m=flow_m, speed=speed)
+            return cache[speed]
 
-        new_speed = newton(calculate_disch_pressure_delta, self.speed_operational.m)
+        def delta_p(speed):
+            return point_at(speed).disch.p().m - target
+
+        new_speed = _speed_for_discharge_pressure(point_at, delta_p, speed_0, target)
         return self.__class__(
             guarantee_point=self.guarantee_point,
             test_points=self.test_points,
@@ -399,6 +416,40 @@ class StraightThrough(Impeller):
             reynolds_correction=self.reynolds_correction,
             bearing_mechanical_losses=self.bearing_mechanical_losses,
         )
+
+
+def _speed_for_discharge_pressure(point_at, delta_p, speed_0, target):
+    """Speed at which ``delta_p(speed)`` vanishes, from the operational speed.
+
+    ``point_at(speed)`` returns the compressor point at that speed and the
+    guarantee mass flow (memoised by the caller, since the first evaluation
+    is reused by the solver). The fan law (head proportional to the square of
+    the speed) gives the second guess from the head needed to reach ``target``
+    with the current efficiency.
+    """
+    point_0 = point_at(speed_0)
+    needed = Point(
+        suc=point_0.suc,
+        disch_p=Q_(target, "Pa"),
+        eff=point_0.eff,
+        flow_m=point_0.flow_m,
+        speed=point_0.speed,
+        b=point_0.b,
+        D=point_0.D,
+        polytropic_method=point_0.polytropic_method,
+    )
+    speed_1 = speed_0 * np.sqrt(needed.head.m / point_0.head.m)
+    speed_1 = min(max(speed_1, 0.6 * speed_0), 1.6 * speed_0)
+    return solve_monotone(
+        delta_p,
+        speed_0,
+        lo=0.5 * speed_0,
+        hi=2.0 * speed_0,
+        rtol=1e-8,
+        increasing=True,
+        x1=speed_1,
+        name="speed to match the discharge pressure",
+    )
 
 
 class PointFirstSection(Point):
@@ -1285,28 +1336,36 @@ class BackToBack(Impeller):
         return p_sec2
 
     def calculate_speed_to_match_discharge_pressure(self):
-        """Calculate the speed to match the discharge pressure of the guarantee point."""
+        """Calculate the speed to match the discharge pressure of the guarantee point.
 
-        def calculate_disch_pressure_delta(x):
-            compressor = BackToBack(
+        See :meth:`StraightThrough.calculate_speed_to_match_discharge_pressure`;
+        the pressure matched is the section 2 discharge pressure.
+        """
+        target = self.guarantee_point_sec2.disch.p().m + 1  # 1 Pa above, as before
+        speed_0 = self.speed_operational.m
+        flow_m = self.guarantee_point_sec2.flow_m
+        cache = {}
+
+        def rebuild(speed):
+            return BackToBack(
                 guarantee_point_sec1=self.guarantee_point_sec1,
                 guarantee_point_sec2=self.guarantee_point_sec2,
                 test_points_sec1=self.test_points_sec1,
                 test_points_sec2=self.test_points_sec2,
-                speed_operational=x,
+                speed_operational=speed,
                 reynolds_correction=self.reynolds_correction,
                 bearing_mechanical_losses=self.bearing_mechanical_losses,
             )
 
-            point = compressor.point_sec2(
-                flow_m=self.guarantee_point_sec2.flow_m, speed=x
-            )
-            # add 1 pascal to guarantee that discharge pressure is higher
-            delta_p = point.disch.p().m - (self.guarantee_point_sec2.disch.p().m + 1)
-            return delta_p
+        def point_at(speed):
+            if speed not in cache:
+                cache[speed] = rebuild(speed).point_sec2(flow_m=flow_m, speed=speed)
+            return cache[speed]
 
-        new_speed = newton(calculate_disch_pressure_delta, self.speed_operational.m)
+        def delta_p(speed):
+            return point_at(speed).disch.p().m - target
 
+        new_speed = _speed_for_discharge_pressure(point_at, delta_p, speed_0, target)
         return self.__class__(
             guarantee_point_sec1=self.guarantee_point_sec1,
             guarantee_point_sec2=self.guarantee_point_sec2,
