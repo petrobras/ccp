@@ -1,16 +1,16 @@
 from contextlib import contextmanager
 from copy import copy
+from itertools import combinations
 from warnings import warn
 
 import CoolProp.CoolProp as CP
 import numpy as np
-import ccp.config
-from scipy.optimize import newton
 from plotly import graph_objects as go
-from itertools import combinations
-from . import _RP
+from scipy.optimize import newton
 
-from . import Q_
+import ccp.config
+
+from . import _RP, Q_
 from .config.fluids import get_name, normalize_mix
 from .config.units import check_units
 
@@ -86,6 +86,10 @@ class State(CP.AbstractState):
     # relative density tolerance used to accept an imposed phase as the
     # stable single-phase root (see _impose_default_phase and phase_is_stable)
     _PHASE_RTOL = 1e-6
+    # looser tolerance used when the unconstrained flash is a spurious
+    # two-phase split (see _spurious_two_phase): its density is off by the
+    # flash's own artifact, a few 1e-4
+    _SPURIOUS_RTOL = 1e-2
 
     # True while a compression solver runs (see single_phase_solver): the
     # imposed phase then also drives the (p, h), (p, s) and (h, s) flashes.
@@ -243,6 +247,7 @@ class State(CP.AbstractState):
         p = CP.AbstractState.p(self)
         T = CP.AbstractState.T(self)
         rho = CP.AbstractState.rhomass(self)
+        spurious_split = self._spurious_two_phase()
         self.specify_phase(phase_index)
         try:
             CP.AbstractState.update(self, CP.PT_INPUTS, p, T)
@@ -255,8 +260,50 @@ class State(CP.AbstractState):
             self.phase = phase
             self._phase_auto = True
             return
+        if (
+            rho_imposed is not None
+            and spurious_split
+            and abs(rho_imposed - rho) <= self._SPURIOUS_RTOL * abs(rho)
+        ):
+            # the unconstrained flash reported a two-phase split whose
+            # "liquid" is not denser than its "vapour": a numerical artifact
+            # of the REFPROP mixture flash far above the critical temperature
+            # (CoolProp HEOS reports single phase there). The imposed root is
+            # the physical one.
+            self.phase = phase
+            self._phase_auto = True
+            return
         self.specify_phase(CP.iphase_not_imposed)
         CP.AbstractState.update(self, CP.PT_INPUTS, p, T)
+
+    def _spurious_two_phase(self):
+        """True when the current unconstrained flash reports a non-physical split.
+
+        A real vapour-liquid equilibrium has two distinct phases. The REFPROP
+        mixture flash occasionally returns a two-phase result with a vanishing
+        quality and two "phases" of the same composition and density (within
+        a few 1e-4) for dense states outside the phase envelope: CO2-rich
+        mixtures with methane at 80 to 120 bar, from 21 to 180 degC, in the
+        Evans and Huble 2017 case set. CoolProp HEOS reports single phase
+        there, and the density of the artifact is off by up to 3e-3. Only
+        evaluated on the REFPROP backend.
+        """
+        if self.backend_name() not in ["REFPROP", "REFPROPMixtureBackend"]:
+            return False
+        try:
+            q = CP.AbstractState.Q(self)
+        except ValueError:
+            return False
+        if not 0.0 <= q <= 1.0:
+            return False
+        try:
+            rho_l = self.saturated_liquid_keyed_output(CP.iDmass)
+            rho_v = self.saturated_vapor_keyed_output(CP.iDmass)
+        except ValueError:
+            return False
+        # a real equilibrium has distinct phases (the liquid is typically 2 to
+        # 10 times denser); the artifact's phases agree to a few 1e-4
+        return abs(rho_l - rho_v) <= 1e-2 * max(abs(rho_l), abs(rho_v))
 
     def phase_is_stable(self):
         """Check the imposed phase against an unconstrained flash.
@@ -942,10 +989,21 @@ class State(CP.AbstractState):
             T = 300.0
         scale = max(abs(target), 1.0)
         raw_update = CP.AbstractState.update
+        bumps = 0
         for _ in range(max_iter):
             try:
                 raw_update(self, CP.PT_INPUTS, p, T)
             except ValueError:
+                # the (p, T) flash with the imposed phase fails where that
+                # phase does not exist (HEOS refuses the gas root at the
+                # suction temperature and the discharge pressure of a high
+                # pressure-ratio compression; REFPROP returns a metastable
+                # root): the target of a compression lies at a higher
+                # temperature, so move up before giving up
+                if bumps < 8:
+                    bumps += 1
+                    T *= 1.3
+                    continue
                 return False
             if prop == "h":
                 residual = CP.AbstractState.hmass(self) - target

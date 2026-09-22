@@ -1,19 +1,20 @@
+import warnings
 from copy import copy
 from functools import wraps
-
-import warnings
 
 import numpy as np
 import pandas as pd
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
-from scipy.optimize import brentq, newton
+from scipy.optimize import newton
 
 import ccp.config
 from ccp.config.units import Q_, check_units
 from ccp.config.utilities import r_getattr
 from ccp.data_io.serializers import Serializable
+from ccp.roots import solve_monotone
 
+from . import similarity
 from .state import State
 
 
@@ -24,6 +25,29 @@ class PhaseWarning(UserWarning):
     and the discharge derived from it lies inside the phase envelope; the
     point is re-solved without imposing a phase.
     """
+
+
+def _check_single_phase_suction(suc):
+    """Raise ``ValueError`` when the suction lies at or inside the phase envelope.
+
+    A state built without an imposed phase carries the vapour quality of its
+    unconstrained flash (``0 <= Q <= 1`` inside the envelope on both the
+    REFPROP and the HEOS backends). The discharge closures assume a
+    single-phase compression, so a wet suction is reported before any solve
+    instead of surfacing as a convergence failure.
+    """
+    if suc.phase:
+        return
+    try:
+        quality = suc.Q()
+    except ValueError:
+        return
+    if 0.0 <= quality <= 1.0:
+        raise ValueError(
+            "The suction state lies at or inside the phase envelope (vapour "
+            f"quality {quality:.4g}); a compressor point needs a single-phase "
+            f"suction. Suction: {suc!r}"
+        )
 
 
 class Point(Serializable):
@@ -272,6 +296,9 @@ class Point(Serializable):
             if getattr(self, k) is not None:
                 kwargs_dict[k] = getattr(self, k)
 
+        if self.suc is not None:
+            _check_single_phase_suction(self.suc)
+
         # The point is computed by a constraint-propagation solver: given any
         # sufficient subset of the arguments above, it fills in the rest (see
         # ccp.point_solver). ``solve`` returns the required variables it could
@@ -318,12 +345,15 @@ class Point(Serializable):
                     "A thermodynamic relation failed to converge: "
                     f"{type(solver_error).__name__}: {solver_error}"
                 )
-            raise ValueError(
-                f"Could not calculate point with ccp.Point(**{kwargs_repr}).\n"
-                f"{reason}\n"
-                "The following kwargs seems out of reasonable range: "
-                f"{out_of_range_dict}."
-            ) from solver_error
+            message = (
+                f"Could not calculate point with ccp.Point(**{kwargs_repr}).\n{reason}"
+            )
+            if out_of_range_dict:
+                message += (
+                    "\nThe following kwargs seem out of reasonable range: "
+                    f"{out_of_range_dict}."
+                )
+            raise ValueError(message) from solver_error
 
         # A discharge derived under a phase imposed by ccp.config.DEFAULT_PHASE
         # is verified once against an unconstrained flash; a metastable root
@@ -873,21 +903,9 @@ class Point(Serializable):
         if remsp is None:
             remsp = self.reynolds / self.reynolds_ratio.m
 
-        ul = 68.205 + 16.13 * np.log10(remsp) - 64.008 * np.sqrt(np.log10(remsp))
-        if 9e4 <= remsp < 8e5:
-            upper_limit = 10**ul
-        elif remsp >= 8e5:
-            upper_limit = remsp * 100
-        else:
-            raise ValueError("Reynolds number out of specified range.")
-
-        ll = -22.733 - 4.247 * np.log10(remsp) + 21.63 * np.sqrt(np.log10(remsp))
-        if 9e4 <= remsp < 5e5:
-            lower_limit = 10**ll
-        elif remsp >= 5e5:
-            lower_limit = remsp * 0.1
-        else:
-            raise ValueError("Reynolds number out of specified range.")
+        lower_limit, upper_limit = similarity.reynolds_limits(
+            _magnitude(remsp, "dimensionless")
+        )
 
         if lower_limit <= self.reynolds_ratio * remsp <= upper_limit:
             within_limits = True
@@ -1757,7 +1775,7 @@ def head_reference(suc, disch, num_steps=100):
     """
 
     def calc_step_discharge_temp(T1, p1, p0, h0, v0, e):
-        s1 = State(p=p1, T=T1, fluid=suc.fluid, phase=suc.phase)
+        s1 = State(p=p1, T=T1, fluid=suc.fluid, EOS=suc.EOS, phase=suc.phase)
         h1 = s1.h()
 
         vm = (v0 + s1.v()) / 2
@@ -1784,11 +1802,11 @@ def head_reference(suc, disch, num_steps=100):
 
         # TODO implement p_intervals considering pressure ratio
         for p0, p1 in zip(p_intervals[:-1], p_intervals[1:]):
-            s0 = State(p=p0, T=T0, fluid=suc.fluid, phase=suc.phase)
+            s0 = State(p=p0, T=T0, fluid=suc.fluid, EOS=suc.EOS, phase=suc.phase)
             T1 = newton(
                 calc_step_discharge_temp, (T0 + 1e-3), args=(p1, p0, s0.h(), s0.v(), e)
             )
-            s1 = State(p=p1, T=T1, fluid=suc.fluid, phase=suc.phase)
+            s1 = State(p=p1, T=T1, fluid=suc.fluid, EOS=suc.EOS, phase=suc.phase)
             _ref_H += head_pol(s0, s1)
 
             T0 = T1
@@ -1850,7 +1868,9 @@ def head_reference_2017(suc, disch, num_steps=100):
         p = next_p
         p_intervals.append(p)
 
-    state1 = ccp.State(p=suc.p(), s=suc.s(), fluid=suc.fluid, phase=suc.phase)
+    state1 = ccp.State(
+        p=suc.p(), s=suc.s(), fluid=suc.fluid, EOS=suc.EOS, phase=suc.phase
+    )
 
     def calc_step_discharge_z(s1, s0, p1, p0, z0, R, e):
         state1.update(p=p1, s=s1)
@@ -1869,11 +1889,15 @@ def head_reference_2017(suc, disch, num_steps=100):
         s0 = suc.s().magnitude
 
         for p0, p1 in zip(p_intervals[:-1], p_intervals[1:]):
-            state0 = ccp.State(p=p0, s=s0, fluid=suc.fluid, phase=suc.phase)
+            state0 = ccp.State(
+                p=p0, s=s0, fluid=suc.fluid, EOS=suc.EOS, phase=suc.phase
+            )
             z0 = state0.z()
 
             s1 = newton(calc_step_discharge_z, (s0 + 1e-8), args=(s0, p1, p0, z0, R, e))
-            state1 = ccp.State(p=p1, s=s1, fluid=suc.fluid, phase=suc.phase)
+            state1 = ccp.State(
+                p=p1, s=s1, fluid=suc.fluid, EOS=suc.EOS, phase=suc.phase
+            )
             _ref_H_2017 += ccp.point.head_pol(state0, state1)
 
             s0 = s1
@@ -1985,7 +2009,16 @@ def head_pol_sandberg_colby_multistep(suc, disch, disch_s=None, nstep=10):
     :cite:`asmePTC10_2022`.
 
     This implements the numerical integration method from ASME PTC 10-2022
-    Figure 5-2.4-1 flowchart.
+    Figure 5-2.4-1 flowchart: the compression is split into ``nstep`` steps of
+    equal pressure ratio, each step is a single-step Sandberg-Colby compression
+    with the same polytropic efficiency, and that efficiency is the one for
+    which the path ends at the measured discharge temperature. The number of
+    steps is then increased by 5 until the efficiency changes by less than
+    1e-5 (relative).
+
+    The efficiency is found by a bracketed secant (:func:`ccp.roots.solve_monotone`)
+    starting from the single-step Sandberg-Colby estimate; the path
+    temperature decreases monotonically with the step efficiency.
 
     Parameters
     ----------
@@ -1994,78 +2027,46 @@ def head_pol_sandberg_colby_multistep(suc, disch, disch_s=None, nstep=10):
     disch : ccp.State
         Discharge state.
     disch_s : ccp.State, optional
-        Accepted for interface compatibility with the other polytropic
-        methods (it is the scratch state passed by the point solver) and not
-        used by this method.
+        Scratch state (the one passed by the point solver); a copy of
+        ``disch`` is used when it is not given.
     nstep : int, optional
-        Number of integration steps. Default is 10.
+        Initial number of integration steps. Default is 10.
 
     Returns
     -------
     head_pol_sandberg_colby_multistep : pint.Quantity
         Polytropic head as described by :cite:`asmePTC10_2022` (J/kg).
     """
-    # Initial efficiency estimate using single-step Sandberg-Colby method
-    eff_p_est = eff_pol_sandberg_colby(suc, disch)
-    epsilon = 1e-5
+    T_d = disch.T().magnitude
+    p_d = disch.p().magnitude
+    dh = disch.h().magnitude - suc.h().magnitude
+    work = _multistep_work_states(suc, disch_s)
+    eff_est = _magnitude(eff_pol_sandberg_colby(suc, disch), "dimensionless")
 
-    while True:
-        # Pressure ratio per step: rp_step = (p_d / p_s)^(1/nstep)
-        rp_step = (disch.p() / suc.p()) ** (1 / nstep)
+    T_s = suc.T().magnitude
 
-        def calc_deltaT_d(eff_p):
-            """Calculate ΔT_d = T_d,calc - T_d for a given polytropic efficiency."""
-            pd_j = rp_step * suc.p()
-            suc_j = copy(suc)
+    def solve_level(n, guess):
+        def residual(eff):
+            return _multistep_path(suc, eff, p_d, n, work).T().magnitude - T_d
 
-            for _ in range(nstep):
-                # Isentropic discharge state for step j
-                disch_j = ccp.State(
-                    p=pd_j, s=suc_j.s(), fluid=suc_j.fluid, phase=suc_j.phase
-                )
+        # Newton first step: the temperature rise scales with 1/eff
+        eff_0 = min(max(guess, 0.02), 0.999)
+        r0 = residual(eff_0)
+        eff_1 = _newton_step(eff_0, eff_0 + r0 * eff_0 / max(r0 + T_d - T_s, 1e-3))
+        return solve_monotone(
+            residual,
+            eff_0,
+            lo=0.01,
+            hi=1.0,
+            increasing=False,
+            x1=min(max(eff_1, 0.01), 1.0),
+            f0=r0,
+            rtol=1e-7,
+            name="multistep polytropic efficiency",
+        )
 
-                def calc_delta_eff_p(Td_j):
-                    """Calculate Δη_p = η_p,j - η_p for step j."""
-                    disch_j = ccp.State(
-                        p=pd_j, T=Td_j, fluid=suc_j.fluid, phase=suc_j.phase
-                    )
-                    wp_j = head_pol_sandberg_colby(suc_j, disch_j)
-                    eff_p_j = wp_j / (disch_j.h() - suc_j.h())
-                    return (eff_p_j - eff_p).m
-
-                # Use brentq with bracket [T_isen, T_isen + 20K].
-                # brentq is more robust than newton for functions with
-                # discontinuities near the critical point.
-                T_isen = disch_j.T().magnitude
-                Td_j = brentq(calc_delta_eff_p, T_isen, T_isen + 20)
-
-                # Update discharge state with calculated temperature
-                disch_j = ccp.State(
-                    p=pd_j, T=Td_j, fluid=suc_j.fluid, phase=suc_j.phase
-                )
-
-                # Prepare for next step: suc_j+1 = disch_j
-                suc_j.update(p=disch_j.p(), T=disch_j.T())
-                pd_j *= rp_step
-
-            # Return temperature difference: ΔT_d = T_d,nstep - T_d
-            return (disch_j.T() - disch.T()).m
-
-        # Solve for efficiency that gives ΔT_d = 0
-        eff_p = newton(calc_deltaT_d, eff_p_est)
-
-        # Check convergence: |η_p - η_p,est| / η_p ≤ ε
-        if np.abs((eff_p - eff_p_est) / eff_p) <= epsilon:
-            break
-
-        # Increase steps and update estimate for next iteration
-        nstep += 5
-        eff_p_est = eff_p
-
-    # Calculate polytropic head: wp = η_p × (h_d - h_s)
-    wp = eff_p * (disch.h() - suc.h())
-
-    return wp
+    eff, _ = _multistep_refine(solve_level, eff_est, nstep)
+    return Q_(eff * dh, "joule/kilogram")
 
 
 def head_pol_sandberg_colby_f(suc, disch, disch_s=None):
@@ -2221,8 +2222,12 @@ def eff_pol_huntington(suc, disch, disch_s=None):
     T3 = np.sqrt(T1 * T2)
     error = 1
     n = 0
+    if disch_s is None:
+        state3 = State(p=p3, T=T3, fluid=suc.fluid, EOS=suc.EOS, phase=suc.phase)
+    else:
+        state3 = disch_s
     while error > 1e-10:
-        state3 = State(p=p3, T=T3, fluid=suc.fluid, phase=suc.phase)
+        state3.update(p=p3, T=T3)
         s3 = state3.s()
         z3 = state3.z()
         cp3 = state3.cp()
@@ -2397,35 +2402,6 @@ def phi(flow_v, speed, D):
 
 
 @check_units
-def phi3(flow_v, speed, D, b):
-    """Discharge flow coefficient.
-
-    Eq. 5.13 from :cite:`ludtke2004process`
-
-    Parameters
-    ----------
-    flow_v : float, pint.Quantity
-        Impeller exit flow (m³/s).
-    speed : float, pint.Quantity
-        Impeller speed (rad/s).
-    D : float, pint.Quantity
-        Impeller outer diameter (m).
-    b : float, pint.Quantity
-        Impeller width at the outer blade diameter (m).
-
-    Returns
-    -------
-    phi : pint.Quantity
-        Discharge flow coefficient (dimensionless).
-    """
-    u = u_calc(D, speed)
-
-    phi = flow_v / (np.pi * D * b * u)
-
-    return phi.to("dimensionless")
-
-
-@check_units
 def flow_from_phi(D, phi, speed):
     """Calculate flow from non dimensional phi.
 
@@ -2489,22 +2465,464 @@ def _single_phase_solve(func):
     return inner
 
 
+def _magnitude(value, units):
+    """SI magnitude of a pint quantity, or the value itself when it is a number."""
+    if hasattr(value, "to"):
+        return float(value.to(units).magnitude)
+    return float(value)
+
+
+def _newton_step(x0, x1, lo=None, hi=None, max_move=0.25):
+    """Clamp a Newton first step to a bounded relative move and to [lo, hi].
+
+    The slope estimates behind the first steps are ideal-gas ones; for dense
+    fluids they can be far off and the secant recovers from a bounded step
+    much faster than from a wild one.
+    """
+    move = max_move * abs(x0)
+    x1 = min(max(x1, x0 - move), x0 + move)
+    if lo is not None:
+        x1 = max(x1, lo)
+    if hi is not None:
+        x1 = min(x1, hi)
+    return x1
+
+
+def _seed(residual, x0, fallback):
+    """Evaluate the residual at the guess ``x0``, or at ``fallback`` if that fails.
+
+    The guesses come from ideal-gas estimates and can land where the flash
+    fails for dense fluids; the fallback is a point that exists by
+    construction (the bracket end or the state the closure started from).
+    """
+    try:
+        return x0, residual(x0)
+    except (ValueError, ZeroDivisionError):
+        return fallback, residual(fallback)
+
+
+def _kv(suc):
+    """Suction isentropic volume exponent, guarded for the initial guesses."""
+    k = float(suc.kv().magnitude)
+    if not np.isfinite(k) or k <= 1.0:
+        k = 1.3
+    return k
+
+
+def _polytropic_exponent(suc, eff):
+    """``n/(n-1)`` of the ideal-gas polytropic path with efficiency ``eff``.
+
+    Uses the suction isentropic exponent ``kv``: ``(n-1)/n = (k-1)/(k eff)``.
+    Only used to seed the solvers; the brackets do not depend on it.
+    """
+    k = _kv(suc)
+    return eff * k / (k - 1.0)
+
+
+def _isentropic_T_at_rho(suc, disch, rho):
+    """Temperature of the suction isentrope at density ``rho`` (kg/m3).
+
+    Entropy increases monotonically with temperature at fixed volume
+    (``ds/dT = cv/T``), so the root is bracketed and found with ``(rho, T)``
+    inputs only: no flash iteration and no dependence on a previous state.
+    ``disch`` is the reusable state that is updated in place.
+    """
+    s_s = suc.s().magnitude
+    T_s = suc.T().magnitude
+    rho_q = Q_(rho, "kg/m**3")
+    T0 = T_s * (rho / suc.rho().magnitude) ** (_kv(suc) - 1.0)
+
+    def residual(T):
+        disch.update(rho=rho_q, T=Q_(T, "kelvin"))
+        return disch.s().magnitude - s_s
+
+    # Newton first step with ds/dT = cv/T at the guess
+    T0, r0 = _seed(residual, T0, T_s)
+    T1 = _newton_step(T0, T0 - r0 * T0 / max(disch.cv().magnitude, 1.0))
+    T = solve_monotone(
+        residual,
+        T0,
+        lo=0.1 * T_s,
+        hi=10.0 * T_s,
+        increasing=True,
+        x1=T1,
+        f0=r0,
+        name="isentropic temperature at fixed density",
+    )
+    disch.update(rho=rho_q, T=Q_(T, "kelvin"))
+    return T
+
+
+def _isentropic_p_at_T(suc, disch, T):
+    """Pressure of the suction isentrope at temperature ``T`` (K).
+
+    Entropy decreases monotonically with pressure at fixed temperature
+    (``ds/dp = -dv/dT``), so the root is bracketed and found with ``(p, T)``
+    inputs only. ``disch`` is the reusable state that is updated in place.
+    """
+    s_s = suc.s().magnitude
+    p_s = suc.p().magnitude
+    T_s = suc.T().magnitude
+    T_q = Q_(T, "kelvin")
+    k = _kv(suc)
+    p0 = p_s * (T / T_s) ** (k / (k - 1.0))
+
+    def residual(p):
+        disch.update(p=Q_(p, "Pa"), T=T_q)
+        return s_s - disch.s().magnitude
+
+    # Newton first step with ds/dp = -v/T (ideal gas) at the guess
+    p0, r0 = _seed(residual, p0, p_s)
+    p1 = _newton_step(p0, p0 * (1.0 - r0 * T * disch.rho().magnitude / p0))
+    p = solve_monotone(
+        residual,
+        p0,
+        lo=1e-3 * p_s,
+        hi=1e3 * p_s,
+        increasing=True,
+        x1=p1,
+        f0=r0,
+        name="isentropic pressure at fixed temperature",
+    )
+    disch.update(p=Q_(p, "Pa"), T=T_q)
+    return p
+
+
+def _solve_T_at_p_for_eff(
+    suc, disch, scratch, p_d, eff, eff_calc_func, name, T_guess=None
+):
+    """Update ``disch`` in place to the state at ``p_d`` (Pa) whose polytropic
+    efficiency from ``suc`` equals ``eff``; returns its temperature (K).
+
+    The isentropic state at ``p_d`` is the lower end of the temperature
+    bracket (efficiency 1); the efficiency decreases monotonically above it.
+    Without ``T_guess`` the initial guess scales the real isentropic head with
+    the ideal-gas ratio of polytropic to isentropic head and converts it to a
+    temperature with one (p, h) flash.
+
+    With ``T_guess`` (the steps of the multistep path, seeded from the
+    previous step) the isentropic state is not computed first: for a
+    near-ideal gas the efficiency also decreases monotonically from above 1
+    between the suction temperature and the isentropic one, so the suction
+    temperature closes the bracket. When that fails (dense gas below its
+    inversion temperature, where the enthalpy falls with pressure at constant
+    temperature) the solve is repeated from the isentropic state.
+    """
+    p_d_q = Q_(p_d, "Pa")
+    h_s = suc.h().magnitude
+    p_s = suc.p().magnitude
+    T_s = suc.T().magnitude
+    if p_d <= p_s:
+        raise ValueError(
+            f"discharge pressure {p_d} Pa is not above the suction pressure {p_s} Pa"
+        )
+
+    if T_guess is not None:
+        try:
+            return _solve_T_at_p_for_eff_from(
+                suc, disch, scratch, p_d_q, eff, eff_calc_func, name, T_s, T_guess
+            )
+        except ValueError:
+            pass
+
+    disch.update(p=p_d_q, s=suc.s())
+    T_isen = disch.T().magnitude
+    head_isen = disch.h().magnitude - h_s
+
+    k = _kv(suc)
+    nn = _polytropic_exponent(suc, eff)
+    r = p_d / p_s
+    if r > 1.0 and head_isen > 0.0:
+        ratio = (nn * (r ** (1.0 / nn) - 1.0)) / (
+            (k / (k - 1.0)) * (r ** ((k - 1.0) / k) - 1.0)
+        )
+    else:
+        ratio = 1.0
+    try:
+        disch.update(p=p_d_q, h=Q_(h_s + ratio * head_isen / eff, "joule/kilogram"))
+        T0 = disch.T().magnitude
+    except ValueError:
+        T0 = 1.05 * T_isen
+    return _solve_T_at_p_for_eff_from(
+        suc, disch, scratch, p_d_q, eff, eff_calc_func, name, T_isen, T0
+    )
+
+
+def _solve_T_at_p_for_eff_from(
+    suc, disch, scratch, p_d_q, eff, eff_calc_func, name, T_lo, T0
+):
+    """Efficiency solve on ``T`` in ``[T_lo, 10 T_lo]`` from the guess ``T0``.
+
+    The first solver step is a Newton step with the slope
+    ``d(eff)/dT = -1/(T - T_s)`` of the ideal-gas polytropic efficiency.
+    """
+    T_s = suc.T().magnitude
+    T0 = max(T0, T_lo * (1.0 + 1e-6))
+
+    def residual(T):
+        disch.update(p=p_d_q, T=Q_(T, "kelvin"))
+        return _magnitude(eff_calc_func(suc, disch, scratch), "dimensionless") - eff
+
+    T0, r0 = _seed(residual, T0, T_lo * 1.05)
+    T1 = _newton_step(T0, T0 + r0 * (T0 - T_s), lo=T_lo * (1.0 + 1e-6))
+    T = solve_monotone(
+        residual,
+        T0,
+        lo=T_lo,
+        hi=10.0 * T_lo,
+        increasing=False,
+        x1=T1,
+        f0=r0,
+        name=name,
+    )
+    disch.update(p=p_d_q, T=Q_(T, "kelvin"))
+    return T
+
+
+def _multistep_work_states(suc, scratch=None):
+    """Three reusable states for the multistep path integration."""
+    a = State(p=suc.p(), T=suc.T(), fluid=suc.fluid, EOS=suc.EOS, phase=suc.phase)
+    b = copy(a)
+    if scratch is None:
+        scratch = copy(a)
+    return [a, b, scratch]
+
+
+def _multistep_path(suc, eff, p_d, nstep, work):
+    """March the constant-efficiency Sandberg-Colby path from ``suc`` to ``p_d``.
+
+    Each of the ``nstep`` steps has the same pressure ratio and the same
+    single-step Sandberg-Colby efficiency ``eff`` (ASME PTC 10-2022 Fig.
+    5-2.4-1). The three states in ``work`` are updated in place and the state
+    at ``p_d`` is returned (it is one of them). Each step is seeded with the
+    temperature ratio of the previous one (the steps are nearly identical);
+    the first with the polytropic estimate from the isentropic temperature
+    exponent.
+    """
+    a, b, scratch = work
+    a.update(p=suc.p(), T=suc.T())
+    p_s = suc.p().magnitude
+    rp = (p_d / p_s) ** (1.0 / nstep)
+    kT = float(suc.kT().magnitude)
+    if not np.isfinite(kT) or kT <= 1.0:
+        kT = _kv(suc)
+    ratio = rp ** ((kT - 1.0) / (kT * eff))
+    p_j = p_s
+    for j in range(nstep):
+        p_j = p_d if j == nstep - 1 else p_j * rp
+        T_in = a.T().magnitude
+        T_out = _solve_T_at_p_for_eff(
+            a,
+            b,
+            scratch,
+            p_j,
+            eff,
+            eff_pol_sandberg_colby,
+            "multistep step",
+            T_guess=T_in * ratio,
+        )
+        ratio = T_out / T_in
+        a, b = b, a
+    work[0], work[1] = a, b
+    return a
+
+
+def _multistep_refine(solve_level, guess, nstep=10, rtol=1e-5, max_steps=200):
+    """ASME PTC 10-2022 step refinement around a solve at fixed step count.
+
+    ``solve_level(nstep, guess)`` returns the solution with ``nstep`` steps;
+    the count grows by 5 until two consecutive solutions agree to ``rtol``.
+    Returns the solution and the final step count.
+    The refinement is applied outside the root solve so that each level's
+    residual is a smooth function of its variable.
+    """
+    previous = None
+    x = guess
+    while True:
+        x = solve_level(nstep, x)
+        if previous is not None and abs(x - previous) <= rtol * abs(x):
+            return x, nstep
+        previous = x
+        nstep += 5
+        if nstep > max_steps:
+            raise ValueError(
+                "multistep refinement did not converge within "
+                f"{max_steps} steps (last change {abs(x - previous) / abs(x):.2e})"
+            )
+
+
+def _multistep_disch_from_disch_p_eff(suc, p_d, eff):
+    work = _multistep_work_states(suc)
+    h_s = suc.h().magnitude
+
+    def solve_level(n, guess):
+        return _multistep_path(suc, eff, p_d, n, work).h().magnitude - h_s
+
+    _, n = _multistep_refine(solve_level, None)
+    return _multistep_path(suc, eff, p_d, n, work)
+
+
+def _multistep_disch_from_head_eff(suc, head, eff):
+    work = _multistep_work_states(suc)
+    h_s = suc.h().magnitude
+    p_s = suc.p().magnitude
+    h_d = h_s + head / eff
+    p_isen = _isentropic_p_at_h(suc, work[2], h_d)
+    # the single-step Sandberg-Colby solution is within about 1e-3 of the
+    # multistep one: start there
+    p0 = disch_from_suc_head_eff(suc, head, eff, "sandberg_colby").p().magnitude
+
+    def solve_level(n, guess):
+        def residual(p):
+            return _multistep_path(suc, eff, p, n, work).h().magnitude - h_d
+
+        # Newton first step with dh/dp = v at the end of the path
+        r0 = residual(guess)
+        p_1 = _newton_step(guess, guess - r0 * work[0].rho().magnitude)
+        return solve_monotone(
+            residual,
+            guess,
+            lo=p_s,
+            hi=p_isen,
+            increasing=True,
+            x1=p_1,
+            f0=r0,
+            rtol=1e-7,
+            name="multistep head and efficiency closure",
+        )
+
+    p, n = _multistep_refine(solve_level, p0)
+    return _multistep_path(suc, eff, p, n, work)
+
+
+def _multistep_disch_from_disch_T_head(suc, T_d, head):
+    work = _multistep_work_states(suc)
+    h_s = suc.h().magnitude
+    p_s = suc.p().magnitude
+    T_d_q = Q_(T_d, "kelvin")
+    probe = State(p=suc.p(), T=T_d_q, fluid=suc.fluid, EOS=suc.EOS, phase=suc.phase)
+    p_isen = _isentropic_p_at_T(suc, probe, T_d)
+    # start from the single-step Sandberg-Colby solution
+    p0 = disch_from_suc_disch_T_head(suc, T_d, head, "sandberg_colby").p().magnitude
+
+    def solve_level(n, guess):
+        def residual(p):
+            probe.update(p=Q_(p, "Pa"), T=T_d_q)
+            eff = head / (probe.h().magnitude - h_s)
+            eff = min(max(eff, 0.01), 1.0)
+            return _multistep_path(suc, eff, p, n, work).T().magnitude - T_d
+
+        # Newton first step with dT/dp = T (n-1)/n / p of the polytropic path
+        r0 = residual(guess)
+        probe.update(p=Q_(guess, "Pa"), T=T_d_q)
+        eff_0 = min(max(head / (probe.h().magnitude - h_s), 0.01), 1.0)
+        p_1 = _newton_step(
+            guess, guess - r0 * guess * _polytropic_exponent(suc, eff_0) / T_d
+        )
+        return solve_monotone(
+            residual,
+            guess,
+            lo=min(p_s, p_isen),
+            hi=max(p_s, p_isen),
+            increasing=True,
+            x1=p_1,
+            f0=r0,
+            rtol=1e-7,
+            name="multistep discharge temperature and head closure",
+        )
+
+    p, _ = _multistep_refine(solve_level, p0)
+    probe.update(p=Q_(p, "Pa"), T=T_d_q)
+    return probe
+
+
+def _multistep_disch_from_volume_ratio_eff(suc, volume_ratio, eff):
+    work = _multistep_work_states(suc)
+    p_s = suc.p().magnitude
+    rho_d = suc.rho().magnitude * volume_ratio
+    # start from the single-step Sandberg-Colby solution: the density along
+    # the path is not monotone in the discharge pressure for near-critical
+    # compressions that end below the suction density, and the single-step
+    # solution sits on the right branch
+    p0 = (
+        disch_from_suc_volume_ratio_eff(suc, volume_ratio, eff, "sandberg_colby")
+        .p()
+        .magnitude
+    )
+
+    def solve_level(n_steps, guess):
+        def residual(p):
+            return _multistep_path(suc, eff, p, n_steps, work).rho().magnitude - rho_d
+
+        # the direction of the residual around the seed decides the branch
+        # (the path density can decrease with pressure near the critical
+        # point): two evaluations that the solver reuses
+        guess_1 = guess * 1.001
+        r0, r1 = residual(guess), residual(guess_1)
+        return solve_monotone(
+            residual,
+            guess,
+            lo=p_s,
+            hi=1e3 * p_s,
+            increasing=r1 > r0,
+            x1=guess_1,
+            f0=r0,
+            f1=r1,
+            rtol=1e-7,
+            name="multistep volume ratio closure",
+        )
+
+    p, n = _multistep_refine(solve_level, p0)
+    return _multistep_path(suc, eff, p, n, work)
+
+
+def _isentropic_p_at_h(suc, disch, h):
+    """Pressure of the suction isentrope at enthalpy ``h`` (J/kg).
+
+    Enthalpy increases monotonically with pressure at fixed entropy
+    (``dh/dp = v``), so the root is bracketed and found with ``(p, s)``
+    flashes only; CoolProp's ``(h, s)`` flash is unreliable for mixtures on
+    the HEOS backend. ``disch`` is the reusable state that is updated in
+    place.
+    """
+    s_s = suc.s()
+    p_s = suc.p().magnitude
+    h_s = suc.h().magnitude
+    k = _kv(suc)
+    kk = k / (k - 1.0)
+    pv = p_s / suc.rho().magnitude
+    p0 = p_s * max(1.0 + (h - h_s) / (kk * pv), 1e-3) ** kk
+
+    def residual(p):
+        disch.update(p=Q_(p, "Pa"), s=s_s)
+        return disch.h().magnitude - h
+
+    # Newton first step with dh/dp = v at the guess
+    p0, r0 = _seed(residual, p0, p_s)
+    p1 = _newton_step(p0, p0 - r0 * disch.rho().magnitude)
+    p = solve_monotone(
+        residual,
+        p0,
+        lo=1e-3 * p_s,
+        hi=1e3 * p_s,
+        increasing=True,
+        x1=p1,
+        f0=r0,
+        name="isentropic pressure at fixed enthalpy",
+    )
+    disch.update(p=Q_(p, "Pa"), s=s_s)
+    return p
+
+
 @_single_phase_solve
 def isentropic_disch_from_rho(suc, disch_rho):
     """Discharge state of an isentropic compression to a target density.
 
-    The discharge is normally obtained from a ``State(rho=disch_rho, s=suc.s())``
-    flash (CoolProp ``DmassSmass`` inputs). For dense fluids that flash can return a
-    spurious root: two states share the same ``(rho, s)`` — the physical compression
-    (``disch.p >= suc.p``) and a cold, liquid-like root *below* suction pressure — and
-    the flash may return the cold one. Seeding the downstream efficiency solve from
-    that non-physical root makes it diverge (e.g. converting a performance map to a
-    dense, CO2-rich, near-critical suction condition).
-
-    When the flash lands on such a non-compression root we re-solve for the pressure
-    on the suction isentrope that matches ``disch_rho``. Density increases
-    monotonically with pressure along an isentrope, so bracketing from the suction
-    pressure upward selects the physical compression root.
+    The state is found on the suction isentrope with ``(rho, T)`` inputs (see
+    :func:`_isentropic_T_at_rho`) rather than with a ``(rho, s)`` flash: for
+    dense fluids that flash has two roots, the physical compression and a cold
+    root below the suction pressure, and which one it returns depends on the
+    backend's internal state.
 
     Parameters
     ----------
@@ -2518,30 +2936,11 @@ def isentropic_disch_from_rho(suc, disch_rho):
     disch : ccp.State
         Discharge state of the isentropic compression to ``disch_rho``.
     """
-    disch = State(rho=disch_rho, s=suc.s(), fluid=suc.fluid, phase=suc.phase)
-
-    # for a compression (disch_rho > suc.rho) the physical isentropic discharge must
-    # have disch.p >= suc.p; otherwise the (rho, s) flash returned a spurious root.
-    if not (disch_rho > suc.rho() and disch.p() < suc.p()):
-        return disch
-
-    s_suc = suc.s()
-    rho_target = disch_rho.to("kg/m**3").magnitude
-
-    def rho_err(p_pa):
-        disch.update(p=Q_(p_pa, "Pa"), s=s_suc)
-        return disch.rho().to("kg/m**3").magnitude - rho_target
-
-    # bracket: rho_err < 0 at suction pressure; expand the upper bound until the
-    # isentrope reaches the target density (rho_err >= 0).
-    p_lo = suc.p().to("Pa").magnitude
-    p_hi = 2.0 * p_lo
-    for _ in range(60):
-        if rho_err(p_hi) >= 0.0:
-            break
-        p_hi *= 2.0
-    p_sol = brentq(rho_err, p_lo, p_hi, xtol=1.0)
-    disch.update(p=Q_(p_sol, "Pa"), s=s_suc)
+    rho = _magnitude(disch_rho, "kg/m**3")
+    disch = State(
+        rho=Q_(rho, "kg/m**3"), T=suc.T(), fluid=suc.fluid, EOS=suc.EOS, phase=suc.phase
+    )
+    _isentropic_T_at_rho(suc, disch, rho)
     return disch
 
 
@@ -2549,13 +2948,21 @@ def isentropic_disch_from_rho(suc, disch_rho):
 def disch_from_suc_rho_eff(suc, disch_rho, eff, eff_calc_func):
     """Discharge at a fixed density matching a polytropic efficiency.
 
-    Robust alternative to the secant iteration used in the volume-ratio conversion.
-    Starting from the isentropic discharge (polytropic efficiency ~ 1.0), the
-    polytropic efficiency decreases monotonically as temperature rises at constant
-    density, so the target efficiency (< 1) is bracketed between the isentropic
-    temperature and a higher one and found with ``brentq``. The secant can diverge
-    for dense fluids — its tiny initial step yields a near-zero efficiency slope and
-    overshoots to a non-physical state — so this is used as a fallback there.
+    Temperature is the iteration variable. For a compression (discharge
+    density above the suction density) the polytropic efficiency is 1 at the
+    isentropic temperature and decreases monotonically as the temperature
+    rises at constant density, so the root is bracketed from the isentropic
+    state upwards. Below the isentropic temperature the efficiency is
+    meaningless (negative or singular for dense fluids), which is why no
+    iterate is allowed there.
+
+    Near the critical point a compression can end at a density *below* the
+    suction density (dense ethylene from 86 to 137 bar in the Evans and Huble
+    2017 set). The isentrope is then an expansion, the enthalpy rise is
+    negative at the isentropic state and the efficiency is singular where it
+    crosses zero. The physical branch starts just above that temperature; the
+    efficiency there rises from below, and the root closest to the start of
+    the branch (the smallest temperature rise) is returned.
 
     Parameters
     ----------
@@ -2566,37 +2973,114 @@ def disch_from_suc_rho_eff(suc, disch_rho, eff, eff_calc_func):
     eff : pint.Quantity, float
         Target polytropic efficiency.
     eff_calc_func : callable
-        ``eff_calc_func(suc, disch)`` returning the polytropic efficiency.
+        ``eff_calc_func(suc, disch, disch_s)`` returning the polytropic
+        efficiency; ``disch_s`` is a scratch state.
 
     Returns
     -------
     disch : ccp.State
         Discharge state.
     """
+    rho = _magnitude(disch_rho, "kg/m**3")
+    eff = _magnitude(eff, "dimensionless")
+    rho_q = Q_(rho, "kg/m**3")
     disch = isentropic_disch_from_rho(suc, disch_rho)
-    T_lo = disch.T().to("kelvin").magnitude
+    scratch = copy(disch)
+    h_s = suc.h().magnitude
+    T_lo = disch.T().magnitude
 
-    def eff_err(T):
-        disch.update(rho=disch_rho, T=Q_(T, "kelvin"))
-        return (eff_calc_func(suc, disch) - eff).magnitude
+    if disch.h().magnitude - h_s <= 0.0:
+        # expansion isentrope: start the branch where the enthalpy rise
+        # turns positive (enthalpy increases with T at fixed volume)
+        def dh(T):
+            disch.update(rho=rho_q, T=Q_(T, "kelvin"))
+            return disch.h().magnitude - h_s
 
-    f_lo = eff_err(T_lo)
-    T_hi = T_lo * 1.02
-    for _ in range(80):
-        if f_lo * eff_err(T_hi) < 0:
-            break
-        T_hi *= 1.02
+        T_h = solve_monotone(
+            dh,
+            1.01 * T_lo,
+            lo=T_lo,
+            hi=10.0 * T_lo,
+            increasing=True,
+            name="zero enthalpy rise at fixed density",
+        )
+        T_lo = T_h * (1.0 + 1e-3)
+
+    def residual(T):
+        disch.update(rho=rho_q, T=Q_(T, "kelvin"))
+        return _magnitude(eff_calc_func(suc, disch, scratch), "dimensionless") - eff
+
+    # ideal-gas polytropic path p v^n = const with (n-1)/n = (k-1)/(k eff)
+    k = _kv(suc)
+    n_minus_1 = (k - 1.0) / max(k * eff - (k - 1.0), 1e-3)
+    T0 = suc.T().magnitude * (rho / suc.rho().magnitude) ** n_minus_1
+    T0 = min(max(T0, T_lo * (1.0 + 1e-6)), 3.0 * T_lo)
+
+    T_s = suc.T().magnitude
+    r_lo = residual(T_lo)
+    if r_lo < 0.0:
+        # rising branch (see above): search upwards from the branch start
+        increasing, x0, x1, r0 = True, T_lo, 1.05 * T_lo, r_lo
     else:
-        raise ValueError("Could not bracket efficiency in volume-ratio conversion")
+        # Newton first step with the ideal-gas slope d(eff)/dT = -1/(T - T_s)
+        T0, r0 = _seed(residual, T0, T_lo * 1.05)
+        increasing, x0, x1 = False, T0, _newton_step(T0, T0 + r0 * (T0 - T_s), lo=T_lo)
 
-    T_sol = brentq(eff_err, T_lo, T_hi, xtol=1e-2)
-    disch.update(rho=disch_rho, T=Q_(T_sol, "kelvin"))
+    T = solve_monotone(
+        residual,
+        x0,
+        lo=T_lo,
+        hi=10.0 * T_lo,
+        increasing=increasing,
+        x1=x1,
+        f0=r0,
+        name="efficiency at fixed density (volume ratio closure)",
+    )
+    disch.update(rho=rho_q, T=Q_(T, "kelvin"))
     return disch
+
+
+@_single_phase_solve
+def disch_from_suc_volume_ratio_eff(suc, volume_ratio, eff, polytropic_method=None):
+    """Calculate discharge state from suction, volume ratio and efficiency.
+
+    Parameters
+    ----------
+    suc : ccp.State
+        Suction state.
+    volume_ratio : pint.Quantity, float
+        Ratio between suction and discharge specific volumes (v_s / v_d).
+    eff : pint.Quantity, float
+        Polytropic efficiency (dimensionless).
+
+    Returns
+    -------
+    disch : ccp.State
+        Discharge state.
+    """
+    if polytropic_method is None:
+        polytropic_method = ccp.config.POLYTROPIC_METHOD
+    if polytropic_method == "sandberg_colby_multistep":
+        return _multistep_disch_from_volume_ratio_eff(
+            suc,
+            _magnitude(volume_ratio, "dimensionless"),
+            _magnitude(eff, "dimensionless"),
+        )
+    eff_calc_func = globals()[f"eff_pol_{polytropic_method}"]
+    disch_rho = suc.rho() * _magnitude(volume_ratio, "dimensionless")
+    return disch_from_suc_rho_eff(suc, disch_rho, eff, eff_calc_func)
 
 
 @_single_phase_solve
 def disch_from_suc_head_eff(suc, head, eff, polytropic_method=None):
     """Calculate discharge state from suction, head and efficiency.
+
+    The discharge enthalpy is fixed by ``h_d = h_s + head / eff``; pressure is
+    the iteration variable along that isenthalp. The polytropic head is zero
+    at the suction pressure and equals ``h_d - h_s`` at the isentropic
+    pressure, and increases monotonically in between, so the root is
+    bracketed by those two states. The initial guess is the ideal-gas
+    polytropic pressure for the suction isentropic exponent.
 
     Parameters
     ----------
@@ -2614,38 +3098,59 @@ def disch_from_suc_head_eff(suc, head, eff, polytropic_method=None):
     """
     if polytropic_method is None:
         polytropic_method = ccp.config.POLYTROPIC_METHOD
-
-    head_calc_func = globals()[f"head_pol_{polytropic_method}"]
-    h_disch = head / eff + suc.h()
-
-    #  consider first an isentropic compression
-    disch = State(h=h_disch, s=suc.s(), fluid=suc.fluid, phase=suc.phase)
-
-    def update_state(x, update_type):
-        if update_type == "pressure":
-            disch.update(h=h_disch, p=x)
-        elif update_type == "temperature":
-            disch.update(h=h_disch, T=x)
-        new_head = head_calc_func(suc, disch)
-        return (new_head - head).magnitude
-
-    try:
-        newton(update_state, disch.p().magnitude, args=("pressure",), tol=1e-1)
-    except (RuntimeError, ValueError):
-        disch = State(h=h_disch, s=suc.s(), fluid=suc.fluid, phase=suc.phase)
-        newton(
-            update_state,
-            disch.T().magnitude,
-            args=("temperature",),
-            tol=1e-1,
+    if polytropic_method == "sandberg_colby_multistep":
+        return _multistep_disch_from_head_eff(
+            suc, _magnitude(head, "joule/kilogram"), _magnitude(eff, "dimensionless")
         )
 
+    head_calc_func = globals()[f"head_pol_{polytropic_method}"]
+    head = _magnitude(head, "joule/kilogram")
+    eff = _magnitude(eff, "dimensionless")
+    h_s = suc.h().magnitude
+    h_disch = Q_(h_s + head / eff, "joule/kilogram")
+
+    # isentropic compression to h_disch: upper end of the pressure bracket
+    disch = State(p=suc.p(), T=suc.T(), fluid=suc.fluid, EOS=suc.EOS, phase=suc.phase)
+    p_isen = _isentropic_p_at_h(suc, disch, h_disch.magnitude)
+    p_s = suc.p().magnitude
+
+    nn = _polytropic_exponent(suc, eff)
+    pv = p_s / suc.rho().magnitude
+    p0 = p_s * (1.0 + head / (nn * pv)) ** nn
+
+    scratch = copy(disch)
+
+    def residual(p):
+        disch.update(h=h_disch, p=Q_(p, "Pa"))
+        return _magnitude(head_calc_func(suc, disch, scratch), "joule/kilogram") - head
+
+    # Newton first step with d(head)/dp = v_d (isenthalpic: ds/dp = -v/T)
+    p0 = min(max(p0, p_s * (1.0 + 1e-9)), p_isen)
+    p0, r0 = _seed(residual, p0, p_isen)
+    p1 = _newton_step(p0, p0 - r0 * disch.rho().magnitude, lo=p_s, hi=p_isen)
+    p = solve_monotone(
+        residual,
+        p0,
+        lo=p_s,
+        hi=p_isen,
+        increasing=True,
+        x1=p1,
+        f0=r0,
+        name="head at fixed enthalpy (head and efficiency closure)",
+    )
+    disch.update(h=h_disch, p=Q_(p, "Pa"))
     return disch
 
 
 @_single_phase_solve
 def disch_from_suc_disch_p_eff(suc, disch_p, eff, polytropic_method=None):
     """Calculate discharge state from suction, discharge pressure and efficiency.
+
+    Temperature is the iteration variable at the fixed discharge pressure: the
+    polytropic efficiency is 1 at the isentropic temperature and decreases
+    monotonically above it, so the root is bracketed from the isentropic state
+    upwards. The initial guess scales the real isentropic head with the
+    ideal-gas ratio of polytropic to isentropic head.
 
     Parameters
     ----------
@@ -2661,27 +3166,38 @@ def disch_from_suc_disch_p_eff(suc, disch_p, eff, polytropic_method=None):
     disch : ccp.State
         Discharge state.
     """
-    # consider first an isentropic compression
     if polytropic_method is None:
         polytropic_method = ccp.config.POLYTROPIC_METHOD
+    if polytropic_method == "sandberg_colby_multistep":
+        return _multistep_disch_from_disch_p_eff(
+            suc, _magnitude(disch_p, "Pa"), _magnitude(eff, "dimensionless")
+        )
 
-    disch = ccp.State(p=disch_p, s=suc.s(), fluid=suc.fluid, phase=suc.phase)
     eff_calc_func = globals()[f"eff_pol_{polytropic_method}"]
-
-    def update_state(x):
-        disch.update(p=disch_p, T=x)
-        new_eff = eff_calc_func(suc, disch)
-
-        return (new_eff - eff).magnitude
-
-    newton(update_state, disch.T().magnitude)
-
+    # start from the suction state: (disch_p, T_s) may lie where the imposed
+    # gas phase does not exist and HEOS refuses the flash
+    disch = State(p=suc.p(), T=suc.T(), fluid=suc.fluid, EOS=suc.EOS, phase=suc.phase)
+    scratch = copy(disch)
+    _solve_T_at_p_for_eff(
+        suc,
+        disch,
+        scratch,
+        _magnitude(disch_p, "Pa"),
+        _magnitude(eff, "dimensionless"),
+        eff_calc_func,
+        "efficiency at fixed pressure (discharge pressure closure)",
+    )
     return disch
 
 
 @_single_phase_solve
 def disch_from_suc_disch_T_head(suc, disch_T, head, polytropic_method=None):
     """Calculate discharge state from suction, discharge temperature and head.
+
+    Pressure is the iteration variable at the fixed discharge temperature: the
+    polytropic head increases monotonically with pressure, from about zero at
+    the suction pressure to the enthalpy rise at the isentropic pressure, so
+    the root is bracketed by those two states.
 
     Parameters
     ----------
@@ -2697,21 +3213,54 @@ def disch_from_suc_disch_T_head(suc, disch_T, head, polytropic_method=None):
     disch : ccp.State
         Discharge state.
     """
-    # consider first an isentropic compression
     if polytropic_method is None:
         polytropic_method = ccp.config.POLYTROPIC_METHOD
+    if polytropic_method == "sandberg_colby_multistep":
+        return _multistep_disch_from_disch_T_head(
+            suc, _magnitude(disch_T, "kelvin"), _magnitude(head, "joule/kilogram")
+        )
 
-    disch = ccp.State(T=disch_T, s=suc.s(), fluid=suc.fluid, phase=suc.phase)
     head_calc_func = globals()[f"head_pol_{polytropic_method}"]
+    head = _magnitude(head, "joule/kilogram")
+    T_d = _magnitude(disch_T, "kelvin")
+    T_d_q = Q_(T_d, "kelvin")
+    p_s = suc.p().magnitude
+    T_s = suc.T().magnitude
 
-    def update_state(x):
-        disch.update(T=disch_T, p=x)
-        new_head = head_calc_func(suc, disch)
+    disch = State(p=suc.p(), T=T_d_q, fluid=suc.fluid, EOS=suc.EOS, phase=suc.phase)
+    p_isen = _isentropic_p_at_T(suc, disch, T_d)
 
-        return (new_head - head).magnitude
+    # initial guess: ideal-gas polytropic path through (T_s, p_s) and T_d with
+    # the exponent that reproduces the head
+    tau = T_d / T_s
+    pv = p_s / suc.rho().magnitude
+    if tau > 1.0 and head > 0.0:
+        p0 = p_s * tau ** (head / (pv * (tau - 1.0)))
+    else:
+        p0 = 0.5 * (p_s + p_isen)
 
-    newton(update_state, disch.p().magnitude, tol=1e-7)
+    scratch = copy(disch)
 
+    def residual(p):
+        disch.update(p=Q_(p, "Pa"), T=T_d_q)
+        return _magnitude(head_calc_func(suc, disch, scratch), "joule/kilogram") - head
+
+    # Newton first step with d(head)/dp = v_d (isothermal: ds/dp = -dv/dT)
+    lo, hi = min(p_s, p_isen), max(p_s, p_isen)
+    p0 = min(max(p0, lo), hi)
+    p0, r0 = _seed(residual, p0, hi)
+    p1 = _newton_step(p0, p0 - r0 * disch.rho().magnitude, lo=lo, hi=hi)
+    p = solve_monotone(
+        residual,
+        p0,
+        lo=lo,
+        hi=hi,
+        increasing=True,
+        x1=p1,
+        f0=r0,
+        name="head at fixed temperature (discharge temperature closure)",
+    )
+    disch.update(p=Q_(p, "Pa"), T=T_d_q)
     return disch
 
 

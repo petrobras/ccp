@@ -18,6 +18,8 @@
 
 - `b` (impeller width) and `D` (impeller diameter) have defaults (0.005 m / 0.5 m); head/eff/power are unaffected, but `phi`, `psi`, Mach, Reynolds — and therefore conversions and similarity checks — need the real geometry.
 - A `Point` needs a *sufficient* argument combination (e.g. `suc + disch + speed + flow`); otherwise `ValueError` is raised listing what it received. Efficiency outside 0.3–1.0 is treated as out of range.
+- The discharge closures (`head + eff`, `disch_p + eff`, `disch_T + head`, `eff + volume_ratio`) are bracketed between the suction and the isentropic discharge and solved with `ccp.roots.solve_monotone`, so they converge for every polytropic method (including `sandberg_colby_multistep`) and do not depend on what was computed before. Inputs with no discharge state (an efficiency above 1, a head no state on the isenthalp can reach) raise `ValueError` naming the closure.
+- A suction state at or inside the phase envelope (vapour quality between 0 and 1) is refused by `Point` with a `ValueError`: the closures assume a single-phase compression, and PTC 10 tests need a superheated suction.
 - `Impeller` deep-copies its points: changing `point0` afterwards does not change `imp.points[0]`.
 - `Impeller.point(flow_v=..., speed=...)` interpolates and extrapolates without complaint — check the map range (`imp.flow_v`, `imp.speed`) or the returned point's `_extrapolated` flag.
 - Speed grouping into curves is exact: points on the "same" curve must have identical speed values.

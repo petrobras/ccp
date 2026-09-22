@@ -947,3 +947,169 @@ def test_phase_check_resolves_point_unconstrained(monkeypatch):
     assert point.disch.phase is False
     assert_allclose(point.disch.p().m, reference.disch.p().m, rtol=1e-6)
     assert_allclose(point.power.m, reference.power.m, rtol=1e-6)
+
+
+# --- discharge closure round trips (F02: bracketed solvers) -----------------
+
+
+def _closure_cases():
+    """Selected cases of the Evans and Huble 2017 set (ccp/tests/data)."""
+    import pandas as pd
+
+    df = pd.read_csv(
+        Path(__file__).parent / "data" / "evans_huble_cases.csv", index_col=0
+    )
+    cases = {}
+    for name in df.columns:
+        col = df[name]
+        fluid = {k: float(v) for k, v in col.iloc[4:].items() if float(v) > 0}
+        cases[name.strip()] = dict(
+            ps=float(col["ps bara"]),
+            pd=float(col["pd bara"]),
+            Ts=float(col["Ts degC"]),
+            Td=float(col["Td degC"]),
+            fluid=fluid,
+        )
+    return cases
+
+
+# R12 at pressure ratio 13, dense CO2-rich gas at 114 bar, near-critical
+# ethylene with a discharge density below the suction density, the CO2/methane
+# case where REFPROP reports a spurious two-phase flash, the densest CO2 case
+# (240 to 448 bar) and a natural gas
+_CLOSURE_CASE_NAMES = [
+    "Schultz",
+    "SC G",
+    "ETH 8",
+    "CO2 INJ 3",
+    "CO2 INJ 5",
+    "PLANO 1 DRY",
+]
+_CLOSURE_METHODS = [
+    "schultz",
+    "mallen_saville",
+    "sandberg_colby",
+    "huntington",
+    # the multistep closures integrate a path per residual evaluation (a few
+    # seconds per case): kept out of the fast tier
+    pytest.param("sandberg_colby_multistep", marks=pytest.mark.slow),
+]
+
+
+@pytest.mark.parametrize("method", _CLOSURE_METHODS)
+@pytest.mark.parametrize("case_name", _CLOSURE_CASE_NAMES)
+def test_closures_round_trip(case_name, method):
+    case = _closure_cases()[case_name]
+    suc = State(p=Q_(case["ps"], "bar"), T=Q_(case["Ts"], "degC"), fluid=case["fluid"])
+    disch = State(
+        p=Q_(case["pd"], "bar"), T=Q_(case["Td"], "degC"), fluid=case["fluid"]
+    )
+    common = dict(
+        flow_m=Q_(10, "kg/s"),
+        speed=Q_(7000, "RPM"),
+        b=Q_(0.03, "m"),
+        D=Q_(0.4, "m"),
+        polytropic_method=method,
+    )
+    ref = Point(suc=suc, disch=disch, **common)
+    closures = {
+        "head+eff": dict(head=ref.head, eff=ref.eff),
+        "disch_p+eff": dict(disch_p=disch.p(), eff=ref.eff),
+        "disch_T+head": dict(disch_T=disch.T(), head=ref.head),
+        "eff+volume_ratio": dict(eff=ref.eff, volume_ratio=ref.volume_ratio),
+    }
+    # the multistep method refines its step count to 1e-5 on the efficiency
+    rtol = 1e-4 if method == "sandberg_colby_multistep" else 1e-7
+    for name, kwargs in closures.items():
+        point = Point(suc=suc, **kwargs, **common)
+        assert_allclose(point.disch.p().m, disch.p().m, rtol=rtol, err_msg=name)
+        assert_allclose(point.disch.T().m, disch.T().m, rtol=rtol, err_msg=name)
+
+
+def test_closures_round_trip_on_heos():
+    # discussion #78: air-like CO2/N2 mixture on CoolProp HEOS (the discharge
+    # temperature of the discussion, 330 K, is below the isentropic 352 K and
+    # has no polytropic solution; 370 K is a compression at about 80 %)
+    fluid = {"CarbonDioxide": 0.8, "Nitrogen": 0.2}
+    suc = State(p=Q_(2.5, "bar"), T=Q_(300, "K"), fluid=fluid, EOS="HEOS")
+    disch = State(p=Q_(5.0, "bar"), T=Q_(370, "K"), fluid=fluid, EOS="HEOS")
+    common = dict(speed=Q_(7000, "RPM"), flow_m=Q_(34000, "kg/hr"), b=0.0285, D=0.365)
+    ref = Point(suc=suc, disch=disch, **common)
+    assert ref.disch.EOS == "HEOS"
+    for kwargs in (
+        dict(head=ref.head, eff=ref.eff),
+        dict(disch_p=disch.p(), eff=ref.eff),
+        dict(disch_T=disch.T(), head=ref.head),
+        dict(eff=ref.eff, volume_ratio=ref.volume_ratio),
+    ):
+        point = Point(suc=suc, **kwargs, **common)
+        assert point.disch.EOS == "HEOS"
+        assert_allclose(point.disch.p().m, disch.p().m, rtol=1e-7)
+        assert_allclose(point.disch.T().m, disch.T().m, rtol=1e-7)
+
+
+def test_closure_result_does_not_depend_on_previous_solves():
+    # the near-critical ethylene case used to land on a state 66 % off in
+    # pressure when another case had been solved before it in the process
+    cases = _closure_cases()
+    results = []
+    for order in (["ETH 7", "ETH 8"], ["ETH 8"]):
+        for name in order:
+            case = cases[name]
+            suc = State(
+                p=Q_(case["ps"], "bar"), T=Q_(case["Ts"], "degC"), fluid=case["fluid"]
+            )
+            disch = State(
+                p=Q_(case["pd"], "bar"), T=Q_(case["Td"], "degC"), fluid=case["fluid"]
+            )
+            ref = Point(suc=suc, disch=disch, flow_m=1, speed=1000, b=0.03, D=0.4)
+            point = Point(
+                suc=suc,
+                eff=ref.eff,
+                volume_ratio=ref.volume_ratio,
+                flow_m=1,
+                speed=1000,
+                b=0.03,
+                D=0.4,
+            )
+            if name == "ETH 8":
+                results.append(point.disch.p().m)
+                assert_allclose(point.disch.p().m, disch.p().m, rtol=1e-7)
+    assert_allclose(results[0], results[1], rtol=1e-9)
+
+
+def test_point_rejects_two_phase_suction():
+    suc = State(p=Q_(30, "bar"), T=Q_(250, "K"), fluid=dict(methane=0.5, ethane=0.5))
+    assert 0 <= suc.Q() <= 1
+    with pytest.raises(ValueError, match="phase envelope"):
+        Point(
+            suc=suc,
+            head=Q_(50, "kJ/kg"),
+            eff=0.8,
+            flow_m=Q_(10, "kg/s"),
+            speed=Q_(7000, "RPM"),
+            b=Q_(0.03, "m"),
+            D=Q_(0.4, "m"),
+        )
+
+
+def test_point_error_message_without_out_of_range_kwargs(monkeypatch, suc_0):
+    # an efficiency of 1.2 has no discharge state: the message names the
+    # closure and lists the offending argument
+    with pytest.raises(ValueError, match="reasonable range") as excinfo:
+        Point(suc=suc_0, head=82876.226229, eff=1.2, flow_v=1, speed=1, b=1, D=1)
+    assert "'eff'" in str(excinfo.value)
+    assert "no root" in str(excinfo.value)
+
+    # a solver failure for arguments inside the reasonable ranges does not
+    # print an empty out-of-range dictionary
+    import ccp.point_solver
+
+    def failing_solve(point):
+        raise ValueError("flash did not converge")
+
+    monkeypatch.setattr(ccp.point_solver, "solve", failing_solve)
+    with pytest.raises(ValueError, match="flash did not converge") as excinfo:
+        Point(suc=suc_0, head=82876.226229, eff=0.8, flow_v=1, speed=1, b=1, D=1)
+    assert "{}" not in str(excinfo.value)
+    assert "reasonable range" not in str(excinfo.value)

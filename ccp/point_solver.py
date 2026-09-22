@@ -21,8 +21,6 @@ means the user gets a valid ``Point`` whenever they provide *any* sufficient set
 of arguments -- including combinations that were never enumerated as a method.
 """
 
-from scipy.optimize import newton
-
 from ccp.config.units import Q_
 from ccp.state import State
 
@@ -149,6 +147,7 @@ def _disch_from_disch_T_disch_p(v, ctx):
             p=v["disch_p"],
             T=v["disch_T"],
             fluid=ctx.suc.fluid,
+            EOS=ctx.suc.EOS,
             phase=ctx.suc.phase,
         )
         return {"disch": disch}
@@ -156,39 +155,12 @@ def _disch_from_disch_T_disch_p(v, ctx):
 
 def _disch_from_eff_volume_ratio(v, ctx):
     if _missing(v, "disch") and _has(v, "eff", "volume_ratio"):
-        suc = ctx.suc
-        eff = v["eff"]
-        disch_v = suc.v() / v["volume_ratio"]
-        disch_rho = 1 / disch_v
-
-        # consider first an isentropic compression
-        disch = ctx.m.isentropic_disch_from_rho(suc, disch_rho)
-
-        def update_state(x, update_type):
-            if update_type == "pressure":
-                disch.update(rho=disch_rho, p=x)
-            elif update_type == "temperature":
-                disch.update(rho=disch_rho, T=x)
-            new_eff = ctx.eff_calc_func(suc, disch)
-            if not 0.0 < new_eff < 1.5:
-                raise ValueError("Efficiency did not converge")
-            return (new_eff - eff).magnitude
-
-        try:
-            newton(update_state, disch.T().magnitude, args=("temperature",), tol=1e-1)
-        except (ValueError, RuntimeError):
-            # re-instantiate disch, since update with temperature not converging
-            # might break the state
-            try:
-                disch = ctx.m.isentropic_disch_from_rho(suc, disch_rho)
-                newton(update_state, disch.p().magnitude, args=("pressure",), tol=1e-1)
-            except (ValueError, RuntimeError):
-                # the secant can diverge for dense fluids; fall back to a robust
-                # bracketed efficiency solve at fixed density.
-                disch = ctx.m.disch_from_suc_rho_eff(
-                    suc, disch_rho, eff, ctx.eff_calc_func
-                )
-
+        disch = ctx.m.disch_from_suc_volume_ratio_eff(
+            ctx.suc,
+            v["volume_ratio"],
+            v["eff"],
+            polytropic_method=ctx.polytropic_method,
+        )
         return {"disch": disch}
 
 
@@ -208,7 +180,12 @@ def _eff_from_states(v, ctx):
         return None
     if ctx.casing_temperature is not None and _missing(v, "flow_m"):
         return None
-    eff = ctx.eff_calc_func(ctx.suc, v["disch"], ctx._dummy_state)
+    if _has(v, "head"):
+        # every polytropic efficiency is its head over the enthalpy rise: reuse
+        # the head already derived from the same states
+        eff = (v["head"] / (v["disch"].h() - ctx.suc.h())).to("dimensionless")
+    else:
+        eff = ctx.eff_calc_func(ctx.suc, v["disch"], ctx._dummy_state)
     out = {"eff": eff}
     if ctx.casing_temperature is not None:
         casing_heat_loss = (

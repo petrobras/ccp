@@ -1,3 +1,35 @@
+import numpy as np
+
+
+def reynolds_limits(remsp):
+    """Reynolds number envelope of ASME PTC 10-2022 (Fig. 3-3.5-1).
+
+    Parameters
+    ----------
+    remsp : float
+        Machine Reynolds number of the specified point.
+
+    Returns
+    -------
+    lower, upper : float
+        Limits on the test machine Reynolds number. Raises ``ValueError``
+        below the 9e4 lower bound of the figure.
+    """
+    remsp = float(remsp)
+    if remsp < 9e4:
+        raise ValueError("Reynolds number out of specified range.")
+    log_re = np.log10(remsp)
+    if remsp < 8e5:
+        upper = 10 ** (68.205 + 16.13 * log_re - 64.008 * np.sqrt(log_re))
+    else:
+        upper = remsp * 100
+    if remsp < 5e5:
+        lower = 10 ** (-22.733 - 4.247 * log_re + 21.63 * np.sqrt(log_re))
+    else:
+        lower = remsp * 0.1
+    return lower, upper
+
+
 def check_similarity(point_sp, point_t):
     """Function to check similarity between two different points.
 
@@ -10,8 +42,11 @@ def check_similarity(point_sp, point_t):
 
     Returns
     -------
-    similarity_results : dict
-        Dict with information on flow, volume ratio, Mach and Reynolds similarity.
+    similarity_results : str
+        Report with the flow coefficient, volume ratio, Mach and Reynolds
+        similarity values and their PTC 10 limits (the Reynolds limits are the
+        PTC 10-2022 envelope of :func:`reynolds_limits`, as ratios to the
+        specified Reynolds number).
     """
     flow_coefficient = point_t.phi / point_sp.phi
     volume_ratio = point_t.volume_ratio / point_sp.volume_ratio
@@ -30,28 +65,18 @@ def check_similarity(point_sp, point_t):
     else:
         mach_limits = "Mach outside PTC10 limits."
 
-    x = (point_sp.reynolds / 1e7) ** 0.3
-    if 9e4 < point_sp.reynolds < 1e7:
-        upper = 100**x
-    elif 1e7 < point_sp.reynolds:
-        upper = 100
-    else:
-        upper = "Reynolds outside PTC10 limits."
-
-    if 9e4 < point_sp.reynolds < 1e6:
-        lower = 0.01**x
-    elif 1e6 < point_sp.reynolds:
-        lower = 0.1
-    else:
-        lower = "Reynolds outside PTC10 limits."
-
-    reynolds_limits = (lower, upper)
+    remsp = float(point_sp.reynolds.m)
+    try:
+        lower, upper = reynolds_limits(remsp)
+        reynolds_limits_ratio = (lower / remsp, upper / remsp)
+    except ValueError:
+        reynolds_limits_ratio = "Reynolds outside PTC10 limits."
 
     similarity_results = f"""
     {flow_coefficient.m:.3f} Limits -> {flow_coefficient_limits}
     {volume_ratio.m:.3f} Limits -> {volume_ratio_limits}
     {mach.m:.3f} Limits -> {mach_limits}
-    {reynolds.m:.3f} Limits -> {reynolds_limits}
+    {reynolds.m:.3f} Limits -> {reynolds_limits_ratio}
     """
 
     return similarity_results
