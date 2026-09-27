@@ -262,6 +262,9 @@ class Point(Serializable):
         self.ambient_temperature = ambient_temperature
         self.convection_constant = convection_constant
         self.casing_heat_loss = None
+        # a point measured at the discharge (a test point) is saved with that
+        # discharge: rebuilding it from head and efficiency is not exact
+        self._disch_defined = disch is not None or disch_T is not None
 
         # dummy state used to avoid copying states
         self._dummy_state = copy(self.suc)
@@ -651,7 +654,7 @@ class Point(Serializable):
             phase = None
         else:
             phase = self.suc.phase
-        return dict(
+        dict_to_save = dict(
             p=str(self.suc.p()),
             T=str(self.suc.T()),
             fluid=self.suc.fluid,
@@ -671,6 +674,20 @@ class Point(Serializable):
             volume_ratio_ratio=str(self.volume_ratio_ratio),
             extrapolated=str(self._extrapolated),
         )
+        if getattr(self, "_disch_defined", False):
+            del dict_to_save["head"], dict_to_save["eff"]
+            dict_to_save["disch_p"] = str(self.disch.p())
+            dict_to_save["disch_T"] = str(self.disch.T())
+        for param in [
+            "surface_roughness",
+            "casing_area",
+            "casing_temperature",
+            "ambient_temperature",
+            "convection_constant",
+        ]:
+            if getattr(self, param) is not None:
+                dict_to_save[param] = str(getattr(self, param))
+        return dict_to_save
 
     @classmethod
     def from_dict(cls, dict_parameters):
