@@ -92,15 +92,53 @@ def test_straight_through_validation_errors(web):
     assert not Job.objects.filter(case=case).exists()  # rejected before any job
 
 
-def test_orifice_flowrate(web, example):
+def test_orifice_flow_input(web, example):
+    """Switching to the orifice input fills the Flow row from the orifice data."""
     case, _ = import_case(web, example("example_straight.ccp"))
-    reference = case.state["mass_flow_fo_1"]
-    response = web.post(f"/performance-test/{case.pk}/orifice/", {"mass_flow_fo_1": ""})
-    assert response.status_code == 200
-    case.refresh_from_db()
-    assert float(case.state["mass_flow_fo_1"]) == pytest.approx(
-        float(reference), rel=1e-4
+    reference = float(case.state["mass_flow_fo_1"])
+    response = web.post(
+        f"/performance-test/{case.pk}/test-data/",
+        {"flow_method": "Orifice", "flow_point_1": "999"},
     )
+    assert response.status_code == 200
+    body = response.content.decode()
+    assert 'id="flow-row-st"' in body and "hx-swap-oob" in body
+    case.refresh_from_db()
+    assert case.state["flow_method"] == "Orifice"
+    assert float(case.state["flow_point_1"]) == pytest.approx(reference, rel=1e-4)
+
+    web.post(f"/performance-test/{case.pk}/calculate/", {})
+    job = last_job(case, "calculate")
+    assert job.status == Job.SUCCEEDED, job.error
+
+
+def test_orifice_flow_input_keeps_measured_flows(web, example):
+    case, _ = import_case(web, example("example_straight.ccp"))
+    url = f"/performance-test/{case.pk}/test-data/"
+    measured = case.state["flow_point_1"]
+    # The orifice unit select only offers mass units; kg/h replaces kg/s.
+    web.post(url, {"flow_method": "Orifice", "flow_units": "kg/h"})
+    case.refresh_from_db()
+    assert float(case.state["flow_point_1"]) == pytest.approx(
+        float(case.state["mass_flow_fo_1"]) * 3600, rel=1e-4
+    )
+    response = web.post(
+        url, {"flow_method": "Direct", "flow_point_1": "1", "flow_units": "kg/h"}
+    )
+    assert 'id="flow-row-st"' in response.content.decode()
+    case.refresh_from_db()
+    assert case.state["flow_point_1"] == measured
+    assert case.state["flow_units"] == "kg/s"
+
+
+def test_orifice_flow_input_validation(web, example):
+    case, _ = import_case(web, example("example_straight.ccp"))
+    response = web.post(
+        f"/performance-test/{case.pk}/calculate/",
+        {"flow_method": "Orifice", "pressure_drop_fo_1": ""},
+    )
+    assert "pressure_drop_fo_1" in response.content.decode()
+    assert not Job.objects.filter(case=case, kind="calculate").exists()
 
 
 # --------------------------------------------------------------------------

@@ -167,16 +167,60 @@ def test_calculation_context_restores_method():
     assert ccp.config.POLYTROPIC_METHOD == before
 
 
+ORIFICE_KEYS = [
+    "outer_diameter_fo",
+    "inner_diameter_fo",
+    "upstream_pressure_fo",
+    "upstream_temperature_fo",
+    "pressure_drop_fo",
+]
+
+
 def test_orifice_flows(example):
     state = ccpfile.read_ccp(example("example_straight.ccp")).state
     with units.state_context(state):
-        updates, warnings = pt.calculate_orifice_flows(state)
-    # Points 1 to 5 have orifice data; the saved results are the reference.
+        assert pt.orifice_flows("straight_through", state) == ({}, {})  # Direct
+        state["flow_method"] = "Orifice"
+        updates, errors = pt.orifice_flows("straight_through", state)
+    assert errors == {}
+    # Points 1 to 5 have orifice data; the saved Streamlit results are the
+    # reference, in kg/s (the flow unit of the example).
     for i in range(1, 6):
-        assert float(updates[f"mass_flow_fo_{i}"]) == pytest.approx(
-            float(state[f"mass_flow_fo_{i}"]), rel=1e-4
-        )
-    assert updates["mass_flow_fo_6"] == ""
+        reference = float(state[f"mass_flow_fo_{i}"])
+        assert float(updates[f"flow_point_{i}"]) == pytest.approx(reference, rel=1e-4)
+        assert float(updates[f"mass_flow_fo_{i}"]) == pytest.approx(reference, rel=1e-4)
+    assert updates["flow_point_6"] == ""
+
+
+def test_orifice_flows_errors(example):
+    state = ccpfile.read_ccp(example("example_straight.ccp")).state
+    state["flow_method"] = "Orifice"
+    state["pressure_drop_fo_2"] = ""
+    with units.state_context(state):
+        updates, errors = pt.orifice_flows("straight_through", state)
+        assert updates["flow_point_2"] == "" and errors == {}  # still typing
+        updates, errors = pt.orifice_flows("straight_through", state, strict=True)
+        assert errors == {"pressure_drop_fo_2": "Required for the orifice flow"}
+        state["flow_units"] = "m³/h"
+        _, errors = pt.orifice_flows("straight_through", state)
+        assert list(errors) == ["flow_units"]
+
+
+def test_orifice_flows_back_to_back(example):
+    """Each section has its own flow method and orifice keys."""
+    st = ccpfile.read_ccp(example("example_straight.ccp")).state
+    state = ccpfile.read_ccp(example("example_back_to_back.ccp")).state
+    state["flow_method_section_2"] = "Orifice"
+    state["flow_units_section_2"] = "kg/s"
+    for p in ORIFICE_KEYS:
+        state[f"{p}_units_section_2"] = st[f"{p}_units"]
+        state[f"{p}_section_2_1"] = st[f"{p}_1"]
+    with units.state_context(state):
+        updates, errors = pt.orifice_flows("back_to_back", state)
+    assert errors == {}
+    assert float(updates["flow_section_2_point_1"]) > 0
+    assert updates["flow_section_2_point_2"] == ""
+    assert not any("section_1" in k for k in updates)
 
 
 def test_frozen_and_redundant_tags():

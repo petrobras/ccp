@@ -1,0 +1,3 @@
+{% include "core/partials/saved.html" %}
+{# A bare <tr> does not survive HTML parsing; htmx unwraps <template> for out-of-band swaps. #}
+{% for t in flow_rows %}<template>{% include "performance_test/partials/flow_row.html" with oob=True %}</template>{% endfor %}

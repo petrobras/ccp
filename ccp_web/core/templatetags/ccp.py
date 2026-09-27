@@ -98,15 +98,28 @@ def num(context, key, cls="inp", step="any", disabled=False, xdis="", **attrs):
 
 
 @register.simple_tag(takes_context=True)
-def sel(context, key, options=None, cls="sel", disabled=False, labels=None, xdis=""):
-    """Select bound to ``state[key]``; options default to the schema's."""
+def sel(
+    context,
+    key,
+    options=None,
+    cls="sel",
+    disabled=False,
+    labels=None,
+    xdis="",
+    keep_current=True,
+):
+    """Select bound to ``state[key]``; options default to the schema's.
+
+    A stored value missing from ``options`` is kept as an extra option unless
+    ``keep_current`` is false (the browser then selects the first option).
+    """
     current = _state(context).get(key, "")
     if options is None:
         app_type = context.get("app_type")
         field = schemas.get_schema(app_type).fields.get(key) if app_type else None
         options = list(field.options) if field else []
     options = list(options)
-    if current not in options and current not in ("", None):
+    if keep_current and current not in options and current not in ("", None):
         options = [current] + options
     labels = labels or {}
     opts = format_html_join(

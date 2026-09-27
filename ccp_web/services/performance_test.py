@@ -124,6 +124,22 @@ class Section:
         return f"gas_{self.name}_point_{i}"
 
     @property
+    def flow_method(self):
+        """State key of the section's flow method ("Direct" or "Orifice")."""
+        return "flow_method" if self.name is None else f"flow_method_{self.name}"
+
+    def fo_value(self, param, i):
+        """Orifice plate key (Streamlit ``outer_diameter_fo_1`` naming)."""
+        if self.name is None:
+            return f"{param}_{i}"
+        return f"{param}_{self.name}_{i}"
+
+    def fo_unit(self, param):
+        if self.name is None:
+            return f"{param}_units"
+        return f"{param}_units_{self.name}"
+
+    @property
     def test_parameters(self):
         return {
             None: schemas.TEST_PARAMETERS_ST,
@@ -892,50 +908,106 @@ def add_background_image(fig, limits, source):
 
 
 # --------------------------------------------------------------------------
-# Orifice flow (straight-through "Calculate Flowrate")
+# Orifice flow: the test flow of a section whose flow method is "Orifice"
 # --------------------------------------------------------------------------
 
+ORIFICE_REQUIRED = [
+    "outer_diameter_fo",
+    "inner_diameter_fo",
+    "upstream_pressure_fo",
+    "upstream_temperature_fo",
+    "pressure_drop_fo",
+]
 
-def calculate_orifice_flows(state):
-    """Mass flow through the orifice for each test point.
 
-    Returns ``(updates, warnings)`` where ``updates`` maps
-    ``mass_flow_fo_{i}`` to the formatted result (blank for points with
-    missing data), as the Streamlit ``fo_calc`` callback did.
+def orifice_sections(app_type, state):
+    return [s for s in sections(app_type) if state.get(s.flow_method) == "Orifice"]
+
+
+def switch_flow_method(app_type, old, new):
+    """State updates for sections whose flow method changed.
+
+    Switching to "Orifice" keeps the measured flows and their unit aside
+    (``flow_measured_*``); switching back to "Direct" restores them.
+    """
+    updates = {}
+    for sec in sections(app_type):
+        before = old.get(sec.flow_method) or "Direct"
+        after = new.get(sec.flow_method) or "Direct"
+        if before == after:
+            continue
+        pairs = [(sec.tp_unit("flow"), sec.tp_unit("flow_measured"))] + [
+            (sec.tp_value("flow", i), sec.tp_value("flow_measured", i))
+            for i in range(1, schemas.N_POINTS + 1)
+        ]
+        if after == "Orifice":
+            # The unit select may already hold the orifice (mass) unit.
+            updates.update({kept: old.get(key, "") for key, kept in pairs})
+        elif new.get(sec.tp_unit("flow_measured")):
+            updates.update({key: new.get(kept, "") for key, kept in pairs})
+            updates.update({kept: "" for _, kept in pairs})
+    return updates
+
+
+def orifice_flows(app_type, state, strict=False):
+    """Test flows calculated from the orifice plate data (ISO 5167).
+
+    For every section in "Orifice" mode, the flow of each test point is the
+    orifice mass flow, in the section's flow unit, using the point's gas.
+    A point without orifice data gets a blank flow.
+
+    Returns ``(updates, errors)``: state values to store and ``{key:
+    message}``. With ``strict`` (before a calculation) a partly filled point
+    is an error on its blank fields; otherwise (while typing) its flow is
+    just left blank.
     """
     r = StateReader(state)
     updates = {}
-    warnings = []
-    unit = lambda p: state.get(f"{p}_units")  # noqa: E731
-    required = [
-        "outer_diameter_fo",
-        "inner_diameter_fo",
-        "upstream_pressure_fo",
-        "upstream_temperature_fo",
-        "pressure_drop_fo",
-    ]
-    for i in range(1, schemas.N_POINTS + 1):
-        if any(r.is_blank(f"{p}_{i}") for p in required):
-            updates[f"mass_flow_fo_{i}"] = ""
-            if any(not r.is_blank(f"{p}_{i}") for p in required):
-                warnings.append(f"Missing data for point {i}!")
+    errors = {}
+    for sec in orifice_sections(app_type, state):
+        flow_unit = state.get(sec.tp_unit("flow")) or ""
+        if not is_mass_flow_unit(flow_unit):
+            errors[sec.tp_unit("flow")] = "The orifice flow needs a mass flow unit"
             continue
-        values = {p: r.quantity(f"{p}_{i}", unit(p)) for p in required}
-        fluid = _fluid(r, state, f"gas_fo_{i}")
-        if r.errors:
-            continue
-        fo = ccp.FlowOrifice(
-            state=ccp.State(
-                p=values["upstream_pressure_fo"],
-                T=values["upstream_temperature_fo"],
-                fluid=fluid,
-            ),
-            delta_p=values["pressure_drop_fo"],
-            D=values["outer_diameter_fo"],
-            d=values["inner_diameter_fo"],
-            tappings=state.get(f"tappings_fo_{i}") or "flange",
-        )
-        qm = fo.qm.to(state.get("mass_flow_fo_units") or "kg/h").m
-        updates[f"mass_flow_fo_{i}"] = str(round(qm, 5))
-    r.raise_errors()
-    return updates, warnings
+        for i in range(1, schemas.N_POINTS + 1):
+            flow_key = sec.tp_value("flow", i)
+            keys = {p: sec.fo_value(p, i) for p in ORIFICE_REQUIRED}
+            blank = [p for p, k in keys.items() if r.is_blank(k)]
+            if blank:
+                updates[flow_key] = ""
+                if strict and len(blank) < len(keys):
+                    for p in blank:
+                        errors[keys[p]] = "Required for the orifice flow"
+                continue
+            values = {
+                p: r.quantity(k, state.get(sec.fo_unit(p))) for p, k in keys.items()
+            }
+            fluid = _fluid(r, state, sec.tp_gas(i))
+            if r.errors:
+                errors.update(r.errors)
+                r.errors.clear()
+                updates[flow_key] = ""
+                continue
+            try:
+                fo = ccp.FlowOrifice(
+                    state=ccp.State(
+                        p=values["upstream_pressure_fo"],
+                        T=values["upstream_temperature_fo"],
+                        fluid=fluid,
+                    ),
+                    delta_p=values["pressure_drop_fo"],
+                    D=values["outer_diameter_fo"],
+                    d=values["inner_diameter_fo"],
+                    tappings=state.get(sec.fo_value("tappings_fo", i)) or "flange",
+                )
+                qm = fo.qm
+            except Exception as exc:  # flash or ISO 5167 range failure
+                errors[flow_key] = f"Orifice flow failed: {exc}"
+                updates[flow_key] = ""
+                continue
+            updates[flow_key] = f"{qm.to(flow_unit).m:.6g}"
+            if sec.name is None:
+                # Streamlit's result row, so its files stay consistent.
+                fo_unit = state.get("mass_flow_fo_units") or "kg/h"
+                updates[f"mass_flow_fo_{i}"] = str(round(qm.to(fo_unit).m, 5))
+    return updates, errors

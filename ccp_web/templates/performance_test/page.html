@@ -42,7 +42,7 @@
 
 <form id="case-form" onsubmit="return false"
   hx-post="{% url 'core:case_state' case.pk %}"
-  hx-trigger="change[!target.matches('input[type=file]')] delay:400ms"
+  hx-trigger="change[!target.matches('input[type=file]') && !target.closest('[data-test-data]')] delay:400ms"
   hx-target="#save-status" hx-swap="innerHTML"
   x-data="{ opt: { seal: {{ state.opt_seal_gas_flow|yesno:'true,false' }}, leak: {{ state.opt_calculate_leakages|yesno:'true,false' }}, bearing: {{ state.opt_bearing_mechanical_losses|yesno:'true,false' }}, oilCp: {{ state.oil_specific_heat|yesno:'true,false' }}, oilIso: {{ state.oil_iso|yesno:'true,false' }} } }">
   {% csrf_token %}
@@ -174,29 +174,46 @@
         </div>
       {% endif %}
       {% for t in layout.test %}
-        <div class="grid-wrap" x-show="tab === '{{ t.id }}'">
-          <table class="sheet">
-            <thead><tr><th class="param">Parameter</th><th>Unit</th>{% for i in layout.points %}<th>Point {{ i }}</th>{% endfor %}</tr></thead>
-            <tbody>
-              <tr class="gasrow"><td class="param">Gas selection</td><td></td>{% for k in t.gas_keys %}<td class="val">{% gas_sel k %}</td>{% endfor %}</tr>
-              {% for row in t.rows %}
-                <tr {% if row.toggle %}:class="{ disabled: {{ row.toggle }} }"{% endif %}>
-                  <td class="param">{{ row.param.label }}{% help row.param.help %}</td>
-                  <td class="unit">{% sel row.unit_key xdis=row.toggle %}</td>
-                  {% for k in row.keys %}<td class="val">{% inp k xdis=row.toggle %}</td>{% endfor %}
-                </tr>
-              {% endfor %}
-            </tbody>
-          </table>
+        {# Changes here autosave through test_data, which also refreshes the orifice flows. #}
+        <div x-show="tab === '{{ t.id }}'" x-data="{ fm: '{{ state|get:t.method_key|escapejs }}' }" data-test-data
+          hx-post="{% url 'performance_test:test_data' case.pk %}" hx-trigger="change delay:400ms"
+          hx-include="#case-form" hx-target="#save-status" hx-swap="innerHTML">
+          <div class="flowbar">
+            <span class="lbl">Flow input</span>
+            <div class="seg" role="radiogroup" aria-label="Flow input">
+              <label><input type="radio" name="{{ t.method_key }}" value="Direct" x-model="fm">Measured</label>
+              <label><input type="radio" name="{{ t.method_key }}" value="Orifice" x-model="fm">Orifice plate</label>
+            </div>
+            <span class="muted" x-show="fm === 'Orifice'">Flow calculated per point from the orifice plate (ISO 5167) with the point's gas.</span>
+          </div>
+          <div class="grid-wrap">
+            <table class="sheet">
+              <thead><tr><th class="param">Parameter</th><th>Unit</th>{% for i in layout.points %}<th>Point {{ i }}</th>{% endfor %}</tr></thead>
+              <tbody>
+                <tr class="gasrow"><td class="param">Gas selection</td><td></td>{% for k in t.gas_keys %}<td class="val">{% gas_sel k %}</td>{% endfor %}</tr>
+                {% include "performance_test/partials/flow_row.html" %}
+                {% for row in t.orifice %}
+                  <tr class="orifice-row" x-show="fm === 'Orifice'">
+                    <td class="param">{{ row.param.label }}{% help row.param.help %}</td>
+                    <td class="unit">{% if row.unit_key %}{% sel row.unit_key %}{% endif %}</td>
+                    {% for k in row.keys %}<td class="val">{% if row.select %}{% sel k %}{% else %}{% inp k %}{% endif %}</td>{% endfor %}
+                  </tr>
+                {% endfor %}
+                {% for row in t.rows %}
+                  <tr {% if row.toggle %}:class="{ disabled: {{ row.toggle }} }"{% endif %}>
+                    <td class="param">{{ row.param.label }}{% help row.param.help %}</td>
+                    <td class="unit">{% sel row.unit_key xdis=row.toggle %}</td>
+                    {% for k in row.keys %}<td class="val">{% inp k xdis=row.toggle %}</td>{% endfor %}
+                  </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
         </div>
       {% endfor %}
     </div>
   </section>
 
-  <!-- FLOWRATE (straight-through only) -->
-  {% if layout.orifice %}
-    {% include "performance_test/partials/orifice.html" %}
-  {% endif %}
 </form>
 
 <!-- RUN -->

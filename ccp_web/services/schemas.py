@@ -143,36 +143,39 @@ PARAMETERS = {
         _p("casing_area", "Casing Area", units.area_units),
         _p(
             "outer_diameter_fo",
-            "Outer Diameter",
+            "Orifice Outer Diameter",
             units.orifice_length_units,
             "Outer diameter of orifice plate.",
         ),
         _p(
             "inner_diameter_fo",
-            "Inner Diameter",
+            "Orifice Inner Diameter",
             units.orifice_length_units,
             "Inner diameter of orifice plate.",
         ),
         _p(
             "upstream_pressure_fo",
-            "Upstream Pressure",
+            "Orifice Upstream Pressure",
             units.pressure_units,
             "Upstream pressure of orifice plate.",
         ),
         _p(
             "upstream_temperature_fo",
-            "Upstream Temperature",
+            "Orifice Upstream Temperature",
             units.temperature_units,
             "Upstream temperature of orifice plate.",
         ),
         _p(
             "pressure_drop_fo",
-            "Pressure Drop",
+            "Orifice Pressure Drop",
             units.pressure_units,
             "Pressure drop across orifice plate.",
         ),
         _p(
-            "tappings_fo", "Tappings", units.tappings_options, "Pressure tappings type."
+            "tappings_fo",
+            "Orifice Tappings",
+            units.tappings_options,
+            "Pressure tappings type.",
         ),
         _p("mass_flow_fo", "Mass Flow (Result)", ["kg/h", "lbm/h", "kg/s", "lbm/s"]),
     ]
@@ -257,6 +260,8 @@ TEST_PARAMETERS_SEC2 = [
     "oil_outlet_temperature_nde",
 ]
 
+# Orifice plate rows of the test data, shown when the flow method of a
+# section is "Orifice"; the flow is then calculated from them (ISO 5167).
 ORIFICE_PARAMETERS = [
     "outer_diameter_fo",
     "inner_diameter_fo",
@@ -264,8 +269,8 @@ ORIFICE_PARAMETERS = [
     "upstream_temperature_fo",
     "pressure_drop_fo",
     "tappings_fo",
-    "mass_flow_fo",
 ]
+FLOW_METHODS = ["Direct", "Orifice"]
 
 # Rows disabled by the options, as in the Streamlit pages.
 SEAL_GAS_PARAMETERS = {"seal_gas_flow_m", "seal_gas_temperature"}
@@ -388,22 +393,39 @@ def straight_through_schema():
     _curve_fields(s)
     for i in range(1, N_POINTS + 1):
         s.add(f"gas_point_{i}", "gas", "gas_0")
+        # Streamlit's orifice gas; the orifice now uses the test point gas.
         s.add(f"gas_fo_{i}", "gas", "gas_0")
     for param in TEST_PARAMETERS_ST:
         opts = PARAMETERS[param].units
         s.add(f"{param}_units", "select", _unit_default(opts), opts)
         for i in range(1, N_POINTS + 1):
             s.add(f"{param}_point_{i}", "text", "")
-    for param in ORIFICE_PARAMETERS:
+    s.add("flow_method", "select", FLOW_METHODS[0], FLOW_METHODS)
+    _measured_flow_fields(s, "_units", "_point_{i}")
+    # Streamlit keys: ``outer_diameter_fo_1``, ``outer_diameter_fo_units``...
+    # ``mass_flow_fo`` is Streamlit's result row, kept in sync for its files.
+    _orifice_fields(s, "", ORIFICE_PARAMETERS + ["mass_flow_fo"])
+    return s
+
+
+def _measured_flow_fields(s, unit_suffix, value_suffix):
+    """Measured flows kept aside while the flow comes from the orifice."""
+    opts = PARAMETERS["flow"].units
+    s.add(f"flow_measured{unit_suffix}", "select", "", ("",) + opts)
+    for i in range(1, N_POINTS + 1):
+        s.add(f"flow_measured{value_suffix.format(i=i)}", "text", "")
+
+
+def _orifice_fields(s, suffix, params):
+    for param in params:
         opts = PARAMETERS[param].units
         if param == "tappings_fo":
             for i in range(1, N_POINTS + 1):
-                s.add(f"{param}_{i}", "select", opts[0], opts)
+                s.add(f"{param}{suffix}_{i}", "select", opts[0], opts)
             continue
-        s.add(f"{param}_units", "select", _unit_default(opts), opts)
+        s.add(f"{param}_units{suffix}", "select", _unit_default(opts), opts)
         for i in range(1, N_POINTS + 1):
-            s.add(f"{param}_{i}", "text", "")
-    return s
+            s.add(f"{param}{suffix}_{i}", "text", "")
 
 
 def back_to_back_schema():
@@ -436,6 +458,9 @@ def back_to_back_schema():
             s.add(f"{param}_units_{section}", "select", _unit_default(opts), opts)
             for i in range(1, N_POINTS + 1):
                 s.add(f"{param}_{section}_point_{i}", "text", "")
+        s.add(f"flow_method_{section}", "select", FLOW_METHODS[0], FLOW_METHODS)
+        _measured_flow_fields(s, f"_units_{section}", f"_{section}_point_{{i}}")
+        _orifice_fields(s, f"_{section}", ORIFICE_PARAMETERS)
     return s
 
 

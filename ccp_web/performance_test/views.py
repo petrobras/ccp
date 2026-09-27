@@ -107,12 +107,24 @@ def layout(app_type):
             }
             for p in sec.test_parameters
         ]
+        orifice = [
+            {
+                "param": P[p],
+                "unit_key": None if p == "tappings_fo" else sec.fo_unit(p),
+                "keys": [sec.fo_value(p, i) for i in range(1, schemas.N_POINTS + 1)],
+                "select": p == "tappings_fo",
+            }
+            for p in schemas.ORIFICE_PARAMETERS
+        ]
         test.append(
             {
                 "id": sec.sec or "st",
                 "title": sec.title if sec.name else "Test points",
                 "gas_keys": [sec.tp_gas(i) for i in range(1, schemas.N_POINTS + 1)],
-                "rows": rows,
+                "flow": rows[0],
+                "rows": rows[1:],
+                "orifice": orifice,
+                "method_key": sec.flow_method,
             }
         )
         curves.append(
@@ -131,25 +143,13 @@ def layout(app_type):
                 ],
             }
         )
-    orifice = []
-    if app_type == Case.STRAIGHT_THROUGH:
-        for p in schemas.ORIFICE_PARAMETERS:
-            orifice.append(
-                {
-                    "param": P[p],
-                    "unit_key": None if p == "tappings_fo" else f"{p}_units",
-                    "keys": [f"{p}_{i}" for i in range(1, schemas.N_POINTS + 1)],
-                    "select": p == "tappings_fo",
-                    "result": p == "mass_flow_fo",
-                }
-            )
     return {
         "sections": secs,
+        "flow_m_units": units.flow_m_units,
         "section_titles": [s.title for s in secs],
         "data_sheet": data_sheet,
         "test": test,
         "curves": curves,
-        "orifice": orifice,
         "points": list(range(1, schemas.N_POINTS + 1)),
     }
 
@@ -261,7 +261,17 @@ def case_view(request, pk):
 
 
 def _save_post(case, request):
+    """Save the form; return the sections whose flow method changed."""
+    old = dict(case.state)
     save_post(case, request.POST)
+    updates = pt.switch_flow_method(case.app_type, old, case.state)
+    if updates:
+        update_state(case, **updates)
+    return {
+        s.name
+        for s in pt.sections(case.app_type)
+        if old.get(s.flow_method) != case.state.get(s.flow_method)
+    }
 
 
 @require_POST
@@ -270,8 +280,14 @@ def calculate(request, pk):
     case = get_case(request, pk, APP_TYPES)
     _save_post(case, request)
     try:
-        with units.state_context(case.state):
-            pt.read_inputs(case.app_type, case.state)
+        errors = _store_orifice_flows(case, strict=True)
+        try:
+            with units.state_context(case.state):
+                pt.read_inputs(case.app_type, case.state)
+        except units.InputError as exc:
+            errors = {**exc.errors, **errors}
+        if errors:
+            raise units.InputError(errors)
     except units.InputError as exc:
         fake = Job(
             owner=case.owner,
@@ -291,24 +307,35 @@ def calculate(request, pk):
     return render(request, "core/partials/job.html", {"job": job, "case": case})
 
 
-@require_POST
-def orifice(request, pk):
-    """Straight-through "Calculate Flowrate": orifice mass flow per point."""
-    case = get_case(request, pk, [Case.STRAIGHT_THROUGH])
-    _save_post(case, request)
-    warnings, errors = [], {}
-    try:
-        with units.state_context(case.state):
-            updates, warnings = pt.calculate_orifice_flows(case.state)
+def _store_orifice_flows(case, strict):
+    """Calculate the orifice-mode test flows and store them; return the errors."""
+    with units.state_context(case.state):
+        updates, errors = pt.orifice_flows(case.app_type, case.state, strict=strict)
+    if updates:
         update_state(case, **updates)
-    except units.InputError as exc:
-        errors = exc.errors
-    except Exception as exc:  # flash failure for one of the points
-        warnings = [f"Flow calculation failed: {exc}"]
+    return errors
+
+
+@require_POST
+def test_data(request, pk):
+    """Autosave of the test data; refreshes the calculated orifice flows.
+
+    Returns the save status plus, out of band, the Flow row of every section
+    in orifice mode or whose flow method just changed.
+    """
+    case = get_case(request, pk, APP_TYPES)
+    switched = _save_post(case, request)
+    errors = _store_orifice_flows(case, strict=False)
     ctx = page_context(request, case, errors=errors)
-    ctx["orifice_warnings"] = warnings
-    ctx["orifice_done"] = not errors
-    return render(request, "performance_test/partials/orifice.html", ctx)
+    names = switched | {s.name for s in pt.orifice_sections(case.app_type, case.state)}
+    ctx["flow_rows"] = [
+        t
+        for t, sec in zip(ctx["layout"]["test"], ctx["layout"]["sections"])
+        if sec.name in names
+    ]
+    response = render(request, "performance_test/partials/test_data_saved.html", ctx)
+    response["HX-Trigger"] = "ccp:saved"
+    return response
 
 
 def _figure_payload(case, compressor, sec, files):

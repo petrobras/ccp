@@ -1,0 +1,10 @@
+{% load ccp %}{% comment %}Flow row of one test-data table, inside its x-data="{ fm }" scope. The class is
+also rendered server-side: htmx settling resets it after an out-of-band swap.{% endcomment %}
+<tr id="flow-row-{{ t.id }}" class="flow-row{% if state|get:t.method_key == 'Orifice' %} computed{% endif %}" :class="{ computed: fm === 'Orifice' }"{% if oob %} hx-swap-oob="true"{% endif %}>
+  <td class="param">{{ t.flow.param.label }}<span class="pill" x-show="fm === 'Orifice'">orifice</span>{% help "Mass or volumetric flow depending on the selected unit. With the orifice plate input it is calculated from the orifice rows below (mass flow units only)." %}</td>
+  <td class="unit">
+    <div x-show="fm !== 'Orifice'">{% sel t.flow.unit_key xdis="fm === 'Orifice'" %}</div>
+    <div x-show="fm === 'Orifice'">{% sel t.flow.unit_key options=layout.flow_m_units xdis="fm !== 'Orifice'" keep_current=False %}</div>
+  </td>
+  {% for k in t.flow.keys %}<td class="val">{% inp k xdis="fm === 'Orifice'" %}</td>{% endfor %}
+</tr>
