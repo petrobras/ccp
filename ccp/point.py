@@ -36,7 +36,7 @@ def _check_single_phase_suction(suc):
     single-phase compression, so a wet suction is reported before any solve
     instead of surfacing as a convergence failure.
     """
-    if suc.phase:
+    if suc.phase or getattr(suc, "_allow_two_phase_suction", False):
         return
     try:
         quality = suc.Q()

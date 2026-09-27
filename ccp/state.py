@@ -174,6 +174,10 @@ class State(CP.AbstractState):
         # True when the phase was imposed by the DEFAULT_PHASE policy rather
         # than requested; Point verifies the discharge of such states.
         self._phase_auto = False
+        # Set by callers that accept a suction at or inside the phase envelope
+        # (ccp.Evaluation warns instead of raising, see Point); survives
+        # pickling so it reaches the conversion workers.
+        self._allow_two_phase_suction = False
         self._phase_dict = {
             "liquid": CP.iphase_liquid,
             "gas": CP.iphase_gas,
@@ -896,12 +900,18 @@ class State(CP.AbstractState):
             EOS=self.EOS,
             phase=self.phase if self.phase else False,
         )
-        return self._rebuild, (self.__class__, kwargs, self._phase_auto)
+        return self._rebuild, (
+            self.__class__,
+            kwargs,
+            self._phase_auto,
+            getattr(self, "_allow_two_phase_suction", False),
+        )
 
     @staticmethod
-    def _rebuild(cls, kwargs, phase_auto=False):
+    def _rebuild(cls, kwargs, phase_auto=False, allow_two_phase_suction=False):
         state = cls(**kwargs)
         state._phase_auto = phase_auto
+        state._allow_two_phase_suction = allow_two_phase_suction
         return state
 
     @classmethod
