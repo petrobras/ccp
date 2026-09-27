@@ -1,0 +1,17 @@
+{% load ccp %}
+<div class="blk">
+  <h3>Design cases</h3>
+  {% for d in design_cases %}
+    <div class="kv">
+      <span class="k">Case {{ d.letter }} · {{ state|get:d.gas_key }}</span>
+      <span class="v">{% if d.info %}<span class="pill ok">{{ d.info.n_points }} pts</span>{% else %}<span class="muted">—</span>{% endif %}</span>
+    </div>
+  {% endfor %}
+</div>
+<div class="blk">
+  <h3>Target</h3>
+  <div class="kv"><span class="k">Gas</span><span class="v">{{ state.new_gas_selection }}</span></div>
+  <div class="kv"><span class="k">Suction pressure</span><span class="v">{{ state.new_suc_p }} <span class="muted">{{ state.new_suc_p_unit }}</span></span></div>
+  <div class="kv"><span class="k">Suction temperature</span><span class="v">{{ state.new_suc_t }} <span class="muted">{{ state.new_suc_t_unit }}</span></span></div>
+  <div class="kv"><span class="k">Find · speed</span><span class="v">{{ state.conv_find_method }} · {{ state.conv_speed_option }}</span></div>
+</div>

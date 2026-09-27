@@ -1,0 +1,13 @@
+{% load ccp %}
+<div class="blk">
+  <h3>Guarantee point</h3>
+  {% for row in layout.data_sheet|slice:":8" %}
+    <div class="kv">
+      <span class="k">{{ row.param.label }}</span>
+      <span class="v">{% for k in row.keys %}{{ state|get:k|default:"—" }}{% if not forloop.last %} / {% endif %}{% endfor %} <span class="muted">{{ state|get:row.unit_key }}</span></span>
+    </div>
+  {% endfor %}
+</div>
+<div id="insp-checks">
+  {% if has_results %}<div class="blk"><h3>PTC 10 checks</h3><div class="muted"><span class="spin"></span> Loading…</div></div>{% endif %}
+</div>

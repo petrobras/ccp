@@ -1,0 +1,18 @@
+{% load ccp %}
+<div class="slot {% if file %}filled{% endif %}" id="slot-{{ slot }}" x-data>
+  {% if file %}
+    <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/><path d="M14 3v6h6"/></svg>
+    <a class="name" href="{% url 'core:case_file' case.pk slot %}" target="_blank" title="{{ file.name }}">{{ file.name }}</a>
+    <button type="button" class="btn ghost sm" title="Remove"
+      hx-delete="{% url 'core:case_file' case.pk slot %}" hx-target="#slot-{{ slot }}" hx-swap="outerHTML">✕</button>
+  {% else %}
+    <span>{% if label %}{{ label }}{% else %}No file{% endif %}</span>
+  {% endif %}
+  <label class="btn sm" style="margin-left:auto;">
+    {% if file %}Replace{% else %}Upload{% endif %}
+    <input type="file" name="file" class="hidden"
+      accept="{% if kind == 'curve_image' %}.png,.jpg,.jpeg{% elif kind == 'engauge_csv' %}.csv{% else %}.csv,.parquet{% endif %}"
+      hx-post="{% url 'core:case_file' case.pk slot %}" hx-encoding="multipart/form-data"
+      hx-target="#slot-{{ slot }}" hx-swap="outerHTML" hx-trigger="change">
+  </label>
+</div>

@@ -1,0 +1,109 @@
+{% extends "base.html" %}
+{% load ccp %}
+{% block title %}Overview{% endblock %}
+{% block app_class %}no-insp{% endblock %}
+{% block crumbs %}<span class="sep">›</span><b>Overview</b>{% endblock %}
+
+{% block main %}
+<div class="page-head">
+  <div>
+    <h1 class="title">Centrifugal compressor performance</h1>
+    <p>Performance tests per ASME PTC 10 (straight-through and back-to-back), curve conversion to new
+      suction conditions, and evaluation of plant data against the design curves.</p>
+  </div>
+  <div class="meta">
+    <div>Project <b>{{ project.name }}</b></div>
+    <div><b>{{ cases|length }}</b> case{{ cases|length|pluralize }}</div>
+  </div>
+</div>
+
+<section class="section">
+  <header><h2>Start</h2><span class="desc">New case, or open a .ccp file saved by this app or by the Streamlit app</span></header>
+  <div class="card-list">
+    {% for app_type, title in app_titles.items %}
+      <form method="post" action="{% url 'core:case_create' app_type %}" class="card">
+        {% csrf_token %}
+        <div class="t">{{ title }}</div>
+        <div class="d">
+          {% if app_type == 'straight_through' %}One-section PTC 10 test: test points converted to the guarantee point, PTC 10 checks, curves.
+          {% elif app_type == 'back_to_back' %}Two-section PTC 10 test with division wall and end seal leakage.
+          {% elif app_type == 'curves_conversion' %}Engauge design curves converted to new suction conditions by similarity.
+          {% else %}PI, file or mock plant data evaluated against the converted design curves, with trends and online monitoring.{% endif %}
+        </div>
+        <div class="hstack" style="margin-top:auto;">
+          <button class="btn sm" type="submit">New</button>
+          <a class="btn ghost sm" href="{% url 'core:app_index' app_type %}">Open latest</a>
+          <span class="pill" style="margin-left:auto;">{{ nav_counts|get:app_type }}</span>
+        </div>
+      </form>
+    {% endfor %}
+  </div>
+</section>
+
+<section class="section">
+  <header><h2>Cases</h2><span class="desc">{{ project.name }}</span></header>
+  {% if cases %}
+  <div class="grid-wrap">
+    <table class="results" style="width:100%;">
+      <thead><tr><th class="row">Name</th><th style="text-align:left;">Page</th><th>Updated</th><th>Source</th><th></th></tr></thead>
+      <tbody>
+      {% for c in cases %}
+        <tr>
+          <td class="row"><a href="{{ c.get_absolute_url }}">{{ c.name }}</a></td>
+          <td style="text-align:left; font-family: var(--font-sans);">{{ c.get_app_type_display }}</td>
+          <td>{{ c.updated|date:"Y-m-d H:i" }}</td>
+          <td>{% if c.source_version %}.ccp {{ c.source_version }}{% else %}—{% endif %}</td>
+          <td><a class="btn ghost sm" href="{% url 'core:case_export' c.pk %}">.ccp</a></td>
+        </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+    <div class="empty">No cases yet. Create one above or open a .ccp file.</div>
+  {% endif %}
+</section>
+
+{% if recent_jobs %}
+<section class="section">
+  <header><h2>Recent calculations</h2></header>
+  <div>
+    {% for job in recent_jobs %}
+      <div class="job">
+        <span class="pill {% if job.status == 'succeeded' %}ok{% elif job.status == 'failed' %}bad{% elif job.is_active %}run{% endif %}">{{ job.get_status_display }}</span>
+        <a href="{{ job.case.get_absolute_url }}">{{ job.case.name }}</a>
+        <span class="muted">{{ job.kind|cut:"_" }}</span>
+        <span class="msg">{{ job.message }}</span>
+        <span class="meta" style="margin-left:auto;">{{ job.created|date:"Y-m-d H:i" }}</span>
+      </div>
+    {% endfor %}
+  </div>
+</section>
+{% endif %}
+
+<section class="section" id="projects">
+  <header><h2>Projects</h2><span class="desc">Group cases per machine or test campaign</span></header>
+  <div class="body pad" style="display:flex; flex-direction:column; gap:10px;">
+    {% for p in projects %}
+      <div class="hstack">
+        <form method="post" action="{% url 'core:project_rename' p.pk %}" class="hstack" style="flex:1;">
+          {% csrf_token %}
+          <input class="inp" name="name" value="{{ p.name }}" style="max-width:320px;">
+          <button class="btn sm" type="submit">Rename</button>
+        </form>
+        {% if p.pk != project.pk %}
+          <form method="post" action="{% url 'core:project_select' p.pk %}">{% csrf_token %}<button class="btn sm" type="submit">Select</button></form>
+        {% else %}<span class="pill ok">current</span>{% endif %}
+        <form method="post" action="{% url 'core:project_delete' p.pk %}" onsubmit="return confirm('Delete project {{ p.name|escapejs }} and all its cases?');">
+          {% csrf_token %}<button class="btn ghost sm danger" type="submit">Delete</button>
+        </form>
+      </div>
+    {% endfor %}
+    <form method="post" action="{% url 'core:project_create' %}" class="hstack">
+      {% csrf_token %}
+      <input class="inp" name="name" placeholder="New project name" style="max-width:320px;">
+      <button class="btn sm" type="submit">Add project</button>
+    </form>
+  </div>
+</section>
+{% endblock %}

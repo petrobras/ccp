@@ -1,0 +1,19 @@
+{% load ccp %}
+<form class="note hstack" style="gap:16px;" hx-get="{% url 'evaluation:perf' case.pk %}" hx-trigger="change" hx-target="closest div" hx-swap="innerHTML">
+  <label class="hstack"><span class="lbl">Converted curve</span>
+    <select name="cluster" class="sel" style="width:180px;">
+      {% for k in clusters %}<option value="{{ k }}" {% if k == cluster %}selected{% endif %}>Converted Curve {{ k|add:1 }}</option>{% endfor %}
+    </select></label>
+  <label class="chk"><input type="checkbox" name="similarity" value="1" {% if similarity %}checked{% endif %}><span>Show similarity</span></label>
+  <span class="muted" style="font-size:11.5px;">Curves at the cluster's median speed; points coloured by date.</span>
+</form>
+{% if figs %}
+  <div class="chart-grid">
+    {% plotly figs.head %}
+    {% plotly figs.eff %}
+    {% plotly figs.power %}
+    {% plotly figs.disch_p %}
+  </div>
+{% else %}
+  <div class="empty">No valid points for Converted Curve {{ cluster|add:1 }}.</div>
+{% endif %}

@@ -1,0 +1,37 @@
+{% load ccp %}
+<div class="job" id="job-{{ job.pk }}"
+  {% if job.is_active %}hx-get="{% url 'core:job_status' job.pk %}?was_active=1" hx-trigger="every 1s" hx-swap="outerHTML"{% endif %}
+  {% if job.status == 'failed' and job.result.errors %}x-data x-init="ccpMarkErrors({{ job.result.errors|json_attr|force_escape }})"{% endif %}>
+  {% if job.is_active %}
+    <span class="pill run"><span class="spin"></span> {{ job.get_status_display }}</span>
+    <span class="msg">{{ job.message|default:"Waiting for a worker…" }}</span>
+    <div class="bar" style="--p: {{ job.progress_percent }}%;"><span></span></div>
+    <span class="meta">{{ job.progress_percent }}%</span>
+    <button class="btn sm" type="button" hx-post="{% url 'core:job_cancel' job.pk %}" hx-target="#job-{{ job.pk }}" hx-swap="outerHTML">Cancel</button>
+  {% elif job.status == 'succeeded' %}
+    <span class="pill ok">Done</span>
+    <span class="msg">{{ job.message }}</span>
+    {% if job.duration %}<span class="meta">{{ job.duration|floatformat:1 }} s</span>{% endif %}
+    {% if job.warnings %}
+      <div style="flex-basis:100%; color: var(--ink-3);">
+        {% for w in job.warnings %}<div>⚠ {{ w }}</div>{% endfor %}
+      </div>
+    {% endif %}
+  {% elif job.status == 'cancelled' %}
+    <span class="pill">Cancelled</span>
+    <span class="msg">The calculation was cancelled.</span>
+  {% else %}
+    <span class="pill bad">Failed</span>
+    <span class="msg">{{ job.error|default:"The calculation failed." }}</span>
+    {% if job.result.errors %}
+      <div style="flex-basis:100%;">
+        <ul style="margin:4px 0 0; padding-left:18px; color: var(--danger);">
+          {% for k, v in job.result.errors.items %}<li><span class="mono">{{ k }}</span>: {{ v }}</li>{% endfor %}
+        </ul>
+      </div>
+    {% endif %}
+    {% if job.result.traceback %}
+      <details style="flex-basis:100%;"><summary class="muted" style="cursor:pointer;">Details</summary><div class="code" style="max-height:240px;">{{ job.result.traceback }}</div></details>
+    {% endif %}
+  {% endif %}
+</div>

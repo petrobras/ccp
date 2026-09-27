@@ -1,0 +1,73 @@
+# ccp hosted profile: docker compose -f deploy/hosted/compose.yml up --build
+#
+# Put the variables below in deploy/hosted/.env (never commit it):
+#   CCP_SECRET_KEY=...            long random string
+#   CCP_DB_PASSWORD=...
+#   CCP_ALLOWED_HOSTS=ccp.example.com
+#   CCP_CSRF_TRUSTED_ORIGINS=https://ccp.example.com
+#   REFPROP_DIR=/path/to/refprop  optional, a Linux REFPROP build
+# Run behind a TLS-terminating reverse proxy (the settings expect HTTPS).
+
+x-ccp: &ccp
+  build:
+    context: ../..
+    dockerfile: deploy/hosted/Dockerfile
+  env_file: .env
+  environment:
+    CCP_DB_HOST: db
+    CCP_DB_NAME: ccp
+    CCP_DB_USER: ccp
+    CCP_POOL_SIZE: "4"
+  volumes:
+    - media:/var/lib/ccp/media
+    - ${REFPROP_DIR:-./no-refprop}:/opt/refprop:ro
+  depends_on:
+    db:
+      condition: service_healthy
+
+services:
+  db:
+    image: postgres:16
+    environment:
+      POSTGRES_DB: ccp
+      POSTGRES_USER: ccp
+      POSTGRES_PASSWORD: ${CCP_DB_PASSWORD}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ccp"]
+      interval: 5s
+      retries: 10
+
+  migrate:
+    <<: *ccp
+    command: ["sh", "-c", "ccp-web manage migrate --noinput && ccp-web manage createcachetable"]
+    restart: "no"
+
+  web:
+    <<: *ccp
+    ports:
+      - "8000:8000"
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+
+  worker:
+    <<: *ccp
+    command: ["ccp-web", "worker", "--queue", "default"]
+    deploy:
+      replicas: 2
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+
+  monitoring:
+    <<: *ccp
+    command: ["ccp-web", "worker", "--queue", "monitoring"]
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+
+volumes:
+  pgdata:
+  media:

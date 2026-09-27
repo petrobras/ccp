@@ -1,0 +1,91 @@
+{% extends "base.html" %}
+{% load ccp %}
+{% block title %}{{ case.name }} · Curves conversion{% endblock %}
+{% block crumbs %}
+  <span class="sep">›</span><a href="{% url 'core:app_index' app_type %}">Curves conversion</a>
+  <span class="sep">›</span><b>{{ case.name }}</b>
+{% endblock %}
+
+{% block run_button %}
+  <button class="btn primary" id="runBtn" type="button" title="Convert the curves (⌘↵)"
+    hx-post="{% url 'curves:convert' case.pk %}" hx-include="#case-form" hx-target="#job-area" hx-swap="innerHTML">
+    <svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
+    Convert curves <span class="kbd">⌘↵</span>
+  </button>
+{% endblock %}
+
+{% block main %}
+<div class="page-head">
+  <div>
+    <h1 class="title">Curves conversion</h1>
+    <p>Load the vendor curves of up to five design cases (Engauge Digitizer CSVs) and convert them to new
+      suction conditions by similarity. With several cases loaded, ccp starts from the one whose suction
+      speed of sound is closest.</p>
+  </div>
+  <div class="meta">
+    <div>Loaded <b>{{ loaded_letters|join:", "|default:"none" }}</b></div>
+    {% if job %}<div>Last conversion <b>{{ job.created|date:"H:i" }}</b></div>{% endif %}
+  </div>
+</div>
+
+<nav class="steps" aria-label="Steps">
+  {% for s in steps %}
+    <a class="step {% if s.done %}done{% endif %}" {% if s.current %}aria-current="true"{% endif %} href="#sec-{{ s.anchor }}">
+      <div class="num"><span>{{ s.n }}</span></div>
+      <div><div class="label">{{ s.label }}</div><div class="hint">{{ s.hint }}</div></div>
+    </a>
+  {% endfor %}
+</nav>
+
+<form id="case-form" onsubmit="return false"
+  hx-post="{% url 'core:case_state' case.pk %}"
+  hx-trigger="change[!target.matches('input[type=file]')] delay:400ms"
+  hx-target="#save-status" hx-swap="innerHTML">
+  {% csrf_token %}
+  {% include "core/includes/gas_section.html" %}
+  {% include "core/includes/design_cases.html" %}
+
+  <section class="section" id="sec-new" x-data="{ collapsed: false }" :class="{ collapsed }" @ccp-expand="collapsed = false">
+    <header @click="if (!$event.target.closest('.actions')) collapsed = !collapsed">
+      {% include "core/includes/chev.html" %}
+      <h2>New suction conditions</h2><span class="desc">Target conditions and conversion options</span>
+    </header>
+    <div class="body" x-show="!collapsed">
+      <div class="cond">
+        <div class="field"><label class="lbl">Gas{% help "Select the gas composition for the new suction conditions" %}</label><div class="val">{% gas_sel "new_gas_selection" cls="big" %}</div></div>
+        <div class="field {% if errors|has_key:'new_suc_p' %}invalid{% endif %}"><label class="lbl">Suction pressure{% help "New suction pressure" %}</label>
+          <div class="val">{% num "new_suc_p" cls="" %}<span style="width:90px;">{% sel "new_suc_p_unit" cls="" %}</span></div></div>
+        <div class="field {% if errors|has_key:'new_suc_t' %}invalid{% endif %}"><label class="lbl">Suction temperature{% help "New suction temperature" %}</label>
+          <div class="val">{% num "new_suc_t" cls="" %}<span style="width:90px;">{% sel "new_suc_t_unit" cls="" %}</span></div></div>
+        <div class="field"><label class="lbl">Find method{% help "Method for conversion: 'speed' keeps volume ratio constant, 'volume_ratio' uses specified speed" %}</label><div class="val">{% sel "conv_find_method" cls="big" %}</div>
+          <div class="muted" style="font-size:11.5px; margin-top:4px;">speed keeps the volume ratio; volume_ratio uses the speed option</div></div>
+        <div class="field"><label class="lbl">Speed option{% help "Keep same speed or calculate new speed" %}</label><div class="val">{% sel "conv_speed_option" cls="big" %}</div>
+          <div class="muted" style="font-size:11.5px; margin-top:4px;">same speed, or calculate a new one</div></div>
+      </div>
+    </div>
+  </section>
+</form>
+
+<section class="section" id="sec-run">
+  <header><h2>Conversion</h2><span class="desc">Runs in the background</span>
+    <div class="actions">
+      <button class="btn primary" type="button" hx-post="{% url 'curves:convert' case.pk %}" hx-include="#case-form" hx-target="#job-area" hx-swap="innerHTML">Convert curves</button>
+    </div>
+  </header>
+  <div id="job-area">
+    {% if job %}{% include "core/partials/job.html" %}{% else %}<div class="empty">Load at least one design case and set the new suction conditions, then Convert (⌘↵).</div>{% endif %}
+  </div>
+</section>
+
+<div id="sec-results" hx-get="{% url 'curves:results' case.pk %}" hx-trigger="ccp:job-done-{{ case.pk }} from:body, ccp-replot from:body" hx-swap="innerHTML">
+  {% include "curves/partials/results.html" %}
+</div>
+{% endblock %}
+
+{% block inspector %}
+  {% include "core/includes/case_inspector.html" with inspector_template="curves/partials/inspector.html" %}
+{% endblock %}
+{% block status %}
+  {% if job and job.is_active %}<span class="chip busy"><span class="dot"></span> <b>Converting</b></span>{% else %}<span class="chip"><span class="dot"></span> <b>Ready</b></span>{% endif %}
+{% endblock %}
+{% block save_status %}<span class="saved">Saved {{ case.updated|time:"H:i:s" }}</span>{% endblock %}

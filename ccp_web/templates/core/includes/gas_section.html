@@ -1,0 +1,64 @@
+{% load ccp %}
+{{ gas_init|json_script:"gas-init" }}
+<section class="section" id="sec-gas"
+  x-data="Object.assign(ccpGasTable(JSON.parse(document.getElementById('gas-init').textContent)), { collapsed: {% if collapsed %}true{% else %}false{% endif %} })"
+  :class="{ collapsed }" @ccp-expand="collapsed = false">
+  <header @click="if (!$event.target.closest('.actions')) collapsed = !collapsed">
+    {% include "core/includes/chev.html" %}
+    <h2>Gas selection</h2>
+    <span class="desc">Mole-% composition per gas; ccp normalises each column</span>
+    <div class="actions">
+      <span class="mono" style="font-size:11px; color:var(--ink-3);" x-text="`${names.length} gases · ${rows.length} components`"></span>
+      <button class="btn ghost" type="button" title="Scale every column to 100 %" @click="normalize()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 12h18M12 3v18"/></svg>Normalize
+      </button>
+      <button class="btn" type="button" @click="addRow()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 5v14M5 12h14"/></svg>Add component
+      </button>
+    </div>
+  </header>
+  <div class="body" x-show="!collapsed">
+    <div class="gas-wrap">
+      <table class="gas">
+        <colgroup><col style="width: 200px;">{% for n in gas_init.names %}<col style="width: 140px;">{% endfor %}</colgroup>
+        <thead>
+          <tr>
+            <th class="sticky"><span class="lbl">Component</span>{% help "Gas name will be selected for original and new suction conditions. Fill in gas components and molar fractions for each gas." %}</th>
+            <template x-for="(n, i) in names" :key="i">
+              <th><span class="case-name" :style="`--case-color: oklch(62% 0.14 ${hues[i]})`">
+                <input :name="`gas_${i}`" x-model="names[i]" spellcheck="false" aria-label="Gas name">
+              </span></th>
+            </template>
+          </tr>
+          <tr>
+            <th class="sticky unit" style="text-align:left;">mol %</th>
+            <template x-for="(n, i) in names" :key="i"><th class="unit">mol %</th></template>
+          </tr>
+        </thead>
+        <tbody>
+          <template x-for="(r, j) in rows" :key="j">
+            <tr>
+              <td class="sticky component">
+                <select :name="`gas_component_${j}`" x-model="r.component" aria-label="Component">
+                  <template x-for="f in fluids" :key="f"><option :value="f" x-text="f || '—'" :selected="f === r.component"></option></template>
+                </select>
+                <button type="button" class="rm" title="Remove component" @click="removeRow(j)">✕</button>
+              </td>
+              <template x-for="(v, i) in r.values" :key="i">
+                <td><span class="cell-num" :class="{ zero: !num(v), dominant: num(v) > 40 }" :style="`--bar:${bar(r, i).toFixed(2)}`">
+                  <input :name="`gas_fraction_${i}_${j}`" x-model="r.values[i]" inputmode="decimal" placeholder="0" autocomplete="off">
+                </span></td>
+              </template>
+            </tr>
+          </template>
+          <tr class="total">
+            <td class="sticky">Σ total</td>
+            <template x-for="(n, i) in names" :key="i">
+              <td><span class="cell-num" :style="totalOk(i) ? '' : 'color: var(--danger)'" x-text="total(i).toFixed(3)"></span></td>
+            </template>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</section>

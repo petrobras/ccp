@@ -1,0 +1,47 @@
+{% load ccp %}
+<aside class="insp" aria-label="Case inspector">
+  <div class="blk" x-data="{ edit: false }">
+    <h3>Case</h3>
+    <div x-show="!edit" class="hstack" style="margin-bottom:8px;">
+      <div style="width:10px;height:10px;border-radius:50%;background:var(--accent);flex-shrink:0;"></div>
+      <div class="mono" style="font-weight:600; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">{{ case.name }}</div>
+      <button class="btn ghost sm" type="button" style="margin-left:auto;" @click="edit = true">Rename</button>
+    </div>
+    <form x-show="edit" x-cloak method="post" action="{% url 'core:case_rename' case.pk %}" class="hstack" style="margin-bottom:8px;">
+      {% csrf_token %}
+      <input class="inp" name="name" value="{{ case.name }}">
+      <button class="btn sm" type="submit">OK</button>
+    </form>
+    <div class="kv"><span class="k">Page</span><span class="v">{{ case.get_app_type_display }}</span></div>
+    <div class="kv"><span class="k">Updated</span><span class="v">{{ case.updated|date:"Y-m-d H:i" }}</span></div>
+    {% if case.source_version %}<div class="kv"><span class="k">Imported from</span><span class="v">.ccp {{ case.source_version }}</span></div>{% endif %}
+    <div class="hstack" style="margin-top:10px; flex-wrap:wrap;">
+      <a class="btn sm" href="{% url 'core:case_export' case.pk %}">Save .ccp</a>
+      <form method="post" action="{% url 'core:case_duplicate' case.pk %}">{% csrf_token %}<button class="btn sm" type="submit">Duplicate</button></form>
+      <form method="post" action="{% url 'core:case_create' case.app_type %}">{% csrf_token %}<button class="btn sm" type="submit">New</button></form>
+      <form method="post" action="{% url 'core:case_delete' case.pk %}" onsubmit="return confirm('Delete {{ case.name|escapejs }}?');">{% csrf_token %}<button class="btn ghost sm danger" type="submit">Delete</button></form>
+    </div>
+  </div>
+
+  {% if inspector_template %}{% include inspector_template %}{% endif %}
+
+  <div class="blk">
+    <h3>Pipeline</h3>
+    {% if recent_jobs %}
+    <div class="timeline">
+      {% for j in recent_jobs %}
+        <div class="tl {% if j.status == 'succeeded' %}done{% elif j.status == 'failed' %}failed{% elif j.is_active %}active{% endif %}">
+          <div class="pt"></div>
+          <div style="min-width:0;">
+            <div class="t">{{ j.kind|cut:"_"|capfirst }} · {{ j.get_status_display|lower }}</div>
+            <div class="d">{{ j.message|default:j.error|truncatechars:80 }}</div>
+            <div class="at">{{ j.created|date:"Y-m-d H:i:s" }}{% if j.duration %} · {{ j.duration|floatformat:1 }} s{% endif %}</div>
+          </div>
+        </div>
+      {% endfor %}
+    </div>
+    {% else %}
+      <div class="muted">No calculations yet.</div>
+    {% endif %}
+  </div>
+</aside>
