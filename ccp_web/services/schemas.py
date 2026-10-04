@@ -506,6 +506,13 @@ def curves_conversion_schema():
     return s
 
 
+def curves_digitizer_schema():
+    s = Schema("curves_digitizer")
+    _common_session(s)
+    s.add("digitize_pages", "string", "", label="Pages")
+    return s
+
+
 TAG_PARAMETERS = [
     ("suc_p", "Suction Pressure", units.pressure_units),
     ("suc_T", "Suction Temperature", units.temperature_units),
@@ -580,6 +587,7 @@ _BUILDERS = {
     "back_to_back": back_to_back_schema,
     "curves_conversion": curves_conversion_schema,
     "performance_evaluation": performance_evaluation_schema,
+    "curves_digitizer": curves_digitizer_schema,
 }
 _CACHE = {}
 

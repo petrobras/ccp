@@ -1,0 +1,117 @@
+{% load ccp %}
+<div class="dz" x-data="ccpCurveEditor()" id="dz-{{ plot.id }}">
+  {{ plot|json_script:"dz-plot" }}
+  <div class="dz-bar">
+    <div class="dz-title">
+      <b>{{ plot.label }}</b>
+      <span class="muted mono">p. {{ plot.page }}{% if plot.units %} · {{ plot.units }}{% endif %}{% if plot.flow_units %} vs {{ plot.flow_units }}{% endif %}</span>
+      {% for n in plot.cases %}<span class="pill">{{ n }}</span>{% endfor %}
+      <span class="pill ok" x-show="plot.edited && !dirty" x-cloak>edited</span>
+      <span class="pill run" x-show="dirty" x-cloak>unsaved</span>
+    </div>
+    <div class="dz-tools">
+      <div class="seg" role="group" aria-label="Mode">
+        <button type="button" :aria-pressed="mode === 'move'" @click="mode = 'move'" title="Drag points; click a line to select it (Esc)">Move</button>
+        <button type="button" :aria-pressed="mode === 'add'" @click="mode = 'add'" title="Click to add a point to the selected line (A, or Shift+click in Move)">Add</button>
+      </div>
+      <button class="btn sm" type="button" @click="deletePoint()" :disabled="pt === null" title="Delete the selected point (Del, or right-click a point)">Delete point</button>
+      <button class="btn sm ghost icon" type="button" @click="undo()" :disabled="!hist.length" title="Undo (Ctrl+Z)">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M9 14 4 9l5-5"/><path d="M4 9h10a6 6 0 0 1 0 12h-3"/></svg>
+      </button>
+      <button class="btn sm ghost icon" type="button" @click="redo()" :disabled="!fut.length" title="Redo (Ctrl+Shift+Z)">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="m15 14 5-5-5-5"/><path d="M20 9H10a6 6 0 0 0 0 12h3"/></svg>
+      </button>
+      <span class="dz-sep"></span>
+      <button class="btn sm ghost icon" type="button" @click="zoom = Math.max(1, zoom - 0.5)" :disabled="zoom <= 1" title="Zoom out">−</button>
+      <span class="mono muted" style="font-size:11px; min-width:34px; text-align:center;" x-text="Math.round(zoom * 100) + '%'"></span>
+      <button class="btn sm ghost icon" type="button" @click="zoom = Math.min(4, zoom + 0.5)" title="Zoom in">+</button>
+      <span class="dz-sep"></span>
+      <button class="btn sm" type="button"
+        hx-post="{% url 'digitizer:reset' case.pk plot.id %}" hx-target="#editor-area" hx-swap="innerHTML"
+        hx-confirm="Discard the edits of this plot and go back to the automatic digitization?"
+        :disabled="!plot.edited && !dirty" title="Back to the automatic digitization">Reset</button>
+      <button class="btn sm primary" type="button" @click="save()" :disabled="saving || !dirty" title="Save the edits (Ctrl+S)">Save</button>
+    </div>
+  </div>
+
+  <div class="dz-body">
+    <div class="dz-canvas-wrap">
+      {% if not plot.x_axis or not plot.y_axis %}
+        <div class="banner error" style="margin:12px;"><span class="tag">axes</span><div>The axes of this plot could not be calibrated, so its points cannot be shown or edited. {% for w in plot.warnings %}{{ w }} {% endfor %}</div></div>
+      {% endif %}
+      <div class="dz-canvas" :class="{ adding: mode === 'add' }" :style="`width: ${zoom * 100}%`">
+        <svg x-ref="svg" viewBox="{{ plot.viewbox }}" preserveAspectRatio="xMidYMid meet"
+          @pointerdown="onDown($event)" @pointermove="onMove($event)" @pointerup="onUp($event)" @pointercancel="onUp($event)"
+          @pointerleave="onLeave()" @contextmenu="onContext($event)">
+          <image href="{{ plot.urls.image }}" x="{{ plot.image_rect.x }}" y="{{ plot.image_rect.y }}" width="{{ plot.image_rect.width }}" height="{{ plot.image_rect.height }}" preserveAspectRatio="none" :opacity="imgOpacity"></image>
+          <g x-ref="layer"></g>
+        </svg>
+      </div>
+    </div>
+
+    <aside class="dz-side">
+      <div class="dz-blk">
+        <h4>Lines</h4>
+        <template x-for="(c, i) in curves" :key="i">
+          <div class="dz-line-row" :class="{ on: i === sel }" @click="selectLine(i)">
+            <span class="sw" :style="`background:${color(i)}`"></span>
+            <input class="inp" type="number" step="any" :value="c.speed" @click.stop @change="setSpeed(i, $event.target.value)" title="Speed (rpm)">
+            <span class="muted mono" style="font-size:11px;" x-text="c.points.length + ' pts'"></span>
+            <button class="btn ghost sm icon" type="button" @click.stop="toggleHidden(i)" :title="hidden[i] ? 'Show' : 'Hide'" x-text="hidden[i] ? '◌' : '●'"></button>
+            <button class="btn ghost sm icon" type="button" @click.stop="deleteLine(i)" title="Delete the line">✕</button>
+          </div>
+        </template>
+        <div class="hstack" style="margin-top:8px;">
+          <input class="inp" type="number" step="any" placeholder="speed, rpm" x-model="newSpeed" @keydown.enter.prevent="addLine()">
+          <button class="btn sm" type="button" @click="addLine()" title="Add a line and click along it">Add line</button>
+        </div>
+        <label class="chk" style="margin-top:8px;"><input type="checkbox" x-model="soloSel" @change="draw()"> Only the selected line</label>
+      </div>
+
+      <div class="dz-blk">
+        <h4>Point</h4>
+        <template x-if="selPoint">
+          <div class="dz-pt-edit">
+            <label><span class="muted">Flow</span><input class="inp" type="number" step="any" :value="+selPoint[0].toPrecision(6)" @change="setPoint(0, $event.target.value)"></label>
+            <label><span class="muted">{{ plot.label|default:"Value" }}</span><input class="inp" type="number" step="any" :value="+selPoint[1].toPrecision(6)" @change="setPoint(1, $event.target.value)"></label>
+          </div>
+        </template>
+        <div class="muted" x-show="!selPoint" style="font-size:12px;">Click a point to select it; arrows nudge it (Shift: ×10).</div>
+        <div class="kv"><span class="k">Cursor</span><span class="v" x-text="cursor ? fmt(cursor[0]) + ' · ' + fmt(cursor[1]) : '—'"></span></div>
+      </div>
+
+      <div class="dz-blk">
+        <h4>View</h4>
+        <label class="fld"><span class="muted" style="font-size:11.5px;">Image</span><input type="range" min="0.15" max="1" step="0.05" x-model.number="imgOpacity"></label>
+        <label class="chk"><input type="checkbox" x-model="showTicks" @change="draw()"> Calibration ticks</label>
+        <div class="muted" style="font-size:11.5px; margin-top:4px;">The ticks mark where the calibration puts the axis labels it read{% if plot.x_ticks %} (x: {{ plot.x_ticks|join:", " }}; y: {{ plot.y_ticks|join:", " }}){% endif %}. They should sit on the printed grid.</div>
+      </div>
+
+      {% if plot.warnings %}
+      <div class="dz-blk">
+        <h4>Check</h4>
+        <ul class="dz-list">{% for w in plot.warnings %}<li>{{ w }}</li>{% endfor %}</ul>
+      </div>
+      {% endif %}
+      {% if plot.notes %}
+      <div class="dz-blk">
+        <h4>Notes</h4>
+        <ul class="dz-list">{% for w in plot.notes %}<li>{{ w }}</li>{% endfor %}</ul>
+      </div>
+      {% endif %}
+
+      <div class="dz-blk" x-show="status || notes.length" x-cloak>
+        <div x-text="status" class="mono" style="font-size:12px;"></div>
+        <ul class="dz-list"><template x-for="n in notes"><li x-text="n"></li></template></ul>
+      </div>
+
+      <div class="dz-blk dz-help">
+        <h4>Keys</h4>
+        <div><span class="kbd">A</span> add mode · <span class="kbd">Esc</span> move mode</div>
+        <div><span class="kbd">Del</span> delete point · right-click deletes</div>
+        <div><span class="kbd">[</span> <span class="kbd">]</span> previous / next line</div>
+        <div><span class="kbd">Ctrl Z</span> undo · <span class="kbd">Ctrl S</span> save</div>
+      </div>
+    </aside>
+  </div>
+</div>

@@ -79,6 +79,14 @@ hosted = [
     "gunicorn>=23.0; python_version >= '3.10'",
     "psycopg[binary]>=3.2; python_version >= '3.10'",
 ]
+# ccp.digitize: reading performance curves from vendor PDFs.
+# Also needs the Tesseract OCR binary (https://github.com/tesseract-ocr/tesseract).
+digitize = [
+    "pypdfium2>=5",
+    "scikit-image>=0.20",
+    "pytesseract>=0.3.10",
+    "pillow",
+]
 
 [tool.setuptools]
 include-package-data = true

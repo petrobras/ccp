@@ -20,6 +20,7 @@ APP_TITLES = dict(Case.APP_TYPES)
 CURVE_IMAGE_KEY = re.compile(r"^fig_(head|eff|discharge_pressure|power)(_sec[12])?$")
 ENGAUGE_KEY = re.compile(r"^curves_file_[12]_case_[A-E]$")
 PLANT_DATA_KEY = "plant_data"
+CURVE_PDF_KEY = "curve_pdf"
 
 
 # --------------------------------------------------------------------------
@@ -220,12 +221,14 @@ def case_ccp_bytes(case):
     files = [
         (f.key, f.kind, f.name, f.read())
         for f in case.files.all()
-        if f.kind in ("curve_image", "engauge_csv")
+        if f.kind in ("curve_image", "engauge_csv", "curve_pdf")
     ]
     artifacts = [
         (a.key, a.name, a.read())
         for a in case.artifacts.all()
-        if a.name.endswith(".toml") or a.key == "evaluation"
+        if a.name.endswith(".toml")
+        or a.key == "evaluation"
+        or a.key in ccpfile.DIGITIZER_ARTIFACTS
     ]
     state = dict(case.state)
     state["session_name"] = case.name
@@ -306,6 +309,8 @@ def _file_kind(key):
         return CaseFile.ENGAUGE_CSV
     if key == PLANT_DATA_KEY:
         return "plant_data"
+    if key == CURVE_PDF_KEY:
+        return CaseFile.CURVE_PDF
     return None
 
 
@@ -333,6 +338,7 @@ def case_file(request, pk, key):
             CaseFile.CURVE_IMAGE: (".png", ".jpg", ".jpeg"),
             CaseFile.ENGAUGE_CSV: (".csv",),
             "plant_data": (".csv", ".parquet", ".txt"),
+            CaseFile.CURVE_PDF: (".pdf",),
         }[kind]
         if not upload.name.lower().endswith(allowed):
             return HttpResponseBadRequest(f"Expected a {'/'.join(allowed)} file")

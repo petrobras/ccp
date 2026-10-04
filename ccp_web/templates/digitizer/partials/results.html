@@ -1,0 +1,92 @@
+{% load ccp %}
+<section class="section" id="sec-cases-inner" x-data="{ picked: 0 }">
+  <header>
+    <h2>Digitized cases</h2>
+    <span class="desc">{% if rows %}{{ rows|length }} cases · {{ n_plots }} plots{% if n_edited %} · {{ n_edited }} edited{% endif %}. Highlighted plots define each map; click a plot to edit it.{% else %}Nothing digitized yet{% endif %}</span>
+    {% if rows %}
+    <div class="actions">
+      <a class="btn sm" href="{% url 'digitizer:export' case.pk %}" title="Engauge CSVs (<case>-<curve>.csv) and digitized.json">Download CSVs</a>
+      <button class="btn sm primary" type="submit" form="conv-form" :disabled="picked === 0 || picked > 5"
+        title="Create a curves conversion case with the selected cases as design cases A-E">
+        New curves conversion<span class="mono" x-show="picked" x-text="` (${picked})`"></span>
+      </button>
+    </div>
+    {% endif %}
+  </header>
+  {% if rows %}
+  <form id="conv-form" method="post" action="{% url 'digitizer:to_conversion' case.pk %}">{% csrf_token %}</form>
+  <div class="grid-wrap">
+    <table class="sheet dz-cases">
+      <thead>
+        <tr>
+          <th style="width:28px;"></th>
+          <th class="param">Case</th>
+          <th>Suction</th>
+          <th>Gas</th>
+          <th>Speeds (rpm)</th>
+          <th>Plots</th>
+          <th>Review</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for r in rows %}
+        <tr>
+          <td><input type="checkbox" name="case" value="{{ r.slug }}" form="conv-form" class="chk" {% if not r.pair %}disabled title="No pair of curves to define the map"{% endif %}
+            @change="picked += $event.target.checked ? 1 : -1"></td>
+          <td class="param">
+            <div style="white-space:normal; line-height:1.3;">{{ r.name }}</div>
+            <div class="muted mono" style="font-size:11px; font-weight:400;">p. {{ r.pages|join:", " }}</div>
+          </td>
+          <td class="mono">
+            {% if r.conditions.p %}{{ r.conditions.p.0 }} <span class="muted">{{ r.conditions.p.1 }}</span>{% endif %}<br>
+            {% if r.conditions.T %}{{ r.conditions.T.0 }} <span class="muted">{{ r.conditions.T.1 }}</span>{% endif %}
+          </td>
+          <td>{{ r.conditions.gas|default:"—" }}{% if r.conditions.mw %}<div class="muted mono" style="font-size:11px;">MW {{ r.conditions.mw }}</div>{% endif %}</td>
+          <td class="mono" style="white-space:normal; max-width:180px; font-size:11.5px;">{% for s in r.speeds %}{{ s|floatformat:"0" }}{% if not forloop.last %} · {% endif %}{% empty %}<span class="pill bad">not read</span>{% endfor %}</td>
+          <td>
+            <div class="dz-chips">
+              {% for p in r.plots %}
+                <button type="button" class="dz-chip{% if p.in_pair %} pair{% endif %}{% if p.edited %} edited{% endif %}{% if p.warnings %} warn{% endif %}{% if p.id == plot_id %} on{% endif %}"
+                  hx-get="{% url 'digitizer:editor' case.pk p.id %}" hx-target="#editor-area" hx-swap="innerHTML"
+                  hx-push-url="{% url 'digitizer:case' case.pk %}?plot={{ p.id }}"
+                  hx-on::after-request="if (event.detail.successful) { document.querySelectorAll('.dz-chip.on').forEach(c => c.classList.remove('on')); this.classList.add('on'); document.getElementById('sec-editor').scrollIntoView({behavior: 'smooth', block: 'start'}); }"
+                  title="{{ p.label }}, page {{ p.page }}: {{ p.n_curves }} lines{% if p.in_pair %} · defines the map{% endif %}{% if p.edited %} · edited{% endif %}{% for w in p.warnings %} · {{ w }}{% endfor %}">
+                  {{ p.short }}<span class="n">{{ p.n_curves }}</span>
+                </button>
+              {% endfor %}
+            </div>
+          </td>
+          <td style="white-space:normal; min-width:150px;">
+            {% if r.n_warnings %}
+              <details class="dz-warn"><summary><span class="pill bad">{{ r.n_warnings }} to check</span></summary>
+                <ul>
+                  {% for w in r.warnings %}<li>{{ w }}</li>{% endfor %}
+                  {% for p in r.plots %}{% for w in p.warnings %}<li><b>{{ p.short }}</b> {{ w }}</li>{% endfor %}{% endfor %}
+                </ul>
+              </details>
+            {% else %}<span class="pill ok">ok</span>{% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% if unassigned.plots %}
+    <div class="foot">
+      <span class="muted">Plots not assigned to a case:</span>
+      <div class="dz-chips">
+        {% for p in unassigned.plots %}
+          <button type="button" class="dz-chip warn" hx-get="{% url 'digitizer:editor' case.pk p.id %}" hx-target="#editor-area" hx-swap="innerHTML"
+            title="{{ p.label }}{% for w in p.warnings %} · {{ w }}{% endfor %}">p. {{ p.page }}<span class="n">{{ p.label|truncatechars:18 }}</span></button>
+        {% endfor %}
+      </div>
+    </div>
+  {% endif %}
+  {% if unassigned.pages %}
+    <div class="foot"><span class="muted">Frames without a recognized axis title (logos, tables) were skipped on page{{ unassigned.pages|length|pluralize }} {{ unassigned.pages|join:", " }}.</span></div>
+  {% endif %}
+  <div class="foot"><span class="muted">Select up to five cases (with a map-defining pair) for a new curves conversion: suction p and T come from the sheet; the gas compositions are filled in there.</span></div>
+  {% else %}
+    <div class="empty">The digitized cases appear here.</div>
+  {% endif %}
+</section>

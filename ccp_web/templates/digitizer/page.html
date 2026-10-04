@@ -1,0 +1,98 @@
+{% extends "base.html" %}
+{% load ccp %}
+{% block title %}{{ case.name }} · Curves digitizer{% endblock %}
+{% block crumbs %}
+  <span class="sep">›</span><a href="{% url 'core:app_index' app_type %}">Curves digitizer</a>
+  <span class="sep">›</span><b>{{ case.name }}</b>
+{% endblock %}
+
+{% block run_button %}
+  <button class="btn primary" id="runBtn" type="button" title="Digitize the PDF (⌘↵)"
+    hx-post="{% url 'digitizer:digitize' case.pk %}" hx-include="#case-form" hx-target="#job-area" hx-swap="innerHTML">
+    <svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
+    Digitize <span class="kbd">⌘↵</span>
+  </button>
+{% endblock %}
+
+{% block main %}
+<div class="page-head">
+  <div>
+    <h1 class="title">Curves digitizer</h1>
+    <p>Upload a vendor performance-curve PDF and every operating case is digitized: axes, speed lines, legend
+      speeds and suction conditions. Check each plot against the vendor image, move, add or delete points, then
+      download the Engauge CSVs or start a curves conversion with them.</p>
+  </div>
+  <div class="meta">
+    {% if has_result %}<div>Cases <b>{{ rows|length }}</b></div><div>Plots <b>{{ n_plots }}</b>{% if n_edited %} · edited <b>{{ n_edited }}</b>{% endif %}</div>{% endif %}
+  </div>
+</div>
+
+<nav class="steps" aria-label="Steps">
+  {% for s in steps %}
+    <a class="step {% if s.done %}done{% endif %}" {% if s.current %}aria-current="true"{% endif %} href="#sec-{{ s.anchor }}">
+      <div class="num"><span>{{ s.n }}</span></div>
+      <div><div class="label">{{ s.label }}</div><div class="hint">{{ s.hint|default:"&nbsp;"|safe }}</div></div>
+    </a>
+  {% endfor %}
+</nav>
+
+{% if not available %}
+  <div class="banner error"><span class="tag">setup</span>
+    <div>The digitizer needs the <span class="mono">digitize</span> extra
+      (<span class="mono">pip install ccp-performance[digitize]</span>) and the
+      <a href="https://github.com/tesseract-ocr/tesseract" target="_blank" rel="noopener">Tesseract OCR</a> program.</div>
+  </div>
+{% endif %}
+
+<form id="case-form" onsubmit="return false"
+  hx-post="{% url 'core:case_state' case.pk %}"
+  hx-trigger="change[!target.matches('input[type=file]')] delay:400ms"
+  hx-target="#save-status" hx-swap="innerHTML">
+  {% csrf_token %}
+  <section class="section" id="sec-upload">
+    <header>
+      <h2>Vendor PDF</h2><span class="desc">Expected or as-tested performance curves; plots may be images</span>
+    </header>
+    <div class="cond">
+      <div class="field {% if errors|has_key:'curve_pdf' %}invalid{% endif %}" style="grid-column: span 2;">
+        <label class="lbl">Curve document{% help "The full vendor PDF. Pages without plots are skipped; the table of contents names the cases." %}</label>
+        <div class="val" id="pdf-slot">{% with slot="curve_pdf" file=pdf kind="curve_pdf" label="No PDF" %}{% include "core/partials/file_slot.html" %}{% endwith %}</div>
+      </div>
+      <div class="field {% if errors|has_key:'digitize_pages' %}invalid{% endif %}">
+        <label class="lbl">Pages{% help "Leave blank for the whole document, or give pages and ranges such as 3-14, 20" %}</label>
+        <div class="val">{% inp "digitize_pages" cls="inp" placeholder="all" %}</div>
+      </div>
+    </div>
+  </section>
+</form>
+
+<section class="section" id="sec-run">
+  <header><h2>Digitization</h2><span class="desc">Runs in the background; about 1-5 s per page</span>
+    <div class="actions">
+      <button class="btn primary" type="button" hx-post="{% url 'digitizer:digitize' case.pk %}" hx-include="#case-form" hx-target="#job-area" hx-swap="innerHTML">Digitize</button>
+    </div>
+  </header>
+  <div id="job-area">
+    {% if job %}{% include "core/partials/job.html" %}{% else %}<div class="empty">Upload the PDF, then Digitize (⌘↵).</div>{% endif %}
+  </div>
+</section>
+
+<div id="sec-cases" hx-get="{% url 'digitizer:results' case.pk %}" hx-trigger="ccp:job-done-{{ case.pk }} from:body, ccp:digitized-changed from:body" hx-swap="innerHTML">
+  {% include "digitizer/partials/results.html" %}
+</div>
+
+<section class="section" id="sec-editor">
+  <header><h2>Plot editor</h2><span class="desc">Traced points over the vendor image</span></header>
+  <div id="editor-area">
+    {% if plot %}{% include "digitizer/partials/editor.html" %}{% else %}<div class="empty">Pick a plot in the list above to check and edit its points.</div>{% endif %}
+  </div>
+</section>
+{% endblock %}
+
+{% block inspector %}
+  {% include "core/includes/case_inspector.html" with inspector_template="digitizer/partials/inspector.html" %}
+{% endblock %}
+{% block status %}
+  {% if job and job.is_active %}<span class="chip busy"><span class="dot"></span> <b>Digitizing</b></span>{% else %}<span class="chip"><span class="dot"></span> <b>Ready</b></span>{% endif %}
+{% endblock %}
+{% block save_status %}<span class="saved">Saved {{ case.updated|time:"H:i:s" }}</span>{% endblock %}

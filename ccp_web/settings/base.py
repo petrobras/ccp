@@ -22,6 +22,7 @@ INSTALLED_APPS = [
     "ccp_web.core",
     "ccp_web.performance_test",
     "ccp_web.curves",
+    "ccp_web.digitizer",
     "ccp_web.evaluation",
 ]
 

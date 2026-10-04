@@ -1,0 +1,12 @@
+{% load ccp %}
+<div class="blk" id="dz-insp" hx-get="{% url 'digitizer:case' case.pk %}" hx-select="#dz-insp" hx-target="this" hx-swap="outerHTML"
+  hx-trigger="ccp:job-done-{{ case.pk }} from:body, ccp:digitized-changed from:body">
+  <h3>Digitization</h3>
+  <div class="kv"><span class="k">PDF</span><span class="v" title="{{ pdf.name }}">{{ pdf.name|default:"—"|truncatechars:26 }}</span></div>
+  <div class="kv"><span class="k">Pages</span><span class="v">{{ state.digitize_pages|default:"all" }}</span></div>
+  <div class="kv"><span class="k">Cases</span><span class="v">{{ rows|length }}</span></div>
+  <div class="kv"><span class="k">Plots</span><span class="v">{{ n_plots }}{% if n_edited %} <span class="muted">· {{ n_edited }} edited</span>{% endif %}</span></div>
+  {% if has_result %}
+    <div class="hstack" style="margin-top:10px;"><a class="btn sm" href="{% url 'digitizer:export' case.pk %}">Download CSVs</a></div>
+  {% endif %}
+</div>
