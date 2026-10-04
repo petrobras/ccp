@@ -528,6 +528,50 @@ html[data-type="editorial"] { --font-sans: 'Geist', ui-sans-serif, sans-serif; -
   dialog.dlg .body { padding: 16px; display: flex; flex-direction: column; gap: 12px; }
   dialog.dlg footer { padding: 12px 16px; display: flex; justify-content: flex-end; gap: 8px; border-top: 1px solid var(--rule-soft); background: var(--bg-sunk); }
 
+  /* curves digitizer */
+  .dz-cases td { vertical-align: top; padding-top: 6px; padding-bottom: 6px; height: auto; }
+  .dz-chips { display: flex; flex-wrap: wrap; gap: 4px; }
+  .dz-chip { font: inherit; font-size: 11.5px; display: inline-flex; align-items: center; gap: 5px; padding: 2px 8px; border-radius: 6px; border: 1px solid var(--rule); background: var(--panel); color: var(--ink-2); cursor: pointer; }
+  .dz-chip:hover { border-color: var(--ink-4); color: var(--ink); }
+  .dz-chip .n { font-family: var(--font-mono); font-size: 10.5px; color: var(--ink-4); }
+  .dz-chip.pair { border-color: var(--accent); color: var(--accent-ink); background: var(--accent-2); }
+  .dz-chip.warn::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: var(--warn); }
+  .dz-chip.edited::after { content: "✎"; font-size: 10px; color: var(--good); }
+  .dz-chip.on { box-shadow: 0 0 0 2px var(--accent); }
+  .dz-warn summary { cursor: pointer; list-style: none; }
+  .dz-warn summary::-webkit-details-marker { display: none; }
+  .dz-warn ul, .dz-list { margin: 6px 0 0; padding-left: 16px; font-size: 11.5px; color: var(--ink-3); white-space: normal; }
+  .dz-bar { display: flex; align-items: center; gap: 12px; padding: 10px 16px; border-bottom: 1px solid var(--rule-soft); flex-wrap: wrap; }
+  .dz-title { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; font-size: 13px; }
+  .dz-title .muted { font-size: 11.5px; }
+  .dz-tools { margin-left: auto; display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+  .dz-sep { width: 1px; height: 18px; background: var(--rule); margin: 0 2px; }
+  .dz-body { display: grid; grid-template-columns: minmax(0, 1fr) 250px; min-height: 420px; }
+  @media (max-width: 1100px) { .dz-body { grid-template-columns: minmax(0, 1fr); } }
+  .dz-canvas-wrap { overflow: auto; background: var(--bg-sunk); border-right: 1px solid var(--rule-soft); max-height: 78vh; }
+  .dz-canvas { min-width: 100%; }
+  .dz-canvas svg { display: block; width: 100%; height: auto; background: #fff; cursor: default; touch-action: none; user-select: none; }
+  .dz-canvas.adding svg { cursor: crosshair; }
+  .dz-canvas .dz-hit { fill: none; stroke: transparent; cursor: pointer; }
+  .dz-canvas .dz-line { fill: none; stroke-linejoin: round; stroke-linecap: round; pointer-events: none; }
+  .dz-canvas .dz-pt { cursor: grab; }
+  .dz-canvas .dz-pt.sel { cursor: grabbing; }
+  .dz-canvas .dz-ticks line { stroke: var(--accent); pointer-events: none; }
+  html[data-mode="dark"] .dz-canvas svg image { filter: invert(0.9) hue-rotate(180deg); }
+  .dz-side { display: flex; flex-direction: column; font-size: 12.5px; }
+  .dz-blk { padding: 12px 14px; border-bottom: 1px solid var(--rule-soft); }
+  .dz-blk h4 { margin: 0 0 8px; font-size: 10.5px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--ink-3); font-family: var(--font-mono); font-weight: 500; }
+  .dz-line-row { display: grid; grid-template-columns: 10px minmax(0, 1fr) auto auto auto; align-items: center; gap: 6px; padding: 3px 4px; border-radius: 6px; cursor: pointer; }
+  .dz-line-row:hover { background: var(--bg-sunk); }
+  .dz-line-row.on { background: var(--accent-2); }
+  .dz-line-row .sw { width: 10px; height: 10px; border-radius: 3px; }
+  .dz-line-row .inp, .dz-blk .hstack .inp { height: 26px; font-family: var(--font-mono); font-size: 12px; }
+  .dz-pt-edit { display: grid; gap: 6px; margin-bottom: 6px; }
+  .dz-pt-edit label { display: grid; grid-template-columns: 70px minmax(0, 1fr); align-items: center; gap: 6px; font-size: 11.5px; }
+  .dz-pt-edit .inp { height: 26px; font-family: var(--font-mono); font-size: 12px; }
+  .dz-help div { font-size: 11.5px; color: var(--ink-3); padding: 2px 0; }
+  .dz-help .kbd { font-family: var(--font-mono); font-size: 10.5px; border: 1px solid var(--rule); border-bottom-width: 2px; border-radius: 4px; padding: 0 4px; color: var(--ink-2); background: var(--panel); }
+
   .spin { width: 12px; height: 12px; border-radius: 50%; border: 2px solid var(--ink-4); border-top-color: transparent; animation: sp 1s linear infinite; display: inline-block; }
   .saved { font-family: var(--font-mono); font-size: 11px; color: var(--ink-4); }
   .card-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 12px; padding: 16px; }

@@ -11,7 +11,7 @@
   <label class="btn sm" style="margin-left:auto;">
     {% if file %}Replace{% else %}Upload{% endif %}
     <input type="file" name="file" class="hidden"
-      accept="{% if kind == 'curve_image' %}.png,.jpg,.jpeg{% elif kind == 'engauge_csv' %}.csv{% else %}.csv,.parquet{% endif %}"
+      accept="{% if kind == 'curve_image' %}.png,.jpg,.jpeg{% elif kind == 'engauge_csv' %}.csv{% elif kind == 'curve_pdf' %}.pdf{% else %}.csv,.parquet{% endif %}"
       hx-post="{% url 'core:case_file' case.pk slot %}" hx-encoding="multipart/form-data"
       hx-target="#slot-{{ slot }}" hx-swap="outerHTML" hx-trigger="change">
   </label>

@@ -52,9 +52,11 @@ class Case(models.Model):
     BACK_TO_BACK = "back_to_back"
     CURVES_CONVERSION = "curves_conversion"
     PERFORMANCE_EVALUATION = "performance_evaluation"
+    CURVES_DIGITIZER = "curves_digitizer"
     APP_TYPES = [
         (STRAIGHT_THROUGH, "Straight-through"),
         (BACK_TO_BACK, "Back-to-back"),
+        (CURVES_DIGITIZER, "Curves digitizer"),
         (CURVES_CONVERSION, "Curves conversion"),
         (PERFORMANCE_EVALUATION, "Performance evaluation"),
     ]
@@ -87,6 +89,7 @@ class Case(models.Model):
             self.BACK_TO_BACK: "performance_test:case",
             self.CURVES_CONVERSION: "curves:case",
             self.PERFORMANCE_EVALUATION: "evaluation:case",
+            self.CURVES_DIGITIZER: "digitizer:case",
         }[self.app_type]
         return reverse(route, args=[self.pk])
 
@@ -106,7 +109,7 @@ def _artifact_upload_to(instance, filename):
 
 
 class CaseFile(models.Model):
-    """A file uploaded as case input: curve images and Engauge CSVs.
+    """A file uploaded as case input: curve images, Engauge CSVs, curve PDFs.
 
     ``key`` is the legacy session key (``fig_head``, ``fig_head_sec1``,
     ``curves_file_1_case_A``); ``name`` keeps the original file name, which
@@ -116,10 +119,12 @@ class CaseFile(models.Model):
     CURVE_IMAGE = "curve_image"
     ENGAUGE_CSV = "engauge_csv"
     PLANT_DATA = "plant_data"
+    CURVE_PDF = "curve_pdf"
     KINDS = [
         (CURVE_IMAGE, "Curve image"),
         (ENGAUGE_CSV, "Engauge CSV"),
         (PLANT_DATA, "Plant data"),
+        (CURVE_PDF, "Curve PDF"),
     ]
 
     owner = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)

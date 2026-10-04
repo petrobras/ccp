@@ -10,6 +10,9 @@ A ``.ccp`` file is a zip archive written by the Streamlit app:
 - Engauge CSVs, either ``case_<X>/<original name>.csv`` or the legacy
   ``curves_file_<N>_case_<X>.csv``.
 - ``evaluation.zip``: ``ccp.Evaluation.save`` output.
+- Curves digitizer (web app only): the vendor PDF at the root and
+  ``digitized.json`` / ``digitized_original.json`` (edited and original
+  digitization).
 
 ``read_ccp`` returns plain data; ``write_ccp`` produces a file the Streamlit
 loaders accept.
@@ -33,7 +36,10 @@ APP_TYPES = [
     "back_to_back",
     "curves_conversion",
     "performance_evaluation",
+    "curves_digitizer",
 ]
+
+DIGITIZER_ARTIFACTS = ("digitized", "digitized_original")
 
 RESULT_TOML_KEYS = {
     "straight_through": "straight_through",
@@ -123,6 +129,8 @@ def detect_app_type(raw_state, names):
     if "flow_point_guarantee" in raw_state or "straight_through.toml" in names:
         return "straight_through"
     declared = raw_state.get("app_type")
+    if declared == "curves_digitizer" or "digitized.json" in names:
+        return "curves_digitizer"
     if "evaluation.zip" in names or declared in (
         "performance_evaluation",
         "online_monitoring",
@@ -197,6 +205,9 @@ def read_ccp(data, expected_app_type=None):
 
         raw_state = {}
         json_names = [n for n in names if n.endswith(".json")]
+        if "session_state.json" in json_names:
+            json_names.remove("session_state.json")
+            json_names.insert(0, "session_state.json")
         if json_names:
             raw_state = json.loads(archive.read(json_names[0]))
         raw_state = migrate_state(raw_state, version)
@@ -236,6 +247,10 @@ def read_ccp(data, expected_app_type=None):
                 artifacts[key] = (base, text.encode("utf-8"))
             elif name == "evaluation.zip":
                 artifacts["evaluation"] = ("evaluation.zip", archive.read(name))
+            elif name.lower().endswith(".pdf") and "/" not in name:
+                files["curve_pdf"] = ("curve_pdf", base, archive.read(name))
+            elif name in (f"{k}.json" for k in DIGITIZER_ARTIFACTS):
+                artifacts[base[: -len(".json")]] = (base, archive.read(name))
 
     for (case, file_num), content in legacy.items():
         # The original Engauge name is lost. Rebuild it from the curve name so
@@ -296,11 +311,15 @@ def write_ccp(app_type, state, files=(), artifacts=()):
                 m = re.match(r"curves_file_\d_case_([A-Z])$", key)
                 if m:
                     archive.writestr(f"case_{m.group(1)}/{name}", content)
+            elif kind == "curve_pdf":
+                archive.writestr(name.rsplit("/", 1)[-1], content)
         for key, name, content in artifacts:
             if key == "evaluation":
                 archive.writestr("evaluation.zip", content)
             elif name.endswith(".toml"):
                 archive.writestr(f"{key}.toml", content)
+            elif key in DIGITIZER_ARTIFACTS:
+                archive.writestr(f"{key}.json", content)
         archive.writestr(
             "session_state.json", json.dumps(export_state(app_type, state))
         )
