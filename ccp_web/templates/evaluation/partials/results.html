@@ -1,0 +1,62 @@
+{% load ccp %}
+{% if analysis %}
+<section class="section" x-data="{ tab: 'trend' }">
+  <header>
+    <h2>Results</h2>
+    <span class="desc mono">{{ analysis.n_valid }} valid of {{ analysis.n_rows }} rows · {{ analysis.start|slice:":16" }} → {{ analysis.end|slice:":16" }}</span>
+    <div class="actions">
+      <a class="btn ghost sm" href="{% url 'core:artifact' case.pk 'evaluation' %}" title="ccp.Evaluation.save archive">evaluation.zip</a>
+    </div>
+  </header>
+  <div class="tabs" role="tablist">
+    <button type="button" role="tab" :aria-selected="tab === 'trend'" @click="tab = 'trend'; $nextTick(() => ccpResizePlots())">Trend analysis</button>
+    <button type="button" role="tab" :aria-selected="tab === 'perf'" @click="tab = 'perf'; $nextTick(() => ccpResizePlots())">Performance plots</button>
+    <button type="button" role="tab" :aria-selected="tab === 'data'" @click="tab = 'data'">Data table</button>
+  </div>
+
+  <div x-show="tab === 'trend'">
+    {% if analysis.trend %}
+      <div class="chart-grid">
+        {% for t in analysis.trend %}{% plotly t.figure %}{% endfor %}
+      </div>
+    {% else %}
+      <div class="empty">No valid calculated points to display.</div>
+    {% endif %}
+  </div>
+
+  <div x-show="tab === 'perf'" x-cloak>
+    <div hx-get="{% url 'evaluation:perf' case.pk %}?cluster={{ state.eval_cluster_idx|default:0 }}&similarity={% if state.eval_show_similarity %}1{% else %}0{% endif %}" hx-trigger="load" hx-swap="innerHTML">
+      <div class="empty"><span class="spin"></span> Plotting…</div>
+    </div>
+  </div>
+
+  <div x-show="tab === 'data'" x-cloak>
+    <div class="foot" style="border-top:0; border-bottom:1px solid var(--rule-soft);">
+      <a class="btn sm" href="{% url 'evaluation:table_excel' case.pk %}">Download as Excel</a>
+      <span class="muted">Showing the first {{ table_rows|length }} of {{ table_total }} rows. Values in ccp units (m³/s, J/kg, W, bar); invalid rows carry −1.</span>
+    </div>
+    <div class="grid-wrap" style="max-height: 480px;">
+      <table class="results">
+        <thead><tr><th class="row">Time</th>{% for c in table_columns %}<th>{{ c }}</th>{% endfor %}</tr></thead>
+        <tbody>
+          {% for idx, row in table_rows %}
+            <tr><td class="row mono">{{ idx|slice:":19" }}</td>{% for v in row %}<td>{% if v is True %}✓{% elif v is False %}✗{% else %}{{ v|floatformat:4 }}{% endif %}</td>{% endfor %}</tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% if summary_rows %}
+      <div class="note" style="border-top:1px solid var(--rule-soft);"><span class="lbl">Summary statistics (delta columns, valid rows)</span></div>
+      <div class="grid-wrap">
+        <table class="results">
+          <thead><tr><th class="row"></th>{% for c in summary_columns %}<th>{{ c }}</th>{% endfor %}</tr></thead>
+          <tbody>{% for idx, row in summary_rows %}<tr><td class="row">{{ idx }}</td>{% for v in row %}<td>{{ v|floatformat:4 }}</td>{% endfor %}</tr>{% endfor %}</tbody>
+        </table>
+      </div>
+    {% endif %}
+  </div>
+</section>
+{% elif has_evaluation %}
+<section class="section"><header><h2>Results</h2><span class="desc">Building the plots of the saved evaluation…</span></header>
+  <div class="empty">The plots appear when the job above finishes.</div></section>
+{% endif %}

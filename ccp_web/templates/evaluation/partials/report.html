@@ -1,0 +1,15 @@
+{% load ccp %}
+<div class="foot" {% if report_job and report_job.is_active %}hx-get="{% url 'evaluation:report_status' case.pk %}" hx-trigger="every 1s" hx-target="#report-area" hx-swap="innerHTML"{% endif %}>
+  <button class="btn primary" type="button" hx-post="{% url 'evaluation:report' case.pk %}" hx-include="#report-form" hx-target="#report-area" hx-swap="innerHTML"
+    {% if report_job and report_job.is_active %}disabled{% endif %}>{% if report %}Recreate report{% else %}Create report{% endif %}</button>
+  {% if report %}
+    <a class="btn" href="{% url 'core:artifact' case.pk 'report' %}">Download report (.html)</a>
+    <span class="muted">Created {{ report.created|date:"Y-m-d H:i" }}</span>
+  {% endif %}
+  {% if report_job %}
+    {% if report_job.is_active %}<span class="pill run"><span class="spin"></span> {{ report_job.message|default:"Generating…" }}</span>
+    {% elif report_job.status == 'failed' %}<span class="pill bad">Failed</span> <span class="muted">{{ report_job.error }}</span>
+    {% endif %}
+    {% for w in report_job.warnings %}<div style="flex-basis:100%; color: var(--danger);">⚠ {{ w }}</div>{% endfor %}
+  {% endif %}
+</div>

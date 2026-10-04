@@ -1,0 +1,45 @@
+{% load ccp %}
+<div {% if monitor and monitor.is_active %}hx-get="{% url 'evaluation:monitoring' case.pk %}" hx-trigger="every 2s" hx-target="#monitoring-area" hx-swap="innerHTML"{% endif %}>
+  <div class="foot" style="border-top:0; background:transparent;">
+    {% if monitor and monitor.is_active %}
+      <button class="btn" type="button" hx-post="{% url 'evaluation:monitoring_stop' case.pk %}" hx-target="#monitoring-area" hx-swap="innerHTML">Stop monitoring</button>
+      <span class="pill run"><span class="spin"></span> {{ monitor.message|default:"Starting…" }}</span>
+      {% if monitor.result.last_fetch %}<span class="muted mono">last fetch {{ monitor.result.last_fetch|slice:"11:" }} · every {{ monitor.result.interval }} s</span>{% endif %}
+    {% else %}
+      <button class="btn primary" type="button" hx-post="{% url 'evaluation:monitoring_start' case.pk %}" hx-include="#case-form, #monitor-form" hx-target="#monitoring-area" hx-swap="innerHTML">Start monitoring</button>
+      {% if monitor.status == 'failed' %}<span class="pill bad">Failed</span> <span class="muted">{{ monitor.error }}</span>
+      {% elif monitor.status == 'cancelled' %}<span class="muted">Stopped.</span>{% endif %}
+      {% if monitor.result.errors %}<ul style="margin:0; color:var(--danger);">{% for k, v in monitor.result.errors.items %}<li>{{ v }}</li>{% endfor %}</ul>{% endif %}
+    {% endif %}
+    {% if monitor.result.error %}<div style="flex-basis:100%; color:var(--danger);">Last fetch failed: {{ monitor.result.error }}</div>{% endif %}
+  </div>
+  {% with view=monitor.result.view %}
+    {% if view %}
+      <div class="kpis">
+        {% for m in view.metrics %}
+          <div class="kpi"><div class="k">{{ m.label }}</div><div class="v">{{ m.value|default:"N/A" }}</div>
+            {% if m.delta %}<div class="d {% if m.delta_value >= 0 %}up{% else %}down{% endif %}">{{ m.delta }} vs expected</div>{% endif %}</div>
+        {% endfor %}
+      </div>
+      <div class="chart-grid" style="padding-top:0;">
+        {% plotly view.figures.head %}
+        {% plotly view.figures.eff %}
+        {% plotly view.figures.power %}
+        {% plotly view.figures.disch_p %}
+      </div>
+      <div class="note" style="border-top:1px solid var(--rule-soft);"><span class="lbl">Recent points (last 5)</span></div>
+      <div class="grid-wrap">
+        <table class="results">
+          <thead><tr><th class="row">Time</th>{% for c in view.table.columns %}<th>{{ c }}</th>{% endfor %}</tr></thead>
+          <tbody>
+            {% for r in view.table.rows %}
+              <tr style="opacity: {{ r.opacity|floatformat:2 }};"><td class="row mono">{{ r.time|slice:":19" }}</td>{% for v in r.values %}<td>{% if v is True %}✓{% elif v is False %}✗{% else %}{{ v }}{% endif %}</td>{% endfor %}</tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    {% elif not monitor or not monitor.is_active %}
+      {% if not monitor %}<div class="empty">Run a performance evaluation, then Start monitoring.</div>{% endif %}
+    {% endif %}
+  {% endwith %}
+</div>

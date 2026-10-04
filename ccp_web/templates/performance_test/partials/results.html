@@ -1,0 +1,63 @@
+{% load ccp %}
+{% if empty %}
+{% else %}
+<section class="section" id="results-card" x-data="{ tab: '{{ sections.0.id }}' }">
+  <header>
+    <h2>Results</h2>
+    <span class="desc">Final speed used in calculation: <b class="mono">{{ speed_rpm|floatformat:2 }} RPM</b></span>
+    <div class="actions">
+      {% if all_ok %}<span class="pill ok">PTC 10 checks pass</span>{% else %}<span class="pill bad">Some PTC 10 checks fail</span>{% endif %}
+      <a class="btn ghost sm" href="{% url 'core:artifact' case.pk case.app_type %}" title="Result object as TOML">TOML</a>
+    </div>
+  </header>
+  {% if sections|length > 1 %}
+    <div class="tabs" role="tablist">
+      {% for s in sections %}<button type="button" role="tab" :aria-selected="tab === '{{ s.id }}'" @click="tab = '{{ s.id }}'; $nextTick(() => ccpResizePlots())">{{ s.title }}</button>{% endfor %}
+    </div>
+  {% endif %}
+  {% for s in sections %}
+    <div x-show="tab === '{{ s.id }}'">
+      <div class="grid-wrap">
+        <table class="results">
+          <thead><tr><th class="row"></th>{% for c in s.columns %}<th>{{ c }}</th>{% endfor %}</tr></thead>
+          <tbody>
+            {% for r in s.rows %}
+              <tr class="{% if r.label == 'Guarantee Point' %}guarantee{% elif r.label == 'Overall' %}overall{% endif %}">
+                <td class="row">{{ r.label }}</td>
+                {% for cl in r.cells %}
+                  <td class="{% if cl.ok is True %}ok{% elif cl.ok is False %}bad{% endif %}">{{ cl.value|cell:cl.fmt }}</td>
+                {% endfor %}
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      <div class="foot">
+        <a class="btn sm" href="{% url 'performance_test:excel' case.pk s.id %}">Download results table (.xlsx)</a>
+        <span class="muted">Green/red: PTC 10 limits on the guarantee{% if sections|length > 1 %} and overall{% endif %} rows.</span>
+      </div>
+      <div class="chart-grid">
+        {% plotly s.figures.mach %}
+        {% plotly s.figures.reynolds %}
+        {% plotly s.figures.head %}
+        {% plotly s.figures.eff %}
+        {% plotly s.figures.discharge_pressure %}
+        {% plotly s.figures.power %}
+      </div>
+    </div>
+  {% endfor %}
+</section>
+
+<div id="insp-checks" hx-swap-oob="true">
+  <div class="blk">
+    <h3>PTC 10 checks</h3>
+    {% for s in sections %}
+      {% if sections|length > 1 %}<div class="lbl" style="margin:6px 0 2px;">{{ s.title }}</div>{% endif %}
+      {% for c in s.checks %}
+        <div class="kv"><span class="k">{{ c.row|cut:" Point" }} · {{ c.column }}</span><span class="v"><span class="pill {% if c.ok %}ok{% else %}bad{% endif %}">{% if c.ok %}pass{% else %}fail{% endif %}</span></span></div>
+      {% endfor %}
+    {% endfor %}
+    <div class="kv"><span class="k">Speed</span><span class="v">{{ speed_rpm|floatformat:1 }} rpm</span></div>
+  </div>
+</div>
+{% endif %}

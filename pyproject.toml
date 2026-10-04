@@ -50,12 +50,34 @@ Documentation = "https://ccp-centrifugal-compressor-performance.readthedocs.io/e
 
 [project.scripts]
 ccp-app = "ccp.app.cli:main"
+ccp-web = "ccp_web.cli:main"
 ccp-install-skill = "ccp.agent_skills.install:main"
 
 [project.optional-dependencies]
 app = [
     "streamlit>=1.21.0",
     "sentry-sdk",
+]
+web = [
+    "django>=5.2,<5.3; python_version >= '3.10'",
+    "django-htmx>=1.23; python_version >= '3.10'",
+    "django-template-partials>=24.4; python_version >= '3.10'",
+    "django-tasks>=0.12; python_version >= '3.10'",
+    "django-tasks-db[compat]>=0.13; python_version >= '3.10'",
+    "django-allauth>=65.0; python_version >= '3.10'",
+    "platformdirs>=4.0; python_version >= '3.10'",
+    "keyring>=25.0; python_version >= '3.10'",
+    "whitenoise>=6.7; python_version >= '3.10'",
+    "waitress>=3.0; python_version >= '3.10'",
+]
+desktop = [
+    "ccp-performance[web]",
+    "pywebview>=5.0; python_version >= '3.10'",
+]
+hosted = [
+    "ccp-performance[web]",
+    "gunicorn>=23.0; python_version >= '3.10'",
+    "psycopg[binary]>=3.2; python_version >= '3.10'",
 ]
 
 [tool.setuptools]
@@ -110,6 +132,8 @@ dev = [
     "sphinx-design",
     "sphinxcontrib-googleanalytics",
     "pytest-xdist>=3.8.0",
+    "pytest-django>=4.9; python_version >= '3.10'",
+    "django-tailwind>=4.4; python_version >= '3.11'",
 ]
 
 [tool.uv]

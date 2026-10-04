@@ -1,0 +1,18 @@
+{% load ccp %}
+<div class="blk">
+  <h3>Design cases</h3>
+  {% for d in design_cases %}
+    <div class="kv">
+      <span class="k">Case {{ d.letter }} · {{ state|get:d.gas_key }}</span>
+      <span class="v">{% if d.info %}<span class="pill ok">{{ d.info.n_points }} pts</span>{% else %}<span class="muted">—</span>{% endif %}</span>
+    </div>
+  {% endfor %}
+</div>
+<div class="blk">
+  <h3>Data</h3>
+  <div class="kv"><span class="k">Source</span><span class="v">{% for k, l in data_sources %}{% if k == source %}{{ l }}{% endif %}{% endfor %}</span></div>
+  <div class="kv"><span class="k">Flow</span><span class="v">{{ state.flow_method }}</span></div>
+  <div class="kv"><span class="k">Fluid</span><span class="v">{% if state.fluid_source == 'Inform Component Tags' %}component tags{% else %}{{ state.operation_fluid_gas }}{% endif %}</span></div>
+  <div class="kv"><span class="k">Window</span><span class="v">{{ window_start|slice:":10" }} → {{ window_end|slice:":10" }}</span></div>
+  <div class="kv"><span class="k">Thresholds T · p · N</span><span class="v">{{ state.temperature_fluctuation }} · {{ state.pressure_fluctuation }} · {{ state.speed_fluctuation }} %</span></div>
+</div>

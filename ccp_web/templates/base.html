@@ -1,0 +1,190 @@
+{% load static ccp %}<!doctype html>
+<html lang="en" data-mode="light" data-type="geist" data-density="comfortable">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="csrf-token" content="{{ csrf_token }}">
+  <meta name="htmx-config" content='{"disableInheritance": true, "defaultSwapStyle": "innerHTML"}'>
+  <title>{% block title %}ccp{% endblock %} · ccp</title>
+  <link rel="icon" href="{% static 'ccp_web/img/favicon.ico' %}">
+  <link rel="stylesheet" href="{% static 'ccp_web/vendor/fonts.css' %}">
+  <link rel="stylesheet" href="{% static 'ccp_web/css/app.css' %}">
+  <script>
+    /* Apply saved tweaks before paint (per-viewer convenience only). */
+    (function () {
+      try {
+        var t = JSON.parse(localStorage.getItem("ccp-tweaks") || "{}");
+        var h = document.documentElement;
+        if (t.mode) h.setAttribute("data-mode", t.mode);
+        if (t.typeface) h.setAttribute("data-type", t.typeface);
+        if (t.density) h.setAttribute("data-density", t.density);
+      } catch (e) {}
+    })();
+  </script>
+  <script src="{% static 'ccp_web/vendor/htmx.min.js' %}" defer></script>
+  <script src="{% static 'ccp_web/vendor/plotly.min.js' %}" defer></script>
+  <script src="{% static 'ccp_web/js/app.js' %}" defer></script>
+  <script src="{% static 'ccp_web/vendor/alpine.min.js' %}" defer></script>
+  {% block head %}{% endblock %}
+</head>
+<body x-data="ccpTweaks()" @keydown.escape.window="open = false">
+<div class="app {% block app_class %}{% endblock %}">
+
+  <header class="top">
+    <a class="brand" href="{% url 'core:home' %}">
+      <!-- official ccp logo: geometry and stroke widths copied verbatim from docs/_static/img/ccp.svg -->
+      <svg viewBox="-140 252 588 556" fill="none" stroke="#3380aa" stroke-linejoin="round" aria-hidden="true">
+        <circle cx="148.45384" cy="560.67169" r="116.70432" stroke-width="10.8205"/>
+        <circle cx="148.45384" cy="560.67169" r="137.44284" stroke-width="16.443"/>
+        <path stroke-width="23.095" stroke-linejoin="miter" d="M 318.56978,425.87319 A 243.70229,243.70229 0 0 1 311.53664,713.65116 243.70229,243.70229 0 0 1 35.102759,793.96264 243.70229,243.70229 0 0 1 -125.03468,554.75221 243.70229,243.70229 0 0 1 54.557732,329.78067"/>
+        <path stroke-width="23.2" d="M 227.80374,448.54392 433.12498,408.14345 406.69641,267.42916 53.372532,329.91494"/>
+        <circle cx="148.45384" cy="560.67169" r="10" stroke-width="5"/>
+        <g stroke-width="4.8" stroke-linejoin="miter">
+          <path d="m 156.32579,565.83707 c 0,0 46.42385,33.20178 108.42385,-4.79822"/>
+          <path d="m 146.28275,571.29875 c 0,0 -33.20178,46.42385 4.79822,108.42385"/>
+          <path d="m 139.3925,561.25572 c 0,0 -46.42385,-33.20178 -108.423863,4.79822"/>
+          <path d="m 151.22124,550.43689 c 0,0 33.20178,-46.42385 -4.79822,-108.42386"/>
+          <path d="m 158.55618,558.77427 c 0,0 56.56375,-7.62072 75.69188,-77.77851"/>
+          <path d="m 152.15573,569.18193 c 0,0 7.62072,56.56375 77.77851,75.69189"/>
+          <path d="m 139.60522,565.99576 c 0,0 -56.563754,7.62072 -75.691894,77.77851"/>
+          <path d="m 143.14853,551.65953 c 0,0 -7.62072,-56.56375 -77.778512,-75.69189"/>
+        </g>
+      </svg>
+      CCP <span class="sub">v{{ ccp_version }}</span>
+    </a>
+    <nav class="crumbs" aria-label="Breadcrumb">
+      <a href="{% url 'core:home' %}">{{ project.name|default:"Workspace" }}</a>
+      {% block crumbs %}{% endblock %}
+    </nav>
+    <div class="top-right">
+      {% block top_actions %}{% endblock %}
+      <form method="post" action="{% url 'core:case_import' %}" enctype="multipart/form-data" x-data>
+        {% csrf_token %}
+        <input type="hidden" name="next" value="{{ request.get_full_path }}">
+        <input type="file" name="file" accept=".ccp" class="hidden" x-ref="f" @change="$el.form.submit()">
+        <button type="button" class="btn ghost" title="Open a .ccp session file" @click="$refs.f.click()">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 14v5h16v-5"/><path d="M12 16V4"/><path d="m8 8 4-4 4 4"/></svg>Open
+        </button>
+      </form>
+      {% if case %}
+      <a class="btn ghost" href="{% url 'core:case_export' case.pk %}" title="Save as a .ccp file (Streamlit compatible)">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 14v5h16v-5"/><path d="M12 4v12"/><path d="m8 12 4 4 4-4"/></svg>Save
+      </a>
+      {% endif %}
+      <button class="btn ghost icon" type="button" title="Toggle theme" @click="toggleMode()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M20 14.5A8 8 0 1 1 9.5 4 7 7 0 0 0 20 14.5Z"/></svg>
+      </button>
+      <button class="btn" type="button" title="Appearance" @click="open = !open">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 7h10"/><path d="M18 7h2"/><circle cx="16" cy="7" r="2"/><path d="M4 17h2"/><path d="M10 17h10"/><circle cx="8" cy="17" r="2"/></svg>
+        Tweaks
+      </button>
+      {% block run_button %}{% endblock %}
+    </div>
+  </header>
+
+  <aside class="nav" aria-label="Main navigation">
+    <div class="group-label">Analysis</div>
+    <a class="item {% if page == 'home' %}active{% endif %}" href="{% url 'core:home' %}"><span class="dot"></span>Overview</a>
+    {% for app_type, title in app_titles.items %}
+      <a class="item {% if case.app_type == app_type %}active{% endif %}" href="{% url 'core:app_index' app_type %}">
+        <span class="dot"></span>{{ title }}<span class="count">{{ nav_counts|get:app_type|default:"—" }}</span>
+      </a>
+      {% if case.app_type == app_type and nav_cases %}
+        {% for c in nav_cases %}
+          <a class="case-link {% if c.pk == case.pk %}active{% endif %}" href="{{ c.get_absolute_url }}" title="{{ c.name }}">{{ c.name }}</a>
+        {% endfor %}
+      {% endif %}
+    {% endfor %}
+
+    <div class="group-label">Settings</div>
+    <a class="item" href="#" @click.prevent="open = true"><span class="dot"></span>Appearance<span class="count" x-text="t.mode"></span></a>
+    {% if ccp_multi_user %}
+      <a class="item" href="{% url 'account_logout' %}"><span class="dot"></span>Sign out<span class="count">{{ request.user.email|truncatechars:14 }}</span></a>
+    {% endif %}
+
+    <div class="unit" x-data="{ menu: false }" style="position: relative;">
+      <div class="swatch">{{ project.name|slice:":2"|upper }}</div>
+      <div style="min-width:0; flex:1;">
+        <div style="color:var(--ink); font-weight:500; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">{{ project.name }}</div>
+        <div class="mono" style="font-size:10.5px;">{{ nav_counts.values|length }} page types · {{ ccp_profile }}</div>
+      </div>
+      <button class="btn ghost icon" type="button" title="Switch project" @click="menu = !menu">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="m7 15 5 5 5-5"/><path d="m7 9 5-5 5 5"/></svg>
+      </button>
+      <div class="menu" x-show="menu" x-cloak @click.outside="menu = false" style="bottom: calc(100% + 4px); top: auto; left: 0; right: auto;">
+        {% for p in projects %}
+          <form method="post" action="{% url 'core:project_select' p.pk %}">{% csrf_token %}
+            <button type="submit">{% if p.pk == project.pk %}✓ {% endif %}{{ p.name }}</button>
+          </form>
+        {% endfor %}
+        <hr>
+        <a href="{% url 'core:home' %}#projects">Manage projects…</a>
+      </div>
+    </div>
+  </aside>
+
+  <main class="main" id="main">
+    {% for message in messages %}
+      <div class="banner {% if message.tags == 'error' %}error{% elif message.tags == 'success' %}ok{% else %}info{% endif %}">
+        <span class="tag">{{ message.tags|default:"info" }}</span><div>{{ message }}</div>
+      </div>
+    {% endfor %}
+    {% block main %}{% endblock %}
+    <div style="height: 24px;"></div>
+  </main>
+
+  {% block inspector %}{% endblock %}
+
+  <footer class="status">
+    {% block status %}
+      <span class="chip"><span class="dot"></span> <b>Ready</b></span>
+    {% endblock %}
+    <span>EOS: <b>{{ ccp_eos }}</b></span>
+    {% block status_extra %}{% endblock %}
+    <span class="spacer"></span>
+    <span id="save-status">{% block save_status %}{% endblock %}</span>
+    <span>ccp {{ ccp_version }}</span>
+  </footer>
+</div>
+
+<div class="tweaks" x-show="open" x-cloak x-transition.opacity @click.outside="open = false">
+  <h4>Tweaks <button class="close" type="button" @click="open = false" aria-label="Close">✕</button></h4>
+  <div class="tw-row">
+    <label>Mode</label>
+    <div class="opts">
+      <template x-for="m in ['light', 'dark']"><button type="button" :aria-pressed="t.mode === m" @click="set('mode', m)" x-text="m[0].toUpperCase() + m.slice(1)"></button></template>
+    </div>
+  </div>
+  <div class="tw-row">
+    <label>Palette</label>
+    <div class="swatches">
+      <template x-for="(p, name) in palettes">
+        <button type="button" :title="name" :aria-pressed="t.palette === name" @click="set('palette', name)" :style="`background: oklch(58% ${Math.max(p.chroma, 0.02)} ${p.hue})`"></button>
+      </template>
+    </div>
+  </div>
+  <div class="tw-row">
+    <label>Type</label>
+    <div class="opts">
+      <button type="button" :aria-pressed="t.typeface === 'geist'" @click="set('typeface', 'geist')">Geist</button>
+      <button type="button" :aria-pressed="t.typeface === 'plex'" @click="set('typeface', 'plex')">IBM Plex</button>
+      <button type="button" :aria-pressed="t.typeface === 'editorial'" @click="set('typeface', 'editorial')">Editorial</button>
+    </div>
+  </div>
+  <div class="tw-row">
+    <label>Density</label>
+    <div class="opts">
+      <template x-for="d in ['compact', 'comfortable', 'spacious']"><button type="button" :aria-pressed="t.density === d" @click="set('density', d)" x-text="d[0].toUpperCase() + d.slice(1)"></button></template>
+    </div>
+  </div>
+  <div class="tw-row">
+    <label>Hue</label>
+    <div class="hstack" style="width:100%;">
+      <input type="range" min="0" max="360" step="1" :value="hue()" @input="setHue($event.target.value)" style="flex:1;">
+      <span class="mono" style="font-size:11px; color:var(--ink-3); width:36px; text-align:right;" x-text="hue() + '°'"></span>
+    </div>
+  </div>
+</div>
+{% block body_end %}{% endblock %}
+</body>
+</html>

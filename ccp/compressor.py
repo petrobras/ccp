@@ -174,7 +174,7 @@ class Point1Sec(Point):
             "oil_density_de",
             "oil_density_nde",
         ]:
-            if getattr(self, param):
+            if getattr(self, param) is not None:
                 dict_to_save[param] = str(getattr(self, param))
 
         return dict_to_save
@@ -333,6 +333,7 @@ class StraightThrough(Impeller):
         """Return a dict representation of the compressor."""
         dict_to_save = {
             "reynolds_correction": self.reynolds_correction,
+            "bearing_mechanical_losses": self.bearing_mechanical_losses,
             "speed_operational": str(self.speed_operational),
         }
         # add points to file
@@ -1206,6 +1207,7 @@ class BackToBack(Impeller):
         """Return a dict representation of the compressor."""
         dict_to_save = {
             "reynolds_correction": self.reynolds_correction,
+            "bearing_mechanical_losses": self.bearing_mechanical_losses,
             "speed_operational": str(self.speed_operational),
         }
         # add points to file

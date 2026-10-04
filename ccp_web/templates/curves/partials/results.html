@@ -1,0 +1,38 @@
+{% load ccp %}
+{% if has_converted %}
+<section class="section" x-data="{ tab: 'converted' }">
+  <header>
+    <h2>Conversion results</h2>
+    <span class="desc">Plot units apply to every panel</span>
+    <div class="actions">
+      <a class="btn ghost sm" href="{% url 'core:artifact' case.pk 'converted_impeller' %}">TOML</a>
+    </div>
+  </header>
+  <form id="plot-units" class="note" hx-post="{% url 'core:case_state' case.pk %}" hx-trigger="change" hx-target="#save-status"
+    @htmx:after-request="$dispatch('ccp-replot')">
+    {% csrf_token %}
+    <div class="form-grid" style="grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));">
+      {% for key, label in plot_units %}<label class="fld"><span class="muted" style="font-size:11.5px;">{{ label }}</span>{% sel key %}</label>{% endfor %}
+      <label class="fld"><span class="muted" style="font-size:11.5px;">Design curves</span>{% chk "show_design_curves" "Plot design curves" %}</label>
+    </div>
+  </form>
+  <div class="tabs" role="tablist">
+    <button type="button" role="tab" :aria-selected="tab === 'converted'" @click="tab = 'converted'; $nextTick(() => ccpResizePlots())">Converted</button>
+    {% if state.show_design_curves %}
+      {% for letter in loaded_letters %}
+        <button type="button" role="tab" :aria-selected="tab === '{{ letter }}'" @click="tab = '{{ letter }}'; $nextTick(() => ccpResizePlots())">Design case {{ letter }}</button>
+      {% endfor %}
+    {% endif %}
+  </div>
+  <div x-show="tab === 'converted'" hx-get="{% url 'curves:plots' case.pk 'converted' %}" hx-trigger="load" hx-swap="innerHTML">
+    <div class="empty"><span class="spin"></span> Plotting…</div>
+  </div>
+  {% if state.show_design_curves %}
+    {% for letter in loaded_letters %}
+      <div x-show="tab === '{{ letter }}'" hx-get="{% url 'curves:plots' case.pk 'orig_case_'|add:letter %}" hx-trigger="load" hx-swap="innerHTML">
+        <div class="empty"><span class="spin"></span> Plotting…</div>
+      </div>
+    {% endfor %}
+  {% endif %}
+</section>
+{% endif %}

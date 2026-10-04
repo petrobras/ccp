@@ -1,0 +1,250 @@
+{% extends "base.html" %}
+{% load ccp %}
+{% block title %}{{ case.name }} · {{ title }}{% endblock %}
+{% block crumbs %}
+  <span class="sep">›</span><a href="{% url 'core:app_index' app_type %}">{{ title }}</a>
+  <span class="sep">›</span><b>{{ case.name }}</b>
+{% endblock %}
+
+{% block run_button %}
+  <button class="btn" type="button" title="Calculate the speed that matches the guarantee discharge pressure"
+    hx-post="{% url 'performance_test:calculate' case.pk %}" hx-include="#case-form" hx-vals='{"calculate_speed": "1"}'
+    hx-target="#job-area" hx-swap="innerHTML">Calculate speed</button>
+  <button class="btn primary" id="runBtn" type="button" title="Calculate with the data sheet speed (⌘↵)"
+    hx-post="{% url 'performance_test:calculate' case.pk %}" hx-include="#case-form"
+    hx-target="#job-area" hx-swap="innerHTML">
+    <svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
+    Calculate <span class="kbd">⌘↵</span>
+  </button>
+{% endblock %}
+
+{% block main %}
+<div class="page-head">
+  <div>
+    <h1 class="title">{{ title }}</h1>
+    <p>{{ description }}</p>
+  </div>
+  <div class="meta">
+    <div>Method <b>{{ state.polytropic_method }}</b></div>
+    <div>Points <b>{% for s in steps %}{% if s.anchor == 'test' %}{{ s.hint }}{% endif %}{% endfor %}</b></div>
+    {% if job %}<div>Last run <b>{{ job.created|date:"H:i" }}</b></div>{% endif %}
+  </div>
+</div>
+
+<nav class="steps" aria-label="Steps">
+  {% for s in steps %}
+    <a class="step {% if s.done %}done{% endif %}" {% if s.current %}aria-current="true"{% endif %} href="#sec-{{ s.anchor }}">
+      <div class="num"><span>{{ s.n }}</span></div>
+      <div><div class="label">{{ s.label }}</div><div class="hint">{{ s.hint }}</div></div>
+    </a>
+  {% endfor %}
+</nav>
+
+<form id="case-form" onsubmit="return false"
+  hx-post="{% url 'core:case_state' case.pk %}"
+  hx-trigger="change[!target.matches('input[type=file]') && !target.closest('[data-test-data]')] delay:400ms"
+  hx-target="#save-status" hx-swap="innerHTML"
+  x-data="{ opt: { seal: {{ state.opt_seal_gas_flow|yesno:'true,false' }}, leak: {{ state.opt_calculate_leakages|yesno:'true,false' }}, bearing: {{ state.opt_bearing_mechanical_losses|yesno:'true,false' }}, oilCp: {{ state.oil_specific_heat|yesno:'true,false' }}, oilIso: {{ state.oil_iso|yesno:'true,false' }} } }">
+  {% csrf_token %}
+
+  <!-- OPTIONS -->
+  <section class="section" id="sec-options" x-data="{ collapsed: false }" :class="{ collapsed }" @ccp-expand="collapsed = false">
+    <header @click="if (!$event.target.closest('.actions')) collapsed = !collapsed">
+      {% include "core/includes/chev.html" %}
+      <h2>Options</h2><span class="desc">Corrections, losses, oil and polytropic method</span>
+    </header>
+    <div class="body pad" x-show="!collapsed">
+      <div class="form-grid" style="grid-template-columns: repeat(auto-fill, minmax(210px, 1fr));">
+        <div class="fld">
+          <span class="lbl">Calculation</span>
+          {% chk "opt_reynolds_correction" "Reynolds Correction" %}
+          {% chk "opt_casing_heat_loss" "Casing Heat Loss" %}
+          <label class="chk"><input type="hidden" name="opt_bearing_mechanical_losses" value="false">
+            <input type="checkbox" name="opt_bearing_mechanical_losses" value="true" x-model="opt.bearing"><span>Bearing Mechanical Losses</span></label>
+          <label class="chk"><input type="hidden" name="opt_calculate_leakages" value="false">
+            <input type="checkbox" name="opt_calculate_leakages" value="true" x-model="opt.leak"><span>Calculate Leakages</span></label>
+          <label class="chk"><input type="hidden" name="opt_seal_gas_flow" value="false">
+            <input type="checkbox" name="opt_seal_gas_flow" value="true" x-model="opt.seal"><span>Seal Gas Flow</span></label>
+          {% chk "opt_variable_speed" "Variable Speed" %}
+          {% chk "opt_show_points" "Show Points" "If marked, shows points in the plotted curves in addition to interpolation." %}
+        </div>
+        <div class="fld">
+          <span class="lbl">Ambient pressure</span>
+          <div class="hstack">{% inp "ambient_pressure_magnitude" %}<div style="width:110px;">{% sel "ambient_pressure_unit" %}</div></div>
+          <span class="lbl" style="margin-top:10px;">Polytropic method</span>
+          {% sel "polytropic_method" %}
+        </div>
+        <div class="fld" :class="{ 'opacity-50': !opt.bearing }">
+          <span class="lbl">Test lube oil</span>
+          <label class="chk">
+            <input type="hidden" name="oil_specific_heat" value="false">
+            <input type="checkbox" name="oil_specific_heat" value="true" x-model="opt.oilCp" @change="if (opt.oilCp) opt.oilIso = false"><span>Specific heat</span>{% help "If marked, uses this oil specific heat and density for bearing mechanical losses calculation and disables ISO oil classification." %}</label>
+          <div class="hstack">{% inp "oil_specific_heat_magnitude" xdis="!opt.oilCp" %}<div style="width:120px;">{% sel "oil_specific_heat_unit" xdis="!opt.oilCp" %}</div></div>
+          <span class="muted" style="font-size:11.5px;">Density</span>
+          <div class="hstack">{% inp "oil_density_magnitude" xdis="!opt.oilCp" %}<div style="width:120px;">{% sel "oil_density_unit" xdis="!opt.oilCp" %}</div></div>
+          <label class="chk">
+            <input type="hidden" name="oil_iso" value="false">
+            <input type="checkbox" name="oil_iso" value="true" x-model="opt.oilIso" @change="if (opt.oilIso) opt.oilCp = false"><span>Oil ISO classification</span>{% help "If marked, uses the ISO oil classification for bearing mechanical losses calculation and disables specific heat and density input." %}</label>
+          {% sel "oil_iso_classification" xdis="!opt.oilIso" %}
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- GAS -->
+  {% include "core/includes/gas_section.html" %}
+
+  <!-- DATA SHEET -->
+  <section class="section" id="sec-datasheet" x-data="{ collapsed: false }" :class="{ collapsed }" @ccp-expand="collapsed = false">
+    <header @click="if (!$event.target.closest('.actions')) collapsed = !collapsed">
+      {% include "core/includes/chev.html" %}
+      <h2>Data sheet</h2><span class="desc">Guarantee point{% if is_b2b %}s of both sections (one unit per row){% endif %}</span>
+    </header>
+    <div class="body grid-wrap" x-show="!collapsed">
+      <table class="sheet">
+        <thead><tr><th class="param">Parameter</th><th>Unit</th>{% for t in layout.section_titles %}<th>{% if is_b2b %}{{ t }}{% else %}Guarantee{% endif %}</th>{% endfor %}</tr></thead>
+        <tbody>
+          <tr class="gasrow">
+            <td class="param">Gas selection</td><td></td>
+            {% if is_b2b %}
+              <td class="val">{% gas_sel "gas_section_1_point_guarantee" %}</td>
+              <td class="val">{% gas_sel "gas_section_2_point_guarantee" %}</td>
+            {% else %}
+              <td class="val">{% gas_sel "gas_point_guarantee" %}</td>
+            {% endif %}
+          </tr>
+          {% for row in layout.data_sheet %}
+            <tr>
+              <td class="param">{{ row.param.label }}{% help row.param.help %}</td>
+              <td class="unit">{% sel row.unit_key %}</td>
+              {% for k in row.keys %}<td class="val">{% inp k %}</td>{% endfor %}
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- CURVES -->
+  <section class="section" id="sec-curves" x-data="{ collapsed: true, tab: '{{ layout.curves.0.id }}' }" :class="{ collapsed }" @ccp-expand="collapsed = false">
+    <header @click="if (!$event.target.closest('.actions')) collapsed = !collapsed">
+      {% include "core/includes/chev.html" %}
+      <h2>Curves</h2><span class="desc">Vendor curve images and plot ranges; the image is stretched over the axis ranges</span>
+    </header>
+    <div class="body" x-show="!collapsed">
+      {% if is_b2b %}
+        <div class="tabs" role="tablist">
+          {% for c in layout.curves %}<button type="button" role="tab" :aria-selected="tab === '{{ c.id }}'" @click="tab = '{{ c.id }}'; $nextTick(() => ccpResizePlots())">{{ c.title }}</button>{% endfor %}
+        </div>
+      {% endif %}
+      {% for c in layout.curves %}
+        <div class="grid-wrap" x-show="tab === '{{ c.id }}'">
+          <table class="sheet">
+            <thead><tr><th class="param">Curve</th><th>Image</th><th>x unit</th><th>x lower</th><th>x upper</th><th>y unit</th><th>y lower</th><th>y upper</th></tr></thead>
+            <tbody>
+              {% for r in c.rows %}
+                <tr>
+                  <td class="param">{{ r.label }}</td>
+                  <td style="min-width:260px;">{% with slot=r.image_key file=files|get:r.image_key kind="curve_image" %}{% include "core/partials/file_slot.html" %}{% endwith %}</td>
+                  <td class="unit">{% key "x_" r.prefix "_flow_units" as k %}{% sel k %}</td>
+                  <td class="val">{% key "x_" r.prefix "_lower" as k %}{% inp k %}</td>
+                  <td class="val">{% key "x_" r.prefix "_upper" as k %}{% inp k %}</td>
+                  <td class="unit">{% key "y_" r.prefix "_units" as k %}{% sel k %}</td>
+                  <td class="val">{% key "y_" r.prefix "_lower" as k %}{% inp k %}</td>
+                  <td class="val">{% key "y_" r.prefix "_upper" as k %}{% inp k %}</td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      {% endfor %}
+    </div>
+  </section>
+
+  <!-- TEST DATA -->
+  <section class="section" id="sec-test" x-data="{ collapsed: false, tab: '{{ layout.test.0.id }}' }" :class="{ collapsed }" @ccp-expand="collapsed = false">
+    <header @click="if (!$event.target.closest('.actions')) collapsed = !collapsed">
+      {% include "core/includes/chev.html" %}
+      <h2>Test data</h2><span class="desc">Up to six test points; a point needs flow, suction pressure and temperature</span>
+    </header>
+    <div class="body" x-show="!collapsed">
+      {% if is_b2b %}
+        <div class="tabs" role="tablist">
+          {% for t in layout.test %}<button type="button" role="tab" :aria-selected="tab === '{{ t.id }}'" @click="tab = '{{ t.id }}'">{{ t.title }}</button>{% endfor %}
+        </div>
+      {% endif %}
+      {% for t in layout.test %}
+        {# Changes here autosave through test_data, which also refreshes the orifice flows. #}
+        <div x-show="tab === '{{ t.id }}'" x-data="{ fm: '{{ state|get:t.method_key|escapejs }}' }" data-test-data
+          hx-post="{% url 'performance_test:test_data' case.pk %}" hx-trigger="change delay:400ms"
+          hx-include="#case-form" hx-target="#save-status" hx-swap="innerHTML">
+          <div class="flowbar">
+            <span class="lbl">Flow input</span>
+            <div class="seg" role="radiogroup" aria-label="Flow input">
+              <label><input type="radio" name="{{ t.method_key }}" value="Direct" x-model="fm">Measured</label>
+              <label><input type="radio" name="{{ t.method_key }}" value="Orifice" x-model="fm">Orifice plate</label>
+            </div>
+            <span class="muted" x-show="fm === 'Orifice'">Flow calculated per point from the orifice plate (ISO 5167) with the point's gas.</span>
+          </div>
+          <div class="grid-wrap">
+            <table class="sheet">
+              <thead><tr><th class="param">Parameter</th><th>Unit</th>{% for i in layout.points %}<th>Point {{ i }}</th>{% endfor %}</tr></thead>
+              <tbody>
+                <tr class="gasrow"><td class="param">Gas selection</td><td></td>{% for k in t.gas_keys %}<td class="val">{% gas_sel k %}</td>{% endfor %}</tr>
+                {% include "performance_test/partials/flow_row.html" %}
+                {% for row in t.orifice %}
+                  <tr class="orifice-row" x-show="fm === 'Orifice'">
+                    <td class="param">{{ row.param.label }}{% help row.param.help %}</td>
+                    <td class="unit">{% if row.unit_key %}{% sel row.unit_key %}{% endif %}</td>
+                    {% for k in row.keys %}<td class="val">{% if row.select %}{% sel k %}{% else %}{% inp k %}{% endif %}</td>{% endfor %}
+                  </tr>
+                {% endfor %}
+                {% for row in t.rows %}
+                  <tr {% if row.toggle %}:class="{ disabled: {{ row.toggle }} }"{% endif %}>
+                    <td class="param">{{ row.param.label }}{% help row.param.help %}</td>
+                    <td class="unit">{% sel row.unit_key xdis=row.toggle %}</td>
+                    {% for k in row.keys %}<td class="val">{% inp k xdis=row.toggle %}</td>{% endfor %}
+                  </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      {% endfor %}
+    </div>
+  </section>
+
+</form>
+
+<!-- RUN -->
+<section class="section" id="sec-run">
+  <header><h2>Calculation</h2><span class="desc">Runs in the background; you can keep editing</span>
+    <div class="actions">
+      <button class="btn" type="button" hx-post="{% url 'performance_test:calculate' case.pk %}" hx-include="#case-form" hx-vals='{"calculate_speed": "1"}' hx-target="#job-area">Calculate speed</button>
+      <button class="btn primary" type="button" hx-post="{% url 'performance_test:calculate' case.pk %}" hx-include="#case-form" hx-target="#job-area">Calculate</button>
+    </div>
+  </header>
+  <div id="job-area">
+    {% if job %}{% include "core/partials/job.html" %}{% else %}<div class="empty">Fill the data sheet and at least one test point, then Calculate (⌘↵).</div>{% endif %}
+  </div>
+</section>
+
+<!-- RESULTS -->
+<div id="sec-results" hx-get="{% url 'performance_test:results' case.pk %}" hx-trigger="load, ccp:job-done-{{ case.pk }} from:body" hx-swap="innerHTML">
+  {% if has_results %}<section class="section"><header><h2>Results</h2><span class="desc"><span class="spin"></span> Loading…</span></header></section>{% endif %}
+</div>
+{% endblock %}
+
+{% block inspector %}
+  {% include "core/includes/case_inspector.html" with inspector_template="performance_test/partials/inspector.html" %}
+{% endblock %}
+
+{% block status %}
+  {% if job and job.is_active %}
+    <span class="chip busy"><span class="dot"></span> <b>Calculating</b></span>
+  {% else %}
+    <span class="chip"><span class="dot"></span> <b>Ready</b></span>
+  {% endif %}
+{% endblock %}
+{% block status_extra %}<span>Method: <b>{{ state.polytropic_method }}</b></span>{% endblock %}
+{% block save_status %}<span class="saved">Saved {{ case.updated|time:"H:i:s" }}</span>{% endblock %}

@@ -1,0 +1,262 @@
+{% extends "base.html" %}
+{% load ccp %}
+{% block title %}{{ case.name }} · Performance evaluation{% endblock %}
+{% block crumbs %}
+  <span class="sep">›</span><a href="{% url 'core:app_index' app_type %}">Performance evaluation</a>
+  <span class="sep">›</span><b>{{ case.name }}</b>
+{% endblock %}
+
+{% block top_actions %}
+  <div class="seg" role="radiogroup" aria-label="Data source" x-data>
+    {% for key, label in data_sources %}
+      <label title="{% if key == 'pi' %}Live PI historian{% elif key == 'file' %}Uploaded CSV or Parquet file{% else %}Test fixtures shipped with ccp{% endif %}">
+        <input type="radio" name="data_source" value="{{ key }}" form="case-form" {% if key == source %}checked{% endif %}
+          @change="ccpSaveAndReload()">{{ label }}
+      </label>
+    {% endfor %}
+  </div>
+{% endblock %}
+
+{% block run_button %}
+  <button class="btn" type="button" title="Re-run clustering and curve conversion over the whole window"
+    hx-post="{% url 'evaluation:run' case.pk %}" hx-include="#case-form" hx-vals='{"mode": "full_rebuild"}' hx-target="#job-area">Full rebuild</button>
+  <button class="btn primary" id="runBtn" type="button" title="Run evaluation (⌘↵); appends new data to an existing evaluation"
+    hx-post="{% url 'evaluation:run' case.pk %}" hx-include="#case-form" hx-target="#job-area">
+    <svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
+    Run evaluation <span class="kbd">⌘↵</span>
+  </button>
+{% endblock %}
+
+{% block main %}
+<div class="page-head">
+  <div>
+    <h1 class="title">Performance evaluation</h1>
+    <p>Evaluate measured operating points against the machine's design curves: data is clustered by
+      operating condition, the design curves are converted to each cluster and every sample is compared
+      with its expected point.</p>
+  </div>
+  <div class="meta">
+    <div>Source <b>{% for k, l in data_sources %}{% if k == source %}{{ l }}{% endif %}{% endfor %}</b></div>
+    <div>Design cases <b>{{ loaded_letters|join:", "|default:"none" }}</b></div>
+    {% if job %}<div>Last run <b>{{ job.created|date:"Y-m-d H:i" }}</b></div>{% endif %}
+  </div>
+</div>
+
+<nav class="steps" aria-label="Steps">
+  {% for s in steps %}
+    <a class="step {% if s.done %}done{% endif %}" {% if s.current %}aria-current="true"{% endif %} href="#sec-{{ s.anchor }}">
+      <div class="num"><span>{{ s.n }}</span></div>
+      <div><div class="label">{{ s.label }}</div><div class="hint">{{ s.hint }}</div></div>
+    </a>
+  {% endfor %}
+</nav>
+
+{% if source == 'mock' %}
+  <div class="banner"><span class="tag">Mock</span>
+    <div>Running with <b>mock data</b> from the ccp test fixtures ({% if state.flow_method == 'Orifice' %}data_delta_p{% else %}data{% endif %}.parquet). Switch to <b>PI Live</b> or <b>File</b> in the top bar for real data.</div></div>
+{% elif source == 'pi' and not has_pandaspi %}
+  <div class="banner error"><span class="tag">PI</span>
+    <div><b>pandaspi</b> is not installed; it is only available inside Petrobras. Use <b>File</b> (CSV/Parquet export of the historian) or <b>Mock</b> in the top bar.</div></div>
+{% endif %}
+
+<form id="case-form" onsubmit="return false"
+  hx-post="{% url 'core:case_state' case.pk %}"
+  hx-trigger="change[!target.matches('input[type=file]') && !target.name.endsWith('_input')] delay:400ms"
+  hx-target="#save-status" hx-swap="innerHTML">
+  {% csrf_token %}
+  {% include "core/includes/gas_section.html" with collapsed=has_evaluation %}
+  {% include "core/includes/design_cases.html" %}
+
+  <!-- DATA SOURCE / TAGS -->
+  <section class="section" id="sec-tags"
+    x-data="{ collapsed: false, flow: '{{ state.flow_method|escapejs }}', fluid: '{{ state.fluid_source|escapejs }}', auth: '{{ state.pi_auth_method|escapejs }}' }"
+    :class="{ collapsed }" @ccp-expand="collapsed = false">
+    <header @click="if (!$event.target.closest('.actions')) collapsed = !collapsed">
+      {% include "core/includes/chev.html" %}
+      <h2>Data source and tags</h2><span class="desc">Columns of the plant data: PI tags, or the file columns</span>
+    </header>
+    <div class="body" x-show="!collapsed">
+      {% if source == 'file' %}
+        <div class="note">
+          <div class="lbl" style="margin-bottom:6px;">Plant data file</div>
+          {% with slot="plant_data" file=plant_file kind="plant_data" label="CSV or Parquet: a timestamp column plus ps, Ts, pd, Td, speed and flow_v (or delta_p, p_downstream) and optional fluid_<component> columns, in the units below" %}{% include "core/partials/file_slot.html" %}{% endwith %}
+        </div>
+      {% endif %}
+      {% if source == 'pi' %}
+      <div class="body pad" style="border-bottom:1px solid var(--rule-soft);">
+        <div class="form-grid" style="grid-template-columns: 2fr 1.2fr 1fr 1fr 1fr; align-items:end;">
+          <label class="fld"><span class="lbl">PI server name</span>{% inp "pi_server_name" %}</label>
+          <div class="fld"><span class="lbl">Authentication</span>
+            <div class="seg" style="align-self:flex-start;">
+              <label><input type="radio" name="pi_auth_method" value="kerberos" x-model="auth">kerberos</label>
+              <label><input type="radio" name="pi_auth_method" value="basic" x-model="auth">basic</label>
+            </div></div>
+          <label class="fld" x-show="auth === 'basic'"><span class="lbl">Username</span>{% inp "pi_username" %}</label>
+          <label class="fld" x-show="auth === 'basic'"><span class="lbl">Password {% if pi_password_saved %}<span class="pill ok">saved</span>{% endif %}</span>
+            <input type="password" name="pi_password_input" class="inp" autocomplete="off" placeholder="{% if pi_password_saved %}(keyring){% endif %}"></label>
+          <div class="fld" x-show="auth === 'basic'">
+            {% if keyring %}<button class="btn sm" type="submit" formmethod="post" formaction="{% url 'evaluation:remember_secret' case.pk 'pi_password' %}" onclick="this.form.onsubmit=null">Remember in keyring</button>
+            {% else %}<span class="muted" style="font-size:11.5px;">Not stored; asked per run</span>{% endif %}
+          </div>
+        </div>
+      </div>
+      {% endif %}
+      <div class="note">Each parameter accepts one or two {% if source == 'pi' %}tags{% else %}columns{% endif %}. When both are valid, tag 2 is converted to unit 1 and the values are averaged.</div>
+      <div class="grid-wrap">
+        <table class="sheet">
+          <thead><tr><th class="param">Parameter</th><th>Tag 1</th><th>Unit 1</th><th>Tag 2</th><th>Unit 2</th></tr></thead>
+          <tbody>
+            {% for p, label, opts in tag_rows %}
+              <tr>
+                <td class="param">{{ label }}</td>
+                <td class="val" style="min-width:220px;">{% key p "_tag" as k %}{% inp k %}</td>
+                <td class="unit">{% key p "_unit" as k %}{% sel k %}</td>
+                <td class="val" style="min-width:220px;">{% key p "_tag_2" as k %}{% inp k %}</td>
+                <td class="unit">{% key p "_unit_2" as k %}{% sel k %}</td>
+              </tr>
+            {% endfor %}
+            <tr class="gasrow">
+              <td class="param">Flow measurement</td>
+              <td colspan="4">
+                <div class="seg">
+                  <label><input type="radio" name="flow_method" value="Direct" x-model="flow">Direct</label>
+                  <label><input type="radio" name="flow_method" value="Orifice" x-model="flow">Orifice</label>
+                </div>
+              </td>
+            </tr>
+            {% for p, label, opts in flow_rows %}
+              <tr x-show="flow === 'Direct'">
+                <td class="param">{{ label }}</td>
+                <td class="val">{% key p "_tag" as k %}{% inp k %}</td>
+                <td class="unit">{% key p "_unit" as k %}{% sel k %}</td>
+                <td class="val">{% key p "_tag_2" as k %}{% inp k %}</td>
+                <td class="unit">{% key p "_unit_2" as k %}{% sel k %}</td>
+              </tr>
+            {% endfor %}
+            {% for p, label, opts in orifice_rows %}
+              <tr x-show="flow === 'Orifice'">
+                <td class="param">{{ label }}</td>
+                <td class="val">{% key p "_tag" as k %}{% inp k %}</td>
+                <td class="unit">{% key p "_unit" as k %}{% sel k %}</td>
+                <td class="val">{% key p "_tag_2" as k %}{% inp k %}</td>
+                <td class="unit">{% key p "_unit_2" as k %}{% sel k %}</td>
+              </tr>
+            {% endfor %}
+            <tr x-show="flow === 'Orifice'">
+              <td class="param">Orifice</td>
+              <td colspan="4">
+                <div class="hstack" style="flex-wrap:wrap; gap:10px;">
+                  <span class="muted">Tappings</span><div style="width:110px;">{% sel "orifice_tappings" %}</div>
+                  <span class="muted">Pipe D</span><div style="width:120px;">{% num "orifice_D" %}</div><div style="width:80px;">{% sel "orifice_D_unit" %}</div>
+                  <span class="muted">Orifice d</span><div style="width:120px;">{% num "orifice_d" %}</div><div style="width:80px;">{% sel "orifice_d_unit" %}</div>
+                </div>
+              </td>
+            </tr>
+            <tr class="gasrow">
+              <td class="param">Fluid</td>
+              <td colspan="4">
+                <div class="hstack" style="flex-wrap:wrap;">
+                  <div class="seg">
+                    <label><input type="radio" name="fluid_source" value="Fixed Operation Fluid" x-model="fluid">Fixed operation fluid</label>
+                    <label><input type="radio" name="fluid_source" value="Inform Component Tags" x-model="fluid">Component tags</label>
+                  </div>
+                  <div x-show="fluid === 'Fixed Operation Fluid'" style="width:200px;">{% gas_sel "operation_fluid_gas" %}</div>
+                </div>
+              </td>
+            </tr>
+            {% for i in fluid_rows %}
+              <tr x-show="fluid === 'Inform Component Tags'">
+                <td class="param">Component {{ i|add:1 }}</td>
+                <td class="val">{% key "fluid_component_" i as k %}{% sel k fluid_list %}</td>
+                <td class="unit">{% key "fluid_unit_" i as k %}{% sel k %}</td>
+                <td class="val" colspan="2">{% key "fluid_tag_" i as k %}{% inp k placeholder="Tag" %}</td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <!-- WINDOW -->
+  <section class="section" id="sec-window" x-data="{ collapsed: false }" :class="{ collapsed }" @ccp-expand="collapsed = false">
+    <header @click="if (!$event.target.closest('.actions')) collapsed = !collapsed">
+      {% include "core/includes/chev.html" %}
+      <h2>Evaluation window</h2><span class="desc">7.5-minute samples; Run appends when only the end moves forward</span>
+    </header>
+    <div class="body" x-show="!collapsed">
+      <div class="cond">
+        <div class="field"><label class="lbl">Start</label><div class="val"><input type="datetime-local" name="eval_start" value="{{ window_start }}"></div></div>
+        <div class="field"><label class="lbl">End</label><div class="val"><input type="datetime-local" name="eval_end" value="{{ window_end }}"></div></div>
+        <div class="field"><label class="lbl">Temperature fluctuation</label><div class="val">{% num "temperature_fluctuation" cls="" step="0.1" %}<span class="u">%</span></div></div>
+        <div class="field"><label class="lbl">Pressure fluctuation</label><div class="val">{% num "pressure_fluctuation" cls="" step="0.1" %}<span class="u">%</span></div></div>
+        <div class="field"><label class="lbl">Speed fluctuation</label><div class="val">{% num "speed_fluctuation" cls="" step="0.1" %}<span class="u">%</span></div></div>
+      </div>
+      <div class="note">Points are invalid when the fluctuation (max − min) / mean × 100 % over the rolling window exceeds the threshold.</div>
+    </div>
+  </section>
+</form>
+
+<section class="section" id="sec-run">
+  <header><h2>Evaluation</h2><span class="desc">Runs in the background (minutes for a month of data)</span>
+    <div class="actions">
+      <button class="btn" type="button" hx-post="{% url 'evaluation:run' case.pk %}" hx-include="#case-form" hx-vals='{"mode": "full_rebuild"}' hx-target="#job-area">Full rebuild</button>
+      <button class="btn primary" type="button" hx-post="{% url 'evaluation:run' case.pk %}" hx-include="#case-form" hx-target="#job-area">Run evaluation</button>
+    </div>
+  </header>
+  <div id="job-area">
+    {% if job %}{% include "core/partials/job.html" %}{% else %}<div class="empty">Load the design curves, configure the data source, then Run evaluation (⌘↵).</div>{% endif %}
+  </div>
+</section>
+
+<div id="sec-results" hx-get="{% url 'evaluation:results' case.pk %}" hx-trigger="load, ccp:job-done-{{ case.pk }} from:body" hx-swap="innerHTML">
+  {% if has_evaluation %}<section class="section"><header><h2>Results</h2><span class="desc"><span class="spin"></span> Loading…</span></header></section>{% endif %}
+</div>
+
+<!-- REPORT -->
+<section class="section" id="sec-report" x-data="{ ai: {{ state.ai_enabled|yesno:'true,false' }}, provider: '{{ state.ai_provider|escapejs }}' }">
+  <header><h2>Report</h2><span class="desc">Self-contained HTML with the trend and performance plots and the statistics</span></header>
+  <form class="body pad" id="report-form" hx-post="{% url 'core:case_state' case.pk %}" hx-trigger="change[!target.name.endsWith('_input')]" hx-target="#save-status">
+    {% csrf_token %}
+    <div class="form-grid" style="grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); align-items:end;">
+      <label class="chk"><input type="hidden" name="ai_enabled" value="false"><input type="checkbox" name="ai_enabled" value="true" x-model="ai"><span>AI analysis in the report</span>{% help "Use AI to generate analysis text in the performance report." %}</label>
+      <label class="fld" x-show="ai"><span class="lbl">Provider</span>{% sel "ai_provider" labels=ai_labels %}</label>
+      <label class="fld" x-show="ai"><span class="lbl">API key {% if ai_key_saved %}<span class="pill ok">saved</span>{% endif %}</span>
+        <input type="password" name="ai_api_key_input" class="inp" autocomplete="off" placeholder="{% if ai_key_saved %}(keyring){% endif %}"></label>
+      <label class="fld" x-show="ai && provider === 'azure'"><span class="lbl">Azure endpoint</span>{% inp "ai_azure_endpoint" placeholder="https://your-resource.openai.azure.com/" %}</label>
+      <label class="fld" x-show="ai && provider === 'azure'"><span class="lbl">Azure deployment</span>{% inp "ai_azure_deployment" placeholder="gpt-4o" %}</label>
+      {% if keyring %}<div class="fld" x-show="ai"><button class="btn sm" type="submit" formmethod="post" formaction="{% url 'evaluation:remember_secret' case.pk 'ai_api_key' %}">Remember key in keyring</button></div>{% endif %}
+    </div>
+  </form>
+  <div id="report-area" hx-get="{% url 'evaluation:report_status' case.pk %}" hx-trigger="load" hx-swap="innerHTML"></div>
+</section>
+
+<!-- MONITORING -->
+<section class="section" id="sec-monitoring">
+  <header><h2>Online monitoring</h2><span class="desc">Fetches the latest samples every interval and compares them with the expected point</span></header>
+  <form class="body pad" id="monitor-form" hx-post="{% url 'core:case_state' case.pk %}" hx-trigger="change" hx-target="#save-status">
+    {% csrf_token %}
+    <div class="hstack" style="gap:16px; flex-wrap:wrap;">
+      <label class="hstack"><span class="lbl">Refresh interval</span>
+        <input type="range" name="refresh_interval" min="5" max="60" step="1" value="{{ state.refresh_interval }}" oninput="this.nextElementSibling.textContent = this.value + ' s'">
+        <span class="mono">{{ state.refresh_interval }} s</span></label>
+      {% chk "show_similarity" "Show similarity" %}
+      <span class="muted" style="font-size:11.5px;">Changes apply on the next Start.</span>
+    </div>
+  </form>
+  <div id="monitoring-area" hx-get="{% url 'evaluation:monitoring' case.pk %}" hx-trigger="load" hx-swap="innerHTML"></div>
+</section>
+{% endblock %}
+
+{% block inspector %}
+  {% include "core/includes/case_inspector.html" with inspector_template="evaluation/partials/inspector.html" %}
+{% endblock %}
+{% block status %}
+  {% if job and job.is_active %}<span class="chip busy"><span class="dot"></span> <b>Evaluating</b></span>
+  {% elif monitor and monitor.is_active %}<span class="chip busy"><span class="dot"></span> <b>Monitoring</b></span>
+  {% else %}<span class="chip"><span class="dot"></span> <b>Ready</b></span>{% endif %}
+{% endblock %}
+{% block status_extra %}
+  <span class="chip {% if source == 'mock' %}warn{% endif %}"><span class="dot"></span> <b>{% for k, l in data_sources %}{% if k == source %}{{ l }}{% endif %}{% endfor %}</b> data source</span>
+{% endblock %}
+{% block save_status %}<span class="saved">Saved {{ case.updated|time:"H:i:s" }}</span>{% endblock %}

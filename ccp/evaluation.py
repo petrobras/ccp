@@ -7,13 +7,41 @@ import pandas as pd
 import pickle
 from .data_io import filter_data
 from .state import State
-from .point import Point
+from .point import Point, PhaseWarning
 from .fo import FlowOrifice
 from .impeller import Impeller
 from .parallel import create_pool
 from . import Q_
 from sklearn.cluster import KMeans
 from tqdm.auto import tqdm
+import warnings
+
+
+def _allow_wet_cluster_suction(suc, cluster):
+    """Warn, instead of failing, when a cluster centre suction is not single phase.
+
+    Plant data with heavy components can put a cluster centre at or just inside
+    the dew line. A stand-alone ``Point`` refuses such a suction; the
+    evaluation warns and converts the curves with the unconstrained state, as
+    it did before the single-phase check existed.
+    """
+    if suc.phase:
+        return
+    try:
+        quality = suc.Q()
+    except ValueError:
+        return
+    if 0.0 <= quality <= 1.0:
+        warnings.warn(
+            f"Cluster {cluster} suction lies at or inside the phase envelope "
+            f"(vapour quality {quality:.4g}, p={suc.p('bar'):.3~P}, "
+            f"T={suc.T('degC'):.2f~P}); the curves are converted with this "
+            "two-phase suction. Check the fluid composition and the operating "
+            "data of this cluster.",
+            PhaseWarning,
+            stacklevel=3,
+        )
+        suc._allow_two_phase_suction = True
 
 
 class Evaluation:
@@ -545,6 +573,7 @@ class Evaluation:
                 T=Q_(cluster_series.Ts_center, self.data_units["Ts"]),
                 fluid=fluid,
             )
+            _allow_wet_cluster_suction(suc_new, i)
             imp_new = Impeller.convert_from(self.impellers, suc=suc_new, speed="same")
             self.impellers_new.append(imp_new)
 

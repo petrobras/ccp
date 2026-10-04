@@ -1,0 +1,39 @@
+{% load ccp %}
+{% if missing %}
+  <div class="empty">No {{ label|lower }} curves yet.</div>
+{% else %}
+<form class="note" hx-post="{% url 'curves:plots' case.pk prefix %}" hx-trigger="change delay:300ms" hx-target="closest div" hx-swap="innerHTML">
+  {% csrf_token %}
+  <div class="form-grid" style="grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); align-items:end;">
+    <label class="fld"><span class="lbl">Operational flow ({{ summary.units.flow_v|default:"m³/h" }}){% help "Select an operational flow to display the curves at that flow" %}</span>{% num flow_key %}</label>
+    <label class="fld"><span class="lbl">Operational speed ({{ summary.units.speed|default:"rpm" }}){% help "Select an operational speed to display the curves at that speed" %}</span>{% num speed_key %}</label>
+    <div class="fld">{% chk sim_key "Show similarity" %}</div>
+    <div class="fld muted mono" style="font-size:11px;">
+      {{ info.n_points }} points · {{ info.speed_min|floatformat:0 }}–{{ info.speed_max|floatformat:0 }} rpm ·
+      {{ info.flow_min|floatformat:0 }}–{{ info.flow_max|floatformat:0 }} m³/h
+    </div>
+  </div>
+</form>
+{% if error %}
+  <div class="banner error"><span class="tag">Error</span><div>{{ error }}</div></div>
+{% endif %}
+{% if summary %}
+<div class="chart-grid">
+  {% plotly figs.head %}
+  {% plotly figs.eff %}
+  {% plotly figs.power %}
+  {% plotly figs.disch_p %}
+  {% plotly figs.disch_T %}
+  <div class="chart-card" style="padding:12px 16px;">
+    <h4 style="padding:0 0 8px;">{{ label }} point</h4>
+    {% for name, value, unit in summary.rows %}
+      <div class="kv"><span class="k">{{ name }}</span><span class="v">{{ value }} <span class="muted">{{ unit }}</span></span></div>
+    {% endfor %}
+    <div class="lbl" style="margin:10px 0 4px;">Gas composition (mol %)</div>
+    {% for comp, frac in summary.gas %}
+      <div class="kv"><span class="k mono">{{ comp }}</span><span class="v">{{ frac|floatformat:3 }}</span></div>
+    {% endfor %}
+  </div>
+</div>
+{% endif %}
+{% endif %}

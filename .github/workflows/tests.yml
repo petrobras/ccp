@@ -72,3 +72,11 @@ jobs:
 
       - name: Run tests
         run: uv run pytest ccp/tests -n 4 --dist loadfile
+
+      - name: Run web app tests (desktop profile)
+        run: uv run pytest ccp_web/tests
+
+      - name: Run web app tests (hosted profile)
+        env:
+          CCP_TEST_MULTI_USER: "1"
+        run: uv run pytest ccp_web/tests

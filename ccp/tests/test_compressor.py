@@ -414,6 +414,17 @@ def test_save_and_load_straight(straight_through):
     straight_through_loaded = StraightThrough.load(file)
 
     assert straight_through == straight_through_loaded
+    # the converted points are rebuilt from the saved test data, so they must
+    # match exactly (head and efficiency alone do not give back the discharge)
+    for point, loaded in zip(
+        straight_through.points_flange_sp, straight_through_loaded.points_flange_sp
+    ):
+        assert_allclose(loaded.disch.p(), point.disch.p(), rtol=1e-9)
+        assert_allclose(loaded.power, point.power, rtol=1e-9)
+    assert (
+        straight_through_loaded.bearing_mechanical_losses
+        == straight_through.bearing_mechanical_losses
+    )
 
 
 def test_point2sec():
@@ -1136,6 +1147,12 @@ def test_save_and_load(back_to_back_ptc1997):
     back_to_back_loaded = BackToBack.load(file)
 
     assert back_to_back == back_to_back_loaded
+    for points in ["points_flange_sp_sec1", "points_flange_sp_sec2"]:
+        for point, loaded in zip(
+            getattr(back_to_back, points), getattr(back_to_back_loaded, points)
+        ):
+            assert_allclose(loaded.disch.p(), point.disch.p(), rtol=1e-9)
+            assert_allclose(loaded.power, point.power, rtol=1e-9)
 
 
 @pytest.fixture(scope="module")

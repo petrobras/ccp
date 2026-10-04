@@ -1,0 +1,49 @@
+{% load ccp %}
+<div hidden hx-get="{{ request.path }}" hx-select="#sec-design" hx-target="#sec-design" hx-swap="outerHTML"
+  hx-trigger="ccp:job-done-{{ case.pk }} from:body"></div>
+<section class="section" id="sec-design" x-data="{ collapsed: false }" :class="{ collapsed }" @ccp-expand="collapsed = false">
+  <header @click="if (!$event.target.closest('.actions')) collapsed = !collapsed">
+    {% include "core/includes/chev.html" %}
+    <h2>Design cases</h2><span class="desc">Suction conditions and Engauge curves (<span class="mono">&lt;curve&gt;-head.csv</span>, <span class="mono">&lt;curve&gt;-eff.csv</span>) per case</span>
+  </header>
+  <div class="body" x-show="!collapsed">
+    <div class="note">
+      <span class="lbl">Loaded curves units</span>
+      <div class="form-grid" style="grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); margin-top:6px;">
+        {% for key, label in loaded_units %}<label class="fld"><span class="muted" style="font-size:11.5px;">{{ label }}</span>{% sel key %}</label>{% endfor %}
+      </div>
+    </div>
+    <div class="grid-wrap">
+      <table class="sheet">
+        <thead>
+          <tr>
+            <th class="param">Case</th><th>Gas</th>
+            <th>Suction p <span style="display:inline-block; width:90px; vertical-align:middle;">{% sel "design_suc_p_unit" %}</span></th>
+            <th>Suction T <span style="display:inline-block; width:90px; vertical-align:middle;">{% sel "design_suc_T_unit" %}</span></th>
+            <th>Curve file 1</th><th>Curve file 2</th><th>Curves</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for d in design_cases %}
+            <tr>
+              <td class="param">Case {{ d.letter }}{% if d.curve_name %}<div class="muted mono" style="font-size:11px; font-weight:400;">{{ d.curve_name }}</div>{% endif %}</td>
+              <td class="val" style="min-width:130px;">{% gas_sel d.gas_key %}</td>
+              <td class="val">{% num d.p_key %}</td>
+              <td class="val">{% num d.T_key %}</td>
+              {% for s in d.slots %}
+                <td style="min-width:230px;">{% with slot=s.key file=s.file kind="engauge_csv" %}{% include "core/partials/file_slot.html" %}{% endwith %}</td>
+              {% endfor %}
+              <td style="min-width:260px;">
+                <div class="hstack">
+                  <button class="btn sm" type="button" hx-post="{% url 'curves:load' case.pk d.letter %}" hx-include="#case-form" hx-target="#load-{{ d.letter }}" hx-swap="innerHTML">Load curves</button>
+                  {% if d.info %}<span class="pill ok">{{ d.info.n_points }} pts · {{ d.info.n_curves }} curves</span>{% endif %}
+                </div>
+                <div id="load-{{ d.letter }}" class="job-inline">{% if d.job and d.job.is_active %}{% include "core/partials/job.html" with job=d.job %}{% endif %}</div>
+              </td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</section>
