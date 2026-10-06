@@ -286,10 +286,19 @@ def test_f_sandberg_colby(suc_0, disch_0):
     assert_allclose(f_sandberg_colby(suc_0, disch_0).m, 1.000912, rtol=1e-5)
 
 
-def test_point_head_pol(suc_0, disch_0):
-    h = head_pol(suc_0, disch_0)
+def test_point_head_pol_pvn(suc_0, disch_0):
+    h = head_pol_pvn(suc_0, disch_0)
     assert h.units == "joule/kilogram"
     assert_allclose(h.m, 82741.114339)
+
+
+def test_head_pol_eff_pol_deprecated(suc_0, disch_0):
+    with pytest.warns(DeprecationWarning, match="head_pol_pvn"):
+        h = head_pol(suc_0, disch_0)
+    assert_allclose(h.m, head_pol_pvn(suc_0, disch_0).m)
+    with pytest.warns(DeprecationWarning, match="eff_pol_pvn"):
+        e = eff_pol(suc_0, disch_0)
+    assert_allclose(e.m, eff_pol_pvn(suc_0, disch_0).m)
 
 
 def test_head_pol_schultz(suc_0, disch_0):
@@ -325,7 +334,23 @@ def test_point_head_pol_mallen_saville(suc_0, disch_0):
 def test_point_head_isen(suc_0, disch_0):
     h = head_isentropic(suc_0, disch_0)
     assert h.units == "joule/kilogram"
+    assert_allclose(h.magnitude, 80115.945890, rtol=1e-5)
+    # exact enthalpy rise along the isentrope
+    disch_s = State(p=disch_0.p(), s=suc_0.s(), fluid=suc_0.fluid)
+    assert_allclose(h.m, (disch_s.h() - suc_0.h()).m)
+
+
+def test_point_head_isen_pvn(suc_0, disch_0):
+    h = head_isentropic_pvn(suc_0, disch_0)
+    assert h.units == "joule/kilogram"
     assert_allclose(h.magnitude, 79984.234009, rtol=1e-5)
+
+
+def test_f_schultz_is_exact_over_closed_form_isentropic_head(suc_0, disch_0):
+    assert_allclose(
+        f_schultz(suc_0, disch_0).m,
+        (head_isentropic(suc_0, disch_0) / head_isentropic_pvn(suc_0, disch_0)).m,
+    )
 
 
 def test_head_reference(suc_0, disch_0):
@@ -424,7 +449,7 @@ def test_point_eff_pol_sandberg_colby(suc_PTC10_22, disch_PTC10_22):
 
 
 def test_point_eff_polytropic(suc_0, disch_0):
-    assert_allclose(eff_pol(suc_0, disch_0).m, 0.796499, rtol=1e-5)
+    assert_allclose(eff_pol_pvn(suc_0, disch_0).m, 0.796499, rtol=1e-5)
 
 
 def test_point_eff_pol_schultz(suc_0, disch_0):
@@ -436,7 +461,11 @@ def test_point_eff_pol_huntington(suc_0, disch_0):
 
 
 def test_eff_isentropic(suc_0, disch_0):
-    assert_allclose(eff_isentropic(suc_0, disch_0).m, 0.76996, rtol=1e-5)
+    assert_allclose(eff_isentropic(suc_0, disch_0).m, 0.771228, rtol=1e-5)
+
+
+def test_eff_isentropic_pvn(suc_0, disch_0):
+    assert_allclose(eff_isentropic_pvn(suc_0, disch_0).m, 0.76996, rtol=1e-5)
 
 
 def test_reynolds(suc_0):
