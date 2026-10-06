@@ -1496,8 +1496,8 @@ def n_exp(suc, disch):
     return np.log(pd / ps) / np.log(vs / vd)
 
 
-def head_pol(suc, disch):
-    r"""Polytropic head.
+def head_pol_pvn(suc, disch):
+    r"""Polytropic head from the :math:`pv^n` closed form, without correction.
 
     The polytropic head is calculated as per :cite:`schultz1962` eq. 27:
 
@@ -1507,7 +1507,14 @@ def head_pol(suc, disch):
           H_p = (\frac{n}{n - 1}) (p_d v_d - p_s v_s)
        \end{equation}
 
-    And :math:`n` is calculated by :py:func:`n_exp`.
+    And :math:`n` is calculated by :py:func:`n_exp` from the end states.
+
+    The expression integrates :math:`v\,dp` along :math:`pv^n = const`, so it
+    assumes that a single exponent describes the whole compression path. For
+    real gases the local exponent varies along the path and the result is
+    approximate. :py:func:`head_pol_schultz` applies the Schultz correction
+    factor, and the other ``head_pol_*`` functions implement the methods of
+    ASME PTC 10-2022.
 
     Parameters
     ----------
@@ -1518,8 +1525,8 @@ def head_pol(suc, disch):
 
     Returns
     -------
-    head_pol : pint.Quantity
-        Polytropic head (J/kg).
+    head_pol_pvn : pint.Quantity
+        Polytropic head from the uncorrected :math:`pv^n` closed form (J/kg).
     """
 
     n = n_exp(suc, disch)
@@ -1532,8 +1539,10 @@ def head_pol(suc, disch):
     return (n / (n - 1)) * (p2 * v2 - p1 * v1).to("joule/kilogram")
 
 
-def eff_pol(suc, disch):
-    """Polytropic efficiency.
+def eff_pol_pvn(suc, disch):
+    """Polytropic efficiency from the :math:`pv^n` closed form, without correction.
+
+    Ratio of :py:func:`head_pol_pvn` to the enthalpy rise.
 
     Parameters
     ----------
@@ -1544,19 +1553,77 @@ def eff_pol(suc, disch):
 
     Returns
     -------
-    eff_pol : pint.Quantity
+    eff_pol_pvn : pint.Quantity
         Polytropic efficiency (dimensionless).
 
     """
-    wp = head_pol(suc, disch)
+    wp = head_pol_pvn(suc, disch)
 
     dh = disch.h() - suc.h()
 
     return wp / dh
 
 
+def head_pol(suc, disch):
+    """Deprecated alias of :py:func:`head_pol_pvn`.
+
+    .. deprecated:: 0.4.2
+       Use :py:func:`head_pol_pvn`, which names the closed-form approximation
+       explicitly.
+    """
+    warnings.warn(
+        "ccp.point.head_pol is deprecated. Use ccp.point.head_pol_pvn instead.",
+        DeprecationWarning,
+        stacklevel=2,
+    )
+    return head_pol_pvn(suc, disch)
+
+
+def eff_pol(suc, disch):
+    """Deprecated alias of :py:func:`eff_pol_pvn`.
+
+    .. deprecated:: 0.4.2
+       Use :py:func:`eff_pol_pvn`, which names the closed-form approximation
+       explicitly.
+    """
+    warnings.warn(
+        "ccp.point.eff_pol is deprecated. Use ccp.point.eff_pol_pvn instead.",
+        DeprecationWarning,
+        stacklevel=2,
+    )
+    return eff_pol_pvn(suc, disch)
+
+
+def _isentropic_disch(suc, disch, disch_s=None):
+    """Isentropic discharge state at the discharge pressure.
+
+    Updates ``disch_s`` in place when given, otherwise works on a copy of
+    ``disch``.
+    """
+    if disch_s is None:
+        disch_s = copy(disch)
+
+    disch_s.update(p=disch.p(), s=suc.s())
+
+    return disch_s
+
+
 def head_isentropic(suc, disch, disch_s=None):
-    """Isentropic head.
+    r"""Isentropic head.
+
+    The isentropic head is the enthalpy rise of an isentropic compression from
+    the suction state to the discharge pressure (ASME PTC 10-1997 para. 2.6.2,
+    ISO 5389:2005 E.70):
+
+    .. math::
+
+       \begin{equation}
+          H_s = h(p_d, s_s) - h_s
+       \end{equation}
+
+    This is exact for ideal and real gases. The closed-form approximation
+    along :math:`pv^{n_s} = const` is available as
+    :py:func:`head_isentropic_pvn`.
 
     Parameters
     ----------
@@ -1572,19 +1639,59 @@ def head_isentropic(suc, disch, disch_s=None):
     Returns
     -------
     head_isentropic : pint.Quantity
-        Isentropic head.
+        Isentropic head (J/kg).
     """
-    # define state to isentropic discharge using dummy state
-    if disch_s is None:
-        disch_s = copy(disch)
+    disch_s = _isentropic_disch(suc, disch, disch_s)
 
-    disch_s.update(p=disch.p(), s=suc.s())
+    return (disch_s.h() - suc.h()).to("joule/kilogram")
 
-    return head_pol(suc, disch_s).to("joule/kilogram")
+
+def head_isentropic_pvn(suc, disch, disch_s=None):
+    r"""Isentropic head from the :math:`pv^{n_s}` closed form.
+
+    Calculated as per :cite:`schultz1962`, with the isentropic exponent
+    :math:`n_s` taken from the end states of the isentropic compression:
+
+    .. math::
+
+       \begin{equation}
+          H_{s,pv^n} = (\frac{n_s}{n_s - 1}) (p_d v_{ds} - p_s v_s)
+       \end{equation}
+
+    This is the denominator of the Schultz factor (:py:func:`f_schultz`).
+    It equals the exact :py:func:`head_isentropic` only when the local
+    isentropic exponent is constant along the path (ideal gas with constant
+    specific heats).
+
+    Parameters
+    ----------
+    suc : ccp.State
+        Suction state.
+    disch : ccp.State
+        Discharge state.
+    disch_s : ccp.State, optional
+        Reusable state object to avoid copying. If provided, this state
+        will be updated and used for calculations. If None, a copy of
+        disch will be created.
+
+    Returns
+    -------
+    head_isentropic_pvn : pint.Quantity
+        Isentropic head from the :math:`pv^{n_s}` closed form (J/kg).
+    """
+    disch_s = _isentropic_disch(suc, disch, disch_s)
+
+    return head_pol_pvn(suc, disch_s).to("joule/kilogram")
 
 
 def eff_isentropic(suc, disch):
-    """Isentropic efficiency.
+    r"""Isentropic efficiency.
+
+    .. math::
+
+       \begin{equation}
+          \eta_s = \frac{h(p_d, s_s) - h_s}{h_d - h_s}
+       \end{equation}
 
     Parameters
     ----------
@@ -1596,9 +1703,32 @@ def eff_isentropic(suc, disch):
     Returns
     -------
     eff_isentropic : pint.Quantity
-        Isentropic efficiency.
+        Isentropic efficiency (dimensionless).
     """
     ws = head_isentropic(suc, disch)
+    dh = disch.h() - suc.h()
+
+    return ws / dh
+
+
+def eff_isentropic_pvn(suc, disch):
+    """Isentropic efficiency from the :math:`pv^{n_s}` closed form.
+
+    Ratio of :py:func:`head_isentropic_pvn` to the enthalpy rise.
+
+    Parameters
+    ----------
+    suc : ccp.State
+        Suction state.
+    disch : ccp.State
+        Discharge state.
+
+    Returns
+    -------
+    eff_isentropic_pvn : pint.Quantity
+        Isentropic efficiency (dimensionless).
+    """
+    ws = head_isentropic_pvn(suc, disch)
     dh = disch.h() - suc.h()
 
     return ws / dh
@@ -1631,16 +1761,11 @@ def f_schultz(suc, disch, disch_s=None):
         Schultz polytropic factor.
     """
 
-    # define state to isentropic discharge using dummy state
-    if disch_s is None:
-        disch_s = copy(disch)
-
-    disch_s.update(p=disch.p(), s=suc.s())
-
+    disch_s = _isentropic_disch(suc, disch, disch_s)
     h2s_h1 = disch_s.h() - suc.h()
-    h_isen = head_isentropic(suc, disch, disch_s)
+    h_isen_pvn = head_pol_pvn(suc, disch_s)
 
-    return h2s_h1 / h_isen
+    return h2s_h1 / h_isen_pvn
 
 
 def head_pol_schultz(suc, disch, disch_s=None):
@@ -1653,7 +1778,7 @@ def head_pol_schultz(suc, disch, disch_s=None):
        \end{equation}
 
     Where :math:`f_{schultz}` is calculated by :py:func:`f_schultz` and
-    :math:`H_p` is calculated by :py:func:`head_pol`.
+    :math:`H_p` is calculated by :py:func:`head_pol_pvn`.
 
     Parameters
     ----------
@@ -1671,7 +1796,7 @@ def head_pol_schultz(suc, disch, disch_s=None):
         Schultz polytropic head (J/kg).
     """
     f = f_schultz(suc, disch, disch_s)
-    head = head_pol(suc, disch)
+    head = head_pol_pvn(suc, disch)
 
     return f * head
 
@@ -1824,7 +1949,7 @@ def head_reference(suc, disch, num_steps=100):
                 calc_step_discharge_temp, (T0 + 1e-3), args=(p1, p0, s0.h(), s0.v(), e)
             )
             s1 = State(p=p1, T=T1, fluid=suc.fluid, EOS=suc.EOS, phase=suc.phase)
-            _ref_H += head_pol(s0, s1)
+            _ref_H += head_pol_pvn(s0, s1)
 
             T0 = T1
 
@@ -1915,7 +2040,7 @@ def head_reference_2017(suc, disch, num_steps=100):
             state1 = ccp.State(
                 p=p1, s=s1, fluid=suc.fluid, EOS=suc.EOS, phase=suc.phase
             )
-            _ref_H_2017 += ccp.point.head_pol(state0, state1)
+            _ref_H_2017 += head_pol_pvn(state0, state1)
 
             s0 = s1
             T1 = state1.T().magnitude
@@ -2096,7 +2221,7 @@ def head_pol_sandberg_colby_f(suc, disch, disch_s=None):
        \end{equation}
 
     Where :math:`f_{s-c}` is calculated by :py:func:`f_sandberg_colby` and
-    :math:`H_p` is calculated by :py:func:`head_pol`.
+    :math:`H_p` is calculated by :py:func:`head_pol_pvn`.
 
     Parameters
     ----------
@@ -2111,7 +2236,7 @@ def head_pol_sandberg_colby_f(suc, disch, disch_s=None):
        Reference head as described by :cite:`sandberg2013limitations` (J/kg).
     """
     f = f_sandberg_colby(suc, disch)
-    h = f * head_pol(suc, disch)
+    h = f * head_pol_pvn(suc, disch)
     return h
 
 

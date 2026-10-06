@@ -89,5 +89,9 @@ ccp.point.head_pol_huntington(suc, disch)      # and eff_pol_huntington
 ccp.point.head_pol_mallen_saville(suc, disch)
 ccp.point.head_pol_sandberg_colby(suc, disch)
 ccp.point.head_reference_2017(suc, disch)      # reference integration → (head, eff)
-ccp.point.head_isentropic(suc, disch)          # and eff_isentropic
+ccp.point.head_isentropic(suc, disch)          # exact h(p_d, s_s) - h_s; and eff_isentropic
+ccp.point.head_pol_pvn(suc, disch)             # pv^n closed form, no correction; and eff_pol_pvn
+ccp.point.head_isentropic_pvn(suc, disch)      # pv^n_s closed form (Schultz f denominator); and eff_isentropic_pvn
 ```
+
+`head_pol` and `eff_pol` are deprecated aliases of `head_pol_pvn` and `eff_pol_pvn`. Before ccp 0.4.2, `head_isentropic` returned the closed form now available as `head_isentropic_pvn`; the two differ for dense or near-critical gases (about 2.7 % for CO2 at 80→250 bar).
