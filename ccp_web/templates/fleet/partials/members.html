@@ -1,0 +1,55 @@
+{% load ccp %}
+<form id="members-form" onsubmit="return false">
+  <div class="grid-wrap">
+    <table class="sheet">
+      <thead><tr><th class="param">#</th><th>Evaluation case</th><th>Unit name</th><th>Site</th><th>Shop test (straight-through)</th><th></th></tr></thead>
+      <tbody>
+        {% for m in members %}
+          <tr>
+            <td class="param">{{ forloop.counter }}</td>
+            <td class="val" style="min-width:200px;">
+              <select name="member_evaluation" class="sel {% if m.missing or m.not_run %}invalid{% endif %}"
+                hx-post="{% url 'fleet:members' case.pk %}" hx-include="#members-form" hx-trigger="change" hx-target="#members-area" hx-swap="innerHTML">
+                <option value="">—</option>
+                {% for o in evaluation_options %}
+                  <option value="{{ o.pk }}" {% if o.pk == m.evaluation %}selected{% endif %}>{{ o.label }}{% if not o.ready %} (not run){% endif %}</option>
+                {% endfor %}
+              </select>
+            </td>
+            <td class="val" style="min-width:110px;">
+              <input class="inp" name="member_name" id="member-name-{{ m.i }}" value="{{ m.name }}" placeholder="{{ m.default_name }}" autocomplete="off"
+                hx-post="{% url 'fleet:members' case.pk %}" hx-include="#members-form" hx-trigger="change" hx-vals='{"quiet": "1"}' hx-target="#save-status" hx-swap="innerHTML">
+            </td>
+            <td class="val" style="min-width:80px;">
+              <input class="inp" name="member_site" id="member-site-{{ m.i }}" value="{{ m.site }}" placeholder="site" autocomplete="off"
+                hx-post="{% url 'fleet:members' case.pk %}" hx-include="#members-form" hx-trigger="change" hx-vals='{"quiet": "1"}' hx-target="#save-status" hx-swap="innerHTML">
+            </td>
+            <td class="val" style="min-width:180px;">
+              <select name="member_shop" class="sel {% if m.shop_not_run %}invalid{% endif %}"
+                hx-post="{% url 'fleet:members' case.pk %}" hx-include="#members-form" hx-trigger="change" hx-target="#members-area" hx-swap="innerHTML">
+                <option value="">none</option>
+                {% for o in shop_options %}
+                  <option value="{{ o.pk }}" {% if o.pk == m.shop %}selected{% endif %}>{{ o.label }}{% if not o.ready %} (not calculated){% endif %}</option>
+                {% endfor %}
+              </select>
+            </td>
+            <td>
+              <button class="btn ghost sm" type="button" aria-label="Remove unit {{ forloop.counter }}"
+                hx-post="{% url 'fleet:members' case.pk %}" hx-include="#members-form" hx-vals='{"action": "remove:{{ m.i }}"}' hx-target="#members-area" hx-swap="innerHTML">Remove</button>
+            </td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  <div class="foot">
+    <button class="btn sm" type="button" hx-post="{% url 'fleet:members' case.pk %}" hx-include="#members-form" hx-vals='{"action": "add"}' hx-target="#members-area" hx-swap="innerHTML">Add unit</button>
+    <span class="muted">Units at the same site share a site effect. A shop test pins the as-built deviation of its unit.{% help "The shop test points at specified conditions are compared with the design curves of the unit's evaluation, converted to the shop suction." %}</span>
+  </div>
+  {% if member_errors %}
+    <div class="banner error" style="margin:0 16px 16px;"><span class="tag">units</span><div>{{ member_errors }}</div></div>
+  {% endif %}
+  {% if not evaluation_options %}
+    <div class="note">No performance-evaluation cases yet. Create and run one per unit on the Performance evaluation page.</div>
+  {% endif %}
+</form>

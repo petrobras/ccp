@@ -1,0 +1,141 @@
+{% load ccp %}
+{% if data %}
+<section class="section" id="sec-results-body" x-data="{ tab: 'units', field: 'eff' }">
+  <header>
+    <h2>Results</h2>
+    <span class="desc mono">{{ data.units|length }} units · {{ data.n_rows }} rows · {{ data.freq }} periods{% if data.n_shop %} · {{ data.n_shop }} shop points{% endif %}{% if data.has_power %} · driver power{% endif %}</span>
+    <div class="actions">
+      <span class="pill {% if diag.status == 'ok' %}ok{% else %}warn{% endif %}">R-hat {{ diag.max_rhat|floatformat:3 }} · ESS {{ diag.min_ess|floatformat:0 }} · {{ diag.divergences }} div.</span>{% help "Sampler diagnostics over the parameters and the health levels: the largest rank-normalised split R-hat (should be ≤ 1.01), the smallest bulk effective sample size and the number of divergent transitions (should be 0)." %}
+      {% if fleet_artifact %}<a class="btn ghost sm" href="{% url 'core:artifact' case.pk 'fleet' %}">fleet.zip</a>{% endif %}
+    </div>
+  </header>
+  {% if diag.status != 'ok' %}
+    <div class="banner error" style="margin:12px 16px 0;"><span class="tag">diagnostics</span>
+      <div>{% for r in diag.reasons %}{{ r }}{% if not forloop.last %}; {% endif %}{% endfor %}. The posterior may be unreliable: increase Tune and Draws and fit again.</div>
+    </div>
+  {% endif %}
+  {% if data.units_without_field %}
+    <div class="banner error" style="margin:12px 16px 0;"><span class="tag">no field data</span>
+      <div>{{ data.units_without_field|join:", " }}: every field row is near choke (steep head curve), where the model does not apply. Only the as-built deviations, from the shop test, are estimated; current level, rate, ranking and time to threshold are not.</div>
+    </div>
+  {% endif %}
+  <div class="tabs" role="tablist">
+    <button type="button" role="tab" :aria-selected="tab === 'units'" @click="tab = 'units'; $nextTick(() => ccpResizePlots())">Units</button>
+    <button type="button" role="tab" :aria-selected="tab === 'health'" @click="tab = 'health'; $nextTick(() => ccpResizePlots())">Health</button>
+    <button type="button" role="tab" :aria-selected="tab === 'events'" @click="tab = 'events'">Events <span class="pill">{{ event_rows|length }}</span></button>
+    <button type="button" role="tab" :aria-selected="tab === 'ranking'" @click="tab = 'ranking'">Ranking</button>
+    <button type="button" role="tab" :aria-selected="tab === 'scatter'" @click="tab = 'scatter'">Fleet scatter</button>
+  </div>
+
+  <div x-show="tab === 'units'">
+    <div class="note">Deviations from the vendor curve: head in %, efficiency in points, mean and 90 % interval. <b>Current</b> is the level at the unit's last period, after removing the flow-capacity shift and the instrument biases.</div>
+    <div class="grid-wrap">
+      <table class="results">
+        <thead>
+          <tr>
+            <th class="row">Unit</th><th style="text-align:left;">Site</th>
+            <th>Current eff.</th><th>Current head</th>
+            <th>As built eff.</th><th>As built head</th><th>As built flow{% help "Flow-capacity deviation. Without driver power it includes the flow-meter bias (apparent)." %}</th>
+            <th>Eff. rate{% help "Degradation rate of efficiency, points per 1000 h; negative is degrading." %}</th><th>Head rate</th>
+            <th>P(worst){% help "Probability that the unit has the lowest current efficiency of the fleet." %}</th>
+            <th>P(&lt; −{{ data.threshold_points|floatformat:1 }}){% help "Probability that the current efficiency is below the threshold." %}</th>
+            <th>Time to −{{ data.threshold_points|floatformat:1 }}{% help "Posterior median and 5-95 % range of the time until the efficiency reaches the threshold at the unit's degradation rate." %}</th>
+            <th>ΔT bias{% help "Bias of the measured temperature rise (K), learned from the sensitivities of head and efficiency to it." %}</th>
+            <th>Flow bias</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for r in unit_rows %}
+            <tr>
+              <td class="row mono">{{ r.unit }}</td>
+              <td style="text-align:left; font-family: var(--font-sans);">{{ r.site }}</td>
+              {% for v in r.intervals %}
+                <td class="{% if v.sign == 'neg' %}bad{% elif v.sign == 'pos' %}ok{% endif %}">{% if v %}{{ v.text }}<div class="muted" style="font-size:10.5px;">{{ v.range }}</div>{% else %}—{% endif %}</td>
+              {% endfor %}
+              <td>{% if r.p_worst is None %}—{% else %}{{ r.p_worst|floatformat:2 }}{% endif %}</td>
+              <td class="{% if r.p_below >= 0.5 %}bad{% endif %}">{% if r.p_below is None %}—{% else %}{{ r.p_below|floatformat:2 }}{% endif %}</td>
+              <td>{{ r.time_to }}<div class="muted" style="font-size:10.5px;">{{ r.time_to_range }}</div></td>
+              <td>{{ r.bias_T|floatformat:2 }} K</td>
+              <td>{{ r.bias_flow|floatformat:2 }} %</td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    <div class="chart-grid" style="grid-template-columns: minmax(0, 1fr);">
+      {% plotly figures.units height=forest_height %}
+    </div>
+  </div>
+
+  <div x-show="tab === 'health'" x-cloak>
+    <div class="foot" style="border-top:0; border-bottom:1px solid var(--rule-soft);">
+      <div class="seg" role="radiogroup" aria-label="Field">
+        <label><input type="radio" value="eff" x-model="field" @change="$nextTick(() => ccpResizePlots())">Efficiency</label>
+        <label><input type="radio" value="head" x-model="field" @change="$nextTick(() => ccpResizePlots())">Head</label>
+      </div>
+      <span class="muted">Level of each unit over time with its 90 % band; dots are the period medians of the corrected observations.</span>
+    </div>
+    <div class="chart-grid" style="grid-template-columns: minmax(0, 1fr);">
+      <div x-show="field === 'eff'">{% plotly figures.health_eff height=440 %}</div>
+      <div x-show="field === 'head'" x-cloak>{% plotly figures.health_head height=440 %}</div>
+    </div>
+  </div>
+
+  <div x-show="tab === 'events'" x-cloak>
+    {% if event_rows %}
+      <div class="note">Steps of the health beyond the degradation trend larger than three random-walk scales, with posterior probability above 0.9: a wash (recovery) or a sudden loss (drop).</div>
+      <div class="grid-wrap">
+        <table class="results">
+          <thead><tr><th class="row">Unit</th><th style="text-align:left;">Field</th><th>Period</th><th>Kind</th><th>Step</th><th>Probability</th></tr></thead>
+          <tbody>
+            {% for e in event_rows %}
+              <tr>
+                <td class="row mono">{{ e.unit }}</td>
+                <td style="text-align:left; font-family: var(--font-sans);">{{ e.field }}</td>
+                <td>{{ e.time }}</td>
+                <td class="{% if e.kind == 'drop' %}bad{% else %}ok{% endif %}">{{ e.kind }}</td>
+                <td>{{ e.step|floatformat:2 }} {% if e.field == 'efficiency' %}points{% else %}%{% endif %}</td>
+                <td>{{ e.probability|floatformat:2 }}</td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    {% else %}
+      <div class="empty">No events detected.</div>
+    {% endif %}
+  </div>
+
+  <div x-show="tab === 'ranking'" x-cloak>
+    <div class="note">Probability of each rank of the current efficiency (1 = worst).</div>
+    <div class="grid-wrap">
+      <table class="results">
+        <thead><tr><th class="row">Unit</th>{% for c in ranking.columns %}<th>Rank {{ c }}</th>{% endfor %}</tr></thead>
+        <tbody>
+          {% for unit, row in ranking.rows %}
+            <tr><td class="row mono">{{ unit }}</td>{% for v in row %}<td>{% if v is None %}—{% else %}{{ v|floatformat:2 }}{% endif %}</td>{% endfor %}</tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <div x-show="tab === 'scatter'" x-cloak>
+    <div class="note">Design-level parameters: the fleet's mean deviation from the vendor curve and the scatter between units, sites and installations, with 90 % intervals.</div>
+    <div class="grid-wrap">
+      <table class="results">
+        <thead><tr><th class="row">Parameter</th><th>Mean</th><th>Low</th><th>High</th><th style="text-align:left;">Unit</th></tr></thead>
+        <tbody>
+          {% for s in scatter_rows %}
+            <tr>
+              <td class="row">{{ s.label }}</td>
+              <td>{{ s.mean|floatformat:3 }}</td><td>{{ s.low|floatformat:3 }}</td><td>{{ s.high|floatformat:3 }}</td>
+              <td style="text-align:left;">{{ s.unit }}</td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</section>
+{% endif %}
