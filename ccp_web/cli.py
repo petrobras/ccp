@@ -4,8 +4,13 @@
     ccp-web serve [--port N]   local server and task workers, open in a browser
     ccp-web worker [--queue Q] one task worker (hosted deployments run several)
     ccp-web manage <args>      Django management commands (migrate, createsuperuser...)
+    ccp-web agent <command>    talk to the running app as an AI agent (JSON out;
+                               ``ccp-web agent --help``, ``ccp-web agent mcp``)
 
-``CCP_PROFILE`` selects the settings profile (``desktop`` by default).
+``desktop`` and ``serve`` open the agent API for local agents unless
+``--no-agent`` is given. ``CCP_PROFILE`` selects the settings profile
+(``desktop`` by default). ``agent`` runs before any Django setup: it only
+needs the standard library, so it works where the ``web`` extra is missing.
 """
 
 import argparse
@@ -44,21 +49,32 @@ def main(argv=None):
     if argv and argv[0] == "manage":
         manage(argv[1:])
         return
+    if argv and argv[0] == "agent":
+        from .agent.cli import main as agent_main
+
+        sys.exit(agent_main(argv[1:]))
     parser = argparse.ArgumentParser(
         prog="ccp-web", description=__doc__.splitlines()[0]
     )
     sub = parser.add_subparsers(dest="command")
     p_desktop = sub.add_parser("desktop", help="native desktop window")
     p_desktop.add_argument("--debug", action="store_true")
+    p_desktop.add_argument(
+        "--no-agent", action="store_true", help="do not open the agent API"
+    )
     p_serve = sub.add_parser("serve", help="local server and workers")
     p_serve.add_argument("--host", default="127.0.0.1")
     p_serve.add_argument("--port", type=int, default=0, help="0 picks a free port")
     p_serve.add_argument("--no-browser", action="store_true")
     p_serve.add_argument("--no-workers", action="store_true")
+    p_serve.add_argument(
+        "--no-agent", action="store_true", help="do not open the agent API"
+    )
     p_worker = sub.add_parser("worker", help="one task worker")
     p_worker.add_argument("--queue", default="default")
     p_worker.add_argument("--interval", type=float, default=1.0)
     sub.add_parser("manage", help="Django management commands")
+    sub.add_parser("agent", help="talk to the running app as an AI agent")
     args = parser.parse_args(argv)
 
     if args.command == "worker":
@@ -71,11 +87,15 @@ def main(argv=None):
             port=args.port,
             open_browser=not args.no_browser,
             workers=not args.no_workers,
+            agent=not args.no_agent,
         )
     elif args.command == "desktop" or args.command is None:
         from .launcher import desktop
 
-        desktop(debug=getattr(args, "debug", False))
+        desktop(
+            debug=getattr(args, "debug", False),
+            agent=not getattr(args, "no_agent", False),
+        )
     else:
         parser.print_help()
 

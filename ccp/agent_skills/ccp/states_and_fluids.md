@@ -34,19 +34,19 @@ Names are case-insensitive and common aliases are accepted: `"co2"`, `"n2"`, `"o
 All properties are methods that return pint quantities in SI; pass a unit string to convert:
 
 ```python
-suc.T()            # Quantity in kelvin
-suc.p("bar")       # Quantity in bar
-suc.rho()          # kg/m³
-suc.h()            # J/kg
-suc.s()            # J/(kg·K)
-suc.z()            # compressibility factor (dimensionless)
+suc.T()  # Quantity in kelvin
+suc.p("bar")  # Quantity in bar
+suc.rho()  # kg/m³
+suc.h()  # J/kg
+suc.s()  # J/(kg·K)
+suc.z()  # compressibility factor (dimensionless)
 suc.molar_mass("g/mol")
-suc.cp()           # J/(kg·K)
+suc.cp()  # J/(kg·K)
 suc.cv()
 suc.speed_sound()  # m/s
-suc.viscosity()    # Pa·s
+suc.viscosity()  # Pa·s
 suc.kinematic_viscosity()
-suc.v()            # specific volume m³/kg
+suc.v()  # specific volume m³/kg
 suc.p_critical(), suc.T_critical()
 ```
 
@@ -61,6 +61,6 @@ suc.update(p=Q_(5, "bar"), T=Q_(50, "degC"))
 ## Phase envelope
 
 ```python
-fig = suc.plot_envelope()   # plotly Figure with the P-T envelope
+fig = suc.plot_envelope()  # plotly Figure with the P-T envelope
 fig = suc.plot_point(fig=fig)  # mark the state point on the envelope
 ```

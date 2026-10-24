@@ -9,8 +9,9 @@ description: >-
   performance maps (head/efficiency/power curves, Engauge digitized curves),
   converting curves to new suction conditions by similitude, checking ASME PTC
   10 similarity limits (Mach, Reynolds, volume ratio), measuring flow with
-  orifice plates (ISO 5167), or evaluating operational data against expected
-  performance.
+  orifice plates (ISO 5167), evaluating operational data against expected
+  performance, or driving the running ccp web app (reading and editing the
+  case the user has open, recalculating, posting notes).
 license: Apache-2.0
 ---
 
@@ -30,6 +31,7 @@ Concise recipes for centrifugal compressor performance analysis with ccp. Each f
 | Similarity and ASME PTC 10 limits | [similarity.md](similarity.md) | `check_similarity`, `similarity_table`, `plot_similarity` |
 | Flow orifice metering | [flow_orifice.md](flow_orifice.md) | `FlowOrifice` |
 | Evaluating operational data | [evaluation.md](evaluation.md) | `Evaluation` |
+| Working with the open ccp app | [live_app.md](live_app.md) | `ccp-web agent` CLI, `ccp_web.agent.client.connect`, MCP |
 | Common gotchas | [gotchas.md](gotchas.md) | — |
 
 All values are SI internally: pressure in Pa, temperature in K, head in J/kg, power in W, volumetric flow in m³/s, mass flow in kg/s, speed in rad/s. Convert with `ccp.Q_(value, "unit")`, e.g. `ccp.Q_(7941, "RPM").to("rad/s").m`.

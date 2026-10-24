@@ -1,0 +1,108 @@
+{% extends "base.html" %}
+{% block title %}Agent tokens{% endblock %}
+{% block app_class %}no-insp{% endblock %}
+{% block crumbs %}<span class="sep">›</span><b>Agent tokens</b>{% endblock %}
+
+{% block main %}
+<div class="page-head">
+  <div>
+    <h1 class="title">Agent tokens</h1>
+    <p>AI coding agents read and change your cases through the agent API with a bearer token.
+      Every change an agent makes shows up on the case page and can be undone there.</p>
+  </div>
+  <div class="meta"><div>API <b class="mono">{{ api_url }}</b></div></div>
+</div>
+
+{% if created %}
+{% comment %}The plaintext is in this response only (Cache-Control: no-store); the
+database keeps its sha256 digest.{% endcomment %}
+<div class="banner ok agent-token-created" id="agent-token-created" x-data="{ copied: false }">
+  <span class="tag">new token</span>
+  <div style="min-width:0; flex:1; display:flex; flex-direction:column; gap:6px;">
+    <div>Copy the token for <b>{{ created.token.name }}</b> now; it is not shown again.</div>
+    <div class="hstack">
+      <code class="code mono agent-token-value" x-ref="tok" style="user-select:all;">{{ created.plaintext }}</code>
+      <button class="btn sm" type="button" @click="navigator.clipboard && navigator.clipboard.writeText($refs.tok.textContent).then(() => copied = true)"
+              x-text="copied ? 'Copied' : 'Copy'">Copy</button>
+    </div>
+    <div>Give it to the agent as environment variables:</div>
+    <code class="code mono">CCP_AGENT_URL={{ api_url }}
+CCP_AGENT_TOKEN=&lt;the token above&gt;
+ccp-web agent status</code>
+  </div>
+</div>
+{% endif %}
+
+<section class="section">
+  <header><h2>Personal tokens</h2><span class="desc">Create one per agent or machine; revoke it when you stop using it</span></header>
+  <div class="body pad" style="display:flex; flex-direction:column; gap:12px;">
+    {% if personal %}
+    <div class="grid-wrap">
+      <table class="results" style="width:100%;">
+        <thead><tr><th class="row">Name</th><th>Prefix</th><th>Scope</th><th>Created</th><th>Last used</th><th>Expires</th><th></th></tr></thead>
+        <tbody>
+        {% for t in personal %}
+          <tr>
+            <td class="row">{{ t.name }}</td>
+            <td class="mono">{{ t.prefix }}…</td>
+            <td><span class="pill {% if t.can_write %}run{% endif %}">{{ t.get_scope_display }}</span></td>
+            <td>{{ t.created|date:"Y-m-d H:i" }}</td>
+            <td>{{ t.last_used|date:"Y-m-d H:i"|default:"never" }}</td>
+            <td>{% if t.is_expired %}<span class="pill bad">expired</span>{% else %}{{ t.expires|date:"Y-m-d"|default:"—" }}{% endif %}</td>
+            <td>
+              <form method="post" action="{% url 'agent:token_revoke' t.pk %}" onsubmit="return confirm('Revoke token {{ t.name|escapejs }}? Agents using it lose access.');">
+                {% csrf_token %}<button class="btn ghost sm danger" type="submit">Revoke</button>
+              </form>
+            </td>
+          </tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}
+      <div class="empty">No personal tokens yet.</div>
+    {% endif %}
+    <form method="post" action="{% url 'agent:tokens' %}" class="agent-token-form">
+      {% csrf_token %}
+      <label class="fld"><span class="lbl">Name</span>
+        <input class="inp" name="name" placeholder="e.g. laptop agent" maxlength="80" autocomplete="off">
+      </label>
+      <label class="fld"><span class="lbl">Scope</span>
+        <select class="sel" name="scope">
+          {% for value, label in scopes %}<option value="{{ value }}" {% if value == 'write' %}selected{% endif %}>{{ label }}</option>{% endfor %}
+        </select>
+      </label>
+      <button class="btn primary" type="submit">Create token</button>
+    </form>
+    <p class="muted" style="margin:0; font-size:12px;">Read tokens can look at cases, results and figures. Write tokens can also
+      change inputs of your cases, start calculations and post notes; every change is undoable from the case page.
+      Tokens never give access to the PI password or the AI key.</p>
+  </div>
+</section>
+
+{% if desktop or ccp_profile == "desktop" %}
+<section class="section">
+  <header><h2>Desktop session</h2><span class="desc">Issued by the desktop app at every start and written to its agent file, so agents on this computer connect without setup</span></header>
+  {% if desktop %}
+  <div class="grid-wrap">
+    <table class="results" style="width:100%;">
+      <thead><tr><th class="row">Name</th><th>Prefix</th><th>Scope</th><th>Created</th><th>Last used</th></tr></thead>
+      <tbody>
+      {% for t in desktop %}
+        <tr>
+          <td class="row">{{ t.name }}</td>
+          <td class="mono">{{ t.prefix }}…</td>
+          <td><span class="pill {% if t.can_write %}run{% endif %}">{{ t.get_scope_display }}</span></td>
+          <td>{{ t.created|date:"Y-m-d H:i" }}</td>
+          <td>{{ t.last_used|date:"Y-m-d H:i"|default:"never" }}</td>
+        </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+    <div class="empty">No desktop session token: the app was started with <span class="mono">--no-agent</span>, or by a server without the launcher.</div>
+  {% endif %}
+</section>
+{% endif %}
+{% endblock %}

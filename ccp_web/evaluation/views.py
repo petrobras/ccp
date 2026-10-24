@@ -1,4 +1,11 @@
-"""Performance evaluation page: plant data against the converted design curves."""
+"""Performance evaluation page: plant data against the converted design curves.
+
+The buttons' job starts (``start_run``, ``start_report``, ``start_monitoring``)
+are plain functions shared with the agent adapter (``agent.py``), so a run
+started by an agent is validated exactly as one started from the page. Secrets
+are arguments: the views pass what the user typed or remembered, the agent
+never passes any.
+"""
 
 import json
 import threading
@@ -11,8 +18,8 @@ from django.views.decorators.http import require_GET, require_POST
 
 from ccp_web.core import jobs, secrets
 from ccp_web.core.models import Case, Job
-from ccp_web.core.state import save_post
-from ccp_web.core.views import get_case, workspace_context
+from ccp_web.core.state import base_revision, save_post
+from ccp_web.core.views import get_case, refresh_response, workspace_context
 from ccp_web.curves.views import design_context
 from ccp_web.services import evaluation as ev
 from ccp_web.services import plant_data, schemas, units
@@ -21,6 +28,8 @@ from .jobs import ANALYSIS_KEY, REPORT_KEY, TABLE_KEY
 
 APP_TYPES = (Case.PERFORMANCE_EVALUATION,)
 TABLE_ROWS = 200
+FIELDS_MESSAGE = "Check the highlighted fields."
+NO_EVALUATION = "Run a performance evaluation first to enable online monitoring."
 
 _cache = OrderedDict()
 _cache_lock = threading.Lock()
@@ -132,10 +141,13 @@ def page_context(request, case, errors=None):
     return ctx
 
 
-@require_GET
-def case_view(request, pk):
-    case = get_case(request, pk, APP_TYPES)
-    # An evaluation imported from a .ccp file has no plots yet: build them.
+def ensure_analysis(case):
+    """Start building the plots of an imported evaluation; the job or None.
+
+    An evaluation imported from a .ccp file has no plots yet. They are built
+    by a job (``Evaluation.load`` takes seconds), once: not while a run is
+    active and not again after the build failed.
+    """
     if (
         case.artifact("evaluation") is not None
         and case.artifact(ANALYSIS_KEY) is None
@@ -144,11 +156,18 @@ def case_view(request, pk):
             case=case, kind="analysis", status=Job.FAILED
         ).exists()
     ):
-        jobs.start_job(case, "analysis")
+        return jobs.start_job(case, "analysis")
+    return None
+
+
+@require_GET
+def case_view(request, pk):
+    case = get_case(request, pk, APP_TYPES)
+    ensure_analysis(case)
     return render(request, "evaluation/page.html", page_context(request, case))
 
 
-def _error_job(case, kind, errors, message="Check the highlighted fields."):
+def _error_job(case, kind, errors, message=FIELDS_MESSAGE):
     return Job(
         owner=case.owner,
         case=case,
@@ -163,7 +182,8 @@ def _pi_password(request):
     return request.POST.get("pi_password_input") or secrets.remembered("pi_password")
 
 
-def _validate_source(case):
+def source_errors(case):
+    """Field errors of the data source (file uploaded, PI usable and tagged)."""
     state = case.state
     source = state.get("data_source") or "pi"
     errors = {}
@@ -180,33 +200,52 @@ def _validate_source(case):
     return errors
 
 
-@require_POST
-def run(request, pk):
-    case = get_case(request, pk, APP_TYPES)
-    save_post(case, request.POST)
-    mode = "full_rebuild" if request.POST.get("mode") == "full_rebuild" else "run"
+def run_errors(case):
+    """Field errors that keep the evaluation from running (none: ``{}``)."""
     errors = {}
     if not any(case.artifact(f"impeller_case_{c}") for c in schemas.CASES):
         errors["suc_p_case_A"] = (
             "No design cases loaded. Load curves for at least one case."
         )
-    errors.update(_validate_source(case))
+    errors.update(source_errors(case))
     try:
         with units.state_context(case.state):
             ev.operation_fluid(case.state)
             ev.orifice_geometry(case.state)
     except units.InputError as exc:
         errors.update(exc.errors)
+    return errors
+
+
+def start_run(case, mode="run", pi_password=""):
+    """Validate and start the evaluation job (the page's Run button).
+
+    ``mode`` is ``"run"`` (append new data to the saved evaluation) or
+    ``"full_rebuild"``. Raises ``units.InputError`` with the field errors;
+    a running evaluation or plot build is cancelled first.
+    """
+    errors = run_errors(case)
     if errors:
-        job = _error_job(case, "evaluation", errors)
-    else:
-        jobs.active_jobs(case, ["evaluation", "analysis"]).update(cancel_requested=True)
-        job = jobs.start_job(
-            case,
-            "evaluation",
-            {"mode": mode},
-            secrets={"pi_password": _pi_password(request)},
-        )
+        raise units.InputError(errors)
+    jobs.active_jobs(case, ["evaluation", "analysis"]).update(cancel_requested=True)
+    return jobs.start_job(
+        case,
+        "evaluation",
+        {"mode": mode},
+        secrets={"pi_password": pi_password} if pi_password else None,
+    )
+
+
+@require_POST
+def run(request, pk):
+    case = get_case(request, pk, APP_TYPES)
+    if save_post(case, request.POST, base_revision(request)).stale:
+        return refresh_response()
+    mode = "full_rebuild" if request.POST.get("mode") == "full_rebuild" else "run"
+    try:
+        job = start_run(case, mode, _pi_password(request))
+    except units.InputError as exc:
+        job = _error_job(case, "evaluation", exc.errors)
     return render(request, "core/partials/job.html", {"job": job, "case": case})
 
 
@@ -248,9 +287,20 @@ def perf(request, pk):
         raise Http404()
     cluster = int(request.GET.get("cluster", case.state.get("eval_cluster_idx") or 0))
     similarity = request.GET.get("similarity", "0") in ("1", "true", "on")
-    from ccp_web.core.state import update_state
+    from ccp_web.core.state import merge_state
 
-    update_state(case, eval_cluster_idx=cluster, eval_show_similarity=similarity)
+    # A view setting, not an input: keep ``Case.updated``, which tells the
+    # agent whether the inputs changed after the evaluation. The page loads
+    # this panel on every view.
+    if (
+        case.state.get("eval_cluster_idx") != cluster
+        or bool(case.state.get("eval_show_similarity")) != similarity
+    ):
+        merge_state(
+            case,
+            {"eval_cluster_idx": cluster, "eval_show_similarity": similarity},
+            touch=False,
+        )
     figs = analysis.get("perf", {}).get(f"{cluster}:{int(similarity)}")
     return render(
         request,
@@ -279,12 +329,26 @@ def table_excel(request, pk):
     return response
 
 
+def start_report(case, ai_api_key=""):
+    """Start the HTML report job; the AI analysis needs ``ai_api_key``.
+
+    Without a key the report is built without the AI analysis, whatever
+    ``ai_enabled`` says.
+    """
+    return jobs.start_job(
+        case,
+        "report",
+        secrets={"ai_api_key": ai_api_key} if ai_api_key else None,
+    )
+
+
 @require_POST
 def report(request, pk):
     case = get_case(request, pk, APP_TYPES)
-    save_post(case, request.POST)
+    if save_post(case, request.POST, base_revision(request)).stale:
+        return refresh_response()
     api_key = request.POST.get("ai_api_key_input") or secrets.remembered("ai_api_key")
-    job = jobs.start_job(case, "report", secrets={"ai_api_key": api_key})
+    job = start_report(case, api_key)
     return render(
         request,
         "evaluation/partials/report.html",
@@ -306,27 +370,45 @@ def report_status(request, pk):
     )
 
 
+def stop_monitoring(case):
+    for job in jobs.active_jobs(case, ["monitoring"]):
+        jobs.cancel_job(job)
+
+
+def start_monitoring(case, pi_password=""):
+    """Restart online monitoring (the page's Start button).
+
+    The running monitoring job is stopped first, even when the new one cannot
+    start. Raises ``units.InputError``: without field errors (``errors ==
+    {}``) when there is no evaluation to monitor against.
+    """
+    stop_monitoring(case)
+    if case.artifact("evaluation") is None:
+        raise units.InputError({}, NO_EVALUATION)
+    errors = source_errors(case)
+    if errors:
+        raise units.InputError(errors)
+    return jobs.start_job(
+        case,
+        "monitoring",
+        secrets={"pi_password": pi_password} if pi_password else None,
+    )
+
+
 @require_POST
 def monitoring_start(request, pk):
     case = get_case(request, pk, APP_TYPES)
-    save_post(case, request.POST)
-    for job in jobs.active_jobs(case, ["monitoring"]):
-        jobs.cancel_job(job)
-    if case.artifact("evaluation") is None:
+    if save_post(case, request.POST, base_revision(request)).stale:
+        return refresh_response()
+    try:
+        monitor = start_monitoring(case, _pi_password(request))
+    except units.InputError as exc:
         monitor = _error_job(
             case,
             "monitoring",
-            {},
-            "Run a performance evaluation first to enable online monitoring.",
+            exc.errors,
+            FIELDS_MESSAGE if exc.errors else str(exc),
         )
-    else:
-        errors = _validate_source(case)
-        if errors:
-            monitor = _error_job(case, "monitoring", errors)
-        else:
-            monitor = jobs.start_job(
-                case, "monitoring", secrets={"pi_password": _pi_password(request)}
-            )
     return render(
         request,
         "evaluation/partials/monitoring.html",
@@ -337,8 +419,7 @@ def monitoring_start(request, pk):
 @require_POST
 def monitoring_stop(request, pk):
     case = get_case(request, pk, APP_TYPES)
-    for job in jobs.active_jobs(case, ["monitoring"]):
-        jobs.cancel_job(job)
+    stop_monitoring(case)
     return render(
         request,
         "evaluation/partials/monitoring.html",

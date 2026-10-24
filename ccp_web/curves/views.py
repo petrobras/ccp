@@ -10,8 +10,8 @@ from django.views.decorators.http import require_GET, require_http_methods, requ
 
 from ccp_web.core import jobs
 from ccp_web.core.models import Case, Job
-from ccp_web.core.state import gas_matrix, save_post
-from ccp_web.core.views import get_case, workspace_context
+from ccp_web.core.state import base_revision, gas_matrix, save_post
+from ccp_web.core.views import get_case, refresh_response, workspace_context
 from ccp_web.services import curves, gas, schemas, units
 
 DESIGN_APP_TYPES = (Case.CURVES_CONVERSION, Case.PERFORMANCE_EVALUATION)
@@ -183,7 +183,13 @@ def case_view(request, pk):
 
 
 def _save_post(case, request):
-    save_post(case, request.POST)
+    """Save the form; ``case.stale`` tells an agent changed the case since.
+
+    Only a POST carries the page's form, so only a POST is checked.
+    """
+    rev = base_revision(request) if request.method == "POST" else None
+    save_post(case, request.POST, rev)
+    return case.stale
 
 
 def _error_job(case, kind, errors, message="Check the highlighted fields."):
@@ -197,55 +203,71 @@ def _error_job(case, kind, errors, message="Check the highlighted fields."):
     )
 
 
+def start_load(case, letter):
+    """Validate design case ``letter`` and start loading its Engauge curves.
+
+    Shared by the page's Load button (here and on the performance
+    evaluation page) and the agent API (``agent.py``). Both curve files and
+    a valid suction state are required; every invalid field raises one
+    ``units.InputError``.
+    """
+    if letter not in schemas.CASES:
+        raise ValueError(f"design case must be one of {schemas.CASES}, got {letter!r}")
+    missing = [
+        k
+        for k in (f"curves_file_1_case_{letter}", f"curves_file_2_case_{letter}")
+        if case.file(k) is None
+    ]
+    if missing:
+        raise units.InputError(
+            {k: f"Please upload both curve files for Case {letter}" for k in missing}
+        )
+    with units.state_context(case.state):
+        curves.design_suction_state(case.state, letter)
+    return jobs.start_job(case, "load_curves", {"case": letter})
+
+
+def start_conversion(case):
+    """Validate the inputs and start converting the loaded design cases.
+
+    Shared by the Convert button and the agent API. At least one loaded
+    design case and a valid new suction state are required (one
+    ``units.InputError``); a conversion already running is cancelled.
+    """
+    if not any(case.artifact(f"impeller_case_{c}") for c in schemas.CASES):
+        raise units.InputError(
+            {"suc_p_case_A": "Please load at least one design case before converting."}
+        )
+    with units.state_context(case.state):
+        curves.new_suction_state(case.state)
+    jobs.active_jobs(case, ["convert_curves"]).update(cancel_requested=True)
+    return jobs.start_job(case, "convert_curves")
+
+
 @require_POST
 def load_case(request, pk, letter):
     """Start loading the Engauge curves of one design case."""
     case = get_case(request, pk, DESIGN_APP_TYPES)
     if letter not in schemas.CASES:
         raise Http404()
-    _save_post(case, request)
-    missing = [
-        k
-        for k in (f"curves_file_1_case_{letter}", f"curves_file_2_case_{letter}")
-        if case.file(k) is None
-    ]
+    if _save_post(case, request):
+        return refresh_response()
     try:
-        if missing:
-            raise units.InputError(
-                {
-                    k: f"Please upload both curve files for Case {letter}"
-                    for k in missing
-                }
-            )
-        with units.state_context(case.state):
-            curves.design_suction_state(case.state, letter)
+        job = start_load(case, letter)
     except units.InputError as exc:
         job = _error_job(case, "load_curves", exc.errors)
-    else:
-        job = jobs.start_job(case, "load_curves", {"case": letter})
     return render(request, "core/partials/job.html", {"job": job, "case": case})
 
 
 @require_POST
 def convert(request, pk):
     case = get_case(request, pk, [Case.CURVES_CONVERSION])
-    _save_post(case, request)
+    if _save_post(case, request):
+        return refresh_response()
     try:
-        if not any(case.artifact(f"impeller_case_{c}") for c in schemas.CASES):
-            raise units.InputError(
-                {
-                    "suc_p_case_A": (
-                        "Please load at least one design case before converting."
-                    )
-                }
-            )
-        with units.state_context(case.state):
-            curves.new_suction_state(case.state)
+        job = start_conversion(case)
     except units.InputError as exc:
         job = _error_job(case, "convert_curves", exc.errors)
-    else:
-        jobs.active_jobs(case, ["convert_curves"]).update(cancel_requested=True)
-        job = jobs.start_job(case, "convert_curves")
     return render(request, "core/partials/job.html", {"job": job, "case": case})
 
 
@@ -264,7 +286,8 @@ def plots(request, pk, prefix):
     case = get_case(request, pk, [Case.CURVES_CONVERSION])
     if prefix not in PANELS:
         raise Http404()
-    _save_post(case, request)
+    if _save_post(case, request):
+        return refresh_response()
     key, label = PANELS[prefix]
     impeller = load_impeller(case, key)
     if impeller is None:

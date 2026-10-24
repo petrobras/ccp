@@ -252,12 +252,22 @@
   window.ccpSaveAndReload = function (formId) {
     const form = document.getElementById(formId || "case-form");
     const token = document.querySelector('meta[name="csrf-token"]');
+    // The case revision the form was rendered at: the server drops the keys an
+    // agent changed since then instead of overwriting them (stale-form guard).
+    const rev = document.querySelector('meta[name="ccp-case-rev"]');
+    const headers = { "X-CSRFToken": token ? token.content : "" };
+    if (rev) headers["X-CCP-Rev"] = rev.content;
     fetch(form.getAttribute("hx-post"), {
       method: "POST",
       body: new FormData(form),
-      headers: { "X-CSRFToken": token ? token.content : "" },
+      headers,
       credentials: "same-origin",
-    }).then(() => window.location.reload());
+    }).then((r) => {
+      // A stale save (an agent wrote since the page loaded): reload through
+      // agent.js, which shows the agent's changes and offers Undo.
+      if (r.headers.get("HX-Refresh") === "true" && window.ccpAgentReload) window.ccpAgentReload();
+      else window.location.reload();
+    });
   };
 
   // ------------------------------------------------------------ shortcuts

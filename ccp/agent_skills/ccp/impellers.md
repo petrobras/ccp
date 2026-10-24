@@ -44,9 +44,9 @@ imp = ccp.impeller_example()
 ## Interpolate a point or a curve anywhere in the map
 
 ```python
-p = imp.point(flow_v=5.5, speed=900)        # SI: m³/s, rad/s
+p = imp.point(flow_v=5.5, speed=900)  # SI: m³/s, rad/s
 p = imp.point(flow_m=60, speed=Q_(8594, "RPM"))
-c = imp.curve(speed=900)                    # a ccp.Curve at that speed
+c = imp.curve(speed=900)  # a ccp.Curve at that speed
 ```
 
 Speeds outside the mapped range are extrapolated (the returned objects carry an `_extrapolated` flag).
@@ -54,13 +54,13 @@ Speeds outside the mapped range are extrapolated (the returned objects carry an 
 ## Access data
 
 ```python
-imp.points               # list of all points
-imp.curves               # list of ccp.Curve (one per speed)
+imp.points  # list of all points
+imp.curves  # list of ccp.Curve (one per speed)
 c = imp.curves[0]
-c.speed                  # curve speed, rad/s
-c.flow_v, c.head, c.eff, c.power   # arrays (pint) along the curve
-c.disch.p()              # discharge pressure array along the curve
-c.head_interpolated(5.5) # interpolate head at a flow_v (m³/s) on this curve
+c.speed  # curve speed, rad/s
+c.flow_v, c.head, c.eff, c.power  # arrays (pint) along the curve
+c.disch.p()  # discharge pressure array along the curve
+c.head_interpolated(5.5)  # interpolate head at a flow_v (m³/s) on this curve
 ```
 
 ## Plotting
@@ -71,8 +71,8 @@ Every result has a `<attr>_plot` method returning a plotly Figure. Passing `flow
 fig = imp.head_plot(flow_v=5.5, speed=900)
 fig = imp.eff_plot(speed_units="RPM", flow_v_units="m³/h")
 fig = imp.power_plot()
-fig = imp.disch.T_plot(flow_v=5.5, speed=900)   # discharge temperature
-fig = imp.disch.p_plot(speed_units="RPM")       # discharge pressure
+fig = imp.disch.T_plot(flow_v=5.5, speed=900)  # discharge temperature
+fig = imp.disch.p_plot(speed_units="RPM")  # discharge pressure
 fig = imp.disch.rho_plot(
     flow_v=Q_(20000, "m³/h"),
     speed=Q_(8594, "RPM"),
@@ -89,7 +89,7 @@ To compare two impellers (e.g. original vs. converted): `imp.head_compare(other_
 ## Save / load / export
 
 ```python
-imp.save("map.toml")                 # .toml or .json
+imp.save("map.toml")  # .toml or .json
 imp2 = ccp.Impeller.load("map.toml")
-imp.export_to_excel("map.xlsx")      # one sheet per curve
+imp.export_to_excel("map.xlsx")  # one sheet per curve
 ```

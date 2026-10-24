@@ -28,21 +28,30 @@ data_dir = Path(ccp.__file__).parent / "tests/data"
 suc = ccp.State(
     p=Q_(4.08, "bar"),
     T=Q_(33.6, "degC"),
-    fluid={"methane": 58.976, "co2": 36.605, "ethane": 3.099,
-           "propane": 0.6, "n2": 0.55, "n-butane": 0.08, "i-butane": 0.05,
-           "n-pentane": 0.01, "i-pentane": 0.01, "h2s": 0.02},
+    fluid={
+        "methane": 58.976,
+        "co2": 36.605,
+        "ethane": 3.099,
+        "propane": 0.6,
+        "n2": 0.55,
+        "n-butane": 0.08,
+        "i-butane": 0.05,
+        "n-pentane": 0.01,
+        "i-pentane": 0.01,
+        "h2s": 0.02,
+    },
 )
 
 imp = ccp.Impeller.load_from_engauge_csv(
     suc=suc,
     curve_name="lp-sec1-caso-a",
     curve_path=data_dir,
-    b=Q_(5.7, "mm"),          # impeller width
-    D=Q_(550, "mm"),          # impeller diameter
-    flow_units="m³/h",        # units used when digitizing
+    b=Q_(5.7, "mm"),  # impeller width
+    D=Q_(550, "mm"),  # impeller diameter
+    flow_units="m³/h",  # units used when digitizing
     head_units="kJ/kg",
     speed_units="RPM",
-    number_of_points=7,       # points interpolated per curve
+    number_of_points=7,  # points interpolated per curve
 )
 ```
 

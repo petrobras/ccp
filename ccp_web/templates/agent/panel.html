@@ -1,0 +1,68 @@
+{% comment %}Agent drawer (agent.js loads it into #agent-drawer-body): the case's recent
+agent changes, with Undo, and the agent's notes. Notes and revision notes are plain
+text: autoescaped, line breaks only, never rendered as HTML or markdown. The buttons
+are handled by agent.js (data-agent-undo / data-agent-dismiss), not by htmx.{% endcomment %}
+<div class="agent-panel" id="agent-panel" data-case="{{ case.pk }}" data-revision="{{ case.revision }}">
+  <div class="agent-group">
+    <h4>Notes</h4>
+    {% for note in notes %}
+      <article class="agent-note{% if note.dismissed %} dismissed{% endif %}" id="agent-note-{{ note.pk }}">
+        <div class="agent-row-head">
+          <b>{{ note.author }}</b>
+          <span class="meta mono" title="{{ note.created|date:'Y-m-d H:i:s' }}">{{ note.created|date:"M d, H:i" }}</span>
+          {% if note.dismissed %}
+            <span class="pill">read</span>
+          {% else %}
+            <button class="btn ghost sm" type="button" data-agent-dismiss="{{ note.pk }}"
+                    data-url="{% url 'agent:note_dismiss' note.pk %}">Dismiss</button>
+          {% endif %}
+        </div>
+        <div class="agent-note-body">{{ note.body|linebreaksbr }}</div>
+      </article>
+    {% empty %}
+      <div class="empty">No notes from the agent.</div>
+    {% endfor %}
+  </div>
+
+  <div class="agent-group">
+    <h4>Changes <span class="mono">revision {{ case.revision }}</span></h4>
+    {% for rev in revisions %}
+      <article class="agent-rev{% if rev.undone_by_id %} undone{% endif %}" id="agent-rev-{{ rev.pk }}">
+        <div class="agent-row-head">
+          <span class="pill {% if rev.undone_by_id %}{% elif rev.source == 'undo' %}run{% else %}ok{% endif %}">#{{ rev.number }} {{ rev.get_source_display|lower }}</span>
+          <span class="muted">{{ rev.author }}</span>
+          <span class="meta mono" title="{{ rev.created|date:'Y-m-d H:i:s' }}">{{ rev.created|date:"M d, H:i:s" }}</span>
+          {% if rev.undone_by_id %}
+            <span class="pill">undone</span>
+          {% else %}
+            <button class="btn sm" type="button" data-agent-undo="{{ rev.pk }}" data-number="{{ rev.number }}"
+                    data-url="{% url 'agent:undo' rev.pk %}"
+                    title="{% if rev.offers_undo %}Put back the values this change replaced{% else %}Undo this undo (redo){% endif %}">{% if rev.offers_undo %}Undo{% else %}Redo{% endif %}</button>
+          {% endif %}
+        </div>
+        {% if rev.note %}<div class="agent-rev-note">{{ rev.note|linebreaksbr }}</div>{% endif %}
+        <table class="agent-diff">
+          <tbody>
+          {% for key, old, new in rev.display_changes %}
+            <tr>
+              <td class="k mono">{{ key }}</td>
+              <td class="old mono">{% if old is None %}—{% else %}{{ old|truncatechars:60 }}{% endif %}</td>
+              <td class="arrow">→</td>
+              <td class="new mono">{% if new is None %}—{% else %}{{ new|truncatechars:60 }}{% endif %}</td>
+            </tr>
+          {% empty %}
+            <tr><td class="muted">No values changed.</td></tr>
+          {% endfor %}
+          </tbody>
+        </table>
+      </article>
+    {% empty %}
+      <div class="empty">The agent has not changed this case.</div>
+    {% endfor %}
+  </div>
+
+  <footer class="agent-panel-foot">
+    <span class="muted">Connect an agent with <span class="mono">ccp-web agent status</span></span>
+    <a class="btn ghost sm" href="{% url 'agent:tokens' %}">Agent tokens…</a>
+  </footer>
+</div>

@@ -108,10 +108,16 @@ class JobContext:
         return storage.save_artifact(self.case, key, name, content, job=self.job)
 
     def update_state(self, **values):
-        """Merge values into the case state (e.g. a curve name after loading)."""
-        from .state import update_state
+        """Merge values into the case state (e.g. a curve name after loading).
 
-        update_state(self.case, **values)
+        A key someone else (the agent, the user) changed since the job read
+        the state is kept: the job worked from the old values, and writing
+        over an agent's value here would leave its revision history out of
+        sync with the state.
+        """
+        from .state import merge_state
+
+        merge_state(self.case, values, unless_changed_from=self.case.state)
 
     def sleep(self, seconds):
         """Sleep in short steps so a cancel request is noticed quickly."""

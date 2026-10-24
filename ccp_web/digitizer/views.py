@@ -15,12 +15,13 @@ from django.views.decorators.http import require_GET, require_POST
 
 from ccp_web.core import jobs, storage
 from ccp_web.core.models import Case, Job
-from ccp_web.core.state import save_post
+from ccp_web.core.state import base_revision, save_post
 from ccp_web.core.views import (
     current_project,
     get_case,
     is_htmx,
     new_case,
+    refresh_response,
     workspace_context,
 )
 from ccp_web.services import digitizer, units
@@ -139,28 +140,39 @@ def _error_job(case, errors, message="Check the highlighted fields."):
     )
 
 
+def start_digitize(case):
+    """Validate the saved inputs and start the digitize job.
+
+    Shared by the Digitize button and the agent API, so both check the same
+    things. Raises ``units.InputError`` (no job started) when the PDF is
+    missing, the digitizer is not installed or the page range is invalid;
+    a digitization already running for the case is cancelled.
+    """
+    if case.file("curve_pdf") is None:
+        raise units.InputError({"curve_pdf": "Upload a curve PDF first."})
+    if not digitizer.available():
+        raise units.InputError(
+            {
+                "curve_pdf": (
+                    "The digitizer needs the 'digitize' extra "
+                    "(pip install ccp-performance[digitize]) and Tesseract OCR."
+                )
+            }
+        )
+    digitizer.parse_pages(case.state.get("digitize_pages"))
+    jobs.active_jobs(case, ["digitize_pdf"]).update(cancel_requested=True)
+    return jobs.start_job(case, "digitize_pdf")
+
+
 @require_POST
 def digitize(request, pk):
     case = get_case(request, pk, APP_TYPES)
-    save_post(case, request.POST)
+    if save_post(case, request.POST, base_revision(request)).stale:
+        return refresh_response()
     try:
-        if case.file("curve_pdf") is None:
-            raise units.InputError({"curve_pdf": "Upload a curve PDF first."})
-        if not digitizer.available():
-            raise units.InputError(
-                {
-                    "curve_pdf": (
-                        "The digitizer needs the 'digitize' extra "
-                        "(pip install ccp-performance[digitize]) and Tesseract OCR."
-                    )
-                }
-            )
-        digitizer.parse_pages(case.state.get("digitize_pages"))
+        job = start_digitize(case)
     except units.InputError as exc:
         job = _error_job(case, exc.errors)
-    else:
-        jobs.active_jobs(case, ["digitize_pdf"]).update(cancel_requested=True)
-        job = jobs.start_job(case, "digitize_pdf")
     return render(request, "core/partials/job.html", {"job": job, "case": case})
 
 
