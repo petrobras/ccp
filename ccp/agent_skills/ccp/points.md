@@ -20,8 +20,8 @@ point = ccp.Point(
     disch=disch,
     speed=Q_(7941, "RPM"),
     flow_m=Q_(34203.6, "kg/hr"),
-    b=0.0285,   # impeller width at outer blade diameter (m)
-    D=0.365,    # impeller outer diameter (m)
+    b=0.0285,  # impeller width at outer blade diameter (m)
+    D=0.365,  # impeller outer diameter (m)
 )
 ```
 
@@ -42,17 +42,17 @@ Optional extras: `power_shaft`, `power_losses`, `torque`, `surface_roughness`, a
 ## Results
 
 ```python
-point.head          # polytropic head, J/kg
-point.eff           # polytropic efficiency, dimensionless
-point.power         # gas power, W
-point.power_shaft   # shaft power, W (includes losses)
-point.disch.T()     # solved discharge state (a ccp.State)
-point.flow_v        # m³/s
-point.phi           # flow coefficient
-point.psi           # head coefficient
+point.head  # polytropic head, J/kg
+point.eff  # polytropic efficiency, dimensionless
+point.power  # gas power, W
+point.power_shaft  # shaft power, W (includes losses)
+point.disch.T()  # solved discharge state (a ccp.State)
+point.flow_v  # m³/s
+point.phi  # flow coefficient
+point.psi  # head coefficient
 point.volume_ratio  # suc.v() / disch.v()
-point.mach          # impeller tip Mach number
-point.reynolds      # Reynolds number
+point.mach  # impeller tip Mach number
+point.reynolds  # Reynolds number
 ```
 
 All are pint quantities: convert with `.to("kJ/kg")`, take magnitude with `.m`.
@@ -64,8 +64,10 @@ All are pint quantities: convert with `.to("kJ/kg")`, take magnitude with `.m`.
 The default head/efficiency calculation is Sandberg-Colby (`"sandberg_colby"`, one of the methods sanctioned by ASME PTC 10-2022). Change globally or per point:
 
 ```python
-ccp.config.POLYTROPIC_METHOD = "huntington"       # global — affects every Point created afterwards
-ccp.config.POLYTROPIC_METHOD = "sandberg_colby"   # restore the default when done
+ccp.config.POLYTROPIC_METHOD = (
+    "huntington"  # global — affects every Point created afterwards
+)
+ccp.config.POLYTROPIC_METHOD = "sandberg_colby"  # restore the default when done
 
 # or per point, leaving the global default alone:
 point = ccp.Point(
@@ -84,10 +86,10 @@ Options: `"schultz"`, `"huntington"` (3-point, most accurate vs. reference integ
 The individual functions are also available, taking suction and discharge states:
 
 ```python
-ccp.point.head_pol_schultz(suc, disch)         # and eff_pol_schultz
-ccp.point.head_pol_huntington(suc, disch)      # and eff_pol_huntington
+ccp.point.head_pol_schultz(suc, disch)  # and eff_pol_schultz
+ccp.point.head_pol_huntington(suc, disch)  # and eff_pol_huntington
 ccp.point.head_pol_mallen_saville(suc, disch)
 ccp.point.head_pol_sandberg_colby(suc, disch)
-ccp.point.head_reference_2017(suc, disch)      # reference integration → (head, eff)
-ccp.point.head_isentropic(suc, disch)          # and eff_isentropic
+ccp.point.head_reference_2017(suc, disch)  # reference integration → (head, eff)
+ccp.point.head_isentropic(suc, disch)  # and eff_isentropic
 ```

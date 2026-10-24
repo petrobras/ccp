@@ -14,7 +14,7 @@ from ccp_web.services import ccpfile, schemas
 
 from . import jobs, storage
 from .models import Case, CaseFile, Job, Project
-from .state import save_post
+from .state import base_revision, save_post, update_state
 
 APP_TITLES = dict(Case.APP_TYPES)
 CURVE_IMAGE_KEY = re.compile(r"^fig_(head|eff|discharge_pressure|power)(_sec[12])?$")
@@ -30,16 +30,21 @@ CURVE_PDF_KEY = "curve_pdf"
 
 def current_project(request):
     """The project selected in the session, creating a default one."""
-    projects = Project.objects.for_user(request.user)
     project = None
     pid = request.session.get("project_id")
     if pid:
-        project = projects.filter(pk=pid).first()
+        project = Project.objects.for_user(request.user).filter(pk=pid).first()
     if project is None:
-        project = projects.order_by("created").first()
-    if project is None:
-        project = Project.objects.create(owner=request.user, name="Default")
+        project = default_project(request.user)
     request.session["project_id"] = project.pk
+    return project
+
+
+def default_project(user):
+    """The user's oldest project, creating a "Default" one if there is none."""
+    project = Project.objects.for_user(user).order_by("created").first()
+    if project is None:
+        project = Project.objects.create(owner=user, name="Default")
     return project
 
 
@@ -88,6 +93,18 @@ def workspace_context(request, case=None):
 
 def is_htmx(request):
     return bool(getattr(request, "htmx", False))
+
+
+def refresh_response():
+    """Ask htmx to reload the page: an agent changed the case since it rendered.
+
+    The stale-form guard (``core.state.save_post``) already dropped the keys
+    the agent changed; the reload shows the user the agent's values (and a
+    calculation is not started on values the user has not seen).
+    """
+    response = HttpResponse("The agent changed this case; reloading.")
+    response["HX-Refresh"] = "true"
+    return response
 
 
 # --------------------------------------------------------------------------
@@ -182,6 +199,11 @@ def case_create(request, app_type):
 def import_ccp(project, name, content, expected_app_type=None):
     """Create a case from ``.ccp`` bytes (files and artifacts included)."""
     parsed = ccpfile.read_ccp(content, expected_app_type=expected_app_type)
+    return create_from_ccp(project, name, parsed)
+
+
+def create_from_ccp(project, name, parsed):
+    """Create a case from a parsed ``ccpfile.CcpFile``."""
     state = dict(parsed.state)
     state["session_name"] = name
     with transaction.atomic():
@@ -235,11 +257,15 @@ def case_ccp_bytes(case):
     return ccpfile.write_ccp(case.app_type, state, files=files, artifacts=artifacts)
 
 
+def ccp_filename(case):
+    return f"{slugify(case.name) or 'session'}.ccp"
+
+
 @require_GET
 def case_export(request, pk):
     case = get_case(request, pk)
     content = case_ccp_bytes(case)
-    filename = f"{slugify(case.name) or 'session'}.ccp"
+    filename = ccp_filename(case)
     response = HttpResponse(content, content_type="application/zip")
     response["Content-Disposition"] = f'attachment; filename="{filename}"'
     return response
@@ -250,24 +276,32 @@ def case_rename(request, pk):
     case = get_case(request, pk)
     name = (request.POST.get("name") or "").strip()
     if name:
+        # Under the row lock: saving the state read above could put back
+        # values an agent wrote meanwhile.
+        update_state(case, session_name=name)
         case.name = name
-        state = dict(case.state)
-        state["session_name"] = name
-        case.state = state
-        case.save(update_fields=["name", "state", "updated"])
+        case.save(update_fields=["name", "updated"])
     return redirect(case.get_absolute_url())
 
 
-@require_POST
-def case_duplicate(request, pk):
-    case = get_case(request, pk)
+def duplicate_case(case, name=None):
+    """A copy of ``case`` in its project, with its files and artifacts."""
     copy = new_case(
-        case.project, case.app_type, name=f"{case.name} (copy)", state=case.state
+        case.project,
+        case.app_type,
+        name=name or f"{case.name} (copy)",
+        state=case.state,
     )
     for f in case.files.all():
         storage.save_case_file(copy, f.key, f.kind, f.name, f.read())
     for a in case.artifacts.all():
         storage.save_artifact(copy, a.key, a.name, a.read())
+    return copy
+
+
+@require_POST
+def case_duplicate(request, pk):
+    copy = duplicate_case(get_case(request, pk))
     return redirect(copy.get_absolute_url())
 
 
@@ -291,9 +325,11 @@ def case_delete(request, pk):
 def case_state(request, pk):
     """Autosave: merge the submitted form fields into the case state."""
     case = get_case(request, pk)
-    save_post(case, request.POST)
+    save_post(case, request.POST, base_revision(request))
     response = render(request, "core/partials/saved.html", {"case": case})
     response["HX-Trigger"] = "ccp:saved"
+    if case.stale:
+        response["HX-Refresh"] = "true"
     return response
 
 

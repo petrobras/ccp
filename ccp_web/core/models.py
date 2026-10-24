@@ -72,6 +72,10 @@ class Case(models.Model):
     source_version = models.CharField(
         max_length=40, blank=True, help_text="ccp version of the imported .ccp file"
     )
+    # Bumped by every agent write or undo (``ccp_web.agent.revisions``), never
+    # by the user's autosaves. Pages embed it so a form rendered before an
+    # agent write can be recognised as stale when it is posted.
+    revision = models.PositiveIntegerField(default=0)
     created = models.DateTimeField(auto_now_add=True)
     updated = models.DateTimeField(auto_now=True)
 

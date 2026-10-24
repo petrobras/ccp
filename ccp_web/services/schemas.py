@@ -309,6 +309,10 @@ class Field:
     options: tuple = ()
     label: str = ""
     export: bool = True
+    # The key holding this value's unit, when it has one. Agents need it:
+    # the names do not always match (back-to-back guarantees of both
+    # sections share ``*_units_section_1_point_guarantee``).
+    units_key: str = ""
 
 
 @dataclass
@@ -316,8 +320,12 @@ class Schema:
     app_type: str
     fields: dict = field(default_factory=dict)
 
-    def add(self, key, kind, default="", options=(), label="", export=True):
-        self.fields[key] = Field(key, kind, default, tuple(options), label, export)
+    def add(
+        self, key, kind, default="", options=(), label="", export=True, units_key=""
+    ):
+        self.fields[key] = Field(
+            key, kind, default, tuple(options), label, export, units_key
+        )
 
     def __contains__(self, key):
         return key in self.fields
@@ -346,15 +354,24 @@ def _options_fields(schema):
     for key, label, _help in OPTIONS:
         schema.add(key, "bool", True, label=label)
     schema.add(
-        "ambient_pressure_magnitude", "text", "1.01325", label="Ambient Pressure"
+        "ambient_pressure_magnitude",
+        "text",
+        "1.01325",
+        label="Ambient Pressure",
+        units_key="ambient_pressure_unit",
     )
     schema.add("ambient_pressure_unit", "select", "bar", units.pressure_units)
     schema.add("oil_specific_heat", "bool", False, label="Specific Heat")
-    schema.add("oil_specific_heat_magnitude", "text", "2.03")
+    schema.add(
+        "oil_specific_heat_magnitude",
+        "text",
+        "2.03",
+        units_key="oil_specific_heat_unit",
+    )
     schema.add(
         "oil_specific_heat_unit", "select", "kJ/kg/degK", units.specific_heat_units
     )
-    schema.add("oil_density_magnitude", "text", "846.9")
+    schema.add("oil_density_magnitude", "text", "846.9", units_key="oil_density_unit")
     schema.add("oil_density_unit", "select", "kg/m³", units.density_units)
     schema.add("oil_iso", "bool", False, label="Oil ISO Classification")
     schema.add("oil_iso_classification", "select", "VG 32", units.oil_iso_options)
@@ -369,13 +386,13 @@ def _options_fields(schema):
 def _curve_fields(schema, suffix=""):
     for curve in CURVES:
         base = f"{curve}{suffix}"
-        schema.add(f"x_{base}_lower", "text", "")
-        schema.add(f"x_{base}_upper", "text", "")
+        schema.add(f"x_{base}_lower", "text", "", units_key=f"x_{base}_flow_units")
+        schema.add(f"x_{base}_upper", "text", "", units_key=f"x_{base}_flow_units")
         schema.add(
             f"x_{base}_flow_units", "select", units.flow_v_units[0], units.flow_v_units
         )
-        schema.add(f"y_{base}_lower", "text", "")
-        schema.add(f"y_{base}_upper", "text", "")
+        schema.add(f"y_{base}_lower", "text", "", units_key=f"y_{base}_units")
+        schema.add(f"y_{base}_upper", "text", "", units_key=f"y_{base}_units")
         y_units = PARAMETERS[curve].units
         schema.add(f"y_{base}_units", "select", _unit_default(y_units), y_units)
 
@@ -389,7 +406,12 @@ def straight_through_schema():
     for param in DATA_SHEET_PARAMETERS:
         opts = PARAMETERS[param].units
         s.add(f"{param}_units_point_guarantee", "select", _unit_default(opts), opts)
-        s.add(f"{param}_point_guarantee", "text", "")
+        s.add(
+            f"{param}_point_guarantee",
+            "text",
+            "",
+            units_key=f"{param}_units_point_guarantee",
+        )
     _curve_fields(s)
     for i in range(1, N_POINTS + 1):
         s.add(f"gas_point_{i}", "gas", "gas_0")
@@ -399,7 +421,7 @@ def straight_through_schema():
         opts = PARAMETERS[param].units
         s.add(f"{param}_units", "select", _unit_default(opts), opts)
         for i in range(1, N_POINTS + 1):
-            s.add(f"{param}_point_{i}", "text", "")
+            s.add(f"{param}_point_{i}", "text", "", units_key=f"{param}_units")
     s.add("flow_method", "select", FLOW_METHODS[0], FLOW_METHODS)
     _measured_flow_fields(s, "_units", "_point_{i}")
     # Streamlit keys: ``outer_diameter_fo_1``, ``outer_diameter_fo_units``...
@@ -413,7 +435,12 @@ def _measured_flow_fields(s, unit_suffix, value_suffix):
     opts = PARAMETERS["flow"].units
     s.add(f"flow_measured{unit_suffix}", "select", "", ("",) + opts)
     for i in range(1, N_POINTS + 1):
-        s.add(f"flow_measured{value_suffix.format(i=i)}", "text", "")
+        s.add(
+            f"flow_measured{value_suffix.format(i=i)}",
+            "text",
+            "",
+            units_key=f"flow_measured{unit_suffix}",
+        )
 
 
 def _orifice_fields(s, suffix, params):
@@ -425,7 +452,9 @@ def _orifice_fields(s, suffix, params):
             continue
         s.add(f"{param}_units{suffix}", "select", _unit_default(opts), opts)
         for i in range(1, N_POINTS + 1):
-            s.add(f"{param}{suffix}_{i}", "text", "")
+            s.add(
+                f"{param}{suffix}_{i}", "text", "", units_key=f"{param}_units{suffix}"
+            )
 
 
 def back_to_back_schema():
@@ -445,7 +474,12 @@ def back_to_back_schema():
             opts,
         )
         for section in SECTIONS_B2B:
-            s.add(f"{param}_{section}_point_guarantee", "text", "")
+            s.add(
+                f"{param}_{section}_point_guarantee",
+                "text",
+                "",
+                units_key=f"{param}_units_section_1_point_guarantee",
+            )
     for sec in ["sec1", "sec2"]:
         _curve_fields(s, f"_{sec}")
     for section, params in zip(
@@ -457,7 +491,12 @@ def back_to_back_schema():
             opts = PARAMETERS[param].units
             s.add(f"{param}_units_{section}", "select", _unit_default(opts), opts)
             for i in range(1, N_POINTS + 1):
-                s.add(f"{param}_{section}_point_{i}", "text", "")
+                s.add(
+                    f"{param}_{section}_point_{i}",
+                    "text",
+                    "",
+                    units_key=f"{param}_units_{section}",
+                )
         s.add(f"flow_method_{section}", "select", FLOW_METHODS[0], FLOW_METHODS)
         _measured_flow_fields(s, f"_units_{section}", f"_{section}_point_{{i}}")
         _orifice_fields(s, f"_{section}", ORIFICE_PARAMETERS)
@@ -467,8 +506,8 @@ def back_to_back_schema():
 def _design_case_fields(s):
     for case in CASES:
         s.add(f"gas_case_{case}", "gas", "gas_0")
-        s.add(f"suc_p_case_{case}", "number", 0.0)
-        s.add(f"suc_T_case_{case}", "number", 0.0)
+        s.add(f"suc_p_case_{case}", "number", 0.0, units_key="design_suc_p_unit")
+        s.add(f"suc_T_case_{case}", "number", 0.0, units_key="design_suc_T_unit")
         s.add(f"curve_name_case_{case}", "string", "")
     s.add("design_suc_p_unit", "select", "bar", units.pressure_units)
     s.add("design_suc_T_unit", "select", "degC", units.temperature_units)
@@ -487,9 +526,9 @@ def curves_conversion_schema():
     _design_case_fields(s)
     s.add("new_gas_selection", "gas", "gas_0")
     s.add("new_suc_p_unit", "select", "bar", units.pressure_units)
-    s.add("new_suc_p", "number", 0.0)
+    s.add("new_suc_p", "number", 0.0, units_key="new_suc_p_unit")
     s.add("new_suc_t_unit", "select", "degC", units.temperature_units)
-    s.add("new_suc_t", "number", 0.0)
+    s.add("new_suc_t", "number", 0.0, units_key="new_suc_t_unit")
     s.add("conv_find_method", "select", "speed", ["speed", "volume_ratio"])
     s.add("conv_speed_option", "select", "same", ["same", "calculate"])
     s.add("plot_curves_speed_units", "select", "rpm", units.speed_units)
@@ -500,8 +539,18 @@ def curves_conversion_schema():
     s.add("plot_curves_power_units", "select", "kW", units.power_units)
     s.add("show_design_curves", "bool", False)
     for prefix in ["converted"] + [f"orig_case_{c}" for c in CASES]:
-        s.add(f"{prefix}_flow_input", "number", None)
-        s.add(f"{prefix}_speed_input", "number", None)
+        s.add(
+            f"{prefix}_flow_input",
+            "number",
+            None,
+            units_key="plot_curves_flow_units",
+        )
+        s.add(
+            f"{prefix}_speed_input",
+            "number",
+            None,
+            units_key="plot_curves_speed_units",
+        )
         s.add(f"{prefix}_show_similarity", "bool", False)
     return s
 
@@ -546,13 +595,13 @@ def performance_evaluation_schema():
         TAG_PARAMETERS + FLOW_TAG_PARAMETERS + ORIFICE_TAG_PARAMETERS
     ):
         for n in ["", "_2"]:
-            s.add(f"{prefix}_tag{n}", "string", "")
+            s.add(f"{prefix}_tag{n}", "string", "", units_key=f"{prefix}_unit{n}")
             s.add(f"{prefix}_unit{n}", "select", opts[0], opts)
     s.add("flow_method", "select", "Direct", ["Direct", "Orifice"])
     s.add("orifice_tappings", "select", "flange", units.tappings_options)
-    s.add("orifice_D", "number", 0.0)
+    s.add("orifice_D", "number", 0.0, units_key="orifice_D_unit")
     s.add("orifice_D_unit", "select", "m", units.length_units)
-    s.add("orifice_d", "number", 0.0)
+    s.add("orifice_d", "number", 0.0, units_key="orifice_d_unit")
     s.add("orifice_d_unit", "select", "m", units.length_units)
     s.add(
         "fluid_source",
@@ -563,7 +612,7 @@ def performance_evaluation_schema():
     s.add("operation_fluid_gas", "gas", "gas_0")
     for i in range(N_FLUID_TAGS):
         s.add(f"fluid_component_{i}", "string", "")
-        s.add(f"fluid_tag_{i}", "string", "")
+        s.add(f"fluid_tag_{i}", "string", "", units_key=f"fluid_unit_{i}")
         s.add(f"fluid_unit_{i}", "select", "mol_frac", units.fluid_fraction_units)
     s.add("eval_start", "string", "")
     s.add("eval_end", "string", "")

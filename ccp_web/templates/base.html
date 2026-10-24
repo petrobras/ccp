@@ -5,6 +5,19 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="csrf-token" content="{{ csrf_token }}">
   <meta name="htmx-config" content='{"disableInheritance": true, "defaultSwapStyle": "innerHTML"}'>
+  {% comment %}Agent API, browser side (static/ccp_web/js/agent.js): the case and the
+  revision this page was rendered at (sent back as X-CCP-Rev by every form request,
+  so the server never overwrites an agent's newer values), plus the endpoints.{% endcomment %}
+  <meta name="ccp-page" content="{{ page|default:'' }}">
+  <meta name="ccp-agent-poll" content="{% url 'agent:poll' %}">
+  <meta name="ccp-agent-presence" content="{% url 'agent:presence' %}">
+  {% if case %}
+  <meta name="ccp-case" content="{{ case.pk }}">
+  <meta name="ccp-case-rev" content="{{ case.revision }}">
+  <meta name="ccp-agent-panel" content="{% url 'agent:panel' case.pk %}">
+  <meta name="ccp-agent-undo" content="{% url 'agent:undo' 0 %}">
+  <meta name="ccp-agent-dismiss" content="{% url 'agent:note_dismiss' 0 %}">
+  {% endif %}
   <title>{% block title %}ccp{% endblock %} · ccp</title>
   <link rel="icon" href="{% static 'ccp_web/img/favicon.ico' %}">
   <link rel="stylesheet" href="{% static 'ccp_web/vendor/fonts.css' %}">
@@ -25,6 +38,7 @@
   <script src="{% static 'ccp_web/vendor/plotly.min.js' %}" defer></script>
   <script src="{% static 'ccp_web/js/app.js' %}" defer></script>
   <script src="{% static 'ccp_web/js/digitizer.js' %}" defer></script>
+  <script src="{% static 'ccp_web/js/agent.js' %}" defer></script>
   <script src="{% static 'ccp_web/vendor/alpine.min.js' %}" defer></script>
   {% block head %}{% endblock %}
 </head>
@@ -72,6 +86,13 @@
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 14v5h16v-5"/><path d="M12 4v12"/><path d="m8 12 4 4 4-4"/></svg>Save
       </a>
       {% endif %}
+      {% if case %}
+      <button class="btn ghost agent-btn" id="agent-btn" type="button" title="Agent changes and notes for this case"
+              aria-controls="agent-drawer" aria-expanded="false">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="5" y="8" width="14" height="11" rx="3"/><path d="M12 4v4"/><circle cx="12" cy="3.5" r="1"/><path d="M9.5 13h.01M14.5 13h.01" stroke-linecap="round" stroke-width="2.4"/><path d="M3 12v3M21 12v3"/></svg>Agent
+        <span class="agent-badge" id="agent-badge" hidden>0</span>
+      </button>
+      {% endif %}
       <button class="btn ghost icon" type="button" title="Toggle theme" @click="toggleMode()">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M20 14.5A8 8 0 1 1 9.5 4 7 7 0 0 0 20 14.5Z"/></svg>
       </button>
@@ -99,6 +120,7 @@
 
     <div class="group-label">Settings</div>
     <a class="item" href="#" @click.prevent="open = true"><span class="dot"></span>Appearance<span class="count" x-text="t.mode"></span></a>
+    <a class="item {% if page == 'agent_tokens' %}active{% endif %}" href="{% url 'agent:tokens' %}" title="Tokens for AI coding agents (agent API)"><span class="dot"></span>Agent tokens</a>
     {% if ccp_multi_user %}
       <a class="item" href="{% url 'account_logout' %}"><span class="dot"></span>Sign out<span class="count">{{ request.user.email|truncatechars:14 }}</span></a>
     {% endif %}
@@ -186,6 +208,22 @@
     </div>
   </div>
 </div>
+{% if case %}
+<aside class="agent-drawer" id="agent-drawer" aria-label="Agent changes and notes" aria-hidden="true">
+  <header>
+    <h3>Agent</h3>
+    <span class="muted mono">{{ case.name|truncatechars:28 }}</span>
+    <button class="btn ghost icon sm" type="button" title="Refresh" data-agent-refresh>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M20 11a8 8 0 1 0-2.3 5.7"/><path d="M20 4v7h-7"/></svg>
+    </button>
+    <button class="close" type="button" aria-label="Close" data-agent-close>✕</button>
+  </header>
+  <div class="agent-drawer-body" id="agent-drawer-body">
+    <div class="empty"><span class="spin"></span> Loading…</div>
+  </div>
+</aside>
+{% endif %}
+<div class="agent-toasts" id="agent-toasts" aria-live="polite"></div>
 {% block body_end %}{% endblock %}
 </body>
 </html>

@@ -26,9 +26,9 @@ imp_conv = ccp.Impeller.convert_from(imp, suc=new_suc)
 The converted impeller has all the usual methods:
 
 ```python
-imp_conv.head_plot(similarity=True)   # shade points outside PTC 10 similarity limits
+imp_conv.head_plot(similarity=True)  # shade points outside PTC 10 similarity limits
 imp_conv.disch.p_plot(speed_units="RPM")
-imp.head_compare(imp_conv)            # original vs converted on one figure
+imp.head_compare(imp_conv)  # original vs converted on one figure
 ```
 
 ## Convert a single point

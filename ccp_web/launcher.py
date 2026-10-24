@@ -3,6 +3,11 @@
 ``desktop()`` opens a pywebview window; ``serve()`` does the same work but
 opens the default browser (or nothing), which is also how the app runs on a
 machine without a GUI toolkit for pywebview.
+
+Both also open the agent API to local AI agents (desktop profile, unless
+``--no-agent``): a fresh desktop token is issued at every start and written
+with the server URL to the agent file (``agent/discovery.py``), which is
+removed again at exit.
 """
 
 import atexit
@@ -83,7 +88,9 @@ def _wsgi_server(host, port):
     try:
         from waitress import create_server
 
-        return create_server(application, host=host, port=port, threads=8)
+        # Agent long-polls (up to 60 s each) share these threads with the
+        # page's own requests: leave room for several at once.
+        return create_server(application, host=host, port=port, threads=16)
     except ImportError:
         from socketserver import ThreadingMixIn
         from wsgiref.simple_server import WSGIServer, make_server
@@ -116,13 +123,56 @@ def _wait_until_up(host, port, timeout=30):
     raise RuntimeError(f"ccp web server did not start on {host}:{port}")
 
 
-def serve(host="127.0.0.1", port=0, open_browser=True, workers=True):
+def start_agent_session(url, pid=None, register_exit=True):
+    """Issue the desktop agent token and write the agent file.
+
+    Only in the desktop profile: the hosted service has no local agent file
+    (its users create personal tokens in the browser). The local user's
+    previous desktop tokens are deleted first, so a token from an earlier
+    run stops working. Returns the agent file path, or None when skipped.
+    """
+    from django.conf import settings
+
+    if getattr(settings, "CCP_PROFILE", None) != "desktop":
+        return None
+    from ccp_web.agent import discovery
+    from ccp_web.agent.models import AgentToken
+    from ccp_web.core.middleware import get_local_user
+
+    user = get_local_user()
+    AgentToken.objects.for_user(user).filter(kind=AgentToken.DESKTOP).delete()
+    row, plaintext = AgentToken.issue(
+        user, "desktop session", scope=AgentToken.WRITE, kind=AgentToken.DESKTOP
+    )
+    pid = os.getpid() if pid is None else pid
+    # A server bound to every interface is reached locally on loopback.
+    url = url.replace("//0.0.0.0:", "//127.0.0.1:")
+    path = discovery.write(url, plaintext, pid=pid)
+
+    def stop():
+        discovery.remove_if_owned(pid, path=path)
+        try:
+            AgentToken.objects.filter(pk=row.pk).delete()
+        except Exception:
+            # The database may already be gone at interpreter exit; the next
+            # start deletes the token anyway.
+            log.debug("could not delete the desktop agent token", exc_info=True)
+
+    if register_exit:
+        atexit.register(stop)
+    print(f"agent API: {discovery.api_url(url)} (token in {path})", flush=True)
+    return path
+
+
+def serve(host="127.0.0.1", port=0, open_browser=True, workers=True, agent=True):
     prepare()
     stop_workers = None
     if workers:
         _, stop_workers = start_workers()
     server, url = start_server(host, port)
     print(f"ccp is running at {url}  (Ctrl+C to stop)", flush=True)
+    if agent:
+        start_agent_session(url)
     if open_browser:
         webbrowser.open(url)
     try:
@@ -136,7 +186,7 @@ def serve(host="127.0.0.1", port=0, open_browser=True, workers=True):
             stop_workers()
 
 
-def desktop(debug=False):
+def desktop(debug=False, agent=True):
     try:
         import webview
     except ImportError:
@@ -149,6 +199,8 @@ def desktop(debug=False):
     prepare()
     _, stop_workers = start_workers()
     _, url = start_server()
+    if agent:
+        start_agent_session(url)
     webview.settings["ALLOW_DOWNLOADS"] = True
     webview.create_window("ccp", url, width=1440, height=900, min_size=(900, 640))
     try:

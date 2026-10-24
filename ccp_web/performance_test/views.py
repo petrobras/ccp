@@ -10,8 +10,8 @@ from django.views.decorators.http import require_GET, require_POST
 
 from ccp_web.core import jobs
 from ccp_web.core.models import Case, Job
-from ccp_web.core.state import gas_matrix, save_post, update_state
-from ccp_web.core.views import get_case, workspace_context
+from ccp_web.core.state import base_revision, gas_matrix, save_post, update_state
+from ccp_web.core.views import get_case, refresh_response, workspace_context
 from ccp_web.services import gas, schemas, units
 from ccp_web.services import performance_test as pt
 
@@ -261,12 +261,14 @@ def case_view(request, pk):
 
 
 def _save_post(case, request):
-    """Save the form; return the sections whose flow method changed."""
+    """Save the form; return the sections whose flow method changed.
+
+    ``save_post`` runs the flow method switch (a post-save hook registered in
+    ``apps.py``) and sets ``case.stale`` when an agent changed the case since
+    the page rendered.
+    """
     old = dict(case.state)
-    save_post(case, request.POST)
-    updates = pt.switch_flow_method(case.app_type, old, case.state)
-    if updates:
-        update_state(case, **updates)
+    save_post(case, request.POST, base_revision(request))
     return {
         s.name
         for s in pt.sections(case.app_type)
@@ -279,15 +281,12 @@ def calculate(request, pk):
     """Save the form, validate, and start the calculation job."""
     case = get_case(request, pk, APP_TYPES)
     _save_post(case, request)
+    if case.stale:
+        return refresh_response()
     try:
-        errors = _store_orifice_flows(case, strict=True)
-        try:
-            with units.state_context(case.state):
-                pt.read_inputs(case.app_type, case.state)
-        except units.InputError as exc:
-            errors = {**exc.errors, **errors}
-        if errors:
-            raise units.InputError(errors)
+        job = start_calculation(
+            case, calculate_speed=request.POST.get("calculate_speed") == "1"
+        )
     except units.InputError as exc:
         fake = Job(
             owner=case.owner,
@@ -298,13 +297,27 @@ def calculate(request, pk):
             result={"errors": exc.errors},
         )
         return render(request, "core/partials/job.html", {"job": fake, "case": case})
-    jobs.active_jobs(case, ["calculate"]).update(cancel_requested=True)
-    job = jobs.start_job(
-        case,
-        "calculate",
-        {"calculate_speed": request.POST.get("calculate_speed") == "1"},
-    )
     return render(request, "core/partials/job.html", {"job": job, "case": case})
+
+
+def start_calculation(case, calculate_speed=False):
+    """Validate the stored inputs and start the calculation job.
+
+    Shared by the Calculate button and the agent API (``agent.py``). The
+    orifice-mode test flows are recalculated and stored first; every invalid
+    field raises one ``units.InputError``. A calculation already running for
+    the case is cancelled.
+    """
+    errors = _store_orifice_flows(case, strict=True)
+    try:
+        with units.state_context(case.state):
+            pt.read_inputs(case.app_type, case.state)
+    except units.InputError as exc:
+        errors = {**exc.errors, **errors}
+    if errors:
+        raise units.InputError(errors)
+    jobs.active_jobs(case, ["calculate"]).update(cancel_requested=True)
+    return jobs.start_job(case, "calculate", {"calculate_speed": bool(calculate_speed)})
 
 
 def _store_orifice_flows(case, strict):
@@ -335,6 +348,8 @@ def test_data(request, pk):
     ]
     response = render(request, "performance_test/partials/test_data_saved.html", ctx)
     response["HX-Trigger"] = "ccp:saved"
+    if case.stale:
+        response["HX-Refresh"] = "true"
     return response
 
 

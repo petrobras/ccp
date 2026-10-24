@@ -21,13 +21,16 @@ class LocalUserMiddleware:
     """Authenticate requests as the local user (desktop profile only).
 
     The desktop server listens on 127.0.0.1 behind the native window, so there
-    is no login screen; the hosted profile uses allauth instead.
+    is no login screen; the hosted profile uses allauth instead. The agent API
+    (``/api/``) authenticates with a bearer token, so it gets no session.
     """
 
     def __init__(self, get_response):
         self.get_response = get_response
 
     def __call__(self, request):
+        if request.path_info.startswith("/api/"):
+            return self.get_response(request)
         if not request.user.is_authenticated:
             login(
                 request,

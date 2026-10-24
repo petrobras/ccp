@@ -16,14 +16,14 @@ state = ccp.State(p=Q_(10, "bar"), T=Q_(40, "degC"), fluid=fluid)
 
 fo = ccp.FlowOrifice(
     state,
-    delta_p=Q_(0.1, "bar"),   # pressure drop across the orifice
-    D=Q_(250, "mm"),          # pipe internal diameter
-    d=Q_(170, "mm"),          # orifice bore diameter
-    tappings="flange",        # "flange" (default), "corner" or "D D/2"
+    delta_p=Q_(0.1, "bar"),  # pressure drop across the orifice
+    D=Q_(250, "mm"),  # pipe internal diameter
+    d=Q_(170, "mm"),  # orifice bore diameter
+    tappings="flange",  # "flange" (default), "corner" or "D D/2"
 )
 
-fo.flow_m.to("kg/h")   # mass flow (also available as fo.qm)
-fo.flow_v              # volumetric flow at the state conditions, m³/s
+fo.flow_m.to("kg/h")  # mass flow (also available as fo.qm)
+fo.flow_v  # volumetric flow at the state conditions, m³/s
 ```
 
 - `state` is the fluid state at the orifice. By default it is taken as the **upstream** state; pass `state_upstream=False` if the measurement is downstream of the plate (ccp then adds `delta_p` back).

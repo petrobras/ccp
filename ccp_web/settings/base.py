@@ -20,6 +20,7 @@ INSTALLED_APPS = [
     "django_tasks",
     "django_tasks_db",
     "ccp_web.core",
+    "ccp_web.agent",
     "ccp_web.performance_test",
     "ccp_web.curves",
     "ccp_web.digitizer",
