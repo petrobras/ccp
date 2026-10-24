@@ -2,6 +2,7 @@ from pathlib import Path
 from tempfile import tempdir
 from types import SimpleNamespace
 
+import numpy as np
 import pandas as pd
 import pytest
 from numpy.testing import assert_allclose
@@ -537,3 +538,110 @@ def test_evaluation_gauge(tap, tmp_path):
     evaluation.save(path)
     loaded = ccp.Evaluation.load(path)
     assert_allclose(loaded.ambient_pressure.to("Pa").m, 90000)
+
+
+def test_evaluation_kpi_columns(delta_p_evaluation):
+    df = pd.read_parquet(data_path / "data_delta_p.parquet")[:400]
+    df["power_driver"] = 3000.0  # kW at the driver shaft
+    evaluation = delta_p_evaluation
+    units = dict(evaluation.data_units)
+    evaluation.data_units = dict(units, power_driver="kW")
+    evaluation.transmission_efficiency = 0.98
+    try:
+        results = evaluation.calculate_points(df)
+    finally:
+        evaluation.data_units = units
+        evaluation.transmission_efficiency = 1.0
+    rows = results[results["delta_eff"] != -1]
+    assert len(rows) > 10
+    for column in ccp.evaluation.KPI_COLUMNS:
+        assert rows[column].notna().all(), column
+    assert_allclose(rows["health_index"], rows["eff"] / rows["expected_eff"])
+    assert_allclose(rows["power_coupling"], 3000e3 * 0.98)
+    assert_allclose(
+        rows["delta_power_balance"],
+        (3000e3 * 0.98 - rows["power_shaft"]) / rows["power_shaft"] * 100,
+    )
+
+    # slopes are the flow derivatives of the expected curve
+    row = rows.iloc[len(rows) // 2]
+    impeller = evaluation.impellers_new[int(row.cluster)]
+    speed = Q_(row.speed, "RPM")
+    h = 1e-5
+    plus = impeller.point(flow_v=row.flow_v * (1 + h), speed=speed)
+    minus = impeller.point(flow_v=row.flow_v * (1 - h), speed=speed)
+    step = np.log(1 + h) - np.log(1 - h)
+    assert_allclose(
+        (np.log(plus.head.m) - np.log(minus.head.m)) / step, row.head_slope, rtol=1e-3
+    )
+    assert_allclose((plus.eff.m - minus.eff.m) / step, row.eff_slope, rtol=1e-3)
+    assert_allclose(
+        row.delta_Td,
+        Q_(row.Td, "degC").to("K").m
+        - impeller.point(flow_v=row.flow_v, speed=speed).disch.T().m,
+        atol=1e-6,
+    )
+
+
+def test_flow_at_head_inverts_the_expected_curve(imp_a):
+    from ccp.evaluation import _flow_at_head
+
+    curve = imp_a._curve_data(imp_a.curves[0].speed)
+    flows = curve["flow_v"]
+    peak = int(np.argmax(curve["head"]))
+    for q in np.linspace(flows[peak], flows[-1], 7)[1:-1]:
+        head = imp_a.point(flow_v=q, speed=imp_a.curves[0].speed).head.m
+        assert_allclose(_flow_at_head(curve, head), q, rtol=1e-9)
+    # above the peak there is no flow with that head
+    assert np.isnan(_flow_at_head(curve, curve["head"].max() * 1.1))
+
+
+def test_cluster_curve_uses_mean_composition(imp_a_n4):
+    df = pd.read_parquet(data_path / "data.parquet")
+    for comp, frac in operation_fluid.items():
+        df[f"fluid_{comp}"] = frac
+    # methane replaces CO2 along the data, so the rows of a cluster differ
+    ramp = np.linspace(0, 6, len(df))
+    df["fluid_methane"] += ramp
+    df["fluid_co2"] -= ramp
+    evaluation = ccp.Evaluation(
+        data=df, data_units=data_units, impellers=[imp_a_n4], n_clusters=1
+    )
+    rows = evaluation.df
+    total = rows[[f"fluid_{c}" for c in operation_fluid]].sum(axis=1).mean()
+    expected = rows["fluid_methane"].mean() / total
+    first_row = rows["fluid_methane"].iloc[0] / total
+    methane = evaluation.impellers_new[0].points[0].suc.fluid["METHANE"]
+    assert_allclose(methane, expected, rtol=1e-6)
+    assert abs(methane - first_row) > 1e-3
+
+
+def test_evaluation_driver_estimate(delta_p_evaluation, tmp_path):
+    motor = ccp.InductionMotor(
+        rated_power=Q_(4000, "kW"),
+        rated_voltage=Q_(13.8, "kV"),
+        rated_current=Q_(190, "A"),
+        rated_speed=Q_(1790, "RPM"),
+        rated_frequency=Q_(60, "Hz"),
+        poles=4,
+        rated_power_factor=0.88,
+        efficiency=0.965,
+    )
+    df = pd.read_parquet(data_path / "data_delta_p.parquet")[:200]
+    df["driver_input_power"] = 3200.0
+    evaluation = delta_p_evaluation
+    units = dict(evaluation.data_units)
+    evaluation.data_units = dict(units, driver_input_power="kW")
+    evaluation.driver = motor
+    try:
+        results = evaluation.calculate_points(df)
+        expected = motor.power_output(input_power=Q_(3200, "kW")).to("W").m
+        rows = results[results["delta_eff"] != -1]
+        assert_allclose(rows["power_coupling"], expected)
+        file = tmp_path / "evaluation.ccp_eval"
+        evaluation.save(file)
+        loaded = ccp.Evaluation.load(file)
+        assert loaded.driver.to_dict() == motor.to_dict()
+    finally:
+        evaluation.data_units = units
+        evaluation.driver = None
