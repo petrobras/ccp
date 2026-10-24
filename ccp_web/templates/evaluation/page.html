@@ -152,6 +152,19 @@
                 </div>
               </td>
             </tr>
+            {% for p, label, opts in driver_rows %}
+              <tr>
+                <td class="param">{{ label }}{% help "Optional. Driver shaft power at the coupling, for the power balance: the measured gas power plus mechanical losses is compared with it (delta_power_balance). In a file, the column power_driver." %}</td>
+                <td class="val">{% key p "_tag" as k %}{% inp k %}</td>
+                <td class="unit">{% key p "_unit" as k %}{% sel k %}</td>
+                <td class="val">{% key p "_tag_2" as k %}{% inp k %}</td>
+                <td class="unit">{% key p "_unit_2" as k %}{% sel k %}</td>
+              </tr>
+            {% endfor %}
+            <tr>
+              <td class="param">Transmission efficiency{% help "Gearbox and coupling efficiency between the driver and the compressor; the driver power is multiplied by it. 1.0 for a direct drive." %}</td>
+              <td colspan="4"><div style="width:120px;">{% num "transmission_efficiency" step="0.001" min="0.5" max="1" %}</div></td>
+            </tr>
             <tr class="gasrow">
               <td class="param">Fluid</td>
               <td colspan="4">

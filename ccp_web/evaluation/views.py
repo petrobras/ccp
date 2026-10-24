@@ -94,6 +94,7 @@ def page_context(request, case, errors=None):
             "tag_rows": tag_rows(),
             "flow_rows": list(schemas.FLOW_TAG_PARAMETERS),
             "orifice_rows": list(schemas.ORIFICE_TAG_PARAMETERS),
+            "driver_rows": list(schemas.DRIVER_TAG_PARAMETERS),
             "fluid_rows": list(range(schemas.N_FLUID_TAGS)),
             "fluid_list": ctx["gas_init"]["fluids"],
             "data_sources": schemas.DATA_SOURCES,
@@ -277,6 +278,8 @@ def results(request, pk):
                 for idx, row in zip(summary.index, summary.itertuples(index=False))
             ]
         ctx["clusters"] = list(range(analysis.get("n_clusters", 0)))
+        ctx["kpi_tiles"] = ev.kpi_tiles(analysis)
+        ctx["trends_error"] = (analysis.get("trends") or {}).get("error")
     return render(request, "evaluation/partials/results.html", ctx)
 
 

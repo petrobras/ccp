@@ -1,6 +1,6 @@
 {% load ccp %}
 {% if analysis %}
-<section class="section" x-data="{ tab: 'trend' }">
+<section class="section" x-data="{ tab: '{% if kpi_tiles %}kpis{% else %}trend{% endif %}' }">
   <header>
     <h2>Results</h2>
     <span class="desc mono">{{ analysis.n_valid }} valid of {{ analysis.n_rows }} rows · {{ analysis.start|slice:":16" }} → {{ analysis.end|slice:":16" }}</span>
@@ -9,12 +9,39 @@
     </div>
   </header>
   <div class="tabs" role="tablist">
+    {% if kpi_tiles or trends_error %}<button type="button" role="tab" :aria-selected="tab === 'kpis'" @click="tab = 'kpis'; $nextTick(() => ccpResizePlots())">Health KPIs</button>{% endif %}
     <button type="button" role="tab" :aria-selected="tab === 'trend'" @click="tab = 'trend'; $nextTick(() => ccpResizePlots())">Trend analysis</button>
     <button type="button" role="tab" :aria-selected="tab === 'perf'" @click="tab = 'perf'; $nextTick(() => ccpResizePlots())">Performance plots</button>
     <button type="button" role="tab" :aria-selected="tab === 'data'" @click="tab = 'data'">Data table</button>
   </div>
 
-  <div x-show="tab === 'trend'">
+  {% if kpi_tiles or trends_error %}
+  <div x-show="tab === 'kpis'">
+    {% if trends_error %}
+      <div class="banner error" style="margin:16px;"><span class="tag">trends</span><div>The trend analysis failed: {{ trends_error }}</div></div>
+    {% endif %}
+    <div class="kpis">
+      {% for t in kpi_tiles %}
+        <div class="kpi {% if t.status == 'down' %}alert{% endif %}">
+          <div class="k">{{ t.label }}</div>
+          <div class="v">{{ t.current }}<span class="u">{{ t.unit }}</span></div>
+          <div class="d {{ t.status }}">{{ t.slope }} {{ t.unit }}/1000 h{% help "Theil-Sen slope of the daily medians since the last change point, with its 95 % interval. Red when the whole interval shows degradation." %}</div>
+          {% if t.slope_range %}<div class="s">95 % {{ t.slope_range }}</div>{% endif %}
+          {% if t.time_to %}<div class="s">to {{ t.threshold }} {{ t.unit }}: <b>{{ t.time_to.text }}</b>{% if t.time_to.range %} ({{ t.time_to.range }}){% endif %}</div>{% endif %}
+          <div class="s">{% if t.change %}last change <b>{{ t.change.date }}</b> · {{ t.change.kind }} {{ t.change.shift }} {{ t.unit }}{% if t.n_changes > 1 %} · {{ t.n_changes }} changes{% endif %}{% else %}no change point{% endif %}</div>
+        </div>
+      {% endfor %}
+    </div>
+    {% if kpi_tiles %}
+      <div class="note" style="border-top:1px solid var(--rule-soft);">Daily medians of the valid rows. Dashed vertical lines are change points (PELT): a recovery after a wash, a drop after a trip or fouling event. The solid line is the trend of the last segment; the dotted horizontal line is the threshold.</div>
+      <div class="chart-grid">
+        {% for t in kpi_tiles %}{% if t.figure %}{% plotly t.figure %}{% endif %}{% endfor %}
+      </div>
+    {% endif %}
+  </div>
+  {% endif %}
+
+  <div x-show="tab === 'trend'" {% if kpi_tiles or trends_error %}x-cloak{% endif %}>
     {% if analysis.trend %}
       <div class="chart-grid">
         {% for t in analysis.trend %}{% plotly t.figure %}{% endfor %}

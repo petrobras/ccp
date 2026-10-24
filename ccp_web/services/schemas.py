@@ -574,6 +574,10 @@ ORIFICE_TAG_PARAMETERS = [
     ("delta_p", "Delta P", units.plain_pressure_units),
     ("p_downstream", "Downstream P", units.pressure_units),
 ]
+# optional: driver shaft power for the power balance (column ``power_driver``)
+DRIVER_TAG_PARAMETERS = [
+    ("power_driver", "Driver shaft power", units.driver_power_units),
+]
 
 DATA_SOURCES = [
     ("pi", "PI Live"),
@@ -592,11 +596,15 @@ def performance_evaluation_schema():
     s.add("pi_auth_method", "select", "kerberos", ["kerberos", "basic"])
     s.add("pi_username", "string", "")
     for prefix, _label, opts in (
-        TAG_PARAMETERS + FLOW_TAG_PARAMETERS + ORIFICE_TAG_PARAMETERS
+        TAG_PARAMETERS
+        + FLOW_TAG_PARAMETERS
+        + ORIFICE_TAG_PARAMETERS
+        + DRIVER_TAG_PARAMETERS
     ):
         for n in ["", "_2"]:
             s.add(f"{prefix}_tag{n}", "string", "", units_key=f"{prefix}_unit{n}")
             s.add(f"{prefix}_unit{n}", "select", opts[0], opts)
+    s.add("transmission_efficiency", "number", 1.0)
     s.add("flow_method", "select", "Direct", ["Direct", "Orifice"])
     s.add("orifice_tappings", "select", "flange", units.tappings_options)
     s.add("orifice_D", "number", 0.0, units_key="orifice_D_unit")
@@ -631,12 +639,30 @@ def performance_evaluation_schema():
     return s
 
 
+def fleet_analysis_schema():
+    s = Schema("fleet_analysis")
+    _common_session(s)
+    # [{"evaluation": case id, "name", "site", "shop": straight-through case id}]
+    s.add("fleet_members", "json", [])
+    s.add("fleet_draws", "number", 1000)
+    s.add("fleet_tune", "number", 1000)
+    s.add("fleet_chains", "number", 4)
+    s.add("fleet_seed", "number", None)
+    # points below the vendor curve for P(below threshold)
+    s.add("fleet_threshold", "number", 3.0)
+    # prior overrides (blank: FleetPriors defaults), % head and efficiency points
+    s.add("fleet_tau_unit_head", "number", None)
+    s.add("fleet_tau_unit_eff", "number", None)
+    return s
+
+
 _BUILDERS = {
     "straight_through": straight_through_schema,
     "back_to_back": back_to_back_schema,
     "curves_conversion": curves_conversion_schema,
     "performance_evaluation": performance_evaluation_schema,
     "curves_digitizer": curves_digitizer_schema,
+    "fleet_analysis": fleet_analysis_schema,
 }
 _CACHE = {}
 

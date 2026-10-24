@@ -6,7 +6,8 @@ error and the file and mock sources still work.
 
 Every source returns a tz-naive ``DatetimeIndex`` DataFrame with the ccp
 column names (``ps, Ts, pd, Td, speed`` and ``flow_v`` or
-``delta_p, p_downstream``, plus optional ``fluid_<component>`` columns).
+``delta_p, p_downstream``, plus optional ``fluid_<component>`` and
+``power_driver`` columns).
 """
 
 import io
@@ -45,6 +46,8 @@ KEY_TO_COLUMN = {
     "delta_p_tag_2": "delta_p_2",
     "p_downstream_tag": "p_downstream",
     "p_downstream_tag_2": "p_downstream_2",
+    "power_driver_tag": "power_driver",
+    "power_driver_tag_2": "power_driver_2",
 }
 
 PARAMETER_MAP = [
@@ -61,6 +64,13 @@ PARAMETER_MAP = [
         "p_downstream_tag_2",
         "p_downstream_unit",
         "p_downstream_unit_2",
+    ),
+    (
+        "power_driver",
+        "power_driver_tag",
+        "power_driver_tag_2",
+        "power_driver_unit",
+        "power_driver_unit_2",
     ),
 ]
 
@@ -84,7 +94,7 @@ def tag_mappings(state, pi_password=None):
         "pi_server_name": get("pi_server_name", ""),
         "pi_auth_method": get("pi_auth_method") or "kerberos",
     }
-    for prefix in ["suc_p", "suc_T", "disch_p", "disch_T", "speed"]:
+    for prefix in ["suc_p", "suc_T", "disch_p", "disch_T", "speed", "power_driver"]:
         for n in ["", "_2"]:
             tm[f"{prefix}_tag{n}"] = get(f"{prefix}_tag{n}", "") or ""
             tm[f"{prefix}_unit{n}"] = get(f"{prefix}_unit{n}")
@@ -141,6 +151,8 @@ def data_units(state, tm):
     else:
         units["delta_p"] = state.get("delta_p_unit") or "bar"
         units["p_downstream"] = state.get("p_downstream_unit") or "bar"
+    # optional column: used only when the data has it
+    units["power_driver"] = state.get("power_driver_unit") or "kW"
     return units
 
 
@@ -310,8 +322,8 @@ def read_data_file(name, content):
 
     The first column (or a ``time``/``timestamp`` column) is the timestamp;
     the other columns must already use the ccp names (``ps, Ts, pd, Td,
-    speed, flow_v`` or ``delta_p, p_downstream``, ``fluid_<component>``) in
-    the units configured in the Tags section.
+    speed, flow_v`` or ``delta_p, p_downstream``, ``fluid_<component>``,
+    optional ``power_driver``) in the units configured in the Tags section.
     """
     lower = name.lower()
     if lower.endswith(".parquet"):
