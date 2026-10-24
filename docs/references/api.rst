@@ -28,6 +28,14 @@ API Reference
     units.gauge_to_absolute
     units.absolute_to_gauge
 
+.. autosummary::
+    :toctree: generated/evaluation
+
+    Evaluation
+    Reconciliation
+    Fleet
+    FleetUnit
+    FleetPriors
 .. toctree::
 
     plot_methods

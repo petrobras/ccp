@@ -79,6 +79,7 @@ evaluation = ccp.Evaluation(
 - `expected_eff`, `expected_head`, `expected_power`, `expected_p_disch`: from the reference curves converted to the sample's suction condition
 - `delta_eff`: `(eff - expected_eff) * 100` — difference in efficiency percentage points (positive = better than expected)
 - `delta_head`, `delta_power`, `delta_p_disch`: relative deviation from the expected value in %
+- `flow_dev`, `delta_Td`, `health_index`, `head_slope`, `eff_slope`, `power_shaft` (and `delta_power_balance` with driver power): see [analytics.md](analytics.md)
 
 ```python
 evaluation.df["delta_eff"].mean()
