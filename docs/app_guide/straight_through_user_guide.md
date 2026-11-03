@@ -1,5 +1,12 @@
 # Straight-Through App Guide
 
+```{note}
+This guide describes the previous Streamlit application. Start it with
+`ccp-app --streamlit` (needs `pip install "ccp-performance[app]"`). `ccp-app`
+alone now opens the new ccp application; see
+{doc}`../getting_started/installation`.
+```
+
 ## Table of Contents
 1. [Overview](#overview)
 2. [Getting Started](#getting-started)
@@ -31,7 +38,7 @@ The Straight-Through Compressor page is a Streamlit application designed for per
 
 ### Accessing the Application
 
-1. Navigate to the CCP application URL
+1. Start the Streamlit app with `ccp-app --streamlit` (or navigate to its URL)
 2. Select **"1_straight_through"** from the sidebar menu
 3. The main interface will load with expandable sections for data input
 

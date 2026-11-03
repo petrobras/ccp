@@ -1,8 +1,9 @@
 """CLI entry point for the ccp app.
 
 ``ccp-app`` opens the Django application (``ccp_web``) in a desktop window, or
-in the browser when pywebview is not installed. ``ccp-app --streamlit`` runs
-the previous Streamlit app, kept until the new app is signed off.
+in the browser when pywebview or a GUI toolkit for it is not available.
+``ccp-app --streamlit`` runs the previous Streamlit app, kept until the new app
+is signed off.
 """
 
 import sys
@@ -29,27 +30,23 @@ def main():
     if "--streamlit" in args:
         run_streamlit()
         return
-    try:
-        import django  # noqa: F401
-    except ImportError:
+    # ccp_web.cli only needs the standard library to import.
+    from ccp_web import cli as web_cli
+
+    if not web_cli.web_extra_installed():
         try:
             import streamlit  # noqa: F401
         except ImportError:
-            print(
-                "The ccp app needs the web extra: pip install ccp-performance[desktop] "
-                "(or [web] to use a browser)."
-            )
-            sys.exit(1)
+            web_cli.require_web_extra()
         run_streamlit()
         return
-    from ccp_web.cli import main as web_main
+    if not args:
+        web_cli.main([])
+        return
+    from ccp_web.launcher import desktop_unavailable
 
-    try:
-        import webview  # noqa: F401
-
-        web_main(["desktop"] + args)
-    except ImportError:
-        web_main(["serve"] + args)
+    command = "desktop" if desktop_unavailable() is None else "serve"
+    web_cli.main([command] + args)
 
 
 if __name__ == "__main__":

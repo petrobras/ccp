@@ -8,15 +8,35 @@ desktop application or, by switching a profile, as a multi-user hosted service.
 
 ## Running
 
+From a release (Python >= 3.10):
+
 ```bash
-uv sync --extra desktop          # web stack + pywebview
-uv run ccp-app                   # desktop window (browser if pywebview is missing)
-uv run ccp-web serve             # local server + task workers, opens the browser
-uv run ccp-app --streamlit       # the previous Streamlit app
+pip install "ccp-performance[desktop]"   # web stack + pywebview ([web]: browser only)
+ccp-app                          # desktop window (browser if it cannot open)
+ccp-web serve                    # local server + task workers, opens the browser
+python -m ccp_web serve          # same, where console scripts are not on PATH
 ```
 
+From a clone:
+
+```bash
+uv sync --extra desktop          # web stack + pywebview
+uv run ccp-app                   # desktop window (browser if it cannot open)
+uv run ccp-web serve             # local server + task workers, opens the browser
+uv run ccp-app --streamlit       # the previous Streamlit app (needs --extra app)
+```
+
+`ccp-app`, `ccp-web` and `python -m ccp_web` with no command open the desktop
+window when pywebview, a GUI toolkit for it and a display are available (on
+Linux the `desktop` extra brings no toolkit: install `pywebview[qt]`, or
+`pywebview[gtk]` with the WebKit2GTK system libraries) and fall back to
+`serve` otherwise; `ccp-web desktop` exits with an error instead.
+`ccp-web serve` takes `--host`, `--port` (0, the default, picks a free port),
+`--no-browser`, `--no-workers` and `--no-agent`; `ccp-web desktop` takes
+`--debug` and `--no-agent`.
+
 The desktop profile keeps its SQLite database, uploaded files and results in the
-user data directory (`platformdirs.user_data_dir("ccp")`, override with
+user data directory (`platformdirs.user_data_dir("ccp", "ccp")`, override with
 `CCP_DATA_DIR`). The launcher applies migrations, starts two task workers (queues
 `default` and `monitoring`) and serves the app on `127.0.0.1` with waitress.
 

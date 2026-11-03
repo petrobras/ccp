@@ -4,7 +4,7 @@ PyInstaller spec for the ccp desktop app (Django + pywebview).
 
 Build from the repository root with the desktop extra installed:
     uv sync --extra desktop
-    uv run pyinstaller --noconfirm --distpath=build/dist --workpath=build/pyinstaller_work build/ccp_web.spec
+    uv run --with pyinstaller pyinstaller --noconfirm --distpath=build/dist --workpath=build/pyinstaller_work build/ccp_web.spec
 
 The result is a one-folder app, build/dist/ccp/ccp(.exe). Starting it with no
 arguments opens the window; "ccp worker --queue <q>" is how the app starts its

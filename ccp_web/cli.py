@@ -1,5 +1,6 @@
-"""``ccp-web`` command line.
+"""ccp-web: the ccp web application.
 
+    ccp-web                    desktop window when available, otherwise browser
     ccp-web desktop            native window (pywebview) around a local server
     ccp-web serve [--port N]   local server and task workers, open in a browser
     ccp-web worker [--queue Q] one task worker (hosted deployments run several)
@@ -7,15 +8,46 @@
     ccp-web agent <command>    talk to the running app as an AI agent (JSON out;
                                ``ccp-web agent --help``, ``ccp-web agent mcp``)
 
-``desktop`` and ``serve`` open the agent API for local agents unless
+``python -m ccp_web`` is the same command. ``desktop`` and ``serve`` open
+the agent API for local agents unless
 ``--no-agent`` is given. ``CCP_PROFILE`` selects the settings profile
 (``desktop`` by default). ``agent`` runs before any Django setup: it only
 needs the standard library, so it works where the ``web`` extra is missing.
 """
 
 import argparse
+import importlib.util
 import os
 import sys
+
+# Imported by every profile; the rest of the web extra is imported lazily.
+WEB_EXTRA_MODULES = (
+    "django",
+    "django_htmx",
+    "template_partials",
+    "django_tasks",
+    "django_tasks_db",
+    "allauth",
+    "whitenoise",
+    "platformdirs",
+)
+WEB_EXTRA_MISSING = (
+    "The ccp web app needs Python >= 3.10 and the web extra: "
+    'pip install "ccp-performance[web]" ("[desktop]" for the native window).'
+)
+
+
+def web_extra_installed():
+    return all(importlib.util.find_spec(name) for name in WEB_EXTRA_MODULES)
+
+
+def require_web_extra():
+    """Exit with an install hint when the ``web`` extra is missing."""
+    if not web_extra_installed():
+        hint = WEB_EXTRA_MISSING
+        if sys.version_info < (3, 10):
+            hint += f" This is Python {sys.version.split()[0]}."
+        sys.exit(hint)
 
 
 def _setup():
@@ -46,13 +78,22 @@ def worker(queue="default", interval=1.0):
 
 def main(argv=None):
     argv = sys.argv[1:] if argv is None else argv
-    if argv and argv[0] == "manage":
-        manage(argv[1:])
-        return
+    if argv and argv[0] == "probe-gui":
+        # Internal: the child process of ``launcher.desktop_unavailable``.
+        from .launcher import probe_gui
+
+        reason = probe_gui()
+        if reason:
+            print(reason, flush=True)
+        sys.exit(1 if reason else 0)
     if argv and argv[0] == "agent":
         from .agent.cli import main as agent_main
 
         sys.exit(agent_main(argv[1:]))
+    if argv and argv[0] == "manage":
+        require_web_extra()
+        manage(argv[1:])
+        return
     parser = argparse.ArgumentParser(
         prog="ccp-web", description=__doc__.splitlines()[0]
     )
@@ -76,6 +117,8 @@ def main(argv=None):
     sub.add_parser("manage", help="Django management commands")
     sub.add_parser("agent", help="talk to the running app as an AI agent")
     args = parser.parse_args(argv)
+    if args.command in (None, "desktop", "serve", "worker"):
+        require_web_extra()
 
     if args.command == "worker":
         worker(args.queue, args.interval)
@@ -89,13 +132,14 @@ def main(argv=None):
             workers=not args.no_workers,
             agent=not args.no_agent,
         )
-    elif args.command == "desktop" or args.command is None:
+    elif args.command == "desktop":
         from .launcher import desktop
 
-        desktop(
-            debug=getattr(args, "debug", False),
-            agent=not getattr(args, "no_agent", False),
-        )
+        desktop(debug=args.debug, agent=not args.no_agent)
+    elif args.command is None:
+        from .launcher import app
+
+        app()
     else:
         parser.print_help()
 
