@@ -4,3 +4,5 @@ recursive-include ccp/agent_skills *.md
 recursive-include ccp_web/templates *
 recursive-include ccp_web/static *
 prune ccp_web/staticfiles
+include ccp_web/README.md
+global-exclude *.py[cod]

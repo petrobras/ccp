@@ -56,6 +56,11 @@ imp.disch.T_plot()
 ```
 You can get more details by reading the {ref}`Tutorial`.
 
+ccp also includes an application for performance tests, curves conversion,
+curves digitizing and performance evaluation of plant data. Install it with
+`pip install "ccp-performance[desktop]"` and start it with `ccp-app` (see
+{doc}`installation`).
+
 ```{bibliography}
 :filter: docname in docnames
 ```

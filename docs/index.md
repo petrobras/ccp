@@ -5,6 +5,9 @@ The code uses
 [CoolProp](http://www.coolprop.org/) / 
 [REFPROP](https://www.nist.gov/srd/refprop)
 for the gas properties calculations.
+It also includes a desktop / web application for performance tests, curves
+conversion and performance evaluation, started with `ccp-app` (see
+{doc}`getting_started/installation`).
 
 ::::{grid} 2
 :gutter: 2

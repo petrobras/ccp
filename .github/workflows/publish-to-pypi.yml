@@ -9,9 +9,9 @@ jobs:
     name: Build and publish Python 🐍 distributions 📦 to PyPI
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@master
+    - uses: actions/checkout@v4
     - name: Set up Python 3.12
-      uses: actions/setup-python@v1
+      uses: actions/setup-python@v5
       with:
         python-version: 3.12
     - name: Install pypa/build
@@ -20,14 +20,16 @@ jobs:
         pip install
         build
         --user
-    - name: Build a binary wheel and a source tarball
+    # Without --sdist/--wheel, build makes the sdist and then the wheel from
+    # it, so a file missing from the sdist is missing from the wheel too.
+    - name: Build a source tarball and a binary wheel from it
       run: >-
         python -m
         build
-        --sdist
-        --wheel
         --outdir dist/
         .
+    - name: Check the distributions
+      run: python3 .github/scripts/check_dist.py dist/
     - name: Publish distribution 📦 to PyPI
       uses: pypa/gh-action-pypi-publish@release/v1
       with:

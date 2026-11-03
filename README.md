@@ -76,6 +76,24 @@ The skill activates automatically whenever you ask your agent about centrifugal 
 /ccp create an impeller from these test points and convert the curves to the new suction condition
 ```
 
+# Application
+
+ccp includes an application for performance tests (ASME PTC 10, straight-through and back-to-back), curves conversion, curves digitizing and performance evaluation of plant data. It needs Python >= 3.10. Install it with the `desktop` extra (app in a native window) or the `web` extra (app in your browser):
+
+```bash
+pip install "ccp-performance[desktop]"   # or "ccp-performance[web]"
+```
+
+and start it with:
+
+```bash
+ccp-app
+```
+
+`ccp-app` (or `ccp-web`, or `python -m ccp_web` where console scripts are not on the `PATH`) opens the app in a desktop window, or in your default browser when the window cannot open: pywebview (the `desktop` extra) is not installed, there is no graphical display or, on Linux, no Qt or GTK toolkit for pywebview is installed (`pip install "pywebview[qt]"` adds one). To always use the browser run `ccp-web serve` (`--port 8000` picks the port, `--no-browser` only prints the URL). Your cases and results are kept in your user data directory (set `CCP_DATA_DIR` to change it).
+
+REFPROP is optional: without it ccp uses CoolProp. The previous Streamlit app is still available with `ccp-app --streamlit` (needs the `app` extra).
+
 # Documentation 
 Access the documentation [here](https://ccp-centrifugal-compressor-performance.readthedocs.io/en/stable/).
 

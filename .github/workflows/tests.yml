@@ -80,3 +80,53 @@ jobs:
         env:
           CCP_TEST_MULTI_USER: "1"
         run: uv run pytest ccp_web/tests
+
+  # Build the distributions as the release does and install the wheel, with
+  # the web extra, into a clean environment: catches files left out of the
+  # package (templates, static files, migrations) and undeclared dependencies.
+  # Needs no REFPROP, so it also runs on pull requests from forks.
+  package:
+    name: Package (wheel + web extra, Python ${{ matrix.python-version }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        # The oldest and newest Python the web extra supports.
+        python-version: ["3.10", "3.13"]
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: astral-sh/setup-uv@v6
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Build sdist and wheel
+        run: uv build --out-dir dist/
+
+      - name: Check the distributions
+        run: python3 .github/scripts/check_dist.py dist/
+
+      - name: Install the wheel with the web extra
+        run: |
+          uv venv "$RUNNER_TEMP/venv"
+          uv pip install --python "$RUNNER_TEMP/venv/bin/python" "$(ls dist/*.whl)[web]"
+
+      - name: Run the web app from the installed wheel
+        working-directory: ${{ runner.temp }}
+        env:
+          CCP_DATA_DIR: ${{ runner.temp }}/ccp-data
+        run: |
+          source venv/bin/activate
+          ccp-web --help
+          ccp-web manage check
+          ccp-web manage migrate
+          ccp-web manage makemigrations --check --dry-run
+          ccp-web serve --port 8765 --no-browser --no-workers --no-agent &
+          for _ in $(seq 60); do
+            curl -sf -o /dev/null http://127.0.0.1:8765/ && break
+            sleep 1
+          done
+          curl -sf -o /dev/null http://127.0.0.1:8765/
+          curl -sf -o /dev/null http://127.0.0.1:8765/static/ccp_web/css/app.css
+          kill $!

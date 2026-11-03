@@ -85,8 +85,10 @@ python3 -m venv env
 and then install ccp in editable mode with development dependencies:
 
 ```
-pip install -e ".[dev]"
+pip install -e ".[web,desktop,hosted,app,digitize]" --group dev
 ```
+
+(`dev` is a dependency group, which needs pip >= 25.1; with uv, `uv sync --all-extras` does the same.)
 
 ### Step 4: Make a new feature branch
 

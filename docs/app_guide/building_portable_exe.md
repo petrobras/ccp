@@ -2,6 +2,15 @@
 
 This guide describes how to build a standalone portable Windows executable for the CCP (Centrifugal Compressor Performance) Streamlit application.
 
+> **Note:** this is the build of the previous Streamlit app (`build/ccp_app.spec`). The new desktop app (`ccp_web`) is built with PyInstaller only, from the repository root:
+>
+> ```
+> uv sync --extra desktop
+> uv run --with pyinstaller pyinstaller --noconfirm --distpath=build/dist --workpath=build/pyinstaller_work build/ccp_web.spec
+> ```
+>
+> The result is the one-folder app `build/dist/ccp/ccp(.exe)`. REFPROP is not bundled; ccp finds it through `RPPREFIX` and falls back to CoolProp.
+
 ## Overview
 
 The build process creates a self-contained `.exe` file that bundles:

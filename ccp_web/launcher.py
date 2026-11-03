@@ -1,8 +1,8 @@
 """Desktop launcher: local server, task workers and the native window.
 
 ``desktop()`` opens a pywebview window; ``serve()`` does the same work but
-opens the default browser (or nothing), which is also how the app runs on a
-machine without a GUI toolkit for pywebview.
+opens the default browser (or nothing). ``app()`` picks the window when
+pywebview and a GUI toolkit are available here and the browser otherwise.
 
 Both also open the agent API to local AI agents (desktop profile, unless
 ``--no-agent``): a fresh desktop token is issued at every start and written
@@ -11,6 +11,8 @@ removed again at exit.
 """
 
 import atexit
+import functools
+import importlib.util
 import logging
 import os
 import signal
@@ -186,16 +188,86 @@ def serve(host="127.0.0.1", port=0, open_browser=True, workers=True, agent=True)
             stop_workers()
 
 
-def desktop(debug=False, agent=True):
+def probe_gui():
+    """Start pywebview's GUI toolkit here: why it cannot, or None.
+
+    pywebview logs every toolkit it fails to load with a traceback; those
+    are expected here, so the logger is muted and only the reason is kept.
+    """
     try:
-        import webview
+        from webview.guilib import initialize
     except ImportError:
+        return "pywebview is not installed (pip install ccp-performance[desktop])"
+    webview_log = logging.getLogger("pywebview")
+    disabled, webview_log.disabled = webview_log.disabled, True
+    try:
+        initialize()
+    except Exception as exc:
+        return f"pywebview found no GUI toolkit ({str(exc).rstrip('.')})"
+    finally:
+        webview_log.disabled = disabled
+    return None
+
+
+def _probe_command():
+    if getattr(sys, "frozen", False):
+        return [sys.executable, "probe-gui"]
+    return [sys.executable, "-m", "ccp_web.cli", "probe-gui"]
+
+
+@functools.lru_cache(maxsize=None)
+def desktop_unavailable():
+    """Why the native window cannot open here, or None when it can.
+
+    pywebview imports without a GUI toolkit and only fails at
+    ``webview.start``, after the server is up: on Linux the ``desktop`` extra
+    brings no toolkit (Qt or GTK with Python bindings must be installed
+    separately), so the toolkit is probed before anything starts. On X11 and
+    Wayland the probe runs in a child process: Qt aborts the whole process
+    when ``DISPLAY`` points to a display it cannot reach (a stale tmux or ssh
+    session), which no ``except`` can catch.
+    """
+    if importlib.util.find_spec("webview") is None:
+        return "pywebview is not installed (pip install ccp-performance[desktop])"
+    if sys.platform in ("win32", "darwin"):
+        return probe_gui()
+    if not (os.environ.get("DISPLAY") or os.environ.get("WAYLAND_DISPLAY")):
+        return "no graphical display"
+    try:
+        probe = subprocess.run(
+            _probe_command(), capture_output=True, text=True, timeout=60
+        )
+    except (OSError, subprocess.TimeoutExpired) as exc:
+        return f"the GUI toolkit check failed ({exc})"
+    if probe.returncode == 0:
+        return None
+    lines = probe.stdout.strip().splitlines()
+    return (
+        lines[-1] if lines else f"the GUI toolkit failed to start ({probe.returncode})"
+    )
+
+
+def app(debug=False, agent=True):
+    """The native window when it can open here, otherwise the browser."""
+    reason = desktop_unavailable()
+    if reason is None:
+        desktop(debug=debug, agent=agent)
+    else:
+        print(f"{reason}; opening ccp in the browser.", file=sys.stderr, flush=True)
+        serve(agent=agent)
+
+
+def desktop(debug=False, agent=True):
+    reason = desktop_unavailable()
+    if reason is not None:
         print(
-            "pywebview is not installed; install ccp-performance[desktop] or run "
-            "'ccp-web serve' to use a browser.",
+            f"Cannot open the desktop window: {reason}. "
+            "Run 'ccp-web serve' to use a browser.",
             file=sys.stderr,
         )
         sys.exit(1)
+    import webview
+
     prepare()
     _, stop_workers = start_workers()
     _, url = start_server()
