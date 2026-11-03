@@ -19,6 +19,8 @@ and a more robust point solver.
   calculation and post notes, through `ccp-web agent` or an MCP server.
 - Point creation converges for every polytropic method and fluid of the
   Evans and Huble case set, and the calculation pipelines are faster.
+- `head_isentropic` / `eff_isentropic` return the exact isentropic head
+  defined by PTC 10 and ISO 5389 instead of a closed-form approximation.
 
 ## Running the application
 
@@ -83,6 +85,18 @@ the Tesseract OCR binary.
 
 ## Bug fixes
 
+- **Exact isentropic head**
+  ([#172](https://github.com/petrobras/ccp/pull/172)) —
+  `ccp.point.head_isentropic` returned Schultz's closed form
+  $\frac{n_s}{n_s-1}(p_2 v_{2s} - p_1 v_1)$ instead of the isentropic
+  enthalpy rise $h(p_2, s_1) - h_1$ that ASME PTC 10-1997 (para. 2.6.2) and
+  ISO 5389 define. The closed form assumes a constant isentropic exponent
+  along the path, which fails for dense or near-critical gases: for CO2 at
+  80 → 250 bar `eff_isentropic` gave 0.800 against an exact 0.779. The
+  difference is negligible for near-ideal gases (0.07 % for N2 at low
+  pressure). `Point`, `f_schultz` and every `head_pol_*` method are not
+  affected.
+
 - **Point solver robustness**
   ([#169](https://github.com/petrobras/ccp/pull/169)) — every discharge
   closure is bracketed by the suction and the isentropic discharge and
@@ -136,6 +150,13 @@ the Tesseract OCR binary.
 - `check_similarity` reports the PTC 10-2022 Reynolds envelope shared with
   `Point.reynolds_limits`, and the unused `phi3` was removed
   ([#169](https://github.com/petrobras/ccp/pull/169)).
+
+- `head_isentropic` and `eff_isentropic` return the exact values; the
+  previous closed form is available as `head_isentropic_pvn` /
+  `eff_isentropic_pvn`. `head_pol` / `eff_pol` (the $pv^n$ closed form
+  without correction) are renamed `head_pol_pvn` / `eff_pol_pvn`; the old
+  names are deprecated aliases that emit a `DeprecationWarning`
+  ([#172](https://github.com/petrobras/ccp/pull/172)).
 
 ## Infrastructure and packaging
 
