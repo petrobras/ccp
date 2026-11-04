@@ -1,5 +1,6 @@
 from pathlib import Path
 from tempfile import tempdir
+from types import SimpleNamespace
 
 import pandas as pd
 import pytest
@@ -268,3 +269,161 @@ def test_wet_cluster_suction_warns_instead_of_raising():
     # The permission travels with the state to the conversion workers.
     _check_single_phase_suction(pickle.loads(pickle.dumps(suc)))
     _check_single_phase_suction(copy.copy(suc))
+
+
+@pytest.mark.filterwarnings("ignore::ccp.state.IdealGasWarning")
+def test_evaluation_ideal_gas(tmp_path):
+    suc = ccp.State(p=Q_(4, "bar"), T=Q_(40, "degC"), fluid=fluid_a, EOS="ideal")
+    imp = ccp.Impeller.load_from_engauge_csv(
+        suc=suc,
+        curve_name="eval-lp-sec1-caso-a",
+        curve_path=data_path,
+        flow_units="m³/h",
+        head_units="kJ/kg",
+        number_of_points=4,
+    )
+    df = pd.read_parquet(data_path / "data.parquet")
+    results = []
+    for parallel in (True, False):
+        ccp.config.PARALLEL = parallel
+        results.append(
+            ccp.Evaluation(
+                data=df,
+                operation_fluid=operation_fluid,
+                data_units=data_units,
+                impellers=[imp],
+                n_clusters=2,
+            )
+        )
+    pool, serial = results
+    assert {p.suc.EOS for i in pool.impellers_new for p in i.points} == {"ideal"}
+    assert {p.disch.EOS for i in pool.impellers_new for p in i.points} == {"ideal"}
+    for column in ("eff", "head", "delta_eff", "expected_p_disch"):
+        assert_allclose(pool.df[column], serial.df[column], rtol=1e-12)
+    path = tmp_path / "evaluation.ccp_eval"
+    pool.save(path)
+    loaded = ccp.Evaluation.load(path)
+    assert {p.suc.EOS for i in loaded.impellers_new for p in i.points} == {"ideal"}
+
+
+def _ideal_gas_v(p, T, fluid):
+    ref = ccp.State(p=Q_(1, "bar"), T=Q_(300, "K"), fluid=fluid, EOS="ideal")
+    R = (ref.gas_constant() / ref.molar_mass()).to("J/kg/K").m
+    return R * Q_(T, "degC").to("K").m / p.to("Pa").m
+
+
+def _ideal_gas_impeller():
+    suc = ccp.State(p=Q_(4, "bar"), T=Q_(40, "degC"), fluid=fluid_a, EOS="ideal")
+    return ccp.Impeller.load_from_engauge_csv(
+        suc=suc,
+        curve_name="eval-lp-sec1-caso-a",
+        curve_path=data_path,
+        flow_units="m³/h",
+        head_units="kJ/kg",
+        number_of_points=4,
+    )
+
+
+@pytest.mark.filterwarnings("ignore::ccp.state.IdealGasWarning")
+@pytest.mark.parametrize(
+    "data_file,tap",
+    [
+        ("data.parquet", None),
+        ("data_delta_p.parquet", "p_downstream"),
+        ("data_delta_p.parquet", "p_upstream"),
+    ],
+)
+def test_evaluation_ideal_gas_values(data_file, tap):
+    imp = _ideal_gas_impeller()
+    df = pd.read_parquet(data_path / data_file)[:100]
+    if tap is None:
+        units, kwargs = data_units, {}
+    else:
+        df = df.rename(columns={"p_downstream": tap})
+        units = {
+            k.replace("p_downstream", tap): v for k, v in delta_p_data_units.items()
+        }
+        kwargs = dict(D=Q_(0.590550, "m"), d=Q_(0.366130, "m"), tappings="flange")
+    res = ccp.Evaluation(
+        data=df,
+        operation_fluid=operation_fluid,
+        data_units=units,
+        impellers=[imp],
+        n_clusters=2,
+        **kwargs,
+    ).df
+    if tap is None:
+        p = Q_(res["ps"].array, "bar")
+    elif tap == "p_upstream":
+        p = Q_(res["p_upstream"].array, "bar")
+    else:
+        # FlowOrifice moves a downstream state to p + delta_p
+        p = Q_(res["p_downstream"].array, "bar") + Q_(res["delta_p"].array, "mmH2O")
+    v_s = _ideal_gas_v(p, res["Ts"].array, operation_fluid)
+    assert_allclose(res["v_s"], v_s, rtol=1e-9)
+    row = res.iloc[0]
+    point = ccp.Point(
+        suc=ccp.State(
+            p=Q_(row.ps, "bar"),
+            T=Q_(row.Ts, "degC"),
+            fluid=operation_fluid,
+            EOS="ideal",
+        ),
+        disch=ccp.State(
+            p=Q_(row.pd, "bar"),
+            T=Q_(row.Td, "degC"),
+            fluid=operation_fluid,
+            EOS="ideal",
+        ),
+        flow_v=Q_(row.flow_v, "m³/s"),
+        speed=Q_(row.speed, "RPM"),
+    )
+    assert_allclose(row["eff"], point.eff.m, rtol=1e-9)
+    assert_allclose(row["head"], point.head.m, rtol=1e-9)
+
+
+@pytest.mark.filterwarnings("ignore::ccp.state.IdealGasWarning")
+def test_evaluation_refuses_mixed_gas_models():
+    imp = _ideal_gas_impeller()
+    real = ccp.Impeller([copy_point_as_real(p) for p in imp.points])
+    with pytest.raises(ValueError, match="different gas models"):
+        ccp.Evaluation(
+            data=pd.read_parquet(data_path / "data.parquet")[:10],
+            operation_fluid=operation_fluid,
+            data_units=data_units,
+            impellers=[imp, real],
+            n_clusters=2,
+        )
+
+
+def copy_point_as_real(point):
+    suc = ccp.State(p=point.suc.p(), T=point.suc.T(), fluid=point.suc.fluid, EOS="HEOS")
+    return ccp.Point(
+        suc=suc,
+        head=point.head,
+        eff=point.eff,
+        flow_v=point.flow_v,
+        speed=point.speed,
+        b=point.b,
+        D=point.D,
+    )
+
+
+def test_evaluation_gas_model_of_operating_data():
+    def evaluation(impellers=None, impellers_new=None):
+        return SimpleNamespace(impellers=impellers, impellers_new=impellers_new)
+
+    def impeller(EOS):
+        fluid = {"Methane": 1.0}
+        suc = ccp.State(p=1e5, T=300.0, fluid=fluid, EOS=EOS)
+        return SimpleNamespace(points=[SimpleNamespace(suc=suc)])
+
+    get_eos = ccp.Evaluation._EOS.fget
+    # a real-gas impeller keeps the default model for the operating data
+    ccp.config.EOS = "HEOS"
+    assert get_eos(evaluation([impeller("PR")])) == "HEOS"
+    # a loaded evaluation may only have the converted impellers
+    with pytest.warns(ccp.state.IdealGasWarning):
+        ideal = impeller("ideal:k=1.3")
+    assert get_eos(evaluation([ideal])) == "ideal:k=1.3"
+    assert get_eos(evaluation(None, [ideal])) == "ideal:k=1.3"

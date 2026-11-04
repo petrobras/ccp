@@ -15,7 +15,7 @@ from ccp.data_io.serializers import Serializable
 from ccp.roots import solve_monotone
 
 from . import similarity
-from .state import State
+from .state import State, _default_real_eos, _IdealGasState
 
 
 class PhaseWarning(UserWarning):
@@ -47,6 +47,27 @@ def _check_single_phase_suction(suc):
             "The suction state lies at or inside the phase envelope (vapour "
             f"quality {quality:.4g}); a compressor point needs a single-phase "
             f"suction. Suction: {suc!r}"
+        )
+
+
+def _check_same_gas_model(suc, disch):
+    """Raise ``ValueError`` when an ideal gas state is paired with another model."""
+    if suc.EOS != disch.EOS and (
+        isinstance(suc, _IdealGasState) or isinstance(disch, _IdealGasState)
+    ):
+        raise ValueError(
+            f"suc (EOS={suc.EOS!r}) and disch (EOS={disch.EOS!r}) use different gas "
+            "models: their enthalpy and entropy differences are meaningless."
+        )
+
+
+def _check_one_gas_model(points):
+    """Raise ``ValueError`` when ideal gas points are mixed with another model."""
+    models = {point.suc.EOS for point in points}
+    if len(models) > 1 and any(isinstance(p.suc, _IdealGasState) for p in points):
+        raise ValueError(
+            f"Points with different gas models {sorted(models)}: an ideal gas "
+            "cannot be combined with another model."
         )
 
 
@@ -301,6 +322,8 @@ class Point(Serializable):
 
         if self.suc is not None:
             _check_single_phase_suction(self.suc)
+            if self.disch is not None:
+                _check_same_gas_model(self.suc, self.disch)
 
         # The point is computed by a constraint-propagation solver: given any
         # sufficient subset of the arguments above, it fills in the rest (see
@@ -674,6 +697,8 @@ class Point(Serializable):
             volume_ratio_ratio=str(self.volume_ratio_ratio),
             extrapolated=str(self._extrapolated),
         )
+        if isinstance(self.suc, _IdealGasState):
+            dict_to_save["EOS"] = self.suc.EOS
         if getattr(self, "_disch_defined", False):
             del dict_to_save["head"], dict_to_save["eff"]
             dict_to_save["disch_p"] = str(self.disch.p())
@@ -717,6 +742,8 @@ class Point(Serializable):
             p=Q_(dict_parameters.pop("p")),
             T=Q_(dict_parameters.pop("T")),
             fluid=dict_parameters.pop("fluid"),
+            # only ideal gas points store an EOS: anything else is a real gas
+            EOS=dict_parameters.pop("EOS", None) or _default_real_eos(),
             phase=phase,
         )
         extrapolated = dict_parameters.pop("extrapolated", False)

@@ -232,7 +232,9 @@ class StraightThrough(Impeller):
             point.Ts1r = Ts1r
             k_end = k_seal(flow_m=mend, state_up=point.disch, state_down=point.suc)
             self.k_end_seal.append(k_end)
-            suc_rotor = State(p=point.suc.p(), T=point.Ts1r, fluid=point.suc.fluid)
+            suc_rotor = State(
+                p=point.suc.p(), T=point.Ts1r, fluid=point.suc.fluid, EOS=point.suc.EOS
+            )
 
             # calculate power losses
             if bearing_mechanical_losses:
@@ -638,6 +640,7 @@ class PointFirstSection(Point):
             p=self.end_seal_upstream_pressure,
             T=self.end_seal_upstream_temperature,
             fluid=self.suc.fluid,
+            EOS=self.suc.EOS,
         )
         self.end_seal_downstream_state = copy(self.suc)
         self.end_seal_downstream_state.update(
@@ -648,6 +651,7 @@ class PointFirstSection(Point):
             p=self.div_wall_upstream_pressure,
             T=self.div_wall_upstream_temperature,
             fluid=self.suc.fluid,
+            EOS=self.suc.EOS,
         )
         self.div_wall_downstream_state = copy(self.disch)
         self.div_wall_downstream_state.update(
@@ -805,8 +809,12 @@ class BackToBack(Impeller):
                     ms1f_t * Ts1f_t + mend_t * Tend_t + 0.95 * mseal_t * Tseal_t
                 ) / (ms1f_t + mend_t + 0.95 * mseal_t)
                 Td1r_t = (md1f_t * Td1f_t - mdiv_t * Tdiv_t) / (md1f_t - mdiv_t)
-                suc_sec1_rotor_t = State(p=ps1f_t, T=Ts1r_t, fluid=point.suc.fluid)
-                disch_sec1_rotor_t = State(p=pd1f_t, T=Td1r_t, fluid=point.suc.fluid)
+                suc_sec1_rotor_t = State(
+                    p=ps1f_t, T=Ts1r_t, fluid=point.suc.fluid, EOS=point.suc.EOS
+                )
+                disch_sec1_rotor_t = State(
+                    p=pd1f_t, T=Td1r_t, fluid=point.suc.fluid, EOS=point.suc.EOS
+                )
 
                 test_points_sec1_rotor[i] = Point(
                     suc=suc_sec1_rotor_t,
@@ -908,8 +916,12 @@ class BackToBack(Impeller):
                 ) / (ms1f_t + mend_t + 0.95 * mseal_t)
                 Td1r_t = (md1f_t * Td1f_t - mdiv_t * Tdiv_t) / (md1f_t - mdiv_t)
 
-                suc_sec1_rotor_t = State(p=ps1f_t, T=Ts1r_t, fluid=point.suc.fluid)
-                disch_sec1_rotor_t = State(p=pd1f_t, T=Td1r_t, fluid=point.suc.fluid)
+                suc_sec1_rotor_t = State(
+                    p=ps1f_t, T=Ts1r_t, fluid=point.suc.fluid, EOS=point.suc.EOS
+                )
+                disch_sec1_rotor_t = State(
+                    p=pd1f_t, T=Td1r_t, fluid=point.suc.fluid, EOS=point.suc.EOS
+                )
 
                 test_points_sec1_rotor[i] = Point(
                     suc=suc_sec1_rotor_t,
@@ -1002,6 +1014,7 @@ class BackToBack(Impeller):
                 p=initial_point.disch.p(),
                 T=guarantee_point_sec2.suc.T(),
                 fluid=initial_point.suc.fluid,
+                EOS=initial_point.suc.EOS,
             )
             end_seal_state_downstream_sp = copy(initial_point.disch)
             end_seal_state_downstream_sp.update(
@@ -1050,6 +1063,7 @@ class BackToBack(Impeller):
                 p=guarantee_point_sec1.suc.p(),
                 T=Ts1r_sp,
                 fluid=guarantee_point_sec1.suc.fluid,
+                EOS=guarantee_point_sec1.suc.EOS,
             )
             point_r_sp = Point.convert_from(
                 original_point=point,
@@ -1080,6 +1094,7 @@ class BackToBack(Impeller):
             p=ps2f_sp,
             T=guarantee_point_sec2.suc.T(),
             fluid=guarantee_point_sec2.suc.fluid,
+            EOS=guarantee_point_sec2.suc.EOS,
         )
         for point_r_t in self.points_rotor_t_sec2:
             point_r_sp = Point.convert_from(
@@ -1125,6 +1140,7 @@ class BackToBack(Impeller):
                 p=point_r_sp.disch.p(),
                 T=guarantee_point_sec2.suc.T(),
                 fluid=guarantee_point_sec2.suc.fluid,
+                EOS=guarantee_point_sec2.suc.EOS,
             )
             imp_sec2_conv = self.imp_flange_sp_sec2
             imp_sec2_flow_m = point_r_sp.flow_m
@@ -1151,7 +1167,10 @@ class BackToBack(Impeller):
             Td1r_sp = point_r_sp.disch.T()
             Td1f_sp = (ms1r_sp * Td1r_sp + mdiv_sp * Tdiv_sp) / (ms1r_sp + mdiv_sp)
             disch_f = ccp.State(
-                p=point_r_sp.disch.p(), T=Td1f_sp, fluid=guarantee_point_sec1.suc.fluid
+                p=point_r_sp.disch.p(),
+                T=Td1f_sp,
+                fluid=guarantee_point_sec1.suc.fluid,
+                EOS=guarantee_point_sec1.suc.EOS,
             )
             point_flange = Point(
                 suc=guarantee_point_sec1.suc,
@@ -1256,6 +1275,7 @@ class BackToBack(Impeller):
             p=ps2f_sp,
             T=self.guarantee_point_sec2.suc.T(),
             fluid=self.guarantee_point_sec2.suc.fluid,
+            EOS=self.guarantee_point_sec2.suc.EOS,
         )
         end_seal_flow_m_sp = flow_m_seal(
             k_seal=self.k_end_seal_mean,

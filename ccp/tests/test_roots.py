@@ -17,6 +17,12 @@ def counting(f):
     return inner
 
 
+def test_residual_outside_the_interval_is_not_reused():
+    # the small residual belongs to x0 = 20, not to the clamped end at 10
+    with pytest.raises(ValueError, match="no root"):
+        solve_monotone(lambda x: x - 20, 20.0, 1.0, 10.0, f0=1e-9, x1=20.0, name="x")
+
+
 def test_secant_from_good_guess_is_cheap():
     f = counting(lambda x: x**3 - 2.0)
     root = 2.0 ** (1 / 3)

@@ -7,6 +7,7 @@ import pandas as pd
 
 from ccp import Q_, ureg, Point
 from ccp.data_io.serializers import Serializable
+from ccp.point import _check_one_gas_model
 
 
 class StateParameter:
@@ -364,6 +365,7 @@ class Curve(Serializable):
     def __init__(self, points, extrapolated=False):
         if len(points) < 2:
             raise TypeError("At least 2 points should be given.")
+        _check_one_gas_model(points)
         self.points = sorted(points, key=lambda p: p.flow_v)
         # if curve was extrapolated from two other curves extrapolated is true
         self._extrapolated = extrapolated
