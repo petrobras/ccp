@@ -21,7 +21,7 @@ suc = ccp.State(fluid=fluid, p=Q_(3, "bar"), T=300)
 - `fluid` (dict, required keyword): component name → mole fraction. Fractions are normalized automatically, so percentages (summing to 100) work as well.
 - Any **two** of `p`, `T`, `h`, `s`, `rho` define the state (e.g. `ccp.State(fluid=fluid, h=..., s=...)` for an isentropic discharge).
 - Plain floats are SI: `T=300` means 300 K, `p=101325` means Pa. Use `Q_` for anything else: `T=Q_(40, "degC")`, `p=Q_(30, "bar")`.
-- `EOS` (str, optional): `"REFPROP"` (default when available), `"HEOS"` (CoolProp), `"PR"` or `"SRK"`. The global default is `ccp.config.EOS`; ccp automatically falls back to `"HEOS"` when REFPROP is not installed.
+- `EOS` (str, optional): `"REFPROP"` (default when available), `"HEOS"` (CoolProp), `"PR"`, `"SRK"`, or the ideal gas models `"ideal"` and `"ideal:k=<k>"` (only to replicate studies that assume ideal gas behavior; real-gas models are much more accurate). The global default is `ccp.config.EOS`; ccp automatically falls back to `"HEOS"` when REFPROP is not installed. A state's EOS is fixed when it is built: changing `ccp.config.EOS` only affects new states.
 - `phase` (str, None or False, optional): declaring `"gas"`, `"liquid"`, `"supercritical"`, etc. imposes that phase on every flash. Left as `None` (the default), ccp determines the phase once with an unconstrained flash and then imposes `ccp.config.DEFAULT_PHASE` (`"gas"`) if that reproduces the resolved density; states derived from it by the point solvers inherit the imposed phase, which is what makes point creation and map conversion fast. Two-phase, liquid and dense states that fail the check stay unconstrained. One exception: REFPROP occasionally reports a spurious two-phase flash for dense CO2-rich mixtures outside the envelope (a vanishing quality and two "phases" of the same density); ccp recognises the artifact and imposes the phase, which is also what CoolProp HEOS resolves there. `phase=False` never imposes a phase on that state (legacy behaviour); `ccp.config.DEFAULT_PHASE = None` disables the policy globally.
 - A general `state.update(p=..., h=...)` (or `(p, s)`, `(h, s)`) is an equilibrium flash even under an imposed phase, so a state throttled into the phase envelope resolves to the two-phase state; only the discharge closures inside `Point` solve single phase.
 
@@ -51,6 +51,8 @@ suc.p_critical(), suc.T_critical()
 ```
 
 Take the magnitude with `.m` or `.magnitude`: `suc.rho().m`.
+
+On ideal gas states, `p_critical`, `T_critical`, `conductivity`, `plot_envelope` and the raw CoolProp methods (`hmass`, `first_partial_deriv`, ...) raise `NotImplementedError`: an ideal gas has no critical point or phase envelope.
 
 ## Update a state in place
 

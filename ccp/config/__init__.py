@@ -1,5 +1,5 @@
 POLYTROPIC_METHOD = "sandberg_colby"
-EOS = "REFPROP"
+EOS = "REFPROP"  # also "HEOS", "PR", "SRK", "ideal" or "ideal:k=<k>" (see ccp.State)
 
 # Phase imposed on states built without an explicit phase, after a one-off
 # unconstrained flash confirms the state is single phase there (see

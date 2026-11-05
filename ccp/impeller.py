@@ -18,6 +18,7 @@ from ccp.config.utilities import r_getattr, r_setattr
 from ccp.data_io.read_csv import read_data_from_engauge_csv
 from ccp.data_io.serializers import Serializable
 from ccp.parallel import create_pool
+from ccp.point import _check_one_gas_model
 from ccp.plotly_theme import tableau_colors
 from ccp.surrogate import convert_from_gp_surrogate
 
@@ -350,6 +351,7 @@ class Impeller(Serializable):
         # points are not mutated after construction, so they are shared rather
         # than deep-copied (a deep copy re-flashes every state they hold)
         points_init = list(points)
+        _check_one_gas_model(points_init)
 
         losses_dict = {p.power_losses: p.speed for p in points_init}
         max_losses = max(losses_dict.keys())

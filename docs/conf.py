@@ -140,6 +140,7 @@ myst_enable_extensions = [
     "html_image",
     "linkify",
     "colon_fence",
+    "deflist",
 ]
 
 mathjax_path = "https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.5/MathJax.js?config=TeX-AMS-MML_HTMLorMML"

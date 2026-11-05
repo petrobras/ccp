@@ -1601,3 +1601,54 @@ def test_back_to_back_no_leakage(back_to_back_no_leakage):
     assert_allclose(p0f_sp.eff, 0.39, rtol=1e-4)
     # power in this case is the 'real' power consumed by the rotor
     assert_allclose(p0f_sp.power, 4164603.266245641, 1e-4)
+
+
+ccp_State = State
+
+
+def _all_states(obj, seen=None, depth=0):
+    """Every ccp.State reachable from the attributes of a ccp object."""
+    seen = set() if seen is None else seen
+    if id(obj) in seen or depth > 8:
+        return []
+    seen.add(id(obj))
+    if isinstance(obj, ccp_State):
+        return [obj]
+    if isinstance(obj, (list, tuple, set)):
+        children = list(obj)
+    elif isinstance(obj, dict):
+        children = list(obj.values())
+    elif type(obj).__module__.startswith("ccp"):
+        children = list(getattr(obj, "__dict__", {}).values())
+    else:
+        return []
+    return [s for child in children for s in _all_states(child, seen, depth + 1)]
+
+
+@pytest.mark.filterwarnings("ignore::ccp.state.IdealGasWarning")
+def test_ideal_gas_reaches_every_state(monkeypatch):
+    monkeypatch.setitem(
+        globals(), "State", lambda **kwargs: ccp_State(**{**kwargs, "EOS": "ideal"})
+    )
+    # transient states are not reachable from the compressor attributes
+    built = set()
+    state_init = ccp_State.__init__
+
+    def recording_init(self, *args, **kwargs):
+        state_init(self, *args, **kwargs)
+        built.add(self.EOS)
+
+    monkeypatch.setattr(ccp_State, "__init__", recording_init)
+    st = straight_through.__wrapped__()
+    b2b_args = back_to_back.__wrapped__()
+    b2b = BackToBack(**b2b_args)
+    for compressor in (st, b2b):
+        states = _all_states(compressor)
+        assert len(states) > 40
+        assert {s.EOS for s in states} == {"ideal"}
+        reloaded = type(compressor).from_dict(compressor.to_dict())
+        assert {s.EOS for s in _all_states(reloaded)} == {"ideal"}
+    point = b2b.point_sec1(flow_m=Q_(8, "kg/s"), speed=Q_(9000, "RPM"))
+    assert {s.EOS for s in _all_states(point)} == {"ideal"}
+    b2b.point_sec2(flow_m=Q_(8, "kg/s"), speed=Q_(9000, "RPM"))
+    assert built == {"ideal"}

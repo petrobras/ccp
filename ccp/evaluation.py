@@ -6,12 +6,12 @@ import numpy as np
 import pandas as pd
 import pickle
 from .data_io import filter_data
-from .state import State
-from .point import Point, PhaseWarning
+from .state import State, _IdealGasState
+from .point import Point, PhaseWarning, _check_one_gas_model
 from .fo import FlowOrifice
 from .impeller import Impeller
 from .parallel import create_pool
-from . import Q_
+from . import Q_, config
 from sklearn.cluster import KMeans
 from tqdm.auto import tqdm
 import warnings
@@ -150,6 +150,8 @@ class Evaluation:
         self.pressure_fluctuation = pressure_fluctuation
         self.speed_fluctuation = speed_fluctuation
         self.impellers = impellers
+        if impellers:
+            _check_one_gas_model([imp.points[0] for imp in impellers])
         self.D = D
         self.d = d
         self.tappings = tappings
@@ -248,6 +250,7 @@ class Evaluation:
                     "pd": Q_(row.pd, self.data_units["pd"]),
                     "Td": Q_(row.Td, self.data_units["Td"]),
                     "fluid": fluid,
+                    "EOS": self._EOS,
                     "cluster": int(row.cluster),
                     "valid": True,
                 }
@@ -572,12 +575,19 @@ class Evaluation:
                 p=Q_(cluster_series.ps_center, self.data_units["ps"]),
                 T=Q_(cluster_series.Ts_center, self.data_units["Ts"]),
                 fluid=fluid,
+                EOS=self._EOS,
             )
             _allow_wet_cluster_suction(suc_new, i)
             imp_new = Impeller.convert_from(self.impellers, suc=suc_new, speed="same")
             self.impellers_new.append(imp_new)
 
         self.df = df
+
+    @property
+    def _EOS(self):
+        """Model of the operating data: ideal if the impellers are, else the default."""
+        suc = (self.impellers or self.impellers_new)[0].points[0].suc
+        return suc.EOS if isinstance(suc, _IdealGasState) else config.EOS
 
     def calculate_flow(self, data=None):
         df = data
@@ -607,6 +617,7 @@ class Evaluation:
                             p=Q_(row.p_downstream, self.data_units["p_downstream"]),
                             T=Q_(row.Ts, self.data_units["Ts"]),
                             fluid=fluid,
+                            EOS=self._EOS,
                         )
                     elif "p_upstream" in df.columns:
                         state_upstream = True
@@ -614,6 +625,7 @@ class Evaluation:
                             p=Q_(row.p_upstream, self.data_units["p_upstream"]),
                             T=Q_(row.Ts, self.data_units["Ts"]),
                             fluid=fluid,
+                            EOS=self._EOS,
                         )
                     else:
                         raise ValueError(
@@ -636,6 +648,7 @@ class Evaluation:
                         p=Q_(row.ps, self.data_units["ps"]),
                         T=Q_(row.Ts, self.data_units["Ts"]),
                         fluid=fluid,
+                        EOS=self._EOS,
                     )
             except ValueError:
                 # NaN or out-of-range inputs (e.g. sensor dropouts): mark the row
@@ -863,8 +876,8 @@ def calculate_evaluation_point(x):
     if not x.get("valid", True):
         return result
     try:
-        suc = State(p=x["ps"], T=x["Ts"], fluid=x["fluid"])
-        disch = State(p=x["pd"], T=x["Td"], fluid=x["fluid"])
+        suc = State(p=x["ps"], T=x["Ts"], fluid=x["fluid"], EOS=x["EOS"])
+        disch = State(p=x["pd"], T=x["Td"], fluid=x["fluid"], EOS=x["EOS"])
     except ValueError:
         result["invalid_state"] = True
         return result

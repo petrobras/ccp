@@ -13,6 +13,7 @@
 - The `fluid` dict uses **mole fractions** and is normalized automatically (percentages work). Repeated aliases that resolve to the same component (e.g. `"butane"` and `"n-butane"`) raise an error.
 - Creating a `State` requires keyword arguments, including `fluid=`.
 - Without REFPROP installed, ccp warns and falls back to CoolProp's `HEOS` backend — same API, slightly different property values. `ccp.config.EOS` controls the default.
+- `EOS="ideal"` (Z = 1, cp(T)) and `EOS="ideal:k=1.4"` (Z = 1, constant k) are for replicating ideal gas studies only, never for real analyses. The default polytropic method (`sandberg_colby`) does not reproduce the closed-form polytropic head: use `polytropic_method="huntington"` (exact for both models), or `"schultz"` or `"mallen_saville"` (exact for constant k only); the argument applies only to that point, so set `ccp.config.POLYTROPIC_METHOD` as well for maps and conversions. A state's EOS is fixed when it is built, and `ccp.config.EOS` only sets the default for new states.
 
 ## Points and impellers
 

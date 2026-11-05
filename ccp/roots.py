@@ -74,10 +74,11 @@ def solve_monotone(
     evals = 0
 
     known = {}
-    if f0 is not None:
-        known[min(max(x0, lo), hi)] = f0
-    if f1 is not None and x1 is not None:
-        known[min(max(x1, lo), hi)] = f1
+    # a residual known outside the interval says nothing about the clamped end
+    if f0 is not None and lo <= x0 <= hi:
+        known[x0] = f0
+    if f1 is not None and x1 is not None and lo <= x1 <= hi:
+        known[x1] = f1
 
     def g(x):
         # residual with the sign normalised so that g increases with x

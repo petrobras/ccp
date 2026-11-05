@@ -1,6 +1,10 @@
+import math
+import threading
 from contextlib import contextmanager
 from copy import copy
+from functools import lru_cache
 from itertools import combinations
+from multiprocessing import parent_process
 from warnings import warn
 
 import CoolProp.CoolProp as CP
@@ -13,6 +17,7 @@ import ccp.config
 from . import _RP, Q_
 from .config.fluids import get_name, normalize_mix
 from .config.units import check_units
+from .roots import solve_monotone
 
 
 class State(CP.AbstractState):
@@ -40,7 +45,7 @@ class State(CP.AbstractState):
         Dictionary with constituent and composition (mole fraction).
         (e.g.: fluid={'Oxygen': 0.2096, 'Nitrogen': 0.7812, 'Argon': 0.0092})
     EOS : str, optional
-        String with REFPROP, HEOS, PR or SRK.
+        String with REFPROP, HEOS, PR, SRK, ideal or ideal:k=<k>.
         Default is set in ccp.config.EOS
     phase : str, None or False, optional
         String with phase information.
@@ -68,6 +73,13 @@ class State(CP.AbstractState):
     Returns
     -------
     state : ccp.State
+
+    Warnings
+    --------
+    ``EOS="ideal"`` (Z = 1, cp(T) from the ideal-gas part of each component) and
+    ``EOS="ideal:k=<k>"`` (Z = 1, constant k) only exist to replicate studies that
+    assume ideal gas behavior. REFPROP or another real-gas EOS is much more
+    accurate and should be preferred for real analyses.
 
     Examples
     --------
@@ -133,6 +145,10 @@ class State(CP.AbstractState):
             # Re-raise with the original error message from get_name
             raise e
 
+        if EOS.lower().startswith("ideal"):
+            # the model never reads its backend: IF97 is the cheapest to build
+            return super().__new__(_IdealGasState, "IF97", "Water")
+
         try:
             state = super().__new__(cls, EOS, _fluid)
         except ValueError:
@@ -161,7 +177,7 @@ class State(CP.AbstractState):
     ):
         # no call to super(). see :
         # http://stackoverflow.com/questions/18260095/
-        self.EOS = EOS
+        self.EOS = EOS if EOS is not None else ccp.config.EOS
         # phase policy: None -> impose ccp.config.DEFAULT_PHASE when it is
         # confirmed by the first (unconstrained) flash; False -> never impose
         # (kept as False so that derived states, copies and serialised points
@@ -909,6 +925,11 @@ class State(CP.AbstractState):
 
     @staticmethod
     def _rebuild(cls, kwargs, phase_auto=False, allow_two_phase_suction=False):
+        EOS = kwargs.get("EOS")
+        if EOS is None:
+            kwargs = {**kwargs, "EOS": _default_real_eos()}
+        elif EOS == "REFPROP" and not ccp.REFPROP_AVAILABLE:
+            kwargs = {**kwargs, "EOS": "HEOS"}
         state = cls(**kwargs)
         state._phase_auto = phase_auto
         state._allow_two_phase_suction = allow_two_phase_suction
@@ -948,7 +969,7 @@ class State(CP.AbstractState):
         fluid : dict
             Dictionary with constituent and composition.
             (e.g.: fluid={'Oxygen': 0.2096, 'Nitrogen': 0.7812, 'Argon': 0.0092})
-            String with REFPROP, HEOS, PR or SRK.
+            String with REFPROP, HEOS, PR, SRK, ideal or ideal:k=<k>.
             Default is set in ccp.config.EOS
 
         Returns
@@ -1365,3 +1386,334 @@ class State(CP.AbstractState):
         )
 
         return fig
+
+
+class IdealGasWarning(UserWarning):
+    """A state uses the ideal gas model (``EOS="ideal"``).
+
+    The model exists only to replicate studies that assume ideal gas behavior.
+    Silence it with
+    ``warnings.filterwarnings("ignore", category=ccp.state.IdealGasWarning)``.
+    """
+
+
+_R_MOLAR = Q_(1, "molar_gas_constant").to("joule/(mol kelvin)").m
+_P_REF = Q_(1, "atm").to("pascal").m
+_T_REF = Q_(25, "degC").to("kelvin").m
+_P_DILUTE = Q_(1, "pascal").m  # dilute-gas limit of the viscosity correlations
+_T_BOUNDS = (1.0, 1e5)  # search interval of the temperature inversions, K
+_K_PREFIX = "ideal:k="
+
+_thread_data = threading.local()
+
+
+def _parse_ideal_eos(EOS):
+    """Return the canonical string and the constant k (or None) of an ideal EOS."""
+    if EOS == "ideal":
+        return EOS, None
+    if EOS.startswith(_K_PREFIX):
+        try:
+            k = float(EOS[len(_K_PREFIX) :])
+        except ValueError:
+            k = math.nan
+        if 1.0 < k < math.inf:
+            return f"{_K_PREFIX}{k!r}", k
+    raise ValueError(
+        f"Invalid EOS {EOS!r}: use 'ideal' or 'ideal:k=<value>' with a finite k > 1."
+    )
+
+
+def _default_real_eos():
+    """EOS of data saved without one, which always holds a real-gas model."""
+    if ccp.config.EOS.lower().startswith("ideal"):
+        return "REFPROP" if ccp.REFPROP_AVAILABLE else "HEOS"
+    return ccp.config.EOS
+
+
+def _pure_source(name, backend):
+    """Pure-component CoolProp backend, cached per thread because it is stateful."""
+    sources = vars(_thread_data).setdefault("sources", {})
+    source = sources.get((backend, name))
+    if source is None:
+        source = CP.AbstractState(backend, name)
+        source.specify_phase(CP.iphase_gas)
+        sources[(backend, name)] = source
+    return source
+
+
+@lru_cache(maxsize=None)
+def _ideal_part_backend(name):
+    """HEOS when it has the fluid, so results do not depend on REFPROP being there."""
+    try:
+        _pure_source(name, "HEOS")
+    except ValueError:
+        if not ccp.REFPROP_AVAILABLE:
+            raise ValueError(
+                f"{name} needs REFPROP with EOS='ideal' and REFPROP is not installed."
+            ) from None
+        return "REFPROP"
+    return "HEOS"
+
+
+def _dilute_viscosity(name, T):
+    """Viscosity of a pure component at 1 Pa (Pa.s), NaN if no backend has a model."""
+    backends = ("HEOS", "REFPROP") if ccp.REFPROP_AVAILABLE else ("HEOS",)
+    for backend in backends:
+        try:
+            source = _pure_source(name, backend)
+            source.update(CP.DmolarT_INPUTS, _P_DILUTE / (_R_MOLAR * T), T)
+            viscosity = source.viscosity()
+        except ValueError:
+            continue
+        if viscosity > 0.0:
+            return viscosity
+    return math.nan
+
+
+def _check_ideal_phase(phase):
+    if phase not in (None, False, "gas"):
+        raise ValueError(
+            f"phase={phase!r} is not available with EOS='ideal': an ideal gas has a "
+            "single gas phase."
+        )
+
+
+def _stored(attribute, unit):
+    """Accessor of a value stored by :meth:`_IdealGasState.update`."""
+
+    def accessor(self, units=None):
+        quantity = Q_(getattr(self, attribute), unit)
+        return quantity.to(units) if units else quantity
+
+    return accessor
+
+
+class _IdealGasState(State):
+    """State of an ideal gas, built by ``ccp.State(..., EOS="ideal")``.
+
+    p = rho R T with R = R_molar / M and Z = 1. See :class:`ccp.State`.
+
+    The Cython base class needs a backend, but the carrier selected in
+    ``State.__new__`` is never updated or read: every value is computed in
+    :meth:`update`. CoolProp methods this class does not implement raise
+    NotImplementedError (see the loop after the class).
+
+    Examples
+    --------
+    >>> import ccp
+    >>> s = ccp.State(p=1e5, T=300, fluid={"Nitrogen": 1}, EOS="ideal:k=1.4")
+    >>> f"{s.z().m:.3f} {s.rho().m:.4f} {s.kv().m:.3f}"
+    '1.000 1.1231 1.400'
+    """
+
+    _T = 300.0  # initial guess of the first temperature inversion
+    _z = 1.0
+    _R_molar = _R_MOLAR
+
+    p = _stored("_p", "pascal")
+    T = _stored("_T", "kelvin")
+    rho = _stored("_rho", "kilogram/m**3")
+    h = _stored("_h", "joule/kilogram")
+    s = _stored("_s", "joule/(kelvin kilogram)")
+    cp = _stored("_cp", "joule/(kilogram kelvin)")
+    cv = _stored("_cv", "joule/(kilogram kelvin)")
+    z = _stored("_z", "dimensionless")
+    gas_constant = _stored("_R_molar", "joule/(mol kelvin)")
+    molar_mass = _stored("_M", "kg/mol")
+    speed_sound = _stored("_speed_sound", "m/s")
+    dpdv_s = _stored("_dpdv_s", "pascal*kg/m**3")
+    dTdp_s = _stored("_dTdp_s", "kelvin/pascal")
+
+    def __init__(
+        self, p=None, T=None, h=None, s=None, rho=None, fluid=None, EOS=None, phase=None
+    ):
+        EOS, self._k = _parse_ideal_eos(ccp.config.EOS if EOS is None else EOS)
+        _check_ideal_phase(phase)
+        # the parent process has already warned: workers would only add noise
+        if parent_process() is None:
+            warn(
+                "EOS='ideal' assumes Z = 1 and only exists to replicate studies based "
+                "on ideal gas behavior. REFPROP (or another real-gas EOS) is much more "
+                "accurate and should be preferred for real analyses.",
+                IdealGasWarning,
+            )
+        super().__init__(p=p, T=T, h=h, s=s, rho=rho, fluid=fluid, EOS=EOS, phase="gas")
+
+    def set_mole_fractions(self, fractions):
+        """Set up the model. Called once, by ``State.__init__``."""
+        names = self._fluid.split("&")
+        if min(fractions) < 0.0:
+            raise ValueError(f"Negative mole fraction in {dict(zip(names, fractions))}")
+        self._components = [
+            (name, x, _ideal_part_backend(name))
+            for name, x in zip(names, fractions)
+            if x > 0.0
+        ]
+        self._M = sum(
+            x * _pure_source(name, backend).molar_mass()
+            for name, x, backend in self._components
+        )
+        self._R = _R_MOLAR / self._M
+        self._s_mix = -_R_MOLAR * sum(x * math.log(x) for _, x, _ in self._components)
+
+    def specify_phase(self, phase_index):
+        if phase_index != CP.iphase_gas:
+            raise ValueError("An ideal gas has a single gas phase.")
+
+    def phase_is_stable(self):
+        """Return True: an ideal gas has no other phase."""
+        return True
+
+    def Q(self):
+        """Return -1, the value CoolProp reports for a single phase."""
+        return -1.0
+
+    def _ideal_part(self, T):
+        """Return cp, h and s at T and _P_REF, all per unit of mass."""
+        if self._k is not None:
+            cp = self._k * self._R / (self._k - 1.0)
+            return cp, cp * (T - _T_REF), cp * math.log(T / _T_REF)
+        rho = _P_REF / (_R_MOLAR * T)
+        cp = h = s = 0.0
+        for name, x, backend in self._components:
+            source = _pure_source(name, backend)
+            source.update(CP.DmolarT_INPUTS, rho, T)
+            cp += x * source.cp0molar()
+            h += x * source.hmolar_idealgas()
+            s += x * source.smolar_idealgas()
+        cp, h, s = cp / self._M, h / self._M, (s + self._s_mix) / self._M
+        if not (cp > self._R and math.isfinite(h) and math.isfinite(s)):
+            raise ValueError(f"The ideal-gas heat capacity is not valid at T={T} K.")
+        return cp, h, s
+
+    def _solve_T(self, residual):
+        return solve_monotone(residual, self._T, *_T_BOUNDS, rtol=1e-12, name="T")
+
+    def _T_from_h(self, h):
+        return self._solve_T(lambda T: self._ideal_part(T)[1] - h)
+
+    def _p_from_T_s(self, T, s):
+        return _P_REF * math.exp((self._ideal_part(T)[2] - s) / self._R)
+
+    def _flash(self, p=None, T=None, rho=None, h=None, s=None):
+        """Return (p, T) from any pair of inputs, in the order of State.update."""
+        R = self._R
+        if p is not None and T is not None:
+            pass
+        elif p is not None and rho is not None:
+            T = p / (rho * R)
+        elif p is not None and h is not None:
+            T = self._T_from_h(h)
+        elif p is not None and s is not None:
+            s_p = s + R * math.log(p / _P_REF)
+            T = self._solve_T(lambda T: self._ideal_part(T)[2] - s_p)
+        elif rho is not None and s is not None:
+            T = self._solve_T(
+                lambda T: (
+                    self._ideal_part(T)[2] - R * math.log(rho * R * T / _P_REF) - s
+                )
+            )
+            p = rho * R * T
+        elif rho is not None and T is not None:
+            p = rho * R * T
+        elif h is not None and s is not None:
+            T = self._T_from_h(h)
+            p = self._p_from_T_s(T, s)
+        elif T is not None and s is not None:
+            p = self._p_from_T_s(T, s)
+        elif T is not None and h is not None:
+            raise ValueError(
+                "h of an ideal gas depends on T only: (T, h) does not define a state."
+            )
+        return p, T
+
+    @check_units
+    def update(self, p=None, T=None, rho=None, h=None, s=None, phase=None, **kwargs):
+        """Update the state. See :meth:`State.update`.
+
+        (T, h) raises ValueError since h depends on T only.
+        """
+        _check_ideal_phase(phase)
+        given = {
+            k: float(v.m)
+            for k, v in dict(p=p, T=T, rho=rho, h=h, s=s).items()
+            if v is not None
+        }
+        if len(given) < 2 or set(given) == {"rho", "h"}:
+            raise KeyError(f"Update key {list(given)} not implemented")
+        try:
+            for k, v in given.items():
+                if not (math.isfinite(v) and (k in ("h", "s") or v > 0.0)):
+                    raise ValueError(f"invalid input {k}={v}")
+            p_new, T_new = self._flash(**given)
+            cp_new, h_new, s0_new = self._ideal_part(T_new)
+            rho_new = p_new / (self._R * T_new)
+            if not (0.0 < p_new < math.inf and 0.0 < rho_new < math.inf):
+                raise ValueError(f"out of range: p={p_new} Pa, T={T_new} K")
+        except (ValueError, OverflowError) as exc:
+            raise ValueError(
+                f"Could not define state with ccp.State(**{given}, "
+                f"fluid={self.fluid}, EOS={self.EOS!r}): {exc}"
+            ) from exc
+        k = cp_new / (cp_new - self._R)
+        self._p, self._T, self._rho = p_new, T_new, rho_new
+        self._h, self._s = h_new, s0_new - self._R * math.log(p_new / _P_REF)
+        self._cp, self._cv = cp_new, cp_new - self._R
+        self._speed_sound = math.sqrt(k * self._R * T_new)
+        self._dpdv_s = -k * p_new * rho_new
+        self._dTdp_s = self._R * T_new / (cp_new * p_new)
+
+    def viscosity(self, units=None):
+        """Dilute-gas viscosity at the state temperature (pascal second).
+
+        Pure-component values at 1 Pa mixed with the Herning-Zipperer rule. NaN,
+        with a warning, when a component has no viscosity model: the Reynolds
+        number of a point is then NaN and the rest of the point is unaffected,
+        unless a Reynolds correction is requested, which then fails to converge.
+        """
+        num = den = 0.0
+        missing = []
+        for name, x, backend in self._components:
+            mu = _dilute_viscosity(name, self._T)
+            if math.isnan(mu):
+                missing.append(name)
+            weight = x * math.sqrt(_pure_source(name, backend).molar_mass())
+            num += weight * mu
+            den += weight
+        if missing:
+            warn(f"No viscosity model for {missing}.", IdealGasWarning)
+        viscosity = Q_(num / den, "pascal second")
+        return viscosity.to(units) if units else viscosity
+
+    def __reduce__(self):
+        # the public class: saved pickles do not depend on this private name
+        rebuild, (_, *args) = super().__reduce__()
+        return rebuild, (State, *args)
+
+    def __repr__(self):
+        return f'{super().__repr__()[:-1]}, EOS="{self.EOS}")'
+
+    def __eq__(self, other):
+        return (
+            isinstance(other, _IdealGasState)
+            and self.EOS == other.EOS
+            and super().__eq__(other)
+        )
+
+    def __hash__(self):
+        return hash((self.EOS, super().__hash__()))
+
+
+def _unavailable(name):
+    def method(self, *args, **kwargs):
+        raise NotImplementedError(
+            f"{name}() is not available with EOS={self.EOS!r}. Use the ccp.State "
+            "properties (p, T, rho, h, s, cp, ...) or a real-gas EOS."
+        )
+
+    return method
+
+
+for _name in (*dir(CP.AbstractState), "get_coolprop_state", "plot_envelope"):
+    if not _name.startswith("__") and _name not in vars(_IdealGasState):
+        setattr(_IdealGasState, _name, _unavailable(_name))
