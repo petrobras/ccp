@@ -190,9 +190,10 @@ class State(CP.AbstractState):
         # True when the phase was imposed by the DEFAULT_PHASE policy rather
         # than requested; Point verifies the discharge of such states.
         self._phase_auto = False
-        # Set by callers that accept a suction at or inside the phase envelope
-        # (ccp.Evaluation warns instead of raising, see Point); survives
-        # pickling so it reaches the conversion workers.
+        # Set once a suction at or inside the phase envelope has been reported
+        # with a PhaseWarning (see ccp.point._check_single_phase_suction and
+        # ccp.Evaluation); survives pickling so the conversion workers do not
+        # repeat the warning.
         self._allow_two_phase_suction = False
         self._phase_dict = {
             "liquid": CP.iphase_liquid,

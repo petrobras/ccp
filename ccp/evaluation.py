@@ -18,12 +18,12 @@ import warnings
 
 
 def _allow_wet_cluster_suction(suc, cluster):
-    """Warn, instead of failing, when a cluster centre suction is not single phase.
+    """Warn, naming the cluster, when a cluster centre suction is not single phase.
 
     Plant data with heavy components can put a cluster centre at or just inside
-    the dew line. A stand-alone ``Point`` refuses such a suction; the
-    evaluation warns and converts the curves with the unconstrained state, as
-    it did before the single-phase check existed.
+    the dew line. The evaluation converts the curves with the unconstrained
+    state; marking it keeps ``Point`` from repeating the warning without the
+    cluster.
     """
     if suc.phase:
         return

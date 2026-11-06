@@ -235,14 +235,15 @@ def test_evaluation_calculate_points_delta_p_3_values(delta_p_evaluation):
     assert_allclose(df_results["delta_eff"].mean(), -1, rtol=1e-2)
 
 
-def test_wet_cluster_suction_warns_instead_of_raising():
+def test_wet_cluster_suction_warns_naming_the_cluster():
     """A cluster centre at the dew line is converted with a PhaseWarning.
 
     Composition and conditions of the example_evaluation_pi.ccp cluster that
-    sits at vapour quality 0.99; a stand-alone Point still refuses it.
+    sits at vapour quality 0.99.
     """
     import copy
     import pickle
+    import warnings
 
     from ccp.evaluation import _allow_wet_cluster_suction
     from ccp.point import PhaseWarning, _check_single_phase_suction
@@ -260,15 +261,14 @@ def test_wet_cluster_suction_warns_instead_of_raising():
         "nitrogen": 0.00493,
     }
     suc = ccp.State(p=Q_(1589149.1, "Pa"), T=Q_(306.28, "K"), fluid=fluid)
-    with pytest.raises(ValueError, match="phase envelope"):
-        _check_single_phase_suction(suc)
-
     with pytest.warns(PhaseWarning, match="Cluster 0 suction"):
         _allow_wet_cluster_suction(suc, 0)
-    _check_single_phase_suction(suc)
-    # The permission travels with the state to the conversion workers.
-    _check_single_phase_suction(pickle.loads(pickle.dumps(suc)))
-    _check_single_phase_suction(copy.copy(suc))
+    # The mark travels with the state, so the conversion workers stay silent.
+    with warnings.catch_warnings():
+        warnings.simplefilter("error", PhaseWarning)
+        _check_single_phase_suction(suc)
+        _check_single_phase_suction(pickle.loads(pickle.dumps(suc)))
+        _check_single_phase_suction(copy.copy(suc))
 
 
 @pytest.mark.filterwarnings("ignore::ccp.state.IdealGasWarning")
