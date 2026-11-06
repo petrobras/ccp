@@ -52,8 +52,10 @@ jobs:
           ssh-key: ${{ secrets.REFPROP_DEPLOY_KEY }}
           path: refprop
 
-      - name: Install libgfortran
-        run: sudo apt-get update -q && sudo apt-get install -y -q libgfortran5
+      # libgfortran5 is needed by REFPROP, tesseract-ocr by the digitizer tests
+      # (they are skipped when the binary is missing).
+      - name: Install system dependencies
+        run: sudo apt-get update -q && sudo apt-get install -y -q libgfortran5 tesseract-ocr
 
       - uses: astral-sh/setup-uv@v6
         with:
