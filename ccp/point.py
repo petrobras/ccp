@@ -19,22 +19,29 @@ from .state import State, _default_real_eos, _IdealGasState
 
 
 class PhaseWarning(UserWarning):
-    """The discharge resolved with an imposed phase was not a stable state.
+    """A state of the point lies at or inside the phase envelope.
 
-    Emitted when ``ccp.config.DEFAULT_PHASE`` imposed a phase on the suction
-    and the discharge derived from it lies inside the phase envelope; the
-    point is re-solved without imposing a phase.
+    Emitted when the suction is two-phase, since the point then relies on an
+    assumption about the liquid, and when ``ccp.config.DEFAULT_PHASE`` imposed
+    a phase on the suction and the discharge derived from it is not a stable
+    state; the point is then re-solved without imposing a phase.
     """
 
 
 def _check_single_phase_suction(suc):
-    """Raise ``ValueError`` when the suction lies at or inside the phase envelope.
+    """Warn once when the suction lies at or inside the phase envelope.
 
     A state built without an imposed phase carries the vapour quality of its
     unconstrained flash (``0 <= Q <= 1`` inside the envelope on both the
-    REFPROP and the HEOS backends). The discharge closures assume a
-    single-phase compression, so a wet suction is reported before any solve
-    instead of surfacing as a convergence failure.
+    REFPROP and the HEOS backends). Such a point is still calculated, on the
+    equilibrium states of the global composition: the result assumes that the
+    liquid travels with the gas, evaporates as the equilibrium dictates and
+    does not change the aerodynamics of the impeller.
+
+    The state is marked after warning, so its copies and the workers that
+    receive it do not repeat the warning. Callers that send a suction to a
+    process pool check it first, since a warning emitted in a worker does not
+    reach the warning filters of the main process.
     """
     if suc.phase or getattr(suc, "_allow_two_phase_suction", False):
         return
@@ -43,11 +50,19 @@ def _check_single_phase_suction(suc):
     except ValueError:
         return
     if 0.0 <= quality <= 1.0:
-        raise ValueError(
+        warnings.warn(
             "The suction state lies at or inside the phase envelope (vapour "
-            f"quality {quality:.4g}); a compressor point needs a single-phase "
-            f"suction. Suction: {suc!r}"
+            f"quality {quality:.4g}, p={suc.p('bar'):.3~P}, "
+            f"T={suc.T('degC'):.2f~P}, EOS={suc.EOS}). The point is calculated "
+            "with the equilibrium two-phase states, assuming the liquid travels "
+            "with the gas, evaporates as the equilibrium dictates and does not "
+            "change the impeller aerodynamics; the efficiency is sensitive to "
+            "this assumption. Check the fluid composition and the operating "
+            "data.",
+            PhaseWarning,
+            stacklevel=3,
         )
+        suc._allow_two_phase_suction = True
 
 
 def _check_same_gas_model(suc, disch):
@@ -656,6 +671,8 @@ class Point(Serializable):
 
     def __setstate__(self, state):
         self.__dict__ = state
+        # points pickled by older versions do not have this attribute
+        self.__dict__.setdefault("_extrapolated", False)
         if "_dummy_state" not in state:
             self._dummy_state = copy(self.suc)
         self._add_point_plot()

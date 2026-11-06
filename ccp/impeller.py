@@ -18,7 +18,7 @@ from ccp.config.utilities import r_getattr, r_setattr
 from ccp.data_io.read_csv import read_data_from_engauge_csv
 from ccp.data_io.serializers import Serializable
 from ccp.parallel import create_pool
-from ccp.point import _check_one_gas_model
+from ccp.point import _check_one_gas_model, _check_single_phase_suction
 from ccp.plotly_theme import tableau_colors
 from ccp.surrogate import convert_from_gp_surrogate
 
@@ -842,6 +842,9 @@ class Impeller(Serializable):
                 )
             original_impeller = original_impeller[np.argmin(np.abs(speed_sound_diff))]
 
+        if suc is not None:
+            _check_single_phase_suction(suc)
+
         # Collect all converter arguments from all curves. Workers receive a
         # scalar snapshot of each original point rather than the point itself:
         # unpickling a point re-flashes its three states and switches the
@@ -1178,6 +1181,7 @@ class Impeller(Serializable):
                     arg_dict["flow_m"] = Q_(flow, flow_units)
                 args_list.append(arg_dict)
 
+            _check_single_phase_suction(suc)
             with create_pool() as pool:
                 points += pool.map(create_points_parallel, args_list)
 

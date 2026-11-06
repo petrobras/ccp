@@ -5,6 +5,8 @@ from ccp.point import *
 from pathlib import Path
 from tempfile import tempdir
 import pickle
+import warnings
+from copy import copy
 
 skip = False  # skip slow tests
 
@@ -1107,12 +1109,38 @@ def test_closure_result_does_not_depend_on_previous_solves():
     assert_allclose(results[0], results[1], rtol=1e-9)
 
 
-def test_point_rejects_two_phase_suction():
+def test_point_warns_on_two_phase_suction():
     suc = State(p=Q_(30, "bar"), T=Q_(250, "K"), fluid=dict(methane=0.5, ethane=0.5))
     assert 0 <= suc.Q() <= 1
-    with pytest.raises(ValueError, match="phase envelope"):
+    kwargs = dict(
+        head=Q_(50, "kJ/kg"),
+        eff=0.8,
+        flow_m=Q_(10, "kg/s"),
+        speed=Q_(7000, "RPM"),
+        b=Q_(0.03, "m"),
+        D=Q_(0.4, "m"),
+    )
+    with pytest.warns(ccp.point.PhaseWarning, match="phase envelope"):
+        point = Point(suc=suc, **kwargs)
+    assert_allclose(point.head.to("kJ/kg").m, 50)
+    assert_allclose(point.eff.m, 0.8)
+    # the suction keeps the equilibrium state instead of an imposed phase
+    assert not point.suc.phase
+    assert 0 <= point.suc.Q() <= 1
+
+    # reported once per state, and its copies carry the mark
+    with warnings.catch_warnings():
+        warnings.simplefilter("error", ccp.point.PhaseWarning)
+        Point(suc=suc, **kwargs)
+        Point(suc=copy(suc), **kwargs)
+        Point(suc=pickle.loads(pickle.dumps(suc)), **kwargs)
+
+
+def test_point_superheated_suction_does_not_warn(suc_0):
+    with warnings.catch_warnings():
+        warnings.simplefilter("error", ccp.point.PhaseWarning)
         Point(
-            suc=suc,
+            suc=suc_0,
             head=Q_(50, "kJ/kg"),
             eff=0.8,
             flow_m=Q_(10, "kg/s"),
@@ -1120,6 +1148,25 @@ def test_point_rejects_two_phase_suction():
             b=Q_(0.03, "m"),
             D=Q_(0.4, "m"),
         )
+
+
+def test_point_pickled_without_extrapolated_attribute():
+    # points pickled by older versions do not have the attribute
+    suc = State(p=Q_(30, "bar"), T=Q_(300, "K"), fluid=dict(methane=1.0))
+    point = Point(
+        suc=suc,
+        head=Q_(50, "kJ/kg"),
+        eff=0.8,
+        flow_m=Q_(10, "kg/s"),
+        speed=Q_(7000, "RPM"),
+        b=Q_(0.03, "m"),
+        D=Q_(0.4, "m"),
+    )
+    state = point.__getstate__()
+    del state["_extrapolated"]
+    legacy = Point.__new__(Point)
+    legacy.__setstate__(state)
+    assert legacy._extrapolated is False
 
 
 def test_point_error_message_without_out_of_range_kwargs(monkeypatch, suc_0):

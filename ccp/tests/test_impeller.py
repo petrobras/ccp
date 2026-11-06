@@ -2,6 +2,7 @@ import pytest
 import numpy as np
 import pickle
 import toml
+import warnings
 from pathlib import Path
 from tempfile import tempdir
 from numpy.testing import assert_allclose
@@ -861,3 +862,85 @@ def test_point_record_converts_like_the_point(imp2):
     assert_allclose(from_record.reynolds_ratio.m, from_point.reynolds_ratio.m)
     assert_allclose(from_record.mach_diff.m, from_point.mach_diff.m)
     assert_allclose(from_record.disch.T().m, from_point.disch.T().m)
+
+
+def _phase_warnings(caught):
+    return [w for w in caught if issubclass(w.category, ccp.point.PhaseWarning)]
+
+
+def test_impeller_two_phase_suction_warns_in_main_process():
+    wet = dict(methane=0.5, ethane=0.5)
+    speed = Q_(7000, "RPM")
+    geometry = dict(b=Q_(0.03, "m"), D=Q_(0.4, "m"))
+
+    # load_from_dict builds the points in workers: the warning must not stay there
+    curves = dict(
+        head_curves={
+            "7000": dict(
+                x1=[1000.0, 1500.0, 2000.0],
+                x2=[60.0, 55.0, 45.0],
+                x3=0,
+            )
+        },
+        eff_curves={
+            "7000": dict(
+                x1=[1000.0, 1500.0, 2000.0],
+                x2=[0.7, 0.75, 0.7],
+                x3=0,
+            )
+        },
+    )
+    suc = State(p=Q_(30, "bar"), T=Q_(250, "K"), fluid=wet)
+    assert 0 <= suc.Q() <= 1
+    with warnings.catch_warnings(record=True) as caught:
+        warnings.simplefilter("always")
+        built = Impeller.load_from_dict(
+            suc=suc,
+            **curves,
+            b=geometry["b"],
+            D=geometry["D"],
+            number_of_points=3,
+            flow_units="m³/h",
+            head_units="kJ/kg",
+        )
+    assert len(_phase_warnings(caught)) == 1
+    assert 0 <= built.points[0].suc.Q() <= 1
+
+    # same for the conversion of a single-phase map to a two-phase suction
+    dry = State(p=Q_(30, "bar"), T=Q_(320, "K"), fluid=wet)
+    original = Impeller(
+        [
+            Point(suc=dry, speed=speed, flow_v=Q_(f, "m³/h"), head=h, eff=e, **geometry)
+            for f, h, e in [
+                (1000, Q_(60, "kJ/kg"), 0.7),
+                (1500, Q_(55, "kJ/kg"), 0.75),
+                (2000, Q_(45, "kJ/kg"), 0.7),
+            ]
+        ]
+    )
+    suc = State(p=Q_(30, "bar"), T=Q_(250, "K"), fluid=wet)
+    with warnings.catch_warnings(record=True) as caught:
+        warnings.simplefilter("always")
+        converted = Impeller.convert_from(original, suc=suc)
+    assert len(_phase_warnings(caught)) == 1
+    assert 0 <= converted.points[0].suc.Q() <= 1
+
+
+def test_impeller_save_load_two_phase_suction(tmp_path):
+    wet = dict(methane=0.5, ethane=0.5)
+    suc = State(p=Q_(30, "bar"), T=Q_(250, "K"), fluid=wet)
+    kwargs = dict(speed=Q_(7000, "RPM"), b=Q_(0.03, "m"), D=Q_(0.4, "m"))
+    with pytest.warns(ccp.point.PhaseWarning):
+        imp = Impeller(
+            [
+                Point(
+                    suc=suc, flow_v=Q_(f, "m³/h"), head=Q_(h, "kJ/kg"), eff=e, **kwargs
+                )
+                for f, h, e in [(1000, 60, 0.7), (1500, 55, 0.75), (2000, 45, 0.7)]
+            ]
+        )
+    path = tmp_path / "wet.toml"
+    imp.save(path)
+    with pytest.warns(ccp.point.PhaseWarning):
+        loaded = Impeller.load(path)
+    assert_allclose(loaded.points[1].eff.m, imp.points[1].eff.m)
