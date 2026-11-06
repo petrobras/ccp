@@ -338,13 +338,12 @@ def test_improved_error_message():
     with pytest.raises(ValueError) as exc:
         ccp.State(p=100000, T=20, fluid={"methane": 1 - 1e-15, "ethane": 1e-15})
 
-    error_msg = str(exc.value)
+    # The quantities come from pint's repr, whose quote style depends on the
+    # pint version (single quotes before 0.26, double quotes since).
+    error_msg = str(exc.value).replace('"', "'")
     # Check that the error message contains all the important parts
     assert "Could not define state with ccp.State(**" in error_msg
-    assert (
-        "'p': Q_(100000, 'pascal')" in error_msg
-        or "'p': Q_(100000, 'pascal')" in error_msg
-    )
+    assert "'p': Q_(100000, 'pascal')" in error_msg
     assert "'T': Q_(20, 'kelvin')" in error_msg
     assert (
         "'fluid': {'METHANE': 0.999999999999999, 'ETHANE': 9.992007221626409e-16}"
