@@ -1,3 +1,4 @@
 RPM = rpm * 1
+Hz = revolutions_per_second = _ = hertz
 hour = 60 * minute = h = hr
 percent = 0.01*count
