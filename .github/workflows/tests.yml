@@ -5,6 +5,11 @@ on:
     branches: [main]
   pull_request:
   workflow_dispatch:
+  # Weekly run, so a broken REFPROP deploy key or a new dependency release that
+  # breaks the tests is caught even when nothing is merged. Fork PRs skip the
+  # REFPROP job, and dependencies are not locked in CI (uv.lock is not tracked).
+  schedule:
+    - cron: "17 6 * * 1" # Mondays at 06:17 UTC
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
