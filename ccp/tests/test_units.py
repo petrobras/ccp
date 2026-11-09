@@ -1,6 +1,7 @@
 import pickle
 from collections import namedtuple
 
+import numpy as np
 import pytest
 from numpy.testing import assert_allclose
 
@@ -13,6 +14,20 @@ def test_new_units_loaded():
     # check if h is hour instead of planck constant
     v = Q_(3600, "m/h")
     assert v.to("m/s").m == 1
+
+
+@pytest.mark.parametrize(
+    "value, unit", [(150, "Hz"), (150, "hertz"), (0.15, "kHz"), (0.15, "kilohertz")]
+)
+def test_hz_is_revolutions_per_second(value, unit):
+    # pint defines hertz as 1/s, which converts 1 Hz to 1 rad/s (#186)
+    assert_allclose(Q_(value, unit).to("rpm").m, 9000)
+    assert_allclose(Q_(1, "Hz").to("rad/s").m, 2 * np.pi)
+
+
+def test_hz_label():
+    assert str(Q_(1, "hertz").units) == "Hz"
+    assert f"{Q_(1, 'Hz'):~P}" == "1 Hz"
 
 
 def test_units_pickle():

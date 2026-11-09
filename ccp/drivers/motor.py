@@ -84,10 +84,8 @@ class InductionMotor(Driver):
     absolute speed units (constant V/f), a reasonable approximation for
     ~30-100% of rated frequency.
 
-    Note that pint treats radian as dimensionless, so converting between
-    "Hz" and "rad/s" does not apply a 2*pi factor. Electrical frequencies
-    are kept in Hz and the synchronous speed is computed explicitly as
-    4*pi*f/poles.
+    Electrical frequencies are kept in Hz and the synchronous speed is
+    computed explicitly as 4*pi*f/poles.
 
     Parameters
     ----------

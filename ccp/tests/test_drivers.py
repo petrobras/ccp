@@ -220,6 +220,17 @@ def test_poles_derivation():
         assert motor.poles == expected_poles
 
 
+@pytest.mark.parametrize("rated_frequency", [Q_(60, "Hz"), Q_(60, "hertz"), 60.0])
+def test_synchronous_speed_frequency_spellings(rated_frequency):
+    motor = InductionMotor(
+        rated_power=Q_(40, "hp"),
+        rated_speed=Q_(1780, "rpm"),
+        rated_frequency=rated_frequency,
+    )
+    assert motor.poles == 4
+    assert_allclose(motor.synchronous_speed().to("rpm").m, 1800)
+
+
 def test_save_load_roundtrip(motor, tmp_path):
     for file_name in ["motor.toml", "motor.json"]:
         file = tmp_path / file_name
