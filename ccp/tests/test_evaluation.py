@@ -7,6 +7,7 @@ import pytest
 from numpy.testing import assert_allclose
 
 import ccp
+from ccp.fc import FlowMeterWarning
 
 Q_ = ccp.Q_
 
@@ -380,6 +381,71 @@ def test_evaluation_ideal_gas_values(data_file, tap):
     )
     assert_allclose(row["eff"], point.eff.m, rtol=1e-9)
     assert_allclose(row["head"], point.head.m, rtol=1e-9)
+
+
+@pytest.mark.filterwarnings("ignore::ccp.state.IdealGasWarning")
+def test_evaluation_flow_cone():
+    """A cone meter gives the flow of FlowCone, warning once per exceeded limit."""
+    imp = _ideal_gas_impeller()
+    df = pd.read_parquet(data_path / "data_delta_p.parquet")[:100]
+    # D and ReD (about 1.35e7) are above the limits of the uncalibrated meter
+    D, d = Q_(0.590550, "m"), Q_(0.319, "m")
+    with pytest.warns(FlowMeterWarning) as record:
+        res = ccp.Evaluation(
+            data=df,
+            operation_fluid=operation_fluid,
+            data_units=delta_p_data_units,
+            impellers=[imp],
+            n_clusters=2,
+            flow_meter="cone",
+            D=D,
+            d=d,
+        ).df
+    messages = [str(w.message) for w in record if w.category is FlowMeterWarning]
+    assert len(messages) == 2
+    assert "D = 590.6 mm" in messages[0]
+    assert "ReD = 1.35e+07" in messages[1]
+    for message in messages:
+        assert f"Found in {len(res)} of {len(res)} rows" in message
+
+    row = res.iloc[0]
+    state = ccp.State(
+        p=Q_(row.p_downstream, "bar"),
+        T=Q_(row.Ts, "degC"),
+        fluid=operation_fluid,
+        EOS="ideal",
+    )
+    with pytest.warns(FlowMeterWarning, match="D = 590.6 mm"):
+        fc = ccp.FlowCone(state, Q_(row.delta_p, "mmH2O"), D, d, state_upstream=False)
+    assert_allclose(row.flow_m, fc.flow_m.to("kg/s").m, rtol=1e-12)
+    assert_allclose(row.flow_v, fc.flow_v.to("m³/s").m, rtol=1e-12)
+    assert_allclose(row.v_s, fc.state.v().to("m³/kg").m, rtol=1e-12)
+    assert res["eff"].notna().all()
+
+
+@pytest.mark.filterwarnings("ignore::ccp.state.IdealGasWarning")
+@pytest.mark.parametrize(
+    "kwargs,match",
+    [
+        (dict(flow_meter="venturi"), "flow_meter must be"),
+        (dict(flow_meter="cone", D=0.59, d=0.32, dc=0.5), "exactly one of d"),
+        (dict(flow_meter="cone", D=0.59, dc=0.6), "dc must be between"),
+        (dict(flow_meter="cone", D=0.59, d=0.32, C=[[1, 2, 3]]), "calibration"),
+        (dict(D=0.59, d=0.37, tappings="flanged"), "tappings must be"),
+        (dict(flow_meter="cone"), "give the flow meter geometry"),
+    ],
+)
+def test_evaluation_flow_meter_definition(kwargs, match):
+    """An invalid meter fails on creation instead of invalidating every row."""
+    with pytest.raises(ValueError, match=match):
+        ccp.Evaluation(
+            # enough rows to pass the fluctuation filter
+            data=pd.read_parquet(data_path / "data_delta_p.parquet")[:100],
+            operation_fluid=operation_fluid,
+            data_units=delta_p_data_units,
+            impellers=[_ideal_gas_impeller()],
+            **kwargs,
+        )
 
 
 @pytest.mark.filterwarnings("ignore::ccp.state.IdealGasWarning")
