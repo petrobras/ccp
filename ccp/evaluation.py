@@ -9,6 +9,7 @@ from .data_io import filter_data
 from .state import State, _IdealGasState
 from .point import Point, PhaseWarning, _check_one_gas_model
 from .fo import FlowOrifice
+from .fc import FlowCone, FlowMeterWarning, _cone_geometry, _discharge_coefficient
 from .impeller import Impeller
 from .parallel import create_pool
 from . import Q_, config
@@ -59,11 +60,14 @@ class Evaluation:
         impellers=None,
         D=None,
         d=None,
-        tappings=None,
+        tappings="flange",
         verbose=False,
         n_clusters=5,
         calculate_points=True,
         parallel=True,
+        flow_meter="orifice",
+        dc=None,
+        C=None,
         **kwargs,
     ):
         """Initialize the evaluation class.
@@ -75,7 +79,9 @@ class Evaluation:
             are not provided in the data_units dictionary, the units will be assumed as
             SI units:
             - Flow: should be 'flow_v' (m³/s) or 'flow_m' (kg/s) in the DataFrame;
-            - Delta p: should be 'delta_p' (Pa) in the DataFrame;
+            - Delta p: should be 'delta_p' (Pa) in the DataFrame, with the
+              pressure at the flow meter, 'p_upstream' or 'p_downstream' (Pa),
+              when the flow is calculated from a flow meter (see ``flow_meter``);
             - Suction pressure: should be 'ps' (Pa) in the DataFrame;
             - Discharge pressure: should be 'pd' (Pa) in the DataFrame;
             - Suction temperature: should be 'Ts' (degK) in the DataFrame;
@@ -107,13 +113,28 @@ class Evaluation:
         impellers : list
             List of impellers with design curves.
         D : float, pint.Quantity
-            Pipe diameter (m).
+            Pipe internal diameter at the flow meter (m).
         d : float, pint.Quantity
-            Orifice diameter (m).
+            Orifice bore diameter (m). For a cone meter, the equivalent
+            diameter d = beta * D (m); ``dc`` can be given instead.
         tappings : str, optional
             Tappings of the orifice.
             Options are "flange", "corner" or "D D/2".
             Default is "flange".
+        flow_meter : str, optional
+            Flow meter used to calculate the flow from 'delta_p' when the data
+            has no flow column: "orifice" (orifice plate, ISO 5167-2, see
+            ccp.FlowOrifice) or "cone" (cone meter, ISO 5167-5, see
+            ccp.FlowCone).
+            Default is "orifice".
+        dc : float, pint.Quantity, optional
+            Cone diameter of a cone meter (m), as an alternative to ``d``.
+        C : float, callable or array_like, optional
+            Discharge coefficient of a cone meter: None for the ISO 5167-5
+            value of an uncalibrated meter, a calibrated value, a callable
+            C(Re) or a calibration table (Re, C). See ccp.FlowCone.
+            Readings outside the limits of ISO 5167-5 are reported with one
+            ccp.fc.FlowMeterWarning per limit, giving the number of rows.
         n_clusters : int, optional
             Number of clusters to be used in the K-means algorithm.
             The default is 5.
@@ -155,6 +176,10 @@ class Evaluation:
         self.D = D
         self.d = d
         self.tappings = tappings
+        self.flow_meter = flow_meter
+        self.dc = dc
+        self.C = C
+        self._check_flow_meter()
         self.n_clusters = n_clusters
         self.parallel = parallel
 
@@ -166,6 +191,48 @@ class Evaluation:
         else:
             self.impellers_new = kwargs.get("impellers_new")
             self.df = kwargs.get("df")
+
+    def _check_flow_meter(self):
+        """Check the flow meter definition once, not on every row.
+
+        The flow calculation marks rows that raise ValueError as invalid, so an
+        invalid meter definition would otherwise invalidate every row quietly.
+        """
+        if self.flow_meter not in ("orifice", "cone"):
+            raise ValueError(
+                f'flow_meter must be "orifice" or "cone", got {self.flow_meter!r}.'
+            )
+        if self.D is None:
+            return
+        if self.flow_meter == "cone":
+            _cone_geometry(self.D, self.d, self.dc)
+            _discharge_coefficient(self.C)
+        elif self.tappings not in ("flange", "corner", "D D/2"):
+            raise ValueError(
+                'tappings must be "flange", "corner" or "D D/2", '
+                f"got {self.tappings!r}."
+            )
+
+    def _flow_meter(self, state, delta_p, state_upstream):
+        """Flow meter of the data (FlowOrifice or FlowCone) for one row."""
+        if self.flow_meter == "cone":
+            return FlowCone(
+                state,
+                delta_p,
+                self.D,
+                self.d,
+                dc=self.dc,
+                C=self.C,
+                state_upstream=state_upstream,
+            )
+        return FlowOrifice(
+            state,
+            delta_p,
+            self.D,
+            self.d,
+            tappings=self.tappings,
+            state_upstream=state_upstream,
+        )
 
     def _filter_dataframe(self, data, drop_invalid_values=True):
         """Apply fluctuation filtering with current instance parameters."""
@@ -590,10 +657,38 @@ class Evaluation:
         return suc.EOS if isinstance(suc, _IdealGasState) else config.EOS
 
     def calculate_flow(self, data=None):
+        """Add the flow, 'v_s' and 'speed_sound' columns to the data.
+
+        When the data has no 'flow_v' or 'flow_m' column, the flow is
+        calculated from 'delta_p' with the flow meter of the evaluation.
+        """
+        # a cone meter warns about the ISO 5167-5 limits on each row: report
+        # each limit once, with the number of rows, instead of once per row
+        outside_limits = {}
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore", FlowMeterWarning)
+            df, n_meter_rows = self._calculate_flow(data, outside_limits)
+        for count, message in outside_limits.values():
+            warnings.warn(
+                f"{message} Found in {count} of {n_meter_rows} rows; the values "
+                "shown are those of the first one.",
+                FlowMeterWarning,
+                stacklevel=2,
+            )
+        return df
+
+    def _calculate_flow(self, data, outside_limits):
         df = data
+        n_meter_rows = 0
         calculate_flow = False
         if not ("flow_v" in df.columns or "flow_m" in df.columns):
             calculate_flow = True
+            if self.D is None:
+                raise ValueError(
+                    "The data has no 'flow_v' or 'flow_m' column: give the flow "
+                    "meter geometry (D, and d or dc) to calculate the flow from "
+                    "'delta_p'."
+                )
 
         # create density column
         df["v_s"] = 0.0
@@ -633,16 +728,15 @@ class Evaluation:
                         )
 
                     delta_p = Q_(row.delta_p, self.data_units["delta_p"])
-                    fo = FlowOrifice(
-                        state,
-                        delta_p,
-                        self.D,
-                        self.d,
-                        tappings=self.tappings,
-                        state_upstream=state_upstream,
-                    )
-                    df.loc[i, "flow_m"] = fo.qm.m
-                    df.loc[i, "flow_v"] = (fo.qm * state.v()).m
+                    meter = self._flow_meter(state, delta_p, state_upstream)
+                    # upstream state of the meter (p + delta_p for a downstream
+                    # state); v_s and flow_v are taken at it
+                    state = meter.state
+                    n_meter_rows += 1
+                    for limit, message in getattr(meter, "outside_limits", {}).items():
+                        outside_limits.setdefault(limit, [0, message])[0] += 1
+                    df.loc[i, "flow_m"] = meter.flow_m.m
+                    df.loc[i, "flow_v"] = meter.flow_v.m
                 else:
                     state = State(
                         p=Q_(row.ps, self.data_units["ps"]),
@@ -680,7 +774,7 @@ class Evaluation:
             else:
                 raise ValueError("Flow rate not found in the DataFrame.")
 
-        return df
+        return df, n_meter_rows
 
     def calculate_points(self, data=None, drop_invalid_values=True, parallel=None):
         """Calculate the performance points for the given data.

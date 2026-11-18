@@ -190,6 +190,7 @@ from .point import Point
 from .curve import Curve
 from .impeller import Impeller, impeller_example
 from .fo import FlowOrifice
+from .fc import FlowCone
 from .similarity import check_similarity
 from .evaluation import Evaluation
 from .drivers import Driver, InductionMotor
@@ -200,6 +201,7 @@ __all__ = [
     "Curve",
     "Impeller",
     "FlowOrifice",
+    "FlowCone",
     "fluid_list",
     "check_similarity",
     "impeller_example",

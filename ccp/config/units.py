@@ -108,6 +108,7 @@ units = {
     "b": "meter",
     "D": "meter",
     "d": "meter",
+    "dc": "meter",
     "roughness": "meter",
     "head": "joule/kilogram",
     "eff": "dimensionless",

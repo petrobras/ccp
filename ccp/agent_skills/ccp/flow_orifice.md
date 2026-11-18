@@ -29,4 +29,4 @@ fo.flow_v  # volumetric flow at the state conditions, m³/s
 - `state` is the fluid state at the orifice. By default it is taken as the **upstream** state; pass `state_upstream=False` if the measurement is downstream of the plate (ccp then adds `delta_p` back).
 - The discharge coefficient is iterated on the Reynolds number automatically.
 
-Use the resulting `flow_m`/`flow_v` to build performance points (see the points recipe). The `Evaluation` class accepts `delta_p` data directly and does this internally (see the evaluation recipe).
+Use the resulting `flow_m`/`flow_v` to build performance points (see the points recipe). For cone (V-cone) meters use `FlowCone` (see the cone meter recipe). The `Evaluation` class accepts `delta_p` data directly and does this internally (see the evaluation recipe).

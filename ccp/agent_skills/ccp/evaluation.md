@@ -109,6 +109,30 @@ evaluation = ccp.Evaluation(
 )
 ```
 
+For a cone (V-cone) meter, pass `flow_meter="cone"` with `D` and the cone diameter `dc` (or the equivalent diameter `d = beta * D`), and optionally a calibrated `C` (number, `(Re, C)` table or callable; default is the ISO 5167-5 value 0.82). Readings outside the ISO 5167-5 limits give one `FlowMeterWarning` per limit with the number of rows (see the cone meter recipe):
+
+```python
+evaluation = ccp.Evaluation(
+    data=df_delta_p,
+    operation_fluid=operation_fluid,
+    data_units={
+        "ps": "bar",
+        "Ts": "degC",
+        "pd": "bar",
+        "Td": "degC",
+        "delta_p": "mmH2O",
+        "p_downstream": "bar",
+        "speed": "RPM",
+    },
+    impellers=[imp_a],
+    flow_meter="cone",
+    D=Q_(0.590550, "m"),  # pipe internal diameter
+    dc=Q_(0.496, "m"),  # cone diameter
+    C=0.805,  # calibrated discharge coefficient
+    n_clusters=2,
+)
+```
+
 ## Save / load
 
 ```python
