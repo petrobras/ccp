@@ -836,8 +836,7 @@ def main():
                             ],
                         )
                 else:
-                    pass
-                    # TODO implement calculation without leakages
+                    kwargs["leakages"] = False
 
                 kwargs["bearing_mechanical_losses"] = bearing_mechanical_losses
                 if bearing_mechanical_losses:

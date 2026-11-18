@@ -92,6 +92,26 @@ class TestStraightThrough:
         # Verify StraightThrough object was created
         assert isinstance(at.session_state["straight_through"], StraightThrough)
 
+    def test_calculate_without_leakages(self):
+        session_data, _, _ = load_ccp_file(self.example_path)
+
+        at = AppTest.from_file(self.page_path, default_timeout=TIMEOUT)
+        populate_session_state(at, session_data)
+        at.run(timeout=TIMEOUT)
+        assert not at.exception
+
+        cb = [c for c in at.checkbox if c.label == "Calculate Leakages"]
+        assert cb, "Calculate Leakages checkbox not found"
+        cb[0].uncheck().run(timeout=TIMEOUT)
+        assert not at.exception
+
+        calc_buttons = [b for b in at.button if b.label == "Calculate"]
+        assert calc_buttons, "Calculate button not found"
+        calc_buttons[0].click().run(timeout=TIMEOUT)
+        assert not at.exception
+
+        assert isinstance(at.session_state["straight_through"], StraightThrough)
+
 
 # ---------------------------------------------------------------------------
 # Back-to-Back
@@ -113,6 +133,26 @@ class TestBackToBack:
         at = AppTest.from_file(self.page_path, default_timeout=TIMEOUT)
         populate_session_state(at, session_data)
         at.run(timeout=TIMEOUT)
+        assert not at.exception
+
+        calc_buttons = [b for b in at.button if b.label == "Calculate"]
+        assert calc_buttons, "Calculate button not found"
+        calc_buttons[0].click().run(timeout=TIMEOUT)
+        assert not at.exception
+
+        assert isinstance(at.session_state["back_to_back"], BackToBack)
+
+    def test_calculate_without_leakages(self):
+        session_data, _, _ = load_ccp_file(self.example_path)
+
+        at = AppTest.from_file(self.page_path, default_timeout=TIMEOUT)
+        populate_session_state(at, session_data)
+        at.run(timeout=TIMEOUT)
+        assert not at.exception
+
+        cb = [c for c in at.checkbox if c.label == "Calculate Leakages"]
+        assert cb, "Calculate Leakages checkbox not found"
+        cb[0].uncheck().run(timeout=TIMEOUT)
         assert not at.exception
 
         calc_buttons = [b for b in at.button if b.label == "Calculate"]
