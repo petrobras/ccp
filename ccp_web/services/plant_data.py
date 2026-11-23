@@ -21,6 +21,8 @@ import pandas as pd
 import ccp
 from ccp import Q_
 
+from .units import InputError, is_gauge_unit
+
 log = logging.getLogger("ccp_web.plant_data")
 
 TEST_DATA = Path(ccp.__file__).parent / "tests" / "data"
@@ -109,6 +111,17 @@ def tag_mappings(state, pi_password=None):
         tm["fluid_tags"] = fluid_tags
         tm["fluid_units"] = fluid_units
     return tm
+
+
+def check_difference_units(values):
+    """Raise ``InputError`` if a delta p unit of the state (or tags) is gauge."""
+    errors = {
+        key: "A pressure difference has no gauge unit"
+        for key in ("delta_p_unit", "delta_p_unit_2")
+        if is_gauge_unit(values.get(key) or "")
+    }
+    if errors:
+        raise InputError(errors)
 
 
 def data_units(state, tm):
@@ -225,6 +238,8 @@ def merge_redundant_parameter_tags(df, tm):
             df[col] = df[col2]
         if col not in df.columns:
             continue
+        if col == "delta_p":
+            check_difference_units(tm)
         s1 = pd.to_numeric(df[col], errors="coerce")
         s1_valid = s1.where(s1.notna() & (s1 != 0) & ~frozen_series_mask(s1))
         if tag2 and col2 in df.columns:

@@ -35,7 +35,9 @@ def restore_global_config():
     pool_size = ccp.config.POOL_SIZE
     default_phase = ccp.config.DEFAULT_PHASE
     phase_check = ccp.config.PHASE_CHECK
+    ambient_pressure = ccp.config.AMBIENT_PRESSURE
     yield
+    ccp.config.AMBIENT_PRESSURE = ambient_pressure
     ccp.config.EOS = eos
     ccp.config.POLYTROPIC_METHOD = polytropic_method
     ccp.config.PARALLEL = parallel

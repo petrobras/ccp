@@ -26,7 +26,14 @@ from ccp.compressor import (
 from ccp.config.utilities import r_getattr
 
 from . import gas, schemas
-from .units import Cancelled, InputError, StateReader, is_mass_flow_unit  # noqa: F401
+from .units import (  # noqa: F401
+    Cancelled,
+    InputError,
+    StateReader,
+    check_ambient_pressure,
+    is_gauge_unit,
+    is_mass_flow_unit,
+)
 
 T_ = "ₜ"
 SP = "ₛₚ"
@@ -438,6 +445,7 @@ def read_inputs(app_type, state):
     """
     r = StateReader(state)
     opts = Options.from_state(state, r)
+    check_ambient_pressure(r)
     data = {"options": opts, "sections": [], "warnings": []}
     for sec in sections(app_type):
         guarantee = _guarantee_values(r, state, sec, opts)
@@ -964,7 +972,15 @@ def orifice_flows(app_type, state, strict=False):
     r = StateReader(state)
     updates = {}
     errors = {}
+    check_ambient_pressure(r)
+    if r.errors:
+        # the flows are left as they are
+        return updates, dict(r.errors)
     for sec in orifice_sections(app_type, state):
+        drop_unit = sec.fo_unit("pressure_drop_fo")
+        if is_gauge_unit(state.get(drop_unit) or ""):
+            errors[drop_unit] = "A pressure difference has no gauge unit"
+            continue
         flow_unit = state.get(sec.tp_unit("flow")) or ""
         if not is_mass_flow_unit(flow_unit):
             errors[sec.tp_unit("flow")] = "The orifice flow needs a mass flow unit"

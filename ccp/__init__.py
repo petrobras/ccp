@@ -184,6 +184,8 @@ _pio.templates.default = "ccp"
 # imports
 ###############################################################################
 
+from . import units
+from .config.units import ambient_pressure, set_ambient_pressure
 from .config.fluids import fluid_list
 from .state import State
 from .point import Point
@@ -208,4 +210,7 @@ __all__ = [
     "Evaluation",
     "Driver",
     "InductionMotor",
+    "ambient_pressure",
+    "set_ambient_pressure",
+    "units",
 ]

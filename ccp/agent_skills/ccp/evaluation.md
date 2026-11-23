@@ -69,6 +69,8 @@ evaluation = ccp.Evaluation(
 )
 ```
 
+`data_units` can be gauge (`barg`, ...) for `ps`, `pd`, `p_upstream` and `p_downstream`, relative to the `ambient_pressure` argument; not for `delta_p`.
+
 ## Results
 
 `evaluation.df` is the input DataFrame plus computed columns:

@@ -1,3 +1,6 @@
+import sys
+import types
+
 POLYTROPIC_METHOD = "sandberg_colby"
 EOS = "REFPROP"  # also "HEOS", "PR", "SRK", "ideal" or "ideal:k=<k>" (see ccp.State)
 
@@ -22,3 +25,23 @@ PHASE_CHECK = False
 # The CCP_PARALLEL and CCP_POOL_SIZE environment variables take precedence.
 PARALLEL = True  # set to False to run every ccp calculation serially
 POOL_SIZE = None  # worker processes per pool; None means one per CPU
+
+# Ambient pressure in Pa (1 atm), the reference of the gauge units (barg, psig,
+# kPag and MPag). Change it with ccp.set_ambient_pressure or, for a block of
+# code, with ccp.ambient_pressure.
+AMBIENT_PRESSURE = 101325.0
+
+
+class _Config(types.ModuleType):
+    """Config module that keeps the gauge units consistent with AMBIENT_PRESSURE."""
+
+    def __setattr__(self, name, value):
+        if name == "AMBIENT_PRESSURE":
+            from .units import set_ambient_pressure
+
+            set_ambient_pressure(value)
+        else:
+            super().__setattr__(name, value)
+
+
+sys.modules[__name__].__class__ = _Config

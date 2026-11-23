@@ -22,12 +22,28 @@ from packaging.version import Version
 
 import ccp
 from ccp import Q_
+from ccp.units import GAUGE_UNITS, gauge_reference_unit
 
 # parameters with name and label
 flow_m_units = ["kg/h", "kg/min", "kg/s", "lbm/h", "lbm/min", "lbm/s"]
 flow_v_units = ["m³/h", "m³/min", "m³/s"]
 flow_units = flow_m_units + flow_v_units
-pressure_units = ["bar", "kgf/cm²", "barg", "Pa", "kPa", "MPa", "psi", "mmH2O"]
+pressure_units = [
+    "bar",
+    "kgf/cm²",
+    "barg",
+    "Pa",
+    "kPa",
+    "MPa",
+    "psi",
+    "mmH2O",
+    "psig",
+    "kPag",
+    "MPag",
+]
+# for the ambient pressure and for pressure differences
+plain_pressure_units = [u for u in pressure_units if u not in GAUGE_UNITS]
+DEFAULT_AMBIENT_PRESSURE = ccp.Q_(1.01325, "bar")
 temperature_units = ["degK", "degC", "degF", "degR"]
 head_units = ["kJ/kg", "J/kg", "m*g0", "ft"]
 power_units = ["kW", "hp", "W", "Btu/h", "MW"]
@@ -203,7 +219,7 @@ parameters_map = {
     },
     "pressure_drop_fo": {
         "label": "Pressure Drop",
-        "units": pressure_units,
+        "units": plain_pressure_units,
         "help": "Pressure drop across orifice plate.",
     },
     "tappings_fo": {
@@ -712,7 +728,14 @@ def _convert_series_unit(values, from_unit, to_unit):
     """Convert numeric series values from one unit to another using pint."""
     if from_unit == to_unit:
         return values
-    return values.apply(lambda v: Q_(v, from_unit).to(to_unit).m)
+    with ccp.ambient_pressure(DEFAULT_AMBIENT_PRESSURE):
+        return values.apply(lambda v: Q_(v, from_unit).to(to_unit).m)
+
+
+def valid_suction_pressure(p, unit):
+    """Whether ``p`` is filled (0 is the blank value) and positive in absolute."""
+    with ccp.ambient_pressure(DEFAULT_AMBIENT_PRESSURE):
+        return p != 0 and Q_(p, unit).to("Pa").m > 0
 
 
 def merge_redundant_parameter_tags(df, tag_mappings):
@@ -1182,32 +1205,34 @@ def curves_upload_section():
                     suc_p = st.session_state.get(f"suc_p_case_{case}", 0)
                     suc_T = st.session_state.get(f"suc_T_case_{case}", 0)
 
-                    if suc_p <= 0 or suc_T <= 0:
+                    if suc_T <= 0 or not valid_suction_pressure(
+                        suc_p, design_suc_p_unit
+                    ):
                         st.error(
                             f"Please define valid suction conditions for Case {case}"
                         )
                         shutil.rmtree(temp_dir)
                         continue
 
-                    suc_state = ccp.State(
-                        p=Q_(suc_p, design_suc_p_unit),
-                        T=Q_(suc_T, design_suc_T_unit),
-                        fluid=gas_composition,
-                    )
-
                     progress_bar = st.progress(0, text="Loading curves...")
 
-                    impeller = ccp.Impeller.load_from_engauge_csv(
-                        suc=suc_state,
-                        curve_name=curve_name,
-                        curve_path=temp_path,
-                        flow_units=loaded_curves_flow_units,
-                        head_units=loaded_curves_head_units,
-                        power_units=loaded_curves_power_units,
-                        speed_units=loaded_curves_speed_units,
-                        disch_p_units=loaded_curves_disch_p_units,
-                        disch_T_units=loaded_curves_disch_T_units,
-                    )
+                    with ccp.ambient_pressure(DEFAULT_AMBIENT_PRESSURE):
+                        suc_state = ccp.State(
+                            p=Q_(suc_p, design_suc_p_unit),
+                            T=Q_(suc_T, design_suc_T_unit),
+                            fluid=gas_composition,
+                        )
+                        impeller = ccp.Impeller.load_from_engauge_csv(
+                            suc=suc_state,
+                            curve_name=curve_name,
+                            curve_path=temp_path,
+                            flow_units=loaded_curves_flow_units,
+                            head_units=loaded_curves_head_units,
+                            power_units=loaded_curves_power_units,
+                            speed_units=loaded_curves_speed_units,
+                            disch_p_units=loaded_curves_disch_p_units,
+                            disch_T_units=loaded_curves_disch_T_units,
+                        )
 
                     progress_bar.progress(100, text="Curves loaded!")
                     time.sleep(0.5)
@@ -1353,7 +1378,7 @@ def tags_config_section(fluid_list):
                 "delta_p_unit",
                 "delta_p_tag_2",
                 "delta_p_unit_2",
-                pressure_units,
+                plain_pressure_units,
             )
             dual_tag_input_row(
                 "Downstream P",
@@ -1637,6 +1662,7 @@ def build_evaluation_kwargs(
         "n_clusters": len(impellers_list),
         "calculate_points": False,
         "parallel": not testing,
+        "ambient_pressure": DEFAULT_AMBIENT_PRESSURE,
         "temperature_fluctuation": st.session_state.get("temperature_fluctuation", 0.5),
         "pressure_fluctuation": st.session_state.get("pressure_fluctuation", 2.0),
         "speed_fluctuation": st.session_state.get("speed_fluctuation", 0.5),
@@ -2070,10 +2096,37 @@ def file_sidebar(load_from_zip, save_to_zip):
                 )
 
 
-def run_app(main_func, app_name):
-    """Run main app function with standardized error logging."""
+def session_ambient_pressure():
+    """Absolute ambient pressure of the options panel, 1 atm if it is not valid.
+
+    Read from the session state, which has the new values before the script and
+    the callbacks run.
+    """
     try:
-        main_func()
+        value = st.session_state["ambient_pressure_magnitude"]
+        unit = st.session_state["ambient_pressure_unit"]
+        # older files can have a gauge unit, read as absolute
+        ambient = ccp.Q_(float(value), gauge_reference_unit(unit) or unit)
+        if 0 < ambient.to("Pa").m < float("inf"):
+            return ambient
+    # pint errors are AttributeError, TypeError or ValueError
+    except (AttributeError, KeyError, TypeError, ValueError):
+        pass
+    return DEFAULT_AMBIENT_PRESSURE
+
+
+def run_app(main_func, app_name, ambient_pressure=None):
+    """Run main app function with standardized error logging.
+
+    With ``ambient_pressure``, a callable, the app runs in the context of
+    ``ccp.ambient_pressure``: the sessions of the server share the gauge units.
+    """
+    try:
+        if ambient_pressure is None:
+            main_func()
+        else:
+            with ccp.ambient_pressure(ambient_pressure()):
+                main_func()
     except Exception as e:
         logging.info(f"app: {app_name}")
         logging.info(f"session state: {st.session_state}")

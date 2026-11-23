@@ -28,6 +28,9 @@ Calls that need no per-pool state share one long-lived pool, started on
 first use (``warm_up()`` starts it early) and terminated at interpreter
 exit or by ``shutdown_pool()``. Calls that ship state to the workers
 through an initializer (``Evaluation``) get a dedicated pool.
+
+Workers import ccp on their own and have the default ambient pressure: convert
+gauge quantities to absolute before sending them to a pool.
 """
 
 import atexit

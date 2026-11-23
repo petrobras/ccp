@@ -150,7 +150,7 @@ def page_context(request, case, errors=None):
                     "anchor": "new",
                     "label": "New suction",
                     "hint": "target",
-                    "done": float(case.state.get("new_suc_p") or 0) > 0,
+                    "done": float(case.state.get("new_suc_p") or 0) != 0,
                 },
                 {
                     "anchor": "run",

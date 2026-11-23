@@ -59,7 +59,9 @@ def web(client, user, settings):
 @pytest.fixture(autouse=True)
 def restore_ccp_config():
     method = ccp.config.POLYTROPIC_METHOD
+    ambient_pressure = ccp.config.AMBIENT_PRESSURE
     yield
+    ccp.config.AMBIENT_PRESSURE = ambient_pressure
     ccp.config.POLYTROPIC_METHOD = method
 
 

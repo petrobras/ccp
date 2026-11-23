@@ -2,7 +2,7 @@ numpy
 scipy
 pandas>=0.23
 CoolProp>=7.2
-pint>=0.18
+pint>=0.24.4
 plotly>=4.7.0
 toml>=0.10.1
 openpyxl

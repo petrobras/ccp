@@ -13,9 +13,13 @@ from .fc import FlowCone, FlowMeterWarning, _cone_geometry, _discharge_coefficie
 from .impeller import Impeller
 from .parallel import create_pool
 from . import Q_, config
+from .config.units import _ambient_pascal, gauge_reference_unit, gauge_to_absolute
 from sklearn.cluster import KMeans
 from tqdm.auto import tqdm
 import warnings
+
+# columns of the data that hold pressures, the only ones read in gauge units
+_PRESSURE_COLUMNS = ("ps", "pd", "p_upstream", "p_downstream")
 
 
 def _allow_wet_cluster_suction(suc, cluster):
@@ -68,6 +72,7 @@ class Evaluation:
         flow_meter="orifice",
         dc=None,
         C=None,
+        ambient_pressure=None,
         **kwargs,
     ):
         """Initialize the evaluation class.
@@ -100,7 +105,9 @@ class Evaluation:
             to calculate the fluctuation.
             The default is 3.
         data_units : dict
-            Dictionary with data units for each column.
+            Dictionary with data units for each column. Gauge units (e.g. "barg")
+            can be used for the pressures ('ps', 'pd', 'p_upstream' and
+            'p_downstream') but not for 'delta_p'.
         temperature_fluctuation : float, optional
             Maximum fluctuation for temperature data.
             The default is 0.5.
@@ -135,6 +142,11 @@ class Evaluation:
             C(Re) or a calibration table (Re, C). See ccp.FlowCone.
             Readings outside the limits of ISO 5167-5 are reported with one
             ccp.fc.FlowMeterWarning per limit, giving the number of rows.
+        ambient_pressure : float, pint.Quantity, optional
+            Ambient pressure (Pa) of the data in gauge units, kept with the
+            evaluation.
+            The default is the value of ccp.config.AMBIENT_PRESSURE when the
+            evaluation is created.
         n_clusters : int, optional
             Number of clusters to be used in the K-means algorithm.
             The default is 5.
@@ -167,6 +179,19 @@ class Evaluation:
             "delta_p": "delta_p",
         }
         self.data_units = data_units
+        self.ambient_pressure = Q_(
+            _ambient_pascal(
+                config.AMBIENT_PRESSURE
+                if ambient_pressure is None
+                else ambient_pressure
+            ),
+            "pascal",
+        )
+        if self._gauge_reference("delta_p") is not None:
+            raise ValueError(
+                "'delta_p' is a pressure difference and cannot be in the gauge "
+                f"unit {data_units['delta_p']!r}."
+            )
         self.temperature_fluctuation = temperature_fluctuation
         self.pressure_fluctuation = pressure_fluctuation
         self.speed_fluctuation = speed_fluctuation
@@ -234,8 +259,48 @@ class Evaluation:
             state_upstream=state_upstream,
         )
 
+    def _gauge_reference(self, column):
+        """Absolute unit of a column in a gauge unit, None for the other columns."""
+        unit = (self.data_units or {}).get(column)
+        # other columns can have units that pint does not know (ppm)
+        if not unit or column not in (*_PRESSURE_COLUMNS, "delta_p"):
+            return None
+        try:
+            return gauge_reference_unit(unit)
+        except (AttributeError, ValueError, TypeError):
+            # not a unit: raises where the column is used, if it is
+            return None
+
+    def _pressure(self, value, column):
+        """Pressure of a column, absolute if the column is in a gauge unit."""
+        reference = self._gauge_reference(column)
+        if reference is None:
+            return Q_(value, self.data_units[column])
+        return gauge_to_absolute(Q_(value, reference), self.ambient_pressure).to(
+            "pascal"
+        )
+
     def _filter_dataframe(self, data, drop_invalid_values=True):
-        """Apply fluctuation filtering with current instance parameters."""
+        """Apply fluctuation filtering with current instance parameters.
+
+        The fluctuation and the check for negative values are those of the
+        absolute pressures.
+        """
+        offsets = {
+            column: self.ambient_pressure.to(reference).m
+            for column in data.columns
+            if (reference := self._gauge_reference(column)) is not None
+        }
+        if offsets:
+            data = data.copy()
+            for column, offset in offsets.items():
+                data[column] = pd.to_numeric(data[column]) + offset
+        df = self._filter_absolute(data, drop_invalid_values)
+        for column, offset in offsets.items():
+            df[column] = df[column] - offset
+        return df
+
+    def _filter_absolute(self, data, drop_invalid_values):
         return filter_data(
             data,
             data_type=self.data_type,
@@ -312,9 +377,9 @@ class Evaluation:
                 {
                     "flow_v": row.flow_v,
                     "speed": Q_(row.speed, self.data_units["speed"]),
-                    "ps": Q_(row.ps, self.data_units["ps"]),
+                    "ps": self._pressure(row.ps, "ps"),
                     "Ts": Q_(row.Ts, self.data_units["Ts"]),
-                    "pd": Q_(row.pd, self.data_units["pd"]),
+                    "pd": self._pressure(row.pd, "pd"),
                     "Td": Q_(row.Td, self.data_units["Td"]),
                     "fluid": fluid,
                     "EOS": self._EOS,
@@ -576,14 +641,7 @@ class Evaluation:
 
     def _run(self):
         df = self.data.copy()
-        df = filter_data(
-            df,
-            data_type=self.data_type,
-            window=self.window,
-            temperature_fluctuation=self.temperature_fluctuation,
-            pressure_fluctuation=self.pressure_fluctuation,
-            speed_fluctuation=self.speed_fluctuation,
-        )
+        df = self._filter_dataframe(df)
 
         # Check if dataframe is empty after filtering
         if df.empty:
@@ -639,7 +697,7 @@ class Evaluation:
             else:
                 fluid = self._get_fluid_composition(cluster_series)
             suc_new = State(
-                p=Q_(cluster_series.ps_center, self.data_units["ps"]),
+                p=self._pressure(cluster_series.ps_center, "ps"),
                 T=Q_(cluster_series.Ts_center, self.data_units["Ts"]),
                 fluid=fluid,
                 EOS=self._EOS,
@@ -709,7 +767,7 @@ class Evaluation:
                     if "p_downstream" in df.columns:
                         state_upstream = False
                         state = State(
-                            p=Q_(row.p_downstream, self.data_units["p_downstream"]),
+                            p=self._pressure(row.p_downstream, "p_downstream"),
                             T=Q_(row.Ts, self.data_units["Ts"]),
                             fluid=fluid,
                             EOS=self._EOS,
@@ -717,7 +775,7 @@ class Evaluation:
                     elif "p_upstream" in df.columns:
                         state_upstream = True
                         state = State(
-                            p=Q_(row.p_upstream, self.data_units["p_upstream"]),
+                            p=self._pressure(row.p_upstream, "p_upstream"),
                             T=Q_(row.Ts, self.data_units["Ts"]),
                             fluid=fluid,
                             EOS=self._EOS,
@@ -739,7 +797,7 @@ class Evaluation:
                     df.loc[i, "flow_v"] = meter.flow_v.m
                 else:
                     state = State(
-                        p=Q_(row.ps, self.data_units["ps"]),
+                        p=self._pressure(row.ps, "ps"),
                         T=Q_(row.Ts, self.data_units["Ts"]),
                         fluid=fluid,
                         EOS=self._EOS,
@@ -858,6 +916,7 @@ class Evaluation:
                 "temperature_fluctuation": self.temperature_fluctuation,
                 "pressure_fluctuation": self.pressure_fluctuation,
                 "speed_fluctuation": self.speed_fluctuation,
+                "ambient_pressure": self.ambient_pressure.m,
             }
             zip_file.writestr("args.toml", toml.dumps(args_dict))
 
@@ -911,6 +970,7 @@ class Evaluation:
                 temperature_fluctuation=args_dict["temperature_fluctuation"],
                 pressure_fluctuation=args_dict["pressure_fluctuation"],
                 speed_fluctuation=args_dict["speed_fluctuation"],
+                ambient_pressure=args_dict.get("ambient_pressure"),
                 impellers_new=impellers_new,
                 df=df,
             )

@@ -32,7 +32,8 @@ class State(CP.AbstractState):
     Parameters
     ----------
     p : float, pint.Quantity
-        Pressure
+        Absolute pressure. Quantities in gauge units (e.g. barg) are converted
+        with the ambient pressure (see ccp.ambient_pressure).
     T : float, pint.Quantity
         Temperature
     h : float, pint.Quantity

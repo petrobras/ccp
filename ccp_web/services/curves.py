@@ -27,6 +27,11 @@ def extract_curve_name(filename):
     return name
 
 
+def _valid_pressure(p, unit):
+    """Whether ``p`` is filled (0 is the blank value) and positive in absolute."""
+    return p != 0 and Q_(p, unit).to("Pa").m > 0
+
+
 def design_suction_state(state, case):
     """Suction state of design case ``case`` (A..E)."""
     errors = {}
@@ -38,7 +43,7 @@ def design_suction_state(state, case):
         )
     p = state.get(f"suc_p_case_{case}") or 0
     T = state.get(f"suc_T_case_{case}") or 0
-    if not p or float(p) <= 0:
+    if not _valid_pressure(float(p), state.get("design_suc_p_unit") or "bar"):
         errors[f"suc_p_case_{case}"] = (
             f"Please define valid suction conditions for Case {case}"
         )
@@ -101,7 +106,7 @@ def new_suction_state(state):
     errors = {}
     p = float(state.get("new_suc_p") or 0)
     T = float(state.get("new_suc_t") or 0)
-    if p <= 0:
+    if not _valid_pressure(p, state.get("new_suc_p_unit") or "bar"):
         errors["new_suc_p"] = "Please fill in all new suction condition values"
     if T <= 0:
         errors["new_suc_t"] = "Please fill in all new suction condition values"

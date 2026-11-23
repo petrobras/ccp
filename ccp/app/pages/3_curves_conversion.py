@@ -6,6 +6,7 @@ import json
 import toml
 
 from ccp.app.common import (
+    DEFAULT_AMBIENT_PRESSURE,
     default_components,
     pressure_units,
     temperature_units,
@@ -23,6 +24,7 @@ from ccp.app.common import (
     init_sentry,
     setup_page,
     run_app,
+    valid_suction_pressure,
 )
 
 init_sentry()
@@ -283,7 +285,7 @@ def main():
             )
             return
 
-        if new_suc_p <= 0 or new_suc_t <= 0:
+        if new_suc_t <= 0 or not valid_suction_pressure(new_suc_p, new_suc_p_unit):
             st.error("Please fill in all new suction condition values")
             return
 
@@ -578,6 +580,11 @@ def main():
 
             @st.fragment
             def display_results():
+                # a fragment reruns out of the context of run_app
+                with ccp.ambient_pressure(DEFAULT_AMBIENT_PRESSURE):
+                    _display_results()
+
+            def _display_results():
                 available_cases, impellers_list = get_available_impellers()
                 converted_imp = st.session_state.converted_impeller
 
@@ -610,4 +617,4 @@ def main():
 
 
 if __name__ == "__main__":
-    run_app(main, "curves_conversion")
+    run_app(main, "curves_conversion", lambda: DEFAULT_AMBIENT_PRESSURE)

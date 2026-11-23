@@ -20,6 +20,14 @@ API Reference
 
     Impeller
 
+.. autosummary::
+    :toctree: generated/units
+
+    set_ambient_pressure
+    ambient_pressure
+    units.gauge_to_absolute
+    units.absolute_to_gauge
+
 .. toctree::
 
     plot_methods

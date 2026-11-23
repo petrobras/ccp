@@ -86,8 +86,9 @@ ccp_web/
 - Figures of compressors and impellers render in the request from the stored
   TOML (cached per process); evaluation figures are built by the job because
   `Evaluation.load` takes seconds.
-- `pint`'s `barg` unit and `ccp.config.POLYTROPIC_METHOD` are process globals;
-  services set them inside `units.state_context(state)`, which holds a lock.
+- The ambient pressure (gauge units) and `ccp.config.POLYTROPIC_METHOD` are
+  process globals; services set them inside `units.state_context(state)`, which
+  holds the lock of `ccp.ambient_pressure`.
 
 ## Agent API
 

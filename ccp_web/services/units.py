@@ -1,24 +1,39 @@
 """Unit vocabularies, input parsing and the calculation context.
 
 The vocabularies match ``ccp/app/common.py`` so that ``.ccp`` files keep their
-unit strings. Two pieces of ccp state are process-global: the pint ``barg``
-unit (its offset is the ambient pressure) and ``ccp.config.POLYTROPIC_METHOD``.
-``calculation_context`` sets both under one lock and restores the method on
-exit, so concurrent requests in a threaded server cannot interleave them.
+unit strings. Two pieces of ccp state are process-global: the ambient pressure
+(the offset of the gauge units) and ``ccp.config.POLYTROPIC_METHOD``.
+``calculation_context`` sets both under the lock of ``ccp.ambient_pressure`` and
+restores them on exit, so concurrent requests in a threaded server cannot
+interleave them.
 """
 
 import logging
-import threading
+import math
 from contextlib import contextmanager
 
 import ccp
 from ccp import Q_
-from ccp.config.units import ureg
+from ccp.units import GAUGE_UNITS, gauge_reference_unit
 
 flow_m_units = ["kg/h", "kg/min", "kg/s", "lbm/h", "lbm/min", "lbm/s"]
 flow_v_units = ["m³/h", "m³/min", "m³/s"]
 flow_units = flow_m_units + flow_v_units
-pressure_units = ["bar", "kgf/cm²", "barg", "Pa", "kPa", "MPa", "psi", "mmH2O"]
+pressure_units = [
+    "bar",
+    "kgf/cm²",
+    "barg",
+    "Pa",
+    "kPa",
+    "MPa",
+    "psi",
+    "mmH2O",
+    "psig",
+    "kPag",
+    "MPag",
+]
+# for the ambient pressure and for pressure differences
+plain_pressure_units = [u for u in pressure_units if u not in GAUGE_UNITS]
 temperature_units = ["degK", "degC", "degF", "degR"]
 head_units = ["kJ/kg", "J/kg", "m*g0", "ft"]
 power_units = ["kW", "hp", "W", "Btu/h", "MW"]
@@ -42,9 +57,8 @@ polytropic_methods = {
     "Schultz": "schultz",
 }
 
-DEFAULT_AMBIENT_PRESSURE_BAR = 1.01325
+DEFAULT_AMBIENT_PRESSURE = Q_(1.01325, "bar")
 
-_lock = threading.RLock()
 _log = logging.getLogger("ccp_web.units")
 
 
@@ -69,22 +83,46 @@ def is_mass_flow_unit(unit):
     return Q_(0, unit).dimensionality == "[mass] / [time]"
 
 
-def define_barg(ambient_pressure_bar):
-    """Define ``barg`` with the given ambient pressure (bar) as offset."""
-    ureg.define(f"barg = 1 * bar; offset: {float(ambient_pressure_bar)}")
+def is_gauge_unit(unit):
+    try:
+        return gauge_reference_unit(unit) is not None
+    except Exception:  # pint raises several error types
+        return False
 
 
-def ambient_pressure_bar(state):
-    """Ambient pressure from the options panel, in bar (absolute)."""
-    reader = StateReader(state)
+def _read_ambient_pressure(reader):
+    """Ambient pressure of the options panel; None, with an error, if invalid."""
     value = reader.number("ambient_pressure_magnitude", required=False)
     if value is None:
-        return DEFAULT_AMBIENT_PRESSURE_BAR
-    unit = state.get("ambient_pressure_unit") or "bar"
-    if unit == "barg":
-        # Gauge ambient pressure makes no sense; read it as bar.
-        unit = "bar"
-    return Q_(value, unit).to("bar").m
+        if "ambient_pressure_magnitude" in reader.errors:
+            return None
+        return DEFAULT_AMBIENT_PRESSURE
+    unit = reader.state.get("ambient_pressure_unit") or "bar"
+    try:
+        # A gauge ambient pressure makes no sense; read it as absolute.
+        ambient = Q_(value, gauge_reference_unit(unit) or unit).to("bar")
+    except Exception as exc:  # pint raises several error types
+        reader.errors["ambient_pressure_unit"] = f"Invalid unit {unit!r}: {exc}"
+        return None
+    if not (math.isfinite(ambient.m) and ambient.m > 0):
+        reader.errors["ambient_pressure_magnitude"] = "Must be greater than 0"
+        return None
+    return ambient
+
+
+def check_ambient_pressure(reader):
+    """Record an error in ``reader`` if the ambient pressure is invalid."""
+    _read_ambient_pressure(reader)
+
+
+def state_ambient_pressure(state):
+    """Ambient pressure from the options panel (absolute).
+
+    The default if the value is invalid, so that pages render and autosave; the
+    calculations report it with ``check_ambient_pressure``.
+    """
+    ambient = _read_ambient_pressure(StateReader(state))
+    return DEFAULT_AMBIENT_PRESSURE if ambient is None else ambient
 
 
 def polytropic_method_from_state(state):
@@ -94,22 +132,19 @@ def polytropic_method_from_state(state):
 
 @contextmanager
 def calculation_context(ambient_pressure=None, polytropic_method=None):
-    """Hold the unit/config lock with ``barg`` and the polytropic method set.
+    """Hold the ccp lock with the ambient pressure and polytropic method set.
 
     Parameters
     ----------
-    ambient_pressure : float, optional
-        Ambient pressure in bar used as the ``barg`` offset. Defaults to
-        1.01325 bar so ``barg`` always parses.
+    ambient_pressure : pint.Quantity, optional
+        Ambient pressure of the gauge units, 1.01325 bar by default (not
+        ``ccp.config.AMBIENT_PRESSURE``, which another thread may be using).
     polytropic_method : str, optional
-        ccp method name (``sandberg_colby``...). Restored on exit.
+        ccp method name (``sandberg_colby``...).
     """
-    with _lock:
-        define_barg(
-            DEFAULT_AMBIENT_PRESSURE_BAR
-            if ambient_pressure is None
-            else ambient_pressure
-        )
+    if ambient_pressure is None:
+        ambient_pressure = DEFAULT_AMBIENT_PRESSURE
+    with ccp.ambient_pressure(ambient_pressure):
         previous = ccp.config.POLYTROPIC_METHOD
         if polytropic_method:
             ccp.config.POLYTROPIC_METHOD = polytropic_method
@@ -123,7 +158,7 @@ def calculation_context(ambient_pressure=None, polytropic_method=None):
 def state_context(state):
     """``calculation_context`` configured from a case state."""
     with calculation_context(
-        ambient_pressure=ambient_pressure_bar(state),
+        ambient_pressure=state_ambient_pressure(state),
         polytropic_method=polytropic_method_from_state(state),
     ):
         yield
