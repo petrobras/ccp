@@ -36,6 +36,7 @@ All properties are methods that return pint quantities in SI; pass a unit string
 ```python
 suc.T()  # Quantity in kelvin
 suc.p("bar")  # Quantity in bar
+suc.p("barg")  # gauge, relative to ccp.config.AMBIENT_PRESSURE
 suc.rho()  # kg/m³
 suc.h()  # J/kg
 suc.s()  # J/(kg·K)

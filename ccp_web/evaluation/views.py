@@ -212,6 +212,8 @@ def run_errors(case):
         with units.state_context(case.state):
             ev.operation_fluid(case.state)
             ev.orifice_geometry(case.state)
+            if case.state.get("flow_method") == "Orifice":
+                plant_data.check_difference_units(case.state)
     except units.InputError as exc:
         errors.update(exc.errors)
     return errors

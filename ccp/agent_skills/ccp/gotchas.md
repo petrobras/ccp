@@ -5,6 +5,8 @@
 - **Bare floats are SI**: `T=300` is kelvin, `p=101325` is Pa, `speed=900` is rad/s, `flow_v=5.5` is m³/s. For anything else use pint: `ccp.Q_(7941, "RPM")`, `Q_(40, "degC")`, `Q_(30, "bar")`, `Q_(34203.6, "kg/hr")`.
 - Results are pint quantities: convert with `.to("kJ/kg")`, take the magnitude with `.m` or `.magnitude`. Never divide by 1000 by hand.
 - Head in meters from a datasheet: multiply by g0 — `head_units="m*g0"` in `load_from_engauge_csv`, or `Q_(1500, "m*g0")`.
+- Pressures are absolute. Gauge input and output use `barg`, `psig`, `kPag` or `MPag`: `State(p=Q_(10, "barg"), ...)`, `s.p("barg")`. The reference is `ccp.config.AMBIENT_PRESSURE` (101325 Pa); change it with `ccp.set_ambient_pressure(Q_(0.95, "bar"))` or `with ccp.ambient_pressure(Q_(0.95, "bar")):`. For other units (kgf/cm²) use `ccp.units.gauge_to_absolute(Q_(10, "kgf/cm²"), ambient_pressure=...)` and `ccp.units.absolute_to_gauge`.
+- A gauge quantity is converted with the ambient pressure in effect at that moment: convert it to absolute before changing the ambient pressure. Do no arithmetic in gauge units, and do not use them for differences (`delta_p` raises).
 - Efficiency is a fraction (0.75), not a percent.
 
 ## States and fluids
@@ -33,6 +35,7 @@
 
 ## Multiprocessing
 
+- Worker processes have the default ambient pressure. ccp converts gauge values before sending them; do the same in your own pools.
 - ccp parallelizes impeller construction, conversion and evaluation internally with a **forkserver/spawn** multiprocessing context (`ccp/parallel.py`). Workers re-import your `__main__` module, so a plain script that builds an `Impeller` (including `load_from_engauge_csv`), calls `Impeller.convert_from` or creates an `Evaluation` at module top level cannot start its workers and fails with a `RuntimeError` telling you to guard the entry point:
 
 ```python

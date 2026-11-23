@@ -75,7 +75,7 @@ The Straight-Through page consists of several sections:
 - **Seal Gas Flow**: Enable seal gas flow inputs
 - **Variable Speed**: Allow speed variations in calculations
 - **Show Points**: Display individual test points on curves
-- **Ambient Pressure**: Set reference pressure for gauge measurements
+- **Ambient Pressure**: Absolute reference pressure for gauge measurements
 
 ### Main Content Area
 
@@ -120,7 +120,7 @@ The Data Sheet section is where you enter the guarantee point specifications fro
 #### Pressure Parameters
 - **Suction Pressure**: Inlet pressure
 - **Discharge Pressure**: Outlet pressure
-- Units: bar, bara, barg, Pa, kPa, MPa, psi, psia
+- Units: bar, kgf/cm², Pa, kPa, MPa, psi, mmH2O (absolute), barg, psig, kPag, MPag (gauge)
 
 #### Temperature Parameters
 - **Suction Temperature**: Inlet temperature

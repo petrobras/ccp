@@ -92,6 +92,51 @@ class TestStraightThrough:
         # Verify StraightThrough object was created
         assert isinstance(at.session_state["straight_through"], StraightThrough)
 
+    @pytest.mark.parametrize("unit, ambient", [("Pa", 90000), ("barg", 0.9)])
+    def test_ambient_pressure(self, unit, ambient):
+        import ccp
+
+        session_data, _, _ = load_ccp_file(self.example_path)
+        at = AppTest.from_file(self.page_path, default_timeout=TIMEOUT)
+        populate_session_state(at, session_data)
+        at.session_state["ambient_pressure_magnitude"] = str(ambient)
+        # a gauge unit, of older files, is read as absolute on the first run
+        at.session_state["ambient_pressure_unit"] = unit
+        at.run(timeout=TIMEOUT)
+        assert not at.exception
+        at.selectbox(key="ambient_pressure_unit").set_value("bar")
+        at.text_input(key="ambient_pressure_magnitude").set_value("0.9")
+        button = [b for b in at.button if b.label == "Calculate"][0]
+        button.click().run(timeout=TIMEOUT)
+        assert not at.exception
+        gauge = float(session_data["suction_pressure_point_1"])
+        assert session_data["suction_pressure_units"] == "barg"
+        suc = at.session_state["straight_through"].points_flange_t[0].suc
+        assert abs(suc.p("bar").m - gauge - 0.9) < 0.02
+        # the ambient pressure of the session does not leak
+        assert ccp.config.AMBIENT_PRESSURE == 101325
+
+    def test_invalid_ambient_pressure(self):
+        at = AppTest.from_file(self.page_path, default_timeout=TIMEOUT)
+        at.session_state["ambient_pressure_magnitude"] = "abc"
+        at.run(timeout=TIMEOUT)
+        assert not at.exception
+        assert any("ambient pressure" in e.value for e in at.error)
+
+    def test_orifice_callback_ambient_pressure(self):
+        session_data, _, _ = load_ccp_file(self.example_path)
+        flows = []
+        for ambient in ("1.01325", "0.5"):
+            at = AppTest.from_file(self.page_path, default_timeout=TIMEOUT)
+            populate_session_state(at, session_data)
+            at.run(timeout=TIMEOUT)
+            at.text_input(key="ambient_pressure_magnitude").set_value(ambient)
+            button = [b for b in at.button if b.label == "Calculate Flowrate"][0]
+            button.click().run(timeout=TIMEOUT)
+            assert not at.exception
+            flows.append(float(at.session_state["mass_flow_fo_1"]))
+        assert flows[1] < 0.98 * flows[0]
+
 
 # ---------------------------------------------------------------------------
 # Back-to-Back

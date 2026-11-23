@@ -129,6 +129,7 @@ def monitoring(ctx):
     source = state.get("data_source") or "pi"
     file = plant_file(case) if source == "file" else None
     tm = plant_data.tag_mappings(state, pi_password=ctx.secret("pi_password"))
+    # entered per step: the context holds a lock, and this loop sleeps
     with units.state_context(state):
         ctx.progress(0.1, "Loading the evaluation...")
         evaluation = ev.load(case.artifact("evaluation").read(), state)
@@ -136,45 +137,47 @@ def monitoring(ctx):
         first = evaluation.calculate_points(
             evaluation.data.tail(5), drop_invalid_values=False, parallel=False
         )
-        calculated = ev.calculated_rows(first)
-        if calculated.empty:
-            raise InputError(
-                {
-                    "temperature_fluctuation": (
-                        "No points could be calculated. Check data quality thresholds."
-                    )
-                }
-            )
-        history = calculated.tail(MONITOR_HISTORY)
-        latest = calculated
-        ticks = 0
-        max_ticks = ctx.params.get("max_ticks")  # tests stop the loop
-        while max_ticks is None or ticks <= max_ticks:
+    calculated = ev.calculated_rows(first)
+    if calculated.empty:
+        raise InputError(
+            {
+                "temperature_fluctuation": (
+                    "No points could be calculated. Check data quality thresholds."
+                )
+            }
+        )
+    history = calculated.tail(MONITOR_HISTORY)
+    latest = calculated
+    ticks = 0
+    max_ticks = ctx.params.get("max_ticks")  # tests stop the loop
+    while max_ticks is None or ticks <= max_ticks:
+        with units.state_context(state):
             view = ev.monitoring_view(evaluation, latest, history, state)
-            ctx.progress(0.5, f"Monitoring · last point {view['latest_time']}")
-            ctx.set_result(
-                view=view,
-                ticks=ticks,
-                last_fetch=datetime.now().isoformat(timespec="seconds"),
-                interval=interval,
-                error=None,
-            )
-            ticks += 1
-            if max_ticks is not None and ticks > max_ticks:
-                break
-            ctx.sleep(0 if max_ticks is not None else interval)
-            try:
+        ctx.progress(0.5, f"Monitoring · last point {view['latest_time']}")
+        ctx.set_result(
+            view=view,
+            ticks=ticks,
+            last_fetch=datetime.now().isoformat(timespec="seconds"),
+            interval=interval,
+            error=None,
+        )
+        ticks += 1
+        if max_ticks is not None and ticks > max_ticks:
+            break
+        ctx.sleep(0 if max_ticks is not None else interval)
+        try:
+            with units.state_context(state):
                 df_new = plant_data.fetch_online(source, tm, file=file)
                 results = evaluation.calculate_points(
                     df_new, drop_invalid_values=False, parallel=False
                 )
-                new = ev.calculated_rows(results)
-                if not new.empty:
-                    history = pd.concat([history, new]).tail(MONITOR_HISTORY)
-                    latest = new
-            except Exception as exc:  # keep monitoring through PI hiccups
-                ctx.set_result(
-                    error=f"{type(exc).__name__}: {exc}",
-                    error_trace=traceback.format_exc()[-2000:],
-                )
-                ctx.sleep(1)
+            new = ev.calculated_rows(results)
+            if not new.empty:
+                history = pd.concat([history, new]).tail(MONITOR_HISTORY)
+                latest = new
+        except Exception as exc:  # keep monitoring through PI hiccups
+            ctx.set_result(
+                error=f"{type(exc).__name__}: {exc}",
+                error_trace=traceback.format_exc()[-2000:],
+            )
+            ctx.sleep(1)

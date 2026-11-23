@@ -90,11 +90,12 @@ The library automatically configures REFPROP paths during initialization. REFPRO
 - **All unit conversions must use pint** - never use manual arithmetic (e.g., divide by 1000)
 - Use `Q_(value, "unit").to("target_unit").m` for conversions
 - Example: `Q_(head_joules, "J/kg").to("kJ/kg").m` instead of `head_joules / 1000`
+- Gauge units (`barg`, `psig`, `kPag`, `MPag`) are offset units set from `ccp.config.AMBIENT_PRESSURE`. Objects hold absolute pressure only; convert to absolute before sending values to worker processes, and use `with ccp.ambient_pressure(q):` in the apps
 - Default internal units (from `ccp/config/units.py`):
   - head: `J/kg` (joule/kilogram)
   - power: `W` (watt)
   - flow_v: `m³/s` (meter³/second)
-  - pressure: `Pa` (pascal)
+  - pressure: `Pa` (pascal, absolute)
   - temperature: `K` (kelvin)
 
 ### Fluid Properties

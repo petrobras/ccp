@@ -7,7 +7,7 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from ccp_web.services import ccpfile, gas, plant_data, schemas, units
+from ccp_web.services import ccpfile, curves, gas, plant_data, schemas, units
 from ccp_web.services import performance_test as pt
 
 EXAMPLES = {
@@ -161,10 +161,98 @@ def test_calculation_context_restores_method():
     import ccp
 
     before = ccp.config.POLYTROPIC_METHOD
-    with units.calculation_context(ambient_pressure=1.0, polytropic_method="schultz"):
+    with units.calculation_context(
+        ambient_pressure=ccp.Q_(1.0, "bar"), polytropic_method="schultz"
+    ):
         assert ccp.config.POLYTROPIC_METHOD == "schultz"
         assert abs(ccp.Q_(1, "barg").to("bar").m - 2.0) < 1e-12
     assert ccp.config.POLYTROPIC_METHOD == before
+    assert ccp.config.AMBIENT_PRESSURE == 101325
+
+
+@pytest.mark.parametrize("unit", ["bar", "barg"])
+def test_state_ambient_pressure(unit):
+    state = {"ambient_pressure_magnitude": "0.9", "ambient_pressure_unit": unit}
+    assert units.state_ambient_pressure(state).to("bar").m == pytest.approx(0.9)
+
+
+@pytest.mark.parametrize(
+    "value, unit",
+    [("0", "bar"), ("-1", "bar"), ("inf", "bar"), ("x", "bar"), ("1", "foo")],
+)
+def test_invalid_ambient_pressure(value, unit):
+    state = schemas.default_state("straight_through")
+    state["ambient_pressure_magnitude"] = value
+    state["ambient_pressure_unit"] = unit
+    # pages still render; the calculation reports the field
+    with units.state_context(state):
+        with pytest.raises(units.InputError) as info:
+            pt.read_inputs("straight_through", state)
+    assert any(k.startswith("ambient_pressure") for k in info.value.errors)
+
+
+def test_gauge_units_of_differences():
+    fields = schemas.get_schema("straight_through").fields
+    assert "barg" in fields["suction_pressure_units"].options
+    assert "barg" not in fields["pressure_drop_fo_units"].options
+    assert "barg" not in fields["ambient_pressure_unit"].options
+
+
+def test_gauge_suction_below_ambient():
+    state = schemas.default_state("curves_conversion")
+    state.update(new_suc_p=-0.2, new_suc_p_unit="barg", new_suc_t=30.0)
+    with units.state_context(state):
+        with pytest.raises(units.InputError) as info:
+            curves.new_suction_state(state)  # no gas composition
+    assert "new_suc_p" not in info.value.errors
+
+
+def test_gauge_delta_p_tag_is_refused():
+    import pandas as pd
+
+    df = pd.DataFrame({"delta_p": [1.0, 2.0]})
+    with pytest.raises(units.InputError):
+        plant_data.merge_redundant_parameter_tags(df, {"delta_p_unit": "barg"})
+    with pytest.raises(units.InputError) as info:
+        plant_data.check_difference_units({"delta_p_unit_2": "barg"})
+    assert list(info.value.errors) == ["delta_p_unit_2"]
+
+
+def test_agent_gauge_units():
+    from ccp_web.core.state import _check_value
+
+    fields = schemas.get_schema("straight_through").fields
+    assert _check_value(fields["suction_pressure_units"], "psig")[1] is None
+    for key in ("ambient_pressure_unit", "pressure_drop_fo_units"):
+        assert "gauge" in _check_value(fields[key], "barg")[1]
+
+
+def test_calculation_context_default_is_constant():
+    import ccp
+
+    ccp.set_ambient_pressure(90000)
+    with units.calculation_context():
+        assert ccp.Q_(0, "barg").to("Pa").m == pytest.approx(101325)
+
+
+def test_orifice_flows_gauge_errors(example):
+    state = ccpfile.read_ccp(example("example_straight.ccp")).state
+    state["flow_method"] = "Orifice"
+    with units.state_context(state):
+        updates, errors = pt.orifice_flows(
+            "straight_through", {**state, "pressure_drop_fo_units": "barg"}
+        )
+        assert updates == {} and list(errors) == ["pressure_drop_fo_units"]
+        updates, errors = pt.orifice_flows(
+            "straight_through", {**state, "ambient_pressure_magnitude": "-1"}
+        )
+        assert updates == {} and list(errors) == ["ambient_pressure_magnitude"]
+
+
+def test_pressure_vocabularies_match_streamlit():
+    common = pytest.importorskip("ccp.app.common")
+    assert units.pressure_units == common.pressure_units
+    assert units.plain_pressure_units == common.plain_pressure_units
 
 
 ORIFICE_KEYS = [

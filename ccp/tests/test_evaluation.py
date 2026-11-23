@@ -493,3 +493,47 @@ def test_evaluation_gas_model_of_operating_data():
         ideal = impeller("ideal:k=1.3")
     assert get_eos(evaluation([ideal])) == "ideal:k=1.3"
     assert get_eos(evaluation(None, [ideal])) == "ideal:k=1.3"
+
+
+@pytest.mark.filterwarnings("ignore::ccp.state.IdealGasWarning")
+@pytest.mark.parametrize("tap", [None, "p_downstream", "p_upstream"])
+def test_evaluation_gauge(tap, tmp_path):
+    imp = _ideal_gas_impeller()
+    if tap is None:
+        df, units, kwargs = pd.read_parquet(data_path / "data.parquet"), data_units, {}
+    else:
+        df = pd.read_parquet(data_path / "data_delta_p.parquet")
+        df = df.rename(columns={"p_downstream": tap})
+        units = {
+            k.replace("p_downstream", tap): v for k, v in delta_p_data_units.items()
+        }
+        kwargs = dict(D=Q_(0.590550, "m"), d=Q_(0.366130, "m"), tappings="flange")
+    df = df[:100]
+    pressures = [c for c in ("ps", "pd", tap) if c in df.columns]
+    gauge = df.copy()
+    gauge[pressures] = gauge[pressures] - 0.9
+    kwargs = dict(
+        operation_fluid=operation_fluid, impellers=[imp], n_clusters=1, **kwargs
+    )
+    reference = ccp.Evaluation(data=df, data_units=units, **kwargs)
+    evaluation = ccp.Evaluation(
+        data=gauge,
+        data_units={**units, **{c: "barg" for c in pressures}},
+        ambient_pressure=Q_(0.9, "bar"),  # workers have 1 atm
+        **kwargs,
+    )
+    assert len(evaluation.df) == len(reference.df)
+    for column in ("eff", "head", "flow_v", "p_disch", "expected_eff", "delta_eff"):
+        if column in reference.df.columns:
+            assert_allclose(
+                evaluation.df[column], reference.df[column], rtol=1e-6, err_msg=column
+            )
+    assert_allclose(
+        evaluation.impellers_new[0].points[0].suc.p().m,
+        reference.impellers_new[0].points[0].suc.p().m,
+        rtol=1e-9,
+    )
+    path = tmp_path / "evaluation.ccp_eval"
+    evaluation.save(path)
+    loaded = ccp.Evaluation.load(path)
+    assert_allclose(loaded.ambient_pressure.to("Pa").m, 90000)

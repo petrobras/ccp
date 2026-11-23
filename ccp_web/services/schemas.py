@@ -168,7 +168,7 @@ PARAMETERS = {
         _p(
             "pressure_drop_fo",
             "Orifice Pressure Drop",
-            units.pressure_units,
+            units.plain_pressure_units,
             "Pressure drop across orifice plate.",
         ),
         _p(
@@ -360,7 +360,7 @@ def _options_fields(schema):
         label="Ambient Pressure",
         units_key="ambient_pressure_unit",
     )
-    schema.add("ambient_pressure_unit", "select", "bar", units.pressure_units)
+    schema.add("ambient_pressure_unit", "select", "bar", units.plain_pressure_units)
     schema.add("oil_specific_heat", "bool", False, label="Specific Heat")
     schema.add(
         "oil_specific_heat_magnitude",
@@ -571,7 +571,7 @@ TAG_PARAMETERS = [
 ]
 FLOW_TAG_PARAMETERS = [("flow", "Flow", units.flow_units)]
 ORIFICE_TAG_PARAMETERS = [
-    ("delta_p", "Delta P", units.pressure_units),
+    ("delta_p", "Delta P", units.plain_pressure_units),
     ("p_downstream", "Downstream P", units.pressure_units),
 ]
 

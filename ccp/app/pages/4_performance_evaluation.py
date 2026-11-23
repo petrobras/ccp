@@ -16,6 +16,7 @@ from scipy import stats
 
 import ccp
 from ccp.app.common import (
+    DEFAULT_AMBIENT_PRESSURE,
     build_data_units,
     build_evaluation_kwargs,
     build_tag_mappings,
@@ -232,7 +233,9 @@ def main():
                     eval_tmp = tempfile.NamedTemporaryFile(suffix=".zip", delete=False)
                     eval_tmp.write(eval_bytes)
                     eval_tmp.close()
-                    loaded_eval = ccp.Evaluation.load(eval_tmp.name)
+                    # files without an ambient pressure take the current one
+                    with ccp.ambient_pressure(DEFAULT_AMBIENT_PRESSURE):
+                        loaded_eval = ccp.Evaluation.load(eval_tmp.name)
                     session_state_data["hist_evaluation"] = loaded_eval
                     Path(eval_tmp.name).unlink()
 

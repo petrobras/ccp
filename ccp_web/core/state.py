@@ -250,11 +250,6 @@ def _dimensionality(value):
     try:
         return ccp.Q_(1, value).dimensionality
     except Exception:
-        pass
-    try:  # 'barg' only exists inside a calculation context
-        with units.calculation_context():
-            return ccp.Q_(1, value).dimensionality
-    except Exception:
         return None
 
 
@@ -351,6 +346,11 @@ def _check_value(f, value):
             return text, None, None
         dimension = _dimensionality(text) if is_unit_field(f) and text else None
         if dimension is not None:
+            if units.is_gauge_unit(text) and not any(
+                units.is_gauge_unit(o) for o in f.options
+            ):
+                # The ambient pressure and pressure differences.
+                return None, f"'{text}' is a gauge unit; e.g. {list(f.options)}", None
             expected = _field_dimensions(f)
             if expected and dimension not in expected:
                 # Refused now: the calculation would fail on it later.

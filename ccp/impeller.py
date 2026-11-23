@@ -13,7 +13,7 @@ from scipy.interpolate import interp1d, UnivariateSpline, PchipInterpolator
 from scipy.optimize import fsolve
 
 from ccp import Q_, State, Point, Curve
-from ccp.config.units import check_units
+from ccp.config.units import _absolute, check_units
 from ccp.config.utilities import r_getattr, r_setattr
 from ccp.data_io.read_csv import read_data_from_engauge_csv
 from ccp.data_io.serializers import Serializable
@@ -1169,8 +1169,13 @@ class Impeller(Serializable):
                 arg_dict = {
                     "suc": suc,
                     "speed": Q_(float(speed), speed_units),
-                    parameters[0]: Q_(param0, args[f"{parameters[0]}_units"]),
-                    parameters[1]: Q_(param1, args[f"{parameters[1]}_units"]),
+                    # disch_p can be in a gauge unit
+                    parameters[0]: _absolute(
+                        Q_(param0, args[f"{parameters[0]}_units"])
+                    ),
+                    parameters[1]: _absolute(
+                        Q_(param1, args[f"{parameters[1]}_units"])
+                    ),
                     "power_losses": Q_(power_losses, power_losses_units),
                     "b": b,
                     "D": D,

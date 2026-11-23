@@ -10,11 +10,11 @@ import time
 import logging
 from ccp.compressor import PointFirstSection, PointSecondSection, BackToBack
 from ccp.config.utilities import r_getattr
-from ccp.config.units import ureg
 from pathlib import Path
 
 from ccp.app.common import (
-    pressure_units,
+    plain_pressure_units,
+    session_ambient_pressure,
     polytropic_methods,
     parameters_map,
     specific_heat_calculate,
@@ -185,15 +185,17 @@ def main():
         with ambient_pressure_unit_col:
             ambient_pressure_unit = st.selectbox(
                 "Unit",
-                options=pressure_units,
-                index=pressure_units.index("bar"),
+                options=plain_pressure_units,
+                index=plain_pressure_units.index("bar"),
                 key="ambient_pressure_unit",
                 label_visibility="collapsed",
             )
-        ambient_pressure = Q_(
-            float(ambient_pressure_magnitude), ambient_pressure_unit
-        ).to("bar")
-        ureg.define(f"barg = 1 * bar; offset: {ambient_pressure.magnitude}")
+        try:
+            ambient_is_valid = 0 < float(ambient_pressure_magnitude) < float("inf")
+        except ValueError:
+            ambient_is_valid = False
+        if not ambient_is_valid:
+            st.error("Invalid ambient pressure: 1.01325 bar is being used.")
 
         (
             oil_specific_heat,
@@ -1855,6 +1857,7 @@ def main():
                             section_plot_limits,
                             show_points,
                             speed_operational_rpm,
+                            ambient_pressure,
                         ):
                             mach_plot = _point_interpolated.plot_mach()
                             reynolds_plot = _point_interpolated.plot_reynolds()
@@ -1994,6 +1997,8 @@ def main():
                             speed_operational_rpm=back_to_back.speed_operational.to(
                                 "rpm"
                             ).m,
+                            # the units of the curves can be gauge
+                            ambient_pressure=session_ambient_pressure().to("Pa").m,
                         )
 
                         with st.container():
@@ -2045,4 +2050,4 @@ def main():
 
 
 if __name__ == "__main__":
-    run_app(main, "back_to_back")
+    run_app(main, "back_to_back", session_ambient_pressure)
