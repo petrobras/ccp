@@ -73,6 +73,9 @@ class Evaluation:
         dc=None,
         C=None,
         ambient_pressure=None,
+        driver=None,
+        transmission_efficiency=1.0,
+        cluster_on_composition=False,
         **kwargs,
     ):
         """Initialize the evaluation class.
@@ -161,6 +164,24 @@ class Evaluation:
             The default is True.
         verbose : bool, optional
             If True, shows progress bar.
+        driver : ccp.Driver, optional
+            Driver used to estimate the shaft power it delivers from the
+            ``driver_*`` columns of ``data`` (e.g. ``driver_input_power``,
+            ``driver_current`` for an ``InductionMotor``; the suffix is the
+            argument of ``driver.estimate``). Not needed when ``data`` has a
+            ``power_driver`` column (driver shaft power, W unless set in
+            ``data_units``). With either, the results get
+            ``power_coupling`` (driver power times
+            ``transmission_efficiency``, W) and ``delta_power_balance``
+            (``power_coupling`` minus the compressor shaft power, % of the
+            compressor shaft power).
+        transmission_efficiency : float, optional
+            Coupling and gearbox efficiency between the driver and the
+            compressor, applied to the driver power. The default is 1.0.
+        cluster_on_composition : bool, optional
+            If True, the molar mass of the gas is a clustering feature, so
+            rows with different compositions get different converted curves.
+            Only used with ``fluid_*`` columns. The default is False.
 
         Returns
         -------
@@ -207,6 +228,9 @@ class Evaluation:
         self._check_flow_meter()
         self.n_clusters = n_clusters
         self.parallel = parallel
+        self.driver = driver
+        self.transmission_efficiency = transmission_efficiency
+        self.cluster_on_composition = cluster_on_composition
 
         # check if we are loading from a zip file where the impellers are available
         if kwargs.get("impellers_new") is None:
@@ -284,7 +308,9 @@ class Evaluation:
         """Apply fluctuation filtering with current instance parameters.
 
         The fluctuation and the check for negative values are those of the
-        absolute pressures.
+        absolute pressures. Driver columns are averaged over the same window
+        but do not take part in the filter: a missing driver reading must not
+        drop the row.
         """
         offsets = {
             column: self.ambient_pressure.to(reference).m
@@ -301,8 +327,9 @@ class Evaluation:
         return df
 
     def _filter_absolute(self, data, drop_invalid_values):
-        return filter_data(
-            data,
+        optional = [c for c in data.columns if _is_driver_column(c)]
+        filtered = filter_data(
+            data.drop(columns=optional),
             data_type=self.data_type,
             window=self.window,
             temperature_fluctuation=self.temperature_fluctuation,
@@ -310,6 +337,23 @@ class Evaluation:
             speed_fluctuation=self.speed_fluctuation,
             drop_invalid_values=drop_invalid_values,
         )
+        if optional:
+            means = (
+                data[optional]
+                .apply(pd.to_numeric)
+                .rolling(window=self.window, min_periods=1)
+                .mean()
+            )
+            filtered = filtered.join(means.loc[filtered.index])
+        return filtered
+
+    @property
+    def cluster_features(self):
+        """Columns used by the k-means clustering of the operating data."""
+        features = ["speed_sound", "ps", "Ts"]
+        if getattr(self, "cluster_on_composition", False) and self.fluid_columns:
+            features.append("molar_mass")
+        return features
 
     @staticmethod
     def _align_timestamp_to_reference(ts, reference_ts):
@@ -340,7 +384,7 @@ class Evaluation:
     def _assign_clusters(self, df):
         """Assign cluster id to each row using fitted model and scaling."""
         df = df.copy()
-        features = df[["speed_sound", "ps", "Ts"]]
+        features = df[list(self.data_mean.index)]
         features_norm = (features - self.data_mean) / self.data_std
         # rows with NaN features (invalid rows kept in the dataframe) get a
         # placeholder cluster; they are skipped in the point calculation
@@ -422,6 +466,8 @@ class Evaluation:
             "delta_p_disch",
         ]
         values = {name: np.full(n, -1.0) for name in value_columns}
+        # analytics columns: NaN where not computed
+        kpi_values = {name: np.full(n, np.nan) for name in KPI_COLUMNS}
         # Error tracking columns
         error_columns = ["error", "error_type", "expected_error", "expected_error_type"]
         errors = {name: [None] * n for name in error_columns}
@@ -476,9 +522,19 @@ class Evaluation:
                 values["delta_p_disch"][k] = (
                     (p_disch_op - p_disch_exp) / p_disch_exp * 100
                 )
+                for name, value in result["kpis"].items():
+                    kpi_values[name][k] = value
 
         for name in value_columns:
             df[name] = values[name]
+        for name in KPI_COLUMNS:
+            df[name] = kpi_values[name]
+        power_coupling = self._driver_power(df)
+        if power_coupling is not None:
+            df["power_coupling"] = power_coupling
+            df["delta_power_balance"] = (
+                (power_coupling - df["power_shaft"]) / df["power_shaft"] * 100
+            )
         for name in error_columns:
             df[name] = errors[name]
         if invalid_rows and "valid" in df.columns:
@@ -491,8 +547,8 @@ class Evaluation:
                 df["timescale"] = 0.0
             else:
                 df["timescale"] = (
-                    (df.index - df.index[0]).total_seconds() / total_seconds
-                )
+                    df.index - df.index[0]
+                ).total_seconds() / total_seconds
         elif "timescale" not in df.columns:
             df["timescale"] = 0.0
 
@@ -611,6 +667,50 @@ class Evaluation:
 
         return df_new_points
 
+    def _driver_power(self, df):
+        """Driver power delivered at the compressor coupling (W) for each row.
+
+        From a ``power_driver`` column, or from ``self.driver`` and the
+        ``driver_*`` measurement columns. None when neither is available.
+        """
+        units = self.data_units or {}
+        efficiency = getattr(self, "transmission_efficiency", 1.0)
+        if "power_driver" in df.columns:
+            power = Q_(
+                df["power_driver"].to_numpy(dtype=float),
+                units.get("power_driver", "W"),
+            )
+            return power.to("W").m * efficiency
+        driver = getattr(self, "driver", None)
+        if driver is None:
+            return None
+        columns = [c for c in df.columns if c.startswith("driver_")]
+        power = np.full(len(df), np.nan)
+        for k, (_, row) in enumerate(df[columns].iterrows()):
+            measurements = {
+                c[len("driver_") :]: Q_(row[c], units[c]) if c in units else row[c]
+                for c in columns
+                if pd.notna(row[c])
+            }
+            try:
+                power[k] = driver.power_output(**measurements).to("W").m
+            except (ValueError, TypeError, ZeroDivisionError):
+                continue
+        return power * efficiency
+
+    def trends(self, kpis=None, **kwargs):
+        """Trends, change points and time to threshold of the KPI columns.
+
+        See :func:`ccp.analytics.trends.analyse_trends` for the parameters.
+
+        Returns
+        -------
+        report : ccp.analytics.TrendReport
+        """
+        from .analytics.trends import analyse_trends
+
+        return analyse_trends(self.df, kpis=kpis, **kwargs)
+
     def _get_fluid_composition(self, row_or_series):
         """Extract and convert fluid composition from a row or series.
 
@@ -640,8 +740,7 @@ class Evaluation:
         return fluid
 
     def _run(self):
-        df = self.data.copy()
-        df = self._filter_dataframe(df)
+        df = self._filter_dataframe(self.data.copy())
 
         # Check if dataframe is empty after filtering
         if df.empty:
@@ -658,8 +757,8 @@ class Evaluation:
         # Remove rows with NaN values (can occur in two-phase region)
         df = df.dropna(subset=["speed_sound", "v_s"])
 
-        # create clusters based on speed_sound, ps and Ts
-        data = df[["speed_sound", "ps", "Ts"]]
+        # create clusters based on speed_sound, ps and Ts (and molar mass)
+        data = df[self.cluster_features]
         # normalize
         data_mean = data.mean()
         data_std = data.std()
@@ -691,11 +790,16 @@ class Evaluation:
 
         print("Converting curves")
         for i in tqdm(range(kmeans.n_clusters)):
-            cluster_series = df[df["cluster"] == i].iloc[0]
+            cluster_rows = df[df["cluster"] == i]
+            cluster_series = cluster_rows.iloc[0]
             if self.operation_fluid is not None:
                 fluid = self.operation_fluid
             else:
-                fluid = self._get_fluid_composition(cluster_series)
+                # mean composition of the cluster, not the composition of
+                # whichever row comes first
+                fluid = self._get_fluid_composition(
+                    cluster_rows[self.fluid_columns].mean()
+                )
             suc_new = State(
                 p=self._pressure(cluster_series.ps_center, "ps"),
                 T=Q_(cluster_series.Ts_center, self.data_units["Ts"]),
@@ -812,6 +916,8 @@ class Evaluation:
 
             df.loc[i, "v_s"] = state.v().m
             df.loc[i, "speed_sound"] = state.speed_sound().m
+            if self.fluid_columns:
+                df.loc[i, "molar_mass"] = state.molar_mass().m
 
         # check if flow_v or flow_m is in the DataFrame
         if (not calculate_flow) and (
@@ -917,7 +1023,11 @@ class Evaluation:
                 "pressure_fluctuation": self.pressure_fluctuation,
                 "speed_fluctuation": self.speed_fluctuation,
                 "ambient_pressure": self.ambient_pressure.m,
+                "transmission_efficiency": self.transmission_efficiency,
+                "cluster_on_composition": self.cluster_on_composition,
             }
+            if self.driver is not None:
+                args_dict["driver"] = self.driver.to_dict()
             zip_file.writestr("args.toml", toml.dumps(args_dict))
 
     @classmethod
@@ -971,6 +1081,9 @@ class Evaluation:
                 pressure_fluctuation=args_dict["pressure_fluctuation"],
                 speed_fluctuation=args_dict["speed_fluctuation"],
                 ambient_pressure=args_dict.get("ambient_pressure"),
+                transmission_efficiency=args_dict.get("transmission_efficiency", 1.0),
+                cluster_on_composition=args_dict.get("cluster_on_composition", False),
+                driver=_load_driver(args_dict.get("driver")),
                 impellers_new=impellers_new,
                 df=df,
             )
@@ -980,6 +1093,88 @@ class Evaluation:
             evaluation.data_std = data_std
 
             return evaluation
+
+
+# per-row analytics columns computed with the expected point (see _row_kpis)
+KPI_COLUMNS = [
+    "flow_dev",
+    "delta_Td",
+    "health_index",
+    "head_slope",
+    "eff_slope",
+    "power_shaft",
+]
+
+
+def _is_driver_column(column):
+    return column == "power_driver" or column.startswith("driver_")
+
+
+def _load_driver(data):
+    if not data:
+        return None
+    from .drivers import InductionMotor
+
+    return InductionMotor.from_dict(data)
+
+
+def _curve_slopes(curve, flow_v, head):
+    """Log-slopes of an expected curve at ``flow_v``.
+
+    Returns ``d ln(head) / d ln(flow)`` and ``d eff / d ln(flow)``, where
+    ``head`` is the expected head at ``flow_v``. The flow derivatives are
+    those of the linear interpolation used by ``Impeller.point`` (the segment
+    containing ``flow_v``, the first segment below the lowest flow). Above
+    the highest flow ``Impeller.point`` uses a choke formula that is not a
+    performance curve, so the slopes are NaN.
+    """
+    flow = curve["flow_v"]
+    if flow_v > flow[-1]:
+        return np.nan, np.nan
+    i = int(np.clip(np.searchsorted(flow, flow_v) - 1, 0, len(flow) - 2))
+    dflow = flow[i + 1] - flow[i]
+    dhead = (curve["head"][i + 1] - curve["head"][i]) / dflow
+    deff = (curve["eff"][i + 1] - curve["eff"][i]) / dflow
+    return float(flow_v * dhead / head), float(flow_v * deff)
+
+
+def _flow_at_head(curve, head, max_extrapolation=0.5):
+    """Flow of the expected curve's stable branch with the given head.
+
+    The stable branch runs from the highest head to the highest flow. Heads
+    below the curve end are extrapolated with the last segment up to
+    ``max_extrapolation`` times the branch flow range; heads above the peak
+    have no solution (NaN).
+    """
+    flow = curve["flow_v"]
+    heads = curve["head"]
+    peak = int(np.argmax(heads))
+    flow, heads = flow[peak:], heads[peak:]
+    if len(flow) < 2 or head > heads[0]:
+        return np.nan
+    if head >= heads[-1]:
+        return float(np.interp(head, heads[::-1], flow[::-1]))
+    slope = (flow[-1] - flow[-2]) / (heads[-1] - heads[-2])
+    value = flow[-1] + (head - heads[-1]) * slope
+    if value - flow[-1] > max_extrapolation * (flow[-1] - flow[0]):
+        return np.nan
+    return float(value)
+
+
+def _row_kpis(imp_new, point_op, point_expected):
+    """Analytics values of one row (see KPI_COLUMNS)."""
+    curve = imp_new._curve_data(point_expected.speed)
+    flow_v = point_op.flow_v.m
+    head_slope, eff_slope = _curve_slopes(curve, flow_v, point_expected.head.m)
+    flow_exp = _flow_at_head(curve, point_op.head.m)
+    return {
+        "flow_dev": (flow_v - flow_exp) / flow_exp * 100,
+        "delta_Td": point_op.disch.T().m - point_expected.disch.T().m,
+        "health_index": point_op.eff.m / point_expected.eff.m,
+        "head_slope": head_slope,
+        "eff_slope": eff_slope,
+        "power_shaft": point_op.power.m + point_expected.power_losses.m,
+    }
 
 
 # converted impellers of the Evaluation being calculated, set once per worker
@@ -1026,6 +1221,7 @@ def calculate_evaluation_point(x):
         "expected": None,
         "expected_error": None,
         "invalid_state": False,
+        "kpis": {},
     }
     if not x.get("valid", True):
         return result
@@ -1046,6 +1242,12 @@ def calculate_evaluation_point(x):
         result["expected"] = imp_new.point(flow_v=x["flow_v"], speed=x["speed"])
     except Exception as e:
         result["expected_error"] = _error_info(e)
+    if result["point"] is not None and result["expected"] is not None:
+        try:
+            result["kpis"] = _row_kpis(imp_new, result["point"], result["expected"])
+        except Exception:
+            # analytics are optional: keep the row with NaN KPIs
+            pass
     return result
 
 

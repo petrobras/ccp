@@ -53,12 +53,14 @@ class Case(models.Model):
     CURVES_CONVERSION = "curves_conversion"
     PERFORMANCE_EVALUATION = "performance_evaluation"
     CURVES_DIGITIZER = "curves_digitizer"
+    FLEET_ANALYSIS = "fleet_analysis"
     APP_TYPES = [
         (STRAIGHT_THROUGH, "Straight-through"),
         (BACK_TO_BACK, "Back-to-back"),
         (CURVES_DIGITIZER, "Curves digitizer"),
         (CURVES_CONVERSION, "Curves conversion"),
         (PERFORMANCE_EVALUATION, "Performance evaluation"),
+        (FLEET_ANALYSIS, "Fleet analysis"),
     ]
 
     owner = models.ForeignKey(
@@ -94,6 +96,7 @@ class Case(models.Model):
             self.CURVES_CONVERSION: "curves:case",
             self.PERFORMANCE_EVALUATION: "evaluation:case",
             self.CURVES_DIGITIZER: "digitizer:case",
+            self.FLEET_ANALYSIS: "fleet:case",
         }[self.app_type]
         return reverse(route, args=[self.pk])
 

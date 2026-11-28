@@ -25,6 +25,7 @@ INSTALLED_APPS = [
     "ccp_web.curves",
     "ccp_web.digitizer",
     "ccp_web.evaluation",
+    "ccp_web.fleet",
 ]
 
 MIDDLEWARE = [

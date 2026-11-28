@@ -89,6 +89,11 @@ digitize = [
     "pytesseract>=0.3.10",
     "pillow",
 ]
+# ccp.analytics.fleet: hierarchical Bayesian model of a compressor fleet.
+bayes = [
+    "pymc>=5.16; python_version >= '3.10'",
+    "nutpie>=0.13; python_version >= '3.10'",
+]
 
 [tool.setuptools]
 include-package-data = true
@@ -145,6 +150,8 @@ dev = [
     "pytest-xdist>=3.8.0",
     "pytest-django>=4.9; python_version >= '3.10'",
     "django-tailwind>=4.4; python_version >= '3.11'",
+    "pymc>=5.16; python_version >= '3.10'",
+    "nutpie>=0.13; python_version >= '3.10'",
 ]
 
 [tool.uv]

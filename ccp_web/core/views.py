@@ -251,6 +251,7 @@ def case_ccp_bytes(case):
         if a.name.endswith(".toml")
         or a.key == "evaluation"
         or a.key in ccpfile.DIGITIZER_ARTIFACTS
+        or a.key in ccpfile.FLEET_ARTIFACTS.values()
     ]
     state = dict(case.state)
     state["session_name"] = case.name

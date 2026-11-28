@@ -46,9 +46,27 @@ TABLE_COLUMNS = [
     "p_disch",
     "expected_p_disch",
     "delta_p_disch",
+    "flow_dev",
+    "delta_Td",
+    "health_index",
+    "head_slope",
+    "eff_slope",
+    "power_shaft",
+    "power_driver",
+    "power_coupling",
+    "delta_power_balance",
     "valid",
     "cluster",
 ]
+# KPIs of the trend analysis (those present in the results)
+TREND_KPIS = (
+    "delta_eff",
+    "delta_head",
+    "flow_dev",
+    "delta_Td",
+    "delta_power_balance",
+    "health_index",
+)
 MONITOR_COLUMNS = [
     "eff",
     "expected_eff",
@@ -109,11 +127,34 @@ def orifice_geometry(state):
     }
 
 
+def transmission_efficiency(state):
+    value = state.get("transmission_efficiency")
+    try:
+        value = float(value)
+    except (TypeError, ValueError):
+        return 1.0
+    if not 0 < value <= 1:
+        raise InputError(
+            {"transmission_efficiency": "Transmission efficiency must be in (0, 1]."}
+        )
+    return value
+
+
 def restore_orifice(evaluation, state):
-    """``Evaluation.save`` drops D, d and tappings; put them back."""
+    """``Evaluation.save`` drops D, d and tappings; put them back.
+
+    The driver power settings follow the state too, so an incremental run
+    uses the current unit and transmission efficiency.
+    """
     geometry = orifice_geometry(state)
     for key, value in geometry.items():
         setattr(evaluation, key, value)
+    evaluation.transmission_efficiency = transmission_efficiency(state)
+    if getattr(evaluation, "data_units", None) is not None:
+        evaluation.data_units = {
+            **evaluation.data_units,
+            "power_driver": state.get("power_driver_unit") or "kW",
+        }
     return evaluation
 
 
@@ -129,6 +170,7 @@ def evaluation_kwargs(state, tm, impellers, df, parallel=True):
         "temperature_fluctuation": float(state.get("temperature_fluctuation") or 0.5),
         "pressure_fluctuation": float(state.get("pressure_fluctuation") or 2.0),
         "speed_fluctuation": float(state.get("speed_fluctuation") or 0.5),
+        "transmission_efficiency": transmission_efficiency(state),
     }
     kwargs.update(orifice_geometry(state))
     return kwargs
@@ -472,6 +514,10 @@ def analyse(evaluation, state, progress=None):
                 name: fig_json(f) for name, f in figs.items()
             }
 
+    if progress:
+        progress(0.96, "Analysing trends and change points...")
+    trends = trend_analysis(evaluation)
+
     delta_cols = [c for c in TREND_PLOTS if c in df.columns]
     summary = None
     if delta_cols and not df_valid.empty:
@@ -486,11 +532,108 @@ def analyse(evaluation, state, progress=None):
         "trend": trend,
         "regression": regression,
         "perf": perf,
+        "trends": trends,
         "summary": None
         if summary is None
         else json.loads(summary.to_json(orient="split")),
     }
     return analysis, table
+
+
+def trend_analysis(evaluation):
+    """``Evaluation.trends()`` as JSON: the report dict plus a figure per KPI.
+
+    Evaluations saved by older ccp versions lack some KPI columns; the
+    analysis covers those present. A failure is reported, not raised, so
+    the other results still show.
+    """
+    df = evaluation.df
+    if df is None or df.empty:
+        return None
+    kpis = [k for k in TREND_KPIS if k in df.columns and df[k].notna().any()]
+    if not kpis:
+        return None
+    try:
+        report = evaluation.trends(kpis=kpis)
+        data = report.to_dict()
+        data["figures"] = {}
+        for kpi, t in data["trends"].items():
+            fig = report.plot(kpi)
+            fig.update_layout(title=f"{t['label']} ({t['unit']})")
+            data["figures"][kpi] = fig_json(fig)
+    except Exception as exc:  # the rest of the analysis is still useful
+        return {"error": f"{type(exc).__name__}: {exc}"}
+    return data
+
+
+def _signed(value, digits=2):
+    return "—" if value is None else f"{value:+.{digits}f}"
+
+
+def _days(hours):
+    return Q_(hours, "h").to("day").m
+
+
+def kpi_tiles(analysis):
+    """Display values of the trend KPIs for the results tiles."""
+    trends = (analysis or {}).get("trends") or {}
+    tiles = []
+    for kpi, t in (trends.get("trends") or {}).items():
+        slope, low, high = t.get("slope"), t.get("slope_low"), t.get("slope_high")
+        better = t.get("higher_is_better")
+        status = ""
+        if better is not None and low is not None and high is not None:
+            # the whole interval on the bad side: degrading
+            if (better and high < 0) or (not better and low > 0):
+                status = "down"
+            elif (better and low > 0) or (not better and high < 0):
+                status = "up"
+        threshold = t.get("threshold")
+        ttt = t.get("time_to_threshold")
+        if threshold is None:
+            time_to = None
+        elif ttt is None:
+            time_to = {"text": "not approaching"}
+        elif ttt == 0:
+            time_to = {"text": "reached"}
+        else:
+            lo, hi = t.get("time_to_threshold_low"), t.get("time_to_threshold_high")
+            time_to = {
+                "text": f"{_days(ttt):,.0f} d",
+                "range": (
+                    f"{_days(lo):,.0f}–{_days(hi):,.0f} d"
+                    if lo is not None and hi is not None
+                    else (f"≥ {_days(lo):,.0f} d" if lo is not None else "")
+                ),
+            }
+        change = (t.get("change_points") or [None])[-1]
+        tiles.append(
+            {
+                "kpi": kpi,
+                "label": t.get("label") or kpi,
+                "unit": t.get("unit") or "",
+                "current": _signed(t.get("current")),
+                "slope": _signed(slope),
+                "slope_range": (
+                    f"[{_signed(low)}, {_signed(high)}]"
+                    if low is not None and high is not None
+                    else ""
+                ),
+                "status": status,
+                "threshold": None if threshold is None else _signed(threshold, 1),
+                "time_to": time_to,
+                "change": None
+                if change is None
+                else {
+                    "date": change["time"][:10],
+                    "kind": change.get("kind", "shift"),
+                    "shift": _signed(change.get("shift")),
+                },
+                "n_changes": len(t.get("change_points") or []),
+                "figure": (trends.get("figures") or {}).get(kpi),
+            }
+        )
+    return tiles
 
 
 def summary_frame(analysis):

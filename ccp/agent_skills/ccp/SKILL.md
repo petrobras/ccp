@@ -33,6 +33,7 @@ Concise recipes for centrifugal compressor performance analysis with ccp. Each f
 | Flow orifice metering | [flow_orifice.md](flow_orifice.md) | `FlowOrifice` |
 | Cone (V-cone) meter metering | [flow_cone.md](flow_cone.md) | `FlowCone` |
 | Evaluating operational data | [evaluation.md](evaluation.md) | `Evaluation` |
+| KPIs, trends, reconciliation, fleets | [analytics.md](analytics.md) | `Evaluation.trends`, `Reconciliation`, `Fleet` |
 | Working with the open ccp app | [live_app.md](live_app.md) | `ccp-web agent` CLI, `ccp_web.agent.client.connect`, MCP |
 | Common gotchas | [gotchas.md](gotchas.md) | — |
 

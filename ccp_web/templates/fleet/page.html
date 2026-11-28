@@ -1,0 +1,127 @@
+{% extends "base.html" %}
+{% load ccp %}
+{% block title %}{{ case.name }} · Fleet analysis{% endblock %}
+{% block crumbs %}
+  <span class="sep">›</span><a href="{% url 'core:app_index' app_type %}">Fleet analysis</a>
+  <span class="sep">›</span><b>{{ case.name }}</b>
+{% endblock %}
+
+{% block run_button %}
+  <button class="btn primary" id="runBtn" type="button" title="Fit the fleet model (⌘↵)" {% if not available %}disabled{% endif %}
+    hx-post="{% url 'fleet:run' case.pk %}" hx-include="#case-form, #members-form" hx-target="#job-area" hx-swap="innerHTML">
+    <svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
+    Fit fleet <span class="kbd">⌘↵</span>
+  </button>
+{% endblock %}
+
+{% block main %}
+<div class="page-head">
+  <div>
+    <h1 class="title">Fleet analysis</h1>
+    <p>Compressors built to one design differ by manufacturing tolerances, installation, instruments and
+      degradation. Their field evaluations and shop tests are pooled in one Bayesian model, so each unit is
+      judged against what is normal for its design and a deviation shared by the whole fleet (an optimistic
+      vendor curve, an equation-of-state bias) is not taken for a problem of one unit.</p>
+  </div>
+  <div class="meta">
+    <div>Units <b>{{ n_units }}</b></div>
+    {% if job %}<div>Last fit <b>{{ job.created|date:"Y-m-d H:i" }}</b></div>{% endif %}
+  </div>
+</div>
+
+<nav class="steps" aria-label="Steps">
+  {% for s in steps %}
+    <a class="step {% if s.done %}done{% endif %}" {% if s.current %}aria-current="true"{% endif %} href="#sec-{{ s.anchor }}">
+      <div class="num"><span>{{ s.n }}</span></div>
+      <div><div class="label">{{ s.label }}</div><div class="hint">{{ s.hint|default:"&nbsp;"|safe }}</div></div>
+    </a>
+  {% endfor %}
+</nav>
+
+{% if not available %}
+  <div class="banner error"><span class="tag">setup</span>
+    <div>The fleet model needs PyMC: install the <span class="mono">bayes</span> extra
+      (<span class="mono">{{ install_hint }}</span>) and restart the app. nutpie, when installed, samples faster.</div>
+  </div>
+{% endif %}
+
+<section class="section" id="sec-members">
+  <header>
+    <h2>Units</h2><span class="desc">One performance-evaluation case per unit, all of the same design</span>
+  </header>
+  <div id="members-area">{% include "fleet/partials/members.html" %}</div>
+</section>
+
+<form id="case-form" onsubmit="return false"
+  hx-post="{% url 'core:case_state' case.pk %}"
+  hx-trigger="change delay:400ms"
+  hx-target="#save-status" hx-swap="innerHTML">
+  {% csrf_token %}
+  <section class="section" id="sec-settings" x-data="{ collapsed: false }" :class="{ collapsed }">
+    <header @click="collapsed = !collapsed">
+      {% include "core/includes/chev.html" %}
+      <h2>Model</h2><span class="desc">Threshold, prior scales and NUTS sampler</span>
+    </header>
+    <div class="body" x-show="!collapsed">
+      <div class="cond">
+        <div class="field {% if errors|has_key:'fleet_threshold' %}invalid{% endif %}">
+          <label class="lbl">Efficiency threshold{% help "Efficiency points below the vendor curve. The unit table gives the probability that the current efficiency is below it and the time until each unit reaches it." %}</label>
+          <div class="val">−{% num "fleet_threshold" cls="" step="0.1" min="0" %}<span class="u">points</span></div>
+        </div>
+        <div class="field {% if errors|has_key:'fleet_tau_unit_head' %}invalid{% endif %}">
+          <label class="lbl">Scatter of head{% help "Prior scale of the manufacturing scatter of head between units of the design (half-normal). Blank for the default of 2 % (Tavares et al. 2013)." %}</label>
+          <div class="val">{% num "fleet_tau_unit_head" cls="" step="0.1" placeholder="2" %}<span class="u">%</span></div>
+        </div>
+        <div class="field {% if errors|has_key:'fleet_tau_unit_eff' %}invalid{% endif %}">
+          <label class="lbl">Scatter of efficiency{% help "Prior scale of the manufacturing scatter of efficiency between units (half-normal). Blank for the default of 1.5 points." %}</label>
+          <div class="val">{% num "fleet_tau_unit_eff" cls="" step="0.1" placeholder="1.5" %}<span class="u">points</span></div>
+        </div>
+      </div>
+      <div class="cond">
+        <div class="field {% if errors|has_key:'fleet_draws' %}invalid{% endif %}">
+          <label class="lbl">Draws{% help "Posterior draws kept per chain." %}</label>
+          <div class="val">{% num "fleet_draws" cls="" step="1" min="10" %}</div>
+        </div>
+        <div class="field {% if errors|has_key:'fleet_tune' %}invalid{% endif %}">
+          <label class="lbl">Tune{% help "Tuning (warm-up) draws per chain, discarded. Increase them when R-hat is above 1.01 or there are divergences." %}</label>
+          <div class="val">{% num "fleet_tune" cls="" step="1" min="10" %}</div>
+        </div>
+        <div class="field {% if errors|has_key:'fleet_chains' %}invalid{% endif %}">
+          <label class="lbl">Chains{% help "Independent chains; at least 4 to judge convergence with R-hat." %}</label>
+          <div class="val">{% num "fleet_chains" cls="" step="1" min="1" %}</div>
+        </div>
+        <div class="field">
+          <label class="lbl">Seed{% help "Random seed for reproducible draws; blank for a new seed each fit." %}</label>
+          <div class="val">{% num "fleet_seed" cls="" step="1" placeholder="random" %}</div>
+        </div>
+      </div>
+      <div class="note">Real fleets take minutes to sample. Without driver power in the evaluations, a flow-meter bias and a flow-capacity deviation cannot be told apart and the as-built flow is apparent.</div>
+    </div>
+  </section>
+</form>
+
+<section class="section" id="sec-run">
+  <header><h2>Fit</h2><span class="desc">Runs in the background: loads the evaluations, then samples the posterior with NUTS</span>
+    <div class="actions">
+      <button class="btn primary" type="button" {% if not available %}disabled{% endif %} hx-post="{% url 'fleet:run' case.pk %}" hx-include="#case-form, #members-form" hx-target="#job-area" hx-swap="innerHTML">Fit fleet</button>
+    </div>
+  </header>
+  <div id="job-area">
+    {% if job %}{% include "core/partials/job.html" %}{% elif available %}<div class="empty">Pick at least two evaluation cases, then Fit fleet (⌘↵).</div>{% else %}<div class="empty">Install PyMC to fit the fleet model.</div>{% endif %}
+  </div>
+</section>
+
+<div id="sec-results" hx-get="{% url 'fleet:results' case.pk %}" hx-trigger="ccp:job-done-{{ case.pk }} from:body" hx-swap="innerHTML">
+  {% if data %}{% include "fleet/partials/results.html" %}{% endif %}
+</div>
+{% endblock %}
+
+{% block inspector %}
+  {% include "core/includes/case_inspector.html" with inspector_template="fleet/partials/inspector.html" %}
+{% endblock %}
+{% block status %}
+  {% if job and job.is_active %}<span class="chip busy"><span class="dot"></span> <b>Sampling</b></span>
+  {% elif not available %}<span class="chip warn"><span class="dot"></span> <b>PyMC missing</b></span>
+  {% else %}<span class="chip"><span class="dot"></span> <b>Ready</b></span>{% endif %}
+{% endblock %}
+{% block save_status %}<span class="saved">Saved {{ case.updated|time:"H:i:s" }}</span>{% endblock %}

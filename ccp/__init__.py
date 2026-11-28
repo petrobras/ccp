@@ -196,6 +196,9 @@ from .fc import FlowCone
 from .similarity import check_similarity
 from .evaluation import Evaluation
 from .drivers import Driver, InductionMotor
+from . import analytics
+from .analytics import Reconciliation
+from .analytics.fleet import Fleet, FleetPriors, FleetUnit
 
 __all__ = [
     "State",
@@ -213,4 +216,9 @@ __all__ = [
     "ambient_pressure",
     "set_ambient_pressure",
     "units",
+    "analytics",
+    "Reconciliation",
+    "Fleet",
+    "FleetPriors",
+    "FleetUnit",
 ]

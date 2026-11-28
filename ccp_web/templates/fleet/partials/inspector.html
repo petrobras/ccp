@@ -1,0 +1,10 @@
+{% load ccp %}
+<div class="blk">
+  <h3>Fleet</h3>
+  <div class="kv"><span class="k">Units</span><span class="v">{{ n_units }}</span></div>
+  <div class="kv"><span class="k">Sampler</span><span class="v">{{ state.fleet_chains }} × {{ state.fleet_draws }} (+{{ state.fleet_tune }})</span></div>
+  <div class="kv"><span class="k">Threshold</span><span class="v">−{{ state.fleet_threshold }} points</span></div>
+  {% if diag %}
+    <div class="kv"><span class="k">Diagnostics</span><span class="v"><span class="pill {% if diag.status == 'ok' %}ok{% else %}warn{% endif %}">{% if diag.status == 'ok' %}converged{% else %}check{% endif %}</span></span></div>
+  {% endif %}
+</div>

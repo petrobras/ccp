@@ -9,5 +9,6 @@ ideal_gas
 gauge_pressure
 factory_test
 evaluation_tutorial
+evaluation_analytics
 ../app_guide/straight_through_user_guide
 ```

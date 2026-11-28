@@ -7,6 +7,7 @@ urlpatterns = [
     path("curves/", include("ccp_web.curves.urls")),
     path("digitizer/", include("ccp_web.digitizer.urls")),
     path("evaluation/", include("ccp_web.evaluation.urls")),
+    path("fleet/", include("ccp_web.fleet.urls")),
     path("agent/", include("ccp_web.agent.urls")),
     path("api/agent/v1/", include("ccp_web.agent.api_urls")),
 ]

@@ -37,9 +37,12 @@ APP_TYPES = [
     "curves_conversion",
     "performance_evaluation",
     "curves_digitizer",
+    "fleet_analysis",
 ]
 
 DIGITIZER_ARTIFACTS = ("digitized", "digitized_original")
+# fleet case results: archive name -> artifact key
+FLEET_ARTIFACTS = {"fleet.zip": "fleet", "fleet_results.json": "fleet_results"}
 
 RESULT_TOML_KEYS = {
     "straight_through": "straight_through",
@@ -129,6 +132,8 @@ def detect_app_type(raw_state, names):
     if "flow_point_guarantee" in raw_state or "straight_through.toml" in names:
         return "straight_through"
     declared = raw_state.get("app_type")
+    if declared == "fleet_analysis" or "fleet.zip" in names:
+        return "fleet_analysis"
     if declared == "curves_digitizer" or "digitized.json" in names:
         return "curves_digitizer"
     if "evaluation.zip" in names or declared in (
@@ -249,6 +254,8 @@ def read_ccp(data, expected_app_type=None):
                 artifacts["evaluation"] = ("evaluation.zip", archive.read(name))
             elif name.lower().endswith(".pdf") and "/" not in name:
                 files["curve_pdf"] = ("curve_pdf", base, archive.read(name))
+            elif name in FLEET_ARTIFACTS:
+                artifacts[FLEET_ARTIFACTS[name]] = (name, archive.read(name))
             elif name in (f"{k}.json" for k in DIGITIZER_ARTIFACTS):
                 artifacts[base[: -len(".json")]] = (base, archive.read(name))
 
@@ -320,6 +327,8 @@ def write_ccp(app_type, state, files=(), artifacts=()):
                 archive.writestr(f"{key}.toml", content)
             elif key in DIGITIZER_ARTIFACTS:
                 archive.writestr(f"{key}.json", content)
+            elif key in FLEET_ARTIFACTS.values():
+                archive.writestr(name, content)
         archive.writestr(
             "session_state.json", json.dumps(export_state(app_type, state))
         )
